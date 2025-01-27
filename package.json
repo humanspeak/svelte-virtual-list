@@ -73,7 +73,7 @@
         "@playwright/test": "^1.49.1",
         "@sveltejs/adapter-auto": "^4.0.0",
         "@sveltejs/kit": "^2.16.1",
-        "@sveltejs/package": "^2.3.8",
+        "@sveltejs/package": "^2.3.9",
         "@sveltejs/vite-plugin-svelte": "^5.0.3",
         "@testing-library/jest-dom": "^6.6.3",
         "@testing-library/svelte": "^5.2.6",
