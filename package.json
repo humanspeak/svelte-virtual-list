@@ -91,7 +91,7 @@
         "prettier-plugin-organize-imports": "^4.1.0",
         "prettier-plugin-svelte": "^3.3.3",
         "publint": "^0.3.2",
-        "svelte": "^5.19.5",
+        "svelte": "^5.25.7",
         "svelte-check": "^4.1.4",
         "typescript": "^5.7.3",
         "vite": "^6.0.11",
