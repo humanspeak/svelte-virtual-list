@@ -40,4 +40,23 @@ test.describe('bottomToTop scroll', () => {
             await expect(item).toHaveText('Item 0')
         })
     }
+
+    // Additional test for align: 'auto' when item is visible but not at the edge
+    test('should align to nearest edge with align=auto when item is visible but not at edge', async ({
+        page
+    }) => {
+        await setAlign(page, 'auto')
+        // Scroll to item 500 (should be at top)
+        await page.locator('input[type=range]').fill('500')
+        await page.locator('button').click()
+        const item = page.locator('[data-testid="list-item-500"]')
+        await item.waitFor({ state: 'visible', timeout: 5000 })
+        await expect(item).toBeVisible()
+        // Now scroll to item 505 (should align to nearest edge)
+        await page.locator('input[type=range]').fill('505')
+        await page.locator('button').click()
+        const item2 = page.locator('[data-testid="list-item-505"]')
+        await item2.waitFor({ state: 'visible', timeout: 5000 })
+        await expect(item2).toBeVisible()
+    })
 })
