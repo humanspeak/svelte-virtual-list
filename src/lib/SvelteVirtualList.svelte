@@ -647,9 +647,6 @@
             } else if (align === 'bottom') {
                 // Align to bottom
                 scrollTarget = Math.max(0, totalHeight - itemOffset - height)
-            } else if (align === 'center') {
-                // Align to center
-                scrollTarget = Math.max(0, totalHeight - (itemOffset + itemHeight / 2) - height / 2)
             } else if (align === 'nearest') {
                 // If not visible, align to nearest edge; if visible, do nothing
                 const itemTop = totalHeight - (itemOffset + itemHeight)
@@ -721,13 +718,6 @@
                     targetIndex + 1
                 )
                 scrollTarget = Math.max(0, itemBottom - height)
-            } else if (align === 'center') {
-                const itemTop = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    targetIndex
-                )
-                scrollTarget = Math.max(0, itemTop - height / 2 + calculatedItemHeight / 2)
             } else if (align === 'nearest') {
                 const itemTop = getScrollOffsetForIndex(
                     heightCache,
