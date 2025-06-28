@@ -647,6 +647,26 @@
             } else if (align === 'bottom') {
                 // Align to bottom
                 scrollTarget = Math.max(0, totalHeight - itemOffset - height)
+            } else if (align === 'center') {
+                // Align to center
+                scrollTarget = Math.max(0, totalHeight - (itemOffset + itemHeight / 2) - height / 2)
+            } else if (align === 'nearest') {
+                // If not visible, align to nearest edge; if visible, do nothing
+                const itemTop = totalHeight - (itemOffset + itemHeight)
+                const itemBottom = totalHeight - itemOffset
+                if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
+                    // Not visible, align to nearest edge
+                    const distanceToTop = Math.abs(scrollTop - itemTop)
+                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
+                    if (distanceToTop < distanceToBottom) {
+                        scrollTarget = itemTop
+                    } else {
+                        scrollTarget = Math.max(0, itemBottom - height)
+                    }
+                } else {
+                    // Already visible, do nothing
+                    return
+                }
             }
         } else {
             // topToBottom (default)
@@ -701,6 +721,37 @@
                     targetIndex + 1
                 )
                 scrollTarget = Math.max(0, itemBottom - height)
+            } else if (align === 'center') {
+                const itemTop = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex
+                )
+                scrollTarget = Math.max(0, itemTop - height / 2 + calculatedItemHeight / 2)
+            } else if (align === 'nearest') {
+                const itemTop = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex
+                )
+                const itemBottom = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex + 1
+                )
+                if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
+                    // Not visible, align to nearest edge
+                    const distanceToTop = Math.abs(scrollTop - itemTop)
+                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
+                    if (distanceToTop < distanceToBottom) {
+                        scrollTarget = itemTop
+                    } else {
+                        scrollTarget = Math.max(0, itemBottom - height)
+                    }
+                } else {
+                    // Already visible, do nothing
+                    return
+                }
             }
         }
 

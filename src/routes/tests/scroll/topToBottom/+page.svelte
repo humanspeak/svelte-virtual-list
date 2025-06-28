@@ -36,6 +36,8 @@
                 <option value="auto">Auto</option>
                 <option value="top">Top</option>
                 <option value="bottom">Bottom</option>
+                <option value="center">Center</option>
+                <option value="nearest">Nearest</option>
             </select>
         </label>
     </div>
