@@ -58,7 +58,7 @@ You can now programmatically scroll to any item in the list using the `scroll` m
 
 ### API
 
-- `scroll(options: { index: number; smoothScroll?: boolean; shouldThrowOnBounds?: boolean; align?: 'auto' | 'top' | 'bottom' | 'center' | 'nearest' })`
+- `scroll(options: { index: number; smoothScroll?: boolean; shouldThrowOnBounds?: boolean; align?: 'auto' | 'top' | 'bottom' | 'nearest' })`
     - `index`: The item index to scroll to (0-based)
     - `smoothScroll`: If true, uses smooth scrolling (default: true)
     - `shouldThrowOnBounds`: If true, throws if index is out of bounds (default: true)
@@ -66,15 +66,11 @@ You can now programmatically scroll to any item in the list using the `scroll` m
         - `'auto'` (default): Only scroll if not visible, align to top or bottom as appropriate
         - `'top'`: Always align to the top
         - `'bottom'`: Always align to the bottom
-        - `'center'`: Always align to the center of the viewport
         - `'nearest'`: Scroll as little as possible to bring the item into view (like native scrollIntoView({ block: 'nearest' }))
 
 #### Usage Examples
 
 ```svelte
-<button on:click={() => listRef.scroll({ index: 5000, align: 'center' })}>
-    Scroll to item 5000 (center)
-</button>
 <button on:click={() => listRef.scroll({ index: 5000, align: 'nearest' })}>
     Scroll to item 5000 (nearest)
 </button>
