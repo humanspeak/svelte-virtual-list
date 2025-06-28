@@ -36,6 +36,7 @@
                 <option value="auto">Auto</option>
                 <option value="top">Top</option>
                 <option value="bottom">Bottom</option>
+                <option value="nearest">Nearest</option>
             </select>
         </label>
     </div>
@@ -53,7 +54,7 @@
     class="test-container"
     style="height: 500px; border: 1px solid pink;padding: 10px; border-radius: 10px;"
 >
-    <SvelteVirtualList {items} testId="basic-list" mode="topToBottom" bind:this={virtualList} debug>
+    <SvelteVirtualList {items} testId="basic-list" mode="topToBottom" bind:this={virtualList}>
         {#snippet renderItem(item: Item)}
             <div class="test-item" data-testid="list-item-{item.id}">
                 {item.text}

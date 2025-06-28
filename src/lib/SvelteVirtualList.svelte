@@ -620,15 +620,26 @@
             const itemOffset = targetIndex * calculatedItemHeight
             const itemHeight = calculatedItemHeight
             if (align === 'auto') {
+                // If item is above the viewport, align to top
                 if (targetIndex < firstVisibleIndex) {
-                    // Align to top
                     scrollTarget = Math.max(0, totalHeight - (itemOffset + itemHeight))
+                    // If item is below the viewport, align to bottom
                 } else if (targetIndex > lastVisibleIndex - 1) {
-                    // Align to bottom
                     scrollTarget = Math.max(0, totalHeight - itemOffset - height)
                 } else {
-                    // Already in view, do nothing
-                    return
+                    // Item is visible but not aligned: align to nearest edge
+                    // Calculate the offset of the item relative to the viewport
+                    const itemTop = totalHeight - (itemOffset + itemHeight)
+                    const itemBottom = totalHeight - itemOffset
+                    const distanceToTop = Math.abs(scrollTop - itemTop)
+                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
+                    if (distanceToTop < distanceToBottom) {
+                        // Closer to top, align to top
+                        scrollTarget = itemTop
+                    } else {
+                        // Closer to bottom, align to bottom
+                        scrollTarget = Math.max(0, itemBottom - height)
+                    }
                 }
             } else if (align === 'top') {
                 // Align to top
@@ -636,19 +647,36 @@
             } else if (align === 'bottom') {
                 // Align to bottom
                 scrollTarget = Math.max(0, totalHeight - itemOffset - height)
+            } else if (align === 'nearest') {
+                // If not visible, align to nearest edge; if visible, do nothing
+                const itemTop = totalHeight - (itemOffset + itemHeight)
+                const itemBottom = totalHeight - itemOffset
+                if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
+                    // Not visible, align to nearest edge
+                    const distanceToTop = Math.abs(scrollTop - itemTop)
+                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
+                    if (distanceToTop < distanceToBottom) {
+                        scrollTarget = itemTop
+                    } else {
+                        scrollTarget = Math.max(0, itemBottom - height)
+                    }
+                } else {
+                    // Already visible, do nothing
+                    return
+                }
             }
         } else {
             // topToBottom (default)
             if (align === 'auto') {
+                // If item is above the viewport, align to top
                 if (targetIndex < firstVisibleIndex) {
-                    // Scroll so item is at the top
                     scrollTarget = getScrollOffsetForIndex(
                         heightCache,
                         calculatedItemHeight,
                         targetIndex
                     )
+                    // If item is below the viewport, align to bottom
                 } else if (targetIndex > lastVisibleIndex - 1) {
-                    // Scroll so item is at the bottom
                     const itemBottom = getScrollOffsetForIndex(
                         heightCache,
                         calculatedItemHeight,
@@ -656,8 +684,26 @@
                     )
                     scrollTarget = Math.max(0, itemBottom - height)
                 } else {
-                    // Already in view, do nothing
-                    return
+                    // Item is visible but not aligned: align to nearest edge
+                    const itemTop = getScrollOffsetForIndex(
+                        heightCache,
+                        calculatedItemHeight,
+                        targetIndex
+                    )
+                    const itemBottom = getScrollOffsetForIndex(
+                        heightCache,
+                        calculatedItemHeight,
+                        targetIndex + 1
+                    )
+                    const distanceToTop = Math.abs(scrollTop - itemTop)
+                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
+                    if (distanceToTop < distanceToBottom) {
+                        // Closer to top, align to top
+                        scrollTarget = itemTop
+                    } else {
+                        // Closer to bottom, align to bottom
+                        scrollTarget = Math.max(0, itemBottom - height)
+                    }
                 }
             } else if (align === 'top') {
                 scrollTarget = getScrollOffsetForIndex(
@@ -672,6 +718,30 @@
                     targetIndex + 1
                 )
                 scrollTarget = Math.max(0, itemBottom - height)
+            } else if (align === 'nearest') {
+                const itemTop = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex
+                )
+                const itemBottom = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex + 1
+                )
+                if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
+                    // Not visible, align to nearest edge
+                    const distanceToTop = Math.abs(scrollTop - itemTop)
+                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
+                    if (distanceToTop < distanceToBottom) {
+                        scrollTarget = itemTop
+                    } else {
+                        scrollTarget = Math.max(0, itemBottom - height)
+                    }
+                } else {
+                    // Already visible, do nothing
+                    return
+                }
             }
         }
 
