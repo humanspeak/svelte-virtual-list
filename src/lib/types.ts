@@ -86,7 +86,10 @@ export type SvelteVirtualListDebugInfo = {
     averageItemHeight: number
 }
 
-export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom'
+/**
+ * Alignment options for programmatic scrolling.
+ */
+export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'center' | 'nearest'
 
 /**
  * Options for scrolling to a specific index in the virtual list.
