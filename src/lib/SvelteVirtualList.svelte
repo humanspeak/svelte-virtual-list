@@ -204,6 +204,7 @@
     let isScrolling = $state(false) // Tracks active scrolling state
     let lastMeasuredIndex = $state(-1) // Index of last measured item
     let isListComplete = $state(false) // Tracks if all items have been loaded
+    let isLoadingData = $state(false) // Tracks if data is currently being loaded
 
     /**
      * Timers and Observers
@@ -358,13 +359,13 @@
 
         if (!isScrolling) {
             isScrolling = true
-            rafSchedule(() => {
+            rafSchedule(async () => {
                 scrollTop = viewportElement.scrollTop
                 isScrolling = false
 
                 // Infinite scroll handling
                 // Only invoke if onReachEnd is defined
-                if (onReachEnd && initialized && !isListComplete) {
+                if (onReachEnd && initialized && !isListComplete && !isLoadingData) {
                     const scrollHeight = viewportElement.scrollHeight
                     const clientHeight = viewportElement.clientHeight
 
@@ -373,7 +374,9 @@
                         scrollHeight - (scrollTop + clientHeight) <= endThreshold ||
                         scrollHeight <= clientHeight + endThreshold
                     ) {
-                        isListComplete = onReachEnd()
+                        isLoadingData = true
+                        isListComplete = await onReachEnd()
+                        isLoadingData = false
                     }
                 }
             })
@@ -538,7 +541,8 @@
             initialized &&
             viewportElement &&
             viewportElement.scrollHeight <= viewportElement.clientHeight + endThreshold &&
-            !isListComplete
+            !isListComplete &&
+            !isLoadingData
         ) {
             onReachEnd()
         }
