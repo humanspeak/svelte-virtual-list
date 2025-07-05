@@ -14,6 +14,7 @@
             text: `Item ${currentLength + i}`
         }));
         items.push(...newItems);
+        return false;
     }
 </script>
 
