@@ -1,6 +1,8 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
 
+    let infiniteScrollEnabled = $state(true)
+
     const items = $state(
         Array.from({ length: 100 }, (_, i) => ({
             id: i,
@@ -8,7 +10,7 @@
         }))
     )
 
-    function loadMoreItems(): boolean {
+    function loadMoreItems() {
         // Simulate loading more items
         const currentLength = items.length
         const newItems = Array.from({ length: 100 }, (_, i) => ({
@@ -16,16 +18,13 @@
             text: `Item ${currentLength + i}`
         }))
         items.push(...newItems)
-        if (items.length >= 1000) {
-            // Stop loading more items after reaching a limit
-            return true // Indicate that the list is complete
-        }
-        return false // Indicate that more items can be loaded
+        return false
     }
 </script>
 
+<input type="checkbox" bind:checked={infiniteScrollEnabled} /> Infinite Scroll Enabled
 <div class="test-container" style="height: 500px;">
-    <SvelteVirtualList {items} testId="basic-list" infiniteScrollCallback={loadMoreItems}>
+    <SvelteVirtualList {items} testId="basic-list" infiniteScrollCallback={loadMoreItems} {infiniteScrollEnabled}>
         {#snippet renderItem(item)}
             <div class="test-item" data-testid="list-item-{item.id}">
                 {item.text}
