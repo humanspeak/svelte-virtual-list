@@ -177,7 +177,9 @@
         debugFunction, // Custom debug logging function
         mode = 'topToBottom', // Scroll direction mode
         bufferSize = 20, // Number of items to render outside visible area
-        testId // Base test ID for component elements (undefined = no data-testid attributes)
+        testId, // Base test ID for component elements (undefined = no data-testid attributes)
+        onReachEnd, // Callback when the end of the list is reached
+        endThreshold = 32 // Threshold for distance from bottom of collection before triggering onReachEnd callback
     }: SvelteVirtualListProps = $props()
 
     /**
@@ -201,6 +203,7 @@
     let isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isScrolling = $state(false) // Tracks active scrolling state
     let lastMeasuredIndex = $state(-1) // Index of last measured item
+    let isListComplete = $state(false) // Tracks if all items have been loaded
 
     /**
      * Timers and Observers
@@ -358,6 +361,21 @@
             rafSchedule(() => {
                 scrollTop = viewportElement.scrollTop
                 isScrolling = false
+
+                // Infinite scroll handling
+                // Only invoke if onReachEnd is defined
+                if (onReachEnd && initialized && !isListComplete) {
+                    const scrollHeight = viewportElement.scrollHeight
+                    const clientHeight = viewportElement.clientHeight
+
+                    // If scrolled to bottom, or content doesn't fill viewport
+                    if (
+                        scrollHeight - (scrollTop + clientHeight) <= endThreshold ||
+                        scrollHeight <= clientHeight + endThreshold
+                    ) {
+                        isListComplete = onReachEnd()
+                    }
+                }
             })
         }
     }
@@ -511,6 +529,18 @@
         if (debug) {
             prevVisibleRange = visibleItems()
             prevHeight = calculatedItemHeight
+        }
+    })
+
+    $effect(() => {
+        if (
+            onReachEnd &&
+            initialized &&
+            viewportElement &&
+            viewportElement.scrollHeight <= viewportElement.clientHeight + endThreshold &&
+            !isListComplete
+        ) {
+            onReachEnd()
         }
     })
 

@@ -65,6 +65,18 @@ export type SvelteVirtualListProps = {
      * CSS class to apply to the scrollable viewport element.
      */
     viewportClass?: string
+    /**
+     * Callback function triggered when the user reaches the end of the list.
+     * May be used to load more items dynamically (e.g., for infinite scrolling).
+     * @returns {Promise<boolean> | boolean} - Returns true if more items are available to load, false otherwise.
+     */
+    onReachEnd?: () => Promise<boolean> | boolean
+    /**
+     * Threshold in pixels to trigger the onReachEnd callback.
+     * When the user scrolls within this distance from the end of the list, the callback is invoked.
+     * @default 32
+     */
+    endThreshold?: number
 }
 
 /**
