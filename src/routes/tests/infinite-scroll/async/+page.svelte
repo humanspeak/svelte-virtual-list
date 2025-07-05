@@ -1,25 +1,27 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
 
-    const items = $state(Array.from({ length: 100 }, (_, i) => ({
-        id: i,
-        text: `Item ${i}`
-    })))
+    const items = $state(
+        Array.from({ length: 100 }, (_, i) => ({
+            id: i,
+            text: `Item ${i}`
+        }))
+    )
 
     function loadMoreItems(): Promise<boolean> {
         // Simulate loading more items after a delay
-        console.log('Loading more items...');
+        console.log('Loading more items...')
         return new Promise((resolve) => {
             setTimeout(() => {
-                const currentLength = items.length;
+                const currentLength = items.length
                 const newItems = Array.from({ length: 100 }, (_, i) => ({
                     id: currentLength + i,
                     text: `Item ${currentLength + i}`
-                }));
-                items.push(...newItems);
-                resolve(false); // Indicate that more items can be loaded
-            }, 1000); // Simulate a 1 second delay for loading
-        });
+                }))
+                items.push(...newItems)
+                resolve(false) // Indicate that more items can be loaded
+            }, 1000) // Simulate a 1 second delay for loading
+        })
     }
 </script>
 

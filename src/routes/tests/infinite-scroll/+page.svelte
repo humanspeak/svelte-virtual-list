@@ -1,20 +1,22 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
 
-    const items = $state(Array.from({ length: 100 }, (_, i) => ({
-        id: i,
-        text: `Item ${i}`
-    })))
+    const items = $state(
+        Array.from({ length: 100 }, (_, i) => ({
+            id: i,
+            text: `Item ${i}`
+        }))
+    )
 
     function loadMoreItems() {
         // Simulate loading more items
-        const currentLength = items.length;
+        const currentLength = items.length
         const newItems = Array.from({ length: 100 }, (_, i) => ({
             id: currentLength + i,
             text: `Item ${currentLength + i}`
-        }));
-        items.push(...newItems);
-        return false;
+        }))
+        items.push(...newItems)
+        return false
     }
 </script>
 

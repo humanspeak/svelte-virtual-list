@@ -375,18 +375,18 @@
                     const scrollHeight = viewportElement.scrollHeight
                     const clientHeight = viewportElement.clientHeight
                     const currentTime = Date.now()
-                    
+
                     // Reset call count if enough time has passed
                     if (currentTime - onReachEndLastCallTime > infiniteLoopPreventionTimeout) {
                         onReachEndCallCount = 0
                     }
-                    
+
                     // Prevent infinite loops by limiting calls
                     if (onReachEndCallCount >= infiniteLoopPreventionCallCount) {
                         console.warn(
                             'SvelteVirtualList: onReachEnd has been called too many times in a short period. ' +
-                            'This usually indicates an infinite loop. Disabling further calls. ' +
-                            'Check your onReachEnd implementation to ensure it properly loads data or returns true when complete.'
+                                'This usually indicates an infinite loop. Disabling further calls. ' +
+                                'Check your onReachEnd implementation to ensure it properly loads data or returns true when complete.'
                         )
                         isListComplete = true
                         return
@@ -415,7 +415,7 @@
                     if (shouldTrigger) {
                         onReachEndCallCount++
                         onReachEndLastCallTime = currentTime
-                        
+
                         isLoadingData = true
                         isListComplete = await onReachEnd()
                         isLoadingData = false
@@ -578,29 +578,23 @@
     })
 
     $effect(() => {
-        if (
-            onReachEnd &&
-            initialized &&
-            viewportElement &&
-            !isListComplete &&
-            !isLoadingData
-        ) {
+        if (onReachEnd && initialized && viewportElement && !isListComplete && !isLoadingData) {
             const scrollHeight = viewportElement.scrollHeight
             const clientHeight = viewportElement.clientHeight
             const currentTime = Date.now()
-            
+
             // Reset call count if enough time has passed (reset every 5 seconds)
-            $inspect(currentTime, onReachEndLastCallTime, currentTime - onReachEndLastCallTime);
+            $inspect(currentTime, onReachEndLastCallTime, currentTime - onReachEndLastCallTime)
             if (currentTime - onReachEndLastCallTime > infiniteLoopPreventionTimeout) {
                 onReachEndCallCount = 0
             }
-            
+
             // Prevent infinite loops by limiting calls
             if (onReachEndCallCount >= infiniteLoopPreventionCallCount) {
                 console.warn(
                     'SvelteVirtualList: onReachEnd has been called too many times in a short period. ' +
-                    'This usually indicates an infinite loop. Disabling further calls. ' +
-                    'Check your onReachEnd implementation to ensure it properly loads data or returns true when complete.'
+                        'This usually indicates an infinite loop. Disabling further calls. ' +
+                        'Check your onReachEnd implementation to ensure it properly loads data or returns true when complete.'
                 )
                 isListComplete = true
                 return
@@ -610,7 +604,7 @@
             if (scrollHeight <= clientHeight + endThreshold) {
                 onReachEndCallCount++
                 onReachEndLastCallTime = currentTime
-                
+
                 isLoadingData = true
                 const result = onReachEnd()
                 if (result instanceof Promise) {

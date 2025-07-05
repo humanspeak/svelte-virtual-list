@@ -1,13 +1,15 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
 
-    const items = $state(Array.from({ length: 10 }, (_, i) => ({
-        id: i,
-        text: `Item ${i}`
-    })))
+    const items = $state(
+        Array.from({ length: 10 }, (_, i) => ({
+            id: i,
+            text: `Item ${i}`
+        }))
+    )
 
     function loadMoreItems() {
-        return false;
+        return false
     }
 </script>
 

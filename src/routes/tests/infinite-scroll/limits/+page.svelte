@@ -1,24 +1,26 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
 
-    const items = $state(Array.from({ length: 100 }, (_, i) => ({
-        id: i,
-        text: `Item ${i}`
-    })))
+    const items = $state(
+        Array.from({ length: 100 }, (_, i) => ({
+            id: i,
+            text: `Item ${i}`
+        }))
+    )
 
     function loadMoreItems(): boolean {
         // Simulate loading more items
-        const currentLength = items.length;
+        const currentLength = items.length
         const newItems = Array.from({ length: 100 }, (_, i) => ({
             id: currentLength + i,
             text: `Item ${currentLength + i}`
-        }));
-        items.push(...newItems);
+        }))
+        items.push(...newItems)
         if (items.length >= 1000) {
             // Stop loading more items after reaching a limit
-            return true; // Indicate that the list is complete
+            return true // Indicate that the list is complete
         }
-        return false; // Indicate that more items can be loaded
+        return false // Indicate that more items can be loaded
     }
 </script>
 
