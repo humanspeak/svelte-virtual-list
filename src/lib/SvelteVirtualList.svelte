@@ -583,8 +583,7 @@
             const clientHeight = viewportElement.clientHeight
             const currentTime = Date.now()
 
-            // Reset call count if enough time has passed (reset every 5 seconds)
-            $inspect(currentTime, onReachEndLastCallTime, currentTime - onReachEndLastCallTime)
+            // Reset call count if enough time has passed (reset after infiniteLoopPreventionTimeout)
             if (currentTime - onReachEndLastCallTime > infiniteLoopPreventionTimeout) {
                 onReachEndCallCount = 0
             }
