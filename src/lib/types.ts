@@ -77,6 +77,18 @@ export type SvelteVirtualListProps = {
      * @default 32
      */
     endThreshold?: number
+    /**
+     * Maximum number of times the onReachEnd callback can be called in a short period to prevent excessive calls.
+     * @default 3
+     */
+    infiniteLoopPreventionCallCount?: number
+    /**
+     * Amount of time in milliseconds before the loop prevention counter resets.
+     * If onReachEnd is called more than infiniteLoopPreventionCallCount times within this period this period,
+     * the callback will be disabled to prevent rapid repeated calls.
+     * @default 5
+     */
+    infiniteLoopPreventionTimeout?: number
 }
 
 /**
