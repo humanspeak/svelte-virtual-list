@@ -12,12 +12,15 @@
     const randomizeHeight = (item: (typeof items)[0]) => {
         const currentHeight = item.height
         let newHeight: number
+        let attempts = 0
+        const maxAttempts = 10
 
         // Keep trying until we get a different number
         do {
             const adjustment = Math.floor(Math.random() * 11) - 5 // -5 to +5
             newHeight = Math.max(30, currentHeight + adjustment) // Minimum 30px
-        } while (newHeight === currentHeight)
+            attempts++
+        } while (newHeight === currentHeight && attempts < maxAttempts)
 
         item.height = newHeight
     }
@@ -33,9 +36,6 @@
             `[data-testid="list-item-${item.id}"]`
         ) as HTMLElement
         if (itemElement) {
-            // Find the wrapper div (parent of our content)
-            const wrapperDiv = itemElement.parentElement
-
             itemElement.style.height = '100px'
             itemElement.style.minHeight = '100px'
         }
