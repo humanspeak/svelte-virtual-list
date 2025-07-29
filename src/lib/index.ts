@@ -1,11 +1,11 @@
-import SvelteVirtualList from './SvelteVirtualList.svelte'
+import SvelteVirtualList from '$lib/SvelteVirtualList.svelte'
 import type {
     SvelteVirtualListDebugInfo,
     SvelteVirtualListMode,
     SvelteVirtualListProps,
     SvelteVirtualListScrollAlign,
     SvelteVirtualListScrollOptions
-} from './types.js'
+} from '$lib/types.js'
 
 export default SvelteVirtualList
 export type {

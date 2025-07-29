@@ -1,4 +1,4 @@
-import type { SvelteVirtualListDebugInfo } from '../types.js'
+import type { SvelteVirtualListDebugInfo } from '$lib/types.js'
 
 /**
  * Determines whether debug information should be displayed based on state changes in the virtual list.

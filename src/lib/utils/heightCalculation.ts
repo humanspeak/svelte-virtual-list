@@ -1,6 +1,6 @@
+import type { SvelteVirtualListHeightCache } from '$lib/types.js'
+import { calculateAverageHeight } from '$lib/utils/virtualList.js'
 import { BROWSER } from 'esm-env'
-import type { HeightCache } from './types.js'
-import { calculateAverageHeight } from './virtualList.js'
 
 /**
  * Calculates and updates the average height of visible items with debouncing.
@@ -76,14 +76,14 @@ export const calculateAverageHeightDebounced = (
     heightUpdateTimeout: ReturnType<typeof setTimeout> | null,
     visibleItemsGetter: () => { start: number; end: number },
     itemElements: HTMLElement[],
-    heightCache: HeightCache,
+    heightCache: SvelteVirtualListHeightCache,
     lastMeasuredIndex: number,
     calculatedItemHeight: number,
     /* trunk-ignore(eslint/no-unused-vars) */
     onUpdate: (result: {
         newHeight: number
         newLastMeasuredIndex: number
-        updatedHeightCache: HeightCache
+        updatedHeightCache: SvelteVirtualListHeightCache
     }) => void,
     debounceTime = 200
 ): NodeJS.Timeout | null => {
