@@ -43,8 +43,16 @@ export type VirtualListSetters = {
 }
 
 /**
- * Cache for storing measured item heights
- * - Key: Item index in the list
- * - Value: Measured height in pixels
+ * Represents a cached height entry for a virtual list item
  */
-export type HeightCache = Record<number, number>
+export type HeightCacheEntry = {
+    currentHeight: number
+    dirty: boolean
+}
+
+/**
+ * Cache for storing measured item heights with dirty tracking
+ * - Key: Item index in the list
+ * - Value: Object containing current height and dirty flag
+ */
+export type HeightCache = Record<number, HeightCacheEntry>

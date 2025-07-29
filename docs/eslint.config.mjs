@@ -82,7 +82,7 @@ export default [
         }
     },
     {
-        files: ['**/*.svelte'],
+        files: ['**/*.svelte', '**/*.svelte.ts'],
         languageOptions: {
             parserOptions: {
                 parser: ts.parser

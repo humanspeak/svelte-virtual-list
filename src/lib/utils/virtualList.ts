@@ -1,5 +1,5 @@
-import type { SvelteVirtualListMode } from '../types.js'
-import type { VirtualListSetters, VirtualListState } from './types.js'
+import type { SvelteVirtualListMode, SvelteVirtualListPreviousVisibleRange } from '../types.js'
+import type { HeightCache, VirtualListSetters, VirtualListState } from './types.js'
 
 /**
  * Calculates the maximum scroll position for a virtual list.
@@ -36,7 +36,7 @@ export const calculateScrollPosition = (
  * @param {number} totalItems - Total number of items in the list
  * @param {number} bufferSize - Number of items to render outside the visible area
  * @param {SvelteVirtualListMode} mode - Scroll direction mode
- * @returns {{ start: number, end: number }} Range of indices to render
+ * @returns {SvelteVirtualListPreviousVisibleRange} Range of indices to render
  */
 export const calculateVisibleRange = (
     scrollTop: number,
@@ -52,7 +52,7 @@ export const calculateVisibleRange = (
         // Add buffer to both ends
         const start = Math.max(0, bottomIndex - visibleCount - bufferSize)
         const end = Math.min(totalItems, bottomIndex + bufferSize)
-        return { start, end }
+        return { start, end } as SvelteVirtualListPreviousVisibleRange
     } else {
         const start = Math.floor(scrollTop / itemHeight)
         const end = Math.min(totalItems, start + Math.ceil(viewportHeight / itemHeight) + 1)
@@ -60,7 +60,7 @@ export const calculateVisibleRange = (
         return {
             start: Math.max(0, start - bufferSize),
             end: Math.min(totalItems, end + bufferSize)
-        }
+        } as SvelteVirtualListPreviousVisibleRange
     }
 }
 
@@ -137,19 +137,19 @@ export const updateHeightAndScroll = (
  * Calculates the average height of visible items in a virtual list.
  *
  * This function optimizes performance by:
- * 1. Using a height cache to store measured item heights
+ * 1. Using a height cache to store measured item heights with dirty tracking
  * 2. Only measuring new items not in the cache
  * 3. Calculating a running average of all measured heights
  *
  * @param {HTMLElement[]} itemElements - Array of currently rendered item elements
  * @param {{ start: number }} visibleRange - Object containing the start index of visible items
- * @param {Record<number, number>} heightCache - Cache of previously measured item heights
+ * @param {HeightCache} heightCache - Cache of previously measured item heights with dirty tracking
  * @param {number} currentItemHeight - Current average item height being used
  *
  * @returns {{
  *   newHeight: number,
  *   newLastMeasuredIndex: number,
- *   updatedHeightCache: Record<number, number>
+ *   updatedHeightCache: HeightCache
  * }} Object containing new calculated height, last measured index, and updated cache
  *
  * @example
@@ -163,12 +163,12 @@ export const updateHeightAndScroll = (
 export const calculateAverageHeight = (
     itemElements: HTMLElement[],
     visibleRange: { start: number },
-    heightCache: Record<number, number>,
+    heightCache: HeightCache,
     currentItemHeight: number
 ): {
     newHeight: number
     newLastMeasuredIndex: number
-    updatedHeightCache: Record<number, number>
+    updatedHeightCache: HeightCache
 } => {
     const validElements = itemElements.filter((el) => el)
     if (validElements.length === 0) {
@@ -188,7 +188,7 @@ export const calculateAverageHeight = (
             try {
                 const height = el.getBoundingClientRect().height
                 if (Number.isFinite(height) && height > 0) {
-                    newHeightCache[itemIndex] = height
+                    newHeightCache[itemIndex] = { currentHeight: height, dirty: false }
                 }
             } catch {
                 // Skip invalid measurements
@@ -197,7 +197,9 @@ export const calculateAverageHeight = (
     })
 
     // Calculate average from valid cached heights
-    const validHeights = Object.values(newHeightCache).filter((h) => Number.isFinite(h) && h > 0)
+    const validHeights = Object.values(newHeightCache)
+        .map((entry) => entry.currentHeight)
+        .filter((h) => Number.isFinite(h) && h > 0)
 
     return {
         newHeight:
@@ -262,14 +264,14 @@ export const processChunked = async (
  * Builds a block sum array for fast offset calculation in large virtual lists.
  * Each entry in the array is the total height up to the end of that block (exclusive).
  *
- * @param {Record<number, number>} heightCache - Map of measured item heights
+ * @param {HeightCache} heightCache - Map of measured item heights with dirty tracking
  * @param {number} calculatedItemHeight - Estimated height for unmeasured items
  * @param {number} totalItems - Total number of items in the list
  * @param {number} blockSize - Number of items per block
  * @returns {number[]} Array of prefix sums at each block boundary
  */
 export const buildBlockSums = (
-    heightCache: Record<number, number>,
+    heightCache: HeightCache,
     calculatedItemHeight: number,
     totalItems: number,
     blockSize = 1000
@@ -277,7 +279,7 @@ export const buildBlockSums = (
     const blockSums: number[] = []
     let sum = 0
     for (let i = 0; i < totalItems; i++) {
-        sum += heightCache[i] ?? calculatedItemHeight
+        sum += heightCache[i]?.currentHeight ?? calculatedItemHeight
         if ((i + 1) % blockSize === 0) {
             blockSums.push(sum)
         }
@@ -298,7 +300,7 @@ export const buildBlockSums = (
  * - For indices >= blockSize, sums the block prefix, then only iterates the tail within the block.
  * - For small indices, falls back to the original logic.
  *
- * @param {Record<number, number>} heightCache - Map of measured item heights
+ * @param {HeightCache} heightCache - Map of measured item heights with dirty tracking
  * @param {number} calculatedItemHeight - Estimated height for unmeasured items
  * @param {number} idx - The index to scroll to (exclusive)
  * @param {number[]} [blockSums] - Optional precomputed block sums (for repeated queries)
@@ -311,7 +313,7 @@ export const buildBlockSums = (
  * const offset = getScrollOffsetForIndex(heightCache, calculatedItemHeight, 12345, blockSums);
  */
 export const getScrollOffsetForIndex = (
-    heightCache: Record<number, number>,
+    heightCache: HeightCache,
     calculatedItemHeight: number,
     idx: number,
     blockSums?: number[],
@@ -322,7 +324,7 @@ export const getScrollOffsetForIndex = (
         // Fallback: O(n) for a single query
         let offset = 0
         for (let i = 0; i < idx; i++) {
-            offset += heightCache[i] ?? calculatedItemHeight
+            offset += heightCache[i]?.currentHeight ?? calculatedItemHeight
         }
         return offset
     }
@@ -330,7 +332,7 @@ export const getScrollOffsetForIndex = (
     let offset = blockIdx > 0 ? blockSums[blockIdx - 1] : 0
     const start = blockIdx * blockSize
     for (let i = start; i < idx; i++) {
-        offset += heightCache[i] ?? calculatedItemHeight
+        offset += heightCache[i]?.currentHeight ?? calculatedItemHeight
     }
     return offset
 }

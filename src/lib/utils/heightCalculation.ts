@@ -7,21 +7,21 @@ import { calculateAverageHeight } from './virtualList.js'
  *
  * This function optimizes performance by:
  * - Debouncing calculations to prevent excessive DOM reads (200ms default)
- * - Caching item heights to minimize recalculations
+ * - Caching item heights with dirty tracking to minimize recalculations
  * - Only updating when significant changes are detected (>1px difference)
  * - Early returns to prevent unnecessary processing
  *
  * Implementation details:
  * - Uses a debounce timeout to batch height calculations
  * - Tracks calculation state to prevent concurrent updates
- * - Caches heights in heightCache for reuse
+ * - Caches heights in heightCache with currentHeight and dirty flags for reuse
  * - Validates browser environment and calculation state
  * - Checks for meaningful height changes before updates
  *
  * State interactions:
  * - Updates calculatedItemHeight when significant changes occur
  * - Updates lastMeasuredIndex to track progress
- * - Modifies heightCache to store measured heights
+ * - Modifies heightCache to store measured heights with dirty tracking
  * - Uses isCalculatingHeight flag for concurrency control
  *
  * Guard clauses:
@@ -57,13 +57,14 @@ import { calculateAverageHeight } from './virtualList.js'
  * - Enhanced debounce timing precision
  * - Added proper cleanup for timeouts
  * - Documented all edge cases and failure modes
+ * - Updated to work with new HeightCache structure with dirty tracking
  *
  *
  * @param isCalculatingHeight - Flag to prevent concurrent calculations
  * @param heightUpdateTimeout - Reference to existing update timeout
  * @param visibleItemsGetter - Function to get current visible range
  * @param itemElements - Array of DOM elements to measure
- * @param heightCache - Cache of previously measured heights
+ * @param heightCache - Cache of previously measured heights with dirty tracking
  * @param lastMeasuredIndex - Index of last measured element
  * @param calculatedItemHeight - Current average height
  * @param onUpdate - Callback for height updates
