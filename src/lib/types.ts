@@ -113,3 +113,7 @@ export const DEFAULT_SCROLL_OPTIONS: Partial<SvelteVirtualListScrollOptions> = {
     shouldThrowOnBounds: true,
     align: 'auto' as SvelteVirtualListScrollAlign
 }
+
+export type SvelteVirtualListHeightCacheItem = { currentHeight: number; dirty: boolean }
+export type SvelteVirtualListHeightCache = Record<number, SvelteVirtualListHeightCacheItem>
+export type SvelteVirtualListPreviousVisibleRange = { start: number; end: number }

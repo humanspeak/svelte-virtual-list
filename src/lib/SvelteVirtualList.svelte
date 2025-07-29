@@ -142,6 +142,8 @@
 
     import {
         DEFAULT_SCROLL_OPTIONS,
+        type SvelteVirtualListHeightCache,
+        type SvelteVirtualListPreviousVisibleRange,
         type SvelteVirtualListProps,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
@@ -207,36 +209,41 @@
      */
     let heightUpdateTimeout: ReturnType<typeof setTimeout> | null = null // Debounce timer for height updates
     let resizeObserver: ResizeObserver | null = null // Watches for container size changes
+    let itemResizeObserver: ResizeObserver | null = null // Watches for individual item size changes
 
     /**
      * Performance Optimization State
      */
-    let heightCache = $state<Record<number, number>>({}) // Cache of measured item heights
+    let heightCache = $state<SvelteVirtualListHeightCache>({}) // Cache of measured item heights with dirty tracking
     const chunkSize = $state(50) // Number of items to process in each chunk
     let processedItems = $state(0) // Number of items processed during initialization
 
-    let prevVisibleRange = $state<{ start: number; end: number } | null>(null)
+    let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
 
     // Trigger height calculation when items are rendered
     $effect(() => {
         if (BROWSER && itemElements.length > 0 && !isCalculatingHeight) {
-            heightUpdateTimeout = calculateAverageHeightDebounced(
-                isCalculatingHeight,
-                heightUpdateTimeout,
-                visibleItems,
-                itemElements,
-                heightCache,
-                lastMeasuredIndex,
-                calculatedItemHeight,
-                (result) => {
-                    calculatedItemHeight = result.newHeight
-                    lastMeasuredIndex = result.newLastMeasuredIndex
-                    heightCache = result.updatedHeightCache
-                }
-            )
+            updateHeight()
         }
     })
+
+    const updateHeight = () => {
+        heightUpdateTimeout = calculateAverageHeightDebounced(
+            isCalculatingHeight,
+            heightUpdateTimeout,
+            visibleItems,
+            itemElements,
+            heightCache,
+            lastMeasuredIndex,
+            calculatedItemHeight,
+            (result) => {
+                calculatedItemHeight = result.newHeight
+                lastMeasuredIndex = result.newLastMeasuredIndex
+                heightCache = result.updatedHeightCache
+            }
+        )
+    }
 
     // Add new effect to handle height changes
     $effect(() => {
@@ -313,10 +320,10 @@
      * console.log(`Rendering items from ${range.start} to ${range.end}`)
      * ```
      *
-     * @returns {{ start: number, end: number }} Object containing start and end indices of visible items
+     * @returns {SvelteVirtualListPreviousVisibleRange} Object containing start and end indices of visible items
      */
-    const visibleItems = $derived(() => {
-        if (!items.length) return { start: 0, end: 0 }
+    const visibleItems = $derived((): SvelteVirtualListPreviousVisibleRange => {
+        if (!items.length) return { start: 0, end: 0 } as SvelteVirtualListPreviousVisibleRange
         const viewportHeight = height || 0
 
         return calculateVisibleRange(
@@ -482,6 +489,50 @@
         }
     })
 
+    // Create itemResizeObserver immediately when in browser
+    if (BROWSER) {
+        // Watch for individual item size changes
+        itemResizeObserver = new ResizeObserver((entries) => {
+            let shouldRecalculate = false
+
+            if (debug) {
+                console.log(`ResizeObserver fired for ${entries.length} entries`)
+            }
+
+            for (const entry of entries) {
+                const element = entry.target as HTMLElement
+                const elementIndex = itemElements.indexOf(element)
+
+                if (elementIndex !== -1) {
+                    const actualIndex = visibleItems().start + elementIndex
+                    const cachedEntry = heightCache[actualIndex]
+
+                    // ResizeObserver fired = element resized, so mark as dirty
+                    if (cachedEntry) {
+                        heightCache[actualIndex] = {
+                            currentHeight: cachedEntry.currentHeight,
+                            dirty: true
+                        }
+                    } else {
+                        // If no cached entry exists, create one marked as dirty with placeholder height
+                        heightCache[actualIndex] = {
+                            currentHeight: calculatedItemHeight,
+                            dirty: true
+                        }
+                    }
+                    shouldRecalculate = true
+                }
+            }
+
+            if (shouldRecalculate) {
+                // Trigger virtual list recalculation
+                rafSchedule(() => {
+                    updateHeight()
+                })
+            }
+        })
+    }
+
     // Setup and cleanup
     onMount(() => {
         if (BROWSER) {
@@ -501,6 +552,9 @@
             return () => {
                 if (resizeObserver) {
                     resizeObserver.disconnect()
+                }
+                if (itemResizeObserver) {
+                    itemResizeObserver.disconnect()
                 }
             }
         }
@@ -752,6 +806,40 @@
             })
         }
     }
+
+    /**
+     * Custom Svelte action to automatically observe item elements for size changes.
+     * This action is applied to each item element to detect when its dimensions change.
+     *
+     * @param element - The HTML element to observe
+     * @returns {{ destroy: () => void }} Object with destroy method for cleanup
+     */
+    function autoObserveItemResize(element: HTMLElement) {
+        if (itemResizeObserver) {
+            itemResizeObserver.observe(element)
+            if (debug) {
+                console.log(
+                    'Started observing element:',
+                    element,
+                    'Current height:',
+                    element.getBoundingClientRect().height
+                )
+            }
+        } else if (debug) {
+            console.log('itemResizeObserver not available for element:', element)
+        }
+
+        return {
+            destroy() {
+                if (itemResizeObserver) {
+                    itemResizeObserver.unobserve(element)
+                    if (debug) {
+                        console.log('Stopped observing element:', element)
+                    }
+                }
+            }
+        }
+    }
 </script>
 
 <!--
@@ -811,7 +899,7 @@
                             : console.info('Virtual List Debug:', debugInfo)}
                     {/if}
                     <!-- Render each visible item -->
-                    <div bind:this={itemElements[i]}>
+                    <div bind:this={itemElements[i]} use:autoObserveItemResize>
                         {@render renderItem(
                             currentItem,
                             mode === 'bottomToTop'
@@ -858,5 +946,11 @@
         width: 100%;
         left: 0;
         top: 0;
+    }
+
+    /* Item wrapper divs should size to their content */
+    .virtual-list-items > div {
+        width: 100%;
+        display: block;
     }
 </style>

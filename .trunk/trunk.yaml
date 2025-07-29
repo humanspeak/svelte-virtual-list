@@ -33,15 +33,15 @@ lint:
               - graphql
               - prettier_supported_configs
     enabled:
-        - sort-package-json@3.3.1
+        - sort-package-json@3.4.0
         - actionlint@1.7.7
-        - checkov@3.2.447
-        - eslint@9.29.0
+        - checkov@3.2.457
+        - eslint@9.32.0
         - git-diff-check
         - markdownlint@0.45.0
         - osv-scanner@2.0.3
         - oxipng@9.1.5
-        - prettier@3.6.1:
+        - prettier@3.6.2:
               packages:
                   - prettier-plugin-svelte
                   - prettier-plugin-organize-imports
@@ -51,7 +51,7 @@ lint:
         - shfmt@3.6.0
         - svgo@4.0.0
         - taplo@0.9.3
-        - trufflehog@3.89.2
+        - trufflehog@3.90.2
         - yamllint@1.37.1
 actions:
     enabled:
