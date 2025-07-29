@@ -1,4 +1,4 @@
-import type { SvelteVirtualListMode } from '$lib/types.js'
+import type { SvelteVirtualListMode } from '../types.js'
 
 /**
  * Represents the internal state of a virtual list component.
@@ -41,18 +41,3 @@ export type VirtualListSetters = {
     setScrollTop: (scrollTop: number) => void // eslint-disable-line no-unused-vars
     setInitialized: (initialized: boolean) => void // eslint-disable-line no-unused-vars
 }
-
-/**
- * Represents a cached height entry for a virtual list item
- */
-export type HeightCacheEntry = {
-    currentHeight: number
-    dirty: boolean
-}
-
-/**
- * Cache for storing measured item heights with dirty tracking
- * - Key: Item index in the list
- * - Value: Object containing current height and dirty flag
- */
-export type HeightCache = Record<number, HeightCacheEntry>

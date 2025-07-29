@@ -1,5 +1,9 @@
-import type { SvelteVirtualListMode, SvelteVirtualListPreviousVisibleRange } from '../types.js'
-import type { HeightCache, VirtualListSetters, VirtualListState } from './types.js'
+import type {
+    SvelteVirtualListHeightCache,
+    SvelteVirtualListMode,
+    SvelteVirtualListPreviousVisibleRange
+} from '$lib/types.js'
+import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
 
 /**
  * Calculates the maximum scroll position for a virtual list.
@@ -163,12 +167,12 @@ export const updateHeightAndScroll = (
 export const calculateAverageHeight = (
     itemElements: HTMLElement[],
     visibleRange: { start: number },
-    heightCache: HeightCache,
+    heightCache: SvelteVirtualListHeightCache,
     currentItemHeight: number
 ): {
     newHeight: number
     newLastMeasuredIndex: number
-    updatedHeightCache: HeightCache
+    updatedHeightCache: SvelteVirtualListHeightCache
 } => {
     const validElements = itemElements.filter((el) => el)
     if (validElements.length === 0) {
@@ -271,7 +275,7 @@ export const processChunked = async (
  * @returns {number[]} Array of prefix sums at each block boundary
  */
 export const buildBlockSums = (
-    heightCache: HeightCache,
+    heightCache: SvelteVirtualListHeightCache,
     calculatedItemHeight: number,
     totalItems: number,
     blockSize = 1000
@@ -313,7 +317,7 @@ export const buildBlockSums = (
  * const offset = getScrollOffsetForIndex(heightCache, calculatedItemHeight, 12345, blockSums);
  */
 export const getScrollOffsetForIndex = (
-    heightCache: HeightCache,
+    heightCache: SvelteVirtualListHeightCache,
     calculatedItemHeight: number,
     idx: number,
     blockSums?: number[],
