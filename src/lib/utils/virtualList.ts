@@ -69,6 +69,28 @@ export const calculateVisibleRange = (
     } else {
         const start = Math.floor(scrollTop / itemHeight)
         const end = Math.min(totalItems, start + Math.ceil(viewportHeight / itemHeight) + 1)
+
+        // Safeguard for topToBottom: ensure last item is fully visible when at max scroll
+        const totalHeight = totalItems * itemHeight
+        const maxScrollTop = Math.max(0, totalHeight - viewportHeight)
+        // Add dynamic tolerance based on item height for browser rendering precision
+        const tolerance = Math.max(itemHeight, 10) // At least one full item height or 10px minimum
+        const isAtBottom = Math.abs(scrollTop - maxScrollTop) <= tolerance
+
+        if (isAtBottom) {
+            // When at the bottom, ensure we include all items up to the end
+            const adjustedEnd = totalItems
+            const visibleItemCount = Math.ceil(viewportHeight / itemHeight) + bufferSize + 1
+            const adjustedStart = Math.max(0, adjustedEnd - visibleItemCount)
+
+            // TopToBottom safeguard is now active
+
+            return {
+                start: adjustedStart,
+                end: adjustedEnd
+            } as SvelteVirtualListPreviousVisibleRange
+        }
+
         // Add buffer to both ends
         return {
             start: Math.max(0, start - bufferSize),
@@ -212,11 +234,11 @@ export const calculateAverageHeight = (
 
             if (element && elementIndex >= 0 && elementIndex < validElements.length) {
                 try {
-                    const height = Math.round(element.getBoundingClientRect().height)
+                    const height = element.getBoundingClientRect().height
                     if (Number.isFinite(height) && height > 0) {
                         const oldHeight = newHeightCache[itemIndex]
-                        // Only update if height actually changed (avoid sub-pixel issues)
-                        if (!oldHeight || Math.abs(oldHeight - height) >= 1) {
+                        // Only update if height actually changed (use smaller tolerance for precision)
+                        if (!oldHeight || Math.abs(oldHeight - height) >= 0.1) {
                             newHeightCache[itemIndex] = height
                         }
                     }
@@ -233,7 +255,7 @@ export const calculateAverageHeight = (
             const itemIndex = visibleRange.start + i
             if (!newHeightCache[itemIndex]) {
                 try {
-                    const height = Math.round(el.getBoundingClientRect().height)
+                    const height = el.getBoundingClientRect().height
                     if (Number.isFinite(height) && height > 0) {
                         newHeightCache[itemIndex] = height
                     }
