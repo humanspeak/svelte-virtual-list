@@ -158,6 +158,9 @@ jobs:
                   fi
 
                   echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+                  # Create stripped version without 'v' prefix for npm install commands
+                  STRIPPED_VERSION=${NEW_VERSION#v}
+                  echo "stripped_version=$STRIPPED_VERSION" >> $GITHUB_OUTPUT
                   echo "New prerelease version: $NEW_VERSION"
 
             - name: Commit and tag prerelease
@@ -208,7 +211,7 @@ jobs:
                       ## Installation for Testing
 
                       ```bash
-                      npm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.new_version }}
+                      npm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.stripped_version }}
                       # or
                       npm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.prerelease_type }}
                       ```
@@ -241,6 +244,7 @@ jobs:
             - name: Create summary
               env:
                   NEW_VERSION: ${{ steps.version.outputs.new_version }}
+                  STRIPPED_VERSION: ${{ steps.version.outputs.stripped_version }}
                   PRERELEASE_TYPE: ${{ steps.version.outputs.prerelease_type }}
               run: |
                   cat >> $GITHUB_STEP_SUMMARY << EOF
@@ -254,7 +258,7 @@ jobs:
 
                   \`\`\`bash
                   # Install specific prerelease version
-                  npm install @humanspeak/svelte-virtual-list@$NEW_VERSION
+                  npm install @humanspeak/svelte-virtual-list@$STRIPPED_VERSION
 
                   # Install latest prerelease of this type
                   npm install @humanspeak/svelte-virtual-list@$PRERELEASE_TYPE
@@ -262,7 +266,7 @@ jobs:
 
                   ## 🔗 Links
                   - [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/$NEW_VERSION)
-                  - [NPM Package](https://www.npmjs.com/package/@humanspeak/svelte-virtual-list/v/$NEW_VERSION)
+                  - [NPM Package](https://www.npmjs.com/package/@humanspeak/svelte-virtual-list/v/$STRIPPED_VERSION)
                   EOF
 
             - name: Cleanup on failure
