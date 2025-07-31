@@ -25,7 +25,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
         expect(result).toBeNull()
         expect(onUpdate).not.toHaveBeenCalled()
@@ -54,7 +56,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
 
         expect(timeoutId).toBeDefined()
@@ -65,7 +69,8 @@ describe('calculateAverageHeightDebounced', () => {
         expect(onUpdate).toHaveBeenCalledWith({
             newHeight: 50,
             newLastMeasuredIndex: 0,
-            updatedHeightCache: expect.any(Object)
+            updatedHeightCache: expect.any(Object),
+            clearedDirtyItems: expect.any(Set)
         })
     })
 
@@ -88,7 +93,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
 
         vi.advanceTimersByTime(200)
@@ -117,7 +124,8 @@ describe('calculateAverageHeightDebounced', () => {
             -1,
             40,
             onUpdate,
-            customDebounceTime
+            customDebounceTime,
+            new Set()
         )
 
         vi.advanceTimersByTime(499)
@@ -127,7 +135,8 @@ describe('calculateAverageHeightDebounced', () => {
         expect(onUpdate).toHaveBeenCalledWith({
             newHeight: 50,
             newLastMeasuredIndex: 0,
-            updatedHeightCache: expect.any(Object)
+            updatedHeightCache: expect.any(Object),
+            clearedDirtyItems: expect.any(Set)
         })
     })
 
@@ -141,7 +150,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
         expect(result).toBeNull()
         expect(onUpdate).not.toHaveBeenCalled()
@@ -158,7 +169,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
         expect(result).toBeNull()
         expect(onUpdate).not.toHaveBeenCalled()
@@ -174,7 +187,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             5, // matches start index
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
         expect(result).toBeNull()
         expect(onUpdate).not.toHaveBeenCalled()

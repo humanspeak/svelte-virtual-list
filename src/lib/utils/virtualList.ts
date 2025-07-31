@@ -49,6 +49,19 @@ export const calculateVisibleRange = (
     if (mode === 'bottomToTop') {
         const visibleCount = Math.ceil(viewportHeight / itemHeight) + 1
         const bottomIndex = totalItems - Math.floor(scrollTop / itemHeight)
+
+        // Safeguard: if bottomIndex is negative, it means scrollTop is too large for current itemHeight
+        // This can happen when itemHeight changes but scrollTop hasn't been corrected yet
+        if (bottomIndex < 0) {
+            // Calculate what scrollTop should be and use that for visible range
+            const totalHeight = totalItems * itemHeight
+            const correctedScrollTop = Math.max(0, totalHeight - viewportHeight)
+            const correctedBottomIndex = totalItems - Math.floor(correctedScrollTop / itemHeight)
+            const start = Math.max(0, correctedBottomIndex - visibleCount - bufferSize)
+            const end = Math.min(totalItems, correctedBottomIndex + bufferSize)
+            return { start, end } as SvelteVirtualListPreviousVisibleRange
+        }
+
         // Add buffer to both ends
         const start = Math.max(0, bottomIndex - visibleCount - bufferSize)
         const end = Math.min(totalItems, bottomIndex + bufferSize)
@@ -85,9 +98,14 @@ export const calculateTransformY = (
     visibleStart: number,
     itemHeight: number
 ) => {
-    return mode === 'bottomToTop'
-        ? (totalItems - visibleEnd) * itemHeight
-        : visibleStart * itemHeight
+    if (mode === 'bottomToTop') {
+        // In bottomToTop mode, we need to position the container so that
+        // the first visible item (visibleStart) aligns with its correct position
+        // from the bottom of the total content
+        return (totalItems - visibleEnd) * itemHeight
+    } else {
+        return visibleStart * itemHeight
+    }
 }
 
 /**
@@ -164,37 +182,67 @@ export const calculateAverageHeight = (
     itemElements: HTMLElement[],
     visibleRange: { start: number },
     heightCache: Record<number, number>,
-    currentItemHeight: number
+    currentItemHeight: number,
+    dirtyItems: Set<number>
 ): {
     newHeight: number
     newLastMeasuredIndex: number
     updatedHeightCache: Record<number, number>
+    clearedDirtyItems: Set<number>
 } => {
     const validElements = itemElements.filter((el) => el)
     if (validElements.length === 0) {
         return {
             newHeight: currentItemHeight,
             newLastMeasuredIndex: visibleRange.start,
-            updatedHeightCache: heightCache
+            updatedHeightCache: heightCache,
+            clearedDirtyItems: new Set()
         }
     }
 
     const newHeightCache = { ...heightCache }
+    const clearedDirtyItems = new Set<number>()
 
-    // Cache heights for new items
-    validElements.forEach((el, i) => {
-        const itemIndex = visibleRange.start + i
-        if (!newHeightCache[itemIndex]) {
-            try {
-                const height = el.getBoundingClientRect().height
-                if (Number.isFinite(height) && height > 0) {
-                    newHeightCache[itemIndex] = height
+    // Process only dirty items if they exist, otherwise process all visible items
+    if (dirtyItems.size > 0) {
+        // Process only dirty items
+        dirtyItems.forEach((itemIndex) => {
+            const elementIndex = itemIndex - visibleRange.start
+            const element = validElements[elementIndex]
+
+            if (element && elementIndex >= 0 && elementIndex < validElements.length) {
+                try {
+                    const height = Math.round(element.getBoundingClientRect().height)
+                    if (Number.isFinite(height) && height > 0) {
+                        const oldHeight = newHeightCache[itemIndex]
+                        // Only update if height actually changed (avoid sub-pixel issues)
+                        if (!oldHeight || Math.abs(oldHeight - height) >= 1) {
+                            newHeightCache[itemIndex] = height
+                        }
+                    }
+                    clearedDirtyItems.add(itemIndex)
+                } catch {
+                    // Skip invalid measurements but still clear from dirty
+                    clearedDirtyItems.add(itemIndex)
                 }
-            } catch {
-                // Skip invalid measurements
             }
-        }
-    })
+        })
+    } else {
+        // Original behavior: process all visible items
+        validElements.forEach((el, i) => {
+            const itemIndex = visibleRange.start + i
+            if (!newHeightCache[itemIndex]) {
+                try {
+                    const height = Math.round(el.getBoundingClientRect().height)
+                    if (Number.isFinite(height) && height > 0) {
+                        newHeightCache[itemIndex] = height
+                    }
+                } catch {
+                    // Skip invalid measurements
+                }
+            }
+        })
+    }
 
     // Calculate average from valid cached heights
     const validHeights = Object.values(newHeightCache).filter((h) => Number.isFinite(h) && h > 0)
@@ -205,7 +253,8 @@ export const calculateAverageHeight = (
                 ? validHeights.reduce((sum, h) => sum + h, 0) / validHeights.length
                 : currentItemHeight,
         newLastMeasuredIndex: visibleRange.start,
-        updatedHeightCache: newHeightCache
+        updatedHeightCache: newHeightCache,
+        clearedDirtyItems
     }
 }
 
