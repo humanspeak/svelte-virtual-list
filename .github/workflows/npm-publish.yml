@@ -514,6 +514,54 @@ jobs:
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_GITHUB_TOKEN }}
 
+            - name: Clean up all prereleases
+              if: steps.publish-check.outputs.should_publish == 'true'
+              env:
+                  NEW_VERSION: ${{ steps.version.outputs.new_version }}
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_GITHUB_TOKEN }}
+              run: |
+                  echo "🧹 Cleaning up ALL prerelease versions (alpha, beta, rc)"
+
+                  # Get all prerelease versions (alpha, beta, rc)
+                  VERSIONS_TO_REMOVE=$(npm view @humanspeak/svelte-virtual-list versions --json | \
+                    jq -r ".[] | select(test(\"-(alpha|beta|rc)\\\\.\"))")
+
+                  if [ -n "$VERSIONS_TO_REMOVE" ]; then
+                    echo "Found prereleases to remove:"
+                    echo "$VERSIONS_TO_REMOVE"
+
+                    # Count total versions to remove
+                    TOTAL_COUNT=$(echo "$VERSIONS_TO_REMOVE" | wc -l | tr -d ' ')
+                    echo "📦 Removing $TOTAL_COUNT prerelease versions..."
+
+                    # Remove each prerelease version
+                    REMOVED_COUNT=0
+                    FAILED_COUNT=0
+
+                    echo "$VERSIONS_TO_REMOVE" | while read -r version; do
+                      if [ -n "$version" ]; then
+                        echo "🗑️  Removing: @humanspeak/svelte-virtual-list@$version"
+                        if npm unpublish "@humanspeak/svelte-virtual-list@$version" 2>/dev/null; then
+                          REMOVED_COUNT=$((REMOVED_COUNT + 1))
+                          echo "   ✅ Successfully removed $version"
+                        else
+                          FAILED_COUNT=$((FAILED_COUNT + 1))
+                          echo "   ⚠️  Failed to remove $version (may not exist or insufficient permissions)"
+                        fi
+                      fi
+                    done
+
+                    echo ""
+                    echo "📊 Cleanup Summary:"
+                    echo "   • Released: ${{ steps.version.outputs.new_version }}"
+                    echo "   • Attempted: $TOTAL_COUNT prereleases"
+                    echo "   • Success: $REMOVED_COUNT"
+                    echo "   • Failed: $FAILED_COUNT"
+                    echo "✅ Prerelease cleanup completed - registry is now clean!"
+                  else
+                    echo "ℹ️ No prerelease versions found - registry is already clean!"
+                  fi
+
             - name: Cleanup on failure
               if: failure() && steps.create_release.outcome == 'success'
               env:
