@@ -168,7 +168,14 @@ jobs:
               run: |
                   # Commit version changes
                   git add package.json package-lock.json
-                  git commit -m "Bump to prerelease ${NEW_VERSION} [skip ci]" --no-verify
+
+                  # Only commit if there are actually changes to commit
+                  if ! git diff --quiet --cached; then
+                      git commit -m "Bump to prerelease ${NEW_VERSION} [skip ci]" --no-verify
+                      echo "✅ Committed version changes"
+                  else
+                      echo "ℹ️ No version changes to commit"
+                  fi
 
                   # Create prerelease tag
                   RELEASE_MESSAGE="Prerelease ${NEW_VERSION} (${PRERELEASE_TYPE})"

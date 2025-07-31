@@ -109,8 +109,8 @@ jobs:
                     fi
 
                     # Check for INTERNAL_DEBUG = true (not in comments)
-                    if grep -n -P '^(?!\s*//|\s*/\*|\s*\*).*INTERNAL_DEBUG\s*=\s*true' "$file" > /dev/null; then
-                      match=$(grep -n -P '^(?!\s*//|\s*/\*|\s*\*).*INTERNAL_DEBUG\s*=\s*true.*' "$file" | head -n 1)
+                    if grep -n -P '^(?!\s*//|\s*/\*|\s*\*).*\bINTERNAL_DEBUG\s*=\s*true\b\s*;?' "$file" > /dev/null; then
+                      match=$(grep -n -P '^(?!\s*//|\s*/\*|\s*\*).*\bINTERNAL_DEBUG\s*=\s*true\b\s*;?.*' "$file" | head -n 1)
                       line_num=$(echo "$match" | cut -d: -f1)
                       statement=$(echo "$match" | cut -d: -f2-)
                       echo "::error file=$file::Found INTERNAL_DEBUG flag enabled on line $line_num: $statement"
