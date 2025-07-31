@@ -75,15 +75,14 @@ export type SvelteVirtualListProps = {
  * @property {number} startIndex - Index of the first rendered item in the viewport.
  * @property {number} totalItems - Total number of items in the list.
  * @property {number} visibleItemsCount - Number of items currently visible in the viewport.
- * @property {number} processedItems - Number of items processed in the viewport.
+ * @property {number} estimatedItemHeight - Estimated height per item in pixels.
  */
 export type SvelteVirtualListDebugInfo = {
     endIndex: number
     startIndex: number
     totalItems: number
     visibleItemsCount: number
-    processedItems: number
-    averageItemHeight: number
+    estimatedItemHeight: number
 }
 
 /**

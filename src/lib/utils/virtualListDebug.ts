@@ -49,9 +49,9 @@ export function shouldShowDebugInfo(
  *
  * This utility function generates a structured debug object that captures the complete
  * state of a virtual list at any given moment. It includes critical metrics such as
- * visible item count, viewport boundaries, total items, processing progress, and
- * height calculations. This information is essential for performance monitoring,
- * debugging scroll behavior, and optimizing virtual list configurations.
+ * visible item count, viewport boundaries, total items, and height calculations.
+ * This information is essential for performance monitoring, debugging scroll behavior,
+ * and optimizing virtual list configurations.
  *
  * Performance considerations:
  * - All calculations are O(1)
@@ -60,15 +60,13 @@ export function shouldShowDebugInfo(
  *
  * @param visibleRange - Current visible range object containing start and end indices
  * @param totalItems - Total number of items in the virtual list
- * @param processedItems - Number of items that have been processed/measured
- * @param averageItemHeight - Current calculated average height per item in pixels
+ * @param estimatedItemHeight - Current estimated height per item in pixels
  * @returns {SvelteVirtualListDebugInfo} A structured debug information object
  *
  * @example
  * const debugInfo = createDebugInfo(
  *   { start: 0, end: 10 },
  *   1000,
- *   100,
  *   50
  * );
  * console.log('Virtual List State:', debugInfo);
@@ -78,15 +76,13 @@ export function shouldShowDebugInfo(
 export function createDebugInfo(
     visibleRange: { start: number; end: number },
     totalItems: number,
-    processedItems: number,
-    averageItemHeight: number
+    estimatedItemHeight: number
 ): SvelteVirtualListDebugInfo {
     return {
         visibleItemsCount: visibleRange.end - visibleRange.start,
         startIndex: visibleRange.start,
         endIndex: visibleRange.end,
         totalItems,
-        processedItems,
-        averageItemHeight
+        estimatedItemHeight
     }
 }
