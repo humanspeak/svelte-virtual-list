@@ -65,6 +65,38 @@ export type SvelteVirtualListProps = {
      * CSS class to apply to the scrollable viewport element.
      */
     viewportClass?: string
+    /**
+     * When true, enables infinite scrolling behavior, if a callback is provided.
+     * If false, the list will not trigger the infiniteScrollCallback.
+     * This is useful for disabling infinite scroll while loading data externally.
+     * @default true
+     */
+    infiniteScrollEnabled?: boolean
+    /**
+     * Callback function triggered when the user reaches the end of the list.
+     * May be used to load more items dynamically (e.g., for infinite scrolling).
+     * If left undefined, infinite scrolling will not be enabled.
+     * @returns {Promise<boolean> | boolean} - Returns true if more items are available to load, false otherwise.
+     */
+    infiniteScrollCallback?: () => Promise<boolean> | boolean
+    /**
+     * Threshold in pixels to trigger the onReachEnd callback.
+     * When the user scrolls within this distance from the end of the list, the callback is invoked.
+     * @default 32
+     */
+    infiniteScrollThreshold?: number
+    /**
+     * Maximum number of times the infiniteScrollCallback can be called in a short period to prevent excessive calls.
+     * @default 3
+     */
+    infiniteScrollLoopPreventionCallCount?: number
+    /**
+     * Amount of time in milliseconds before the loop prevention counter resets.
+     * If onReachEnd is called more than infiniteLoopPreventionCallCount times within this period this period,
+     * the callback will be disabled to prevent rapid repeated calls.
+     * @default 5
+     */
+    infiniteScrollLoopPreventionTimeout?: number
 }
 
 /**

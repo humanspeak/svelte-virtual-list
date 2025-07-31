@@ -177,7 +177,12 @@
         debugFunction, // Custom debug logging function
         mode = 'topToBottom', // Scroll direction mode
         bufferSize = 20, // Number of items to render outside visible area
-        testId // Base test ID for component elements (undefined = no data-testid attributes)
+        testId, // Base test ID for component elements (undefined = no data-testid attributes)
+        infiniteScrollEnabled = true, // External control for disabling infinite scrolling
+        infiniteScrollCallback, // Callback when the end of the list is reached
+        infiniteScrollThreshold = 32, // Threshold for distance from bottom of collection before triggering onReachEnd callback
+        infiniteScrollLoopPreventionCallCount = 3, // Maximum number of calls to onReachEnd within a time window before preventing further calls
+        infiniteScrollLoopPreventionTimeout = 5 // Time in milliseconds to wait before resetting the call count
     }: SvelteVirtualListProps = $props()
 
     /**
@@ -201,6 +206,10 @@
     let isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isScrolling = $state(false) // Tracks active scrolling state
     let lastMeasuredIndex = $state(-1) // Index of last measured item
+    let isListComplete = $state(false) // Tracks if all items have been loaded
+    let isLoadingData = $state(false) // Tracks if data is currently being loaded
+    let onReachEndCallCount = $state(0) // Counter to track onReachEnd calls
+    let onReachEndLastCallTime = $state(0) // Timestamp of last onReachEnd call
 
     /**
      * Timers and Observers
@@ -340,6 +349,8 @@
      * - Uses isScrolling flag to prevent multiple RAF calls
      * - Updates scrollTop state only when scrolling has settled
      * - Browser-only functionality
+     * - Supports infinite scrolling for both topToBottom and bottomToTop modes
+     * - Includes protection against infinite loop scenarios
      *
      * @example
      * ```svelte
@@ -355,9 +366,62 @@
 
         if (!isScrolling) {
             isScrolling = true
-            rafSchedule(() => {
+            rafSchedule(async () => {
                 scrollTop = viewportElement.scrollTop
                 isScrolling = false
+
+                // Infinite scroll handling
+                // Only invoke if onReachEnd is defined
+                if (infiniteScrollEnabled && infiniteScrollCallback && initialized && !isListComplete && !isLoadingData) {
+                    const scrollHeight = viewportElement.scrollHeight
+                    const clientHeight = viewportElement.clientHeight
+                    const currentTime = Date.now()
+
+                    // Reset call count if enough time has passed
+                    if (currentTime - onReachEndLastCallTime > infiniteScrollLoopPreventionTimeout) {
+                        onReachEndCallCount = 0
+                    }
+
+                    // Prevent infinite loops by limiting calls
+                    if (onReachEndCallCount >= infiniteScrollLoopPreventionCallCount) {
+                        console.warn(
+                            'SvelteVirtualList: onReachEnd has been called too many times in a short period. ' +
+                                'This usually indicates an infinite loop. Disabling further calls. ' +
+                                'Check your onReachEnd implementation to ensure it properly loads data or returns true when complete.'
+                        )
+                        isListComplete = true
+                        return
+                    }
+
+                    let shouldTrigger = false
+
+                    if (mode === 'bottomToTop') {
+                        // For bottom-to-top mode, "end" is at the top (scrollTop near 0)
+                        if (
+                            scrollTop <= infiniteScrollThreshold ||
+                            scrollHeight <= clientHeight + infiniteScrollThreshold
+                        ) {
+                            shouldTrigger = true
+                        }
+                    } else {
+                        // For top-to-bottom mode, "end" is at the bottom
+                        if (
+                            scrollHeight - (scrollTop + clientHeight) <= infiniteScrollThreshold ||
+                            scrollHeight <= clientHeight + infiniteScrollThreshold
+                        ) {
+                            shouldTrigger = true
+                        }
+                    }
+
+                    if (shouldTrigger) {
+                        onReachEndCallCount++
+                        onReachEndLastCallTime = currentTime
+
+                        isLoadingData = true
+                        isListComplete = await infiniteScrollCallback()
+                        isLoadingData = false
+                    }
+                }
             })
         }
     }
@@ -511,6 +575,49 @@
         if (debug) {
             prevVisibleRange = visibleItems()
             prevHeight = calculatedItemHeight
+        }
+    })
+
+    // Fill the viewport with items if infinite scrolling is enabled and there are fewer items than the viewport size.
+    $effect(() => {
+        if (infiniteScrollEnabled && infiniteScrollCallback && initialized && viewportElement && !isListComplete && !isLoadingData) {
+            const scrollHeight = viewportElement.scrollHeight
+            const clientHeight = viewportElement.clientHeight
+            const currentTime = Date.now()
+
+            // Reset call count if enough time has passed (reset after infiniteLoopPreventionTimeout)
+            if (currentTime - onReachEndLastCallTime > infiniteScrollLoopPreventionTimeout) {
+                onReachEndCallCount = 0
+            }
+
+            // Prevent infinite loops by limiting calls
+            if (onReachEndCallCount >= infiniteScrollLoopPreventionCallCount) {
+                console.warn(
+                    'SvelteVirtualList: onReachEnd has been called too many times in a short period. ' +
+                        'This usually indicates an infinite loop. Disabling further calls. ' +
+                        'Check your onReachEnd implementation to ensure it properly loads data or returns true when complete.'
+                )
+                isListComplete = true
+                return
+            }
+
+            // Check if content doesn't fill viewport
+            if (scrollHeight <= clientHeight + infiniteScrollThreshold) {
+                onReachEndCallCount++
+                onReachEndLastCallTime = currentTime
+
+                isLoadingData = true
+                const result = infiniteScrollCallback()
+                if (result instanceof Promise) {
+                    result.then((complete: boolean) => {
+                        isListComplete = complete
+                        isLoadingData = false
+                    })
+                } else {
+                    isListComplete = result
+                    isLoadingData = false
+                }
+            }
         }
     })
 
