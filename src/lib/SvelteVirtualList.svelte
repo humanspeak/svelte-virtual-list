@@ -42,14 +42,15 @@
     - Height caching and estimation for dynamic content
     - Handles resize events and dynamic content changes
     - Supports chunked initialization for very large lists
-    - All scrolling logic is centralized in the scroll() method
+    - Modular architecture with extracted utility functions
     - Bi-directional support: mode="topToBottom" or "bottomToTop"
     - Designed for extensibility and easy debugging
 
     =============================
     ==  For Contributors        ==
     =============================
-    - Please keep all scrolling logic in the scroll() method
+    - Complex logic is extracted to dedicated utility files in src/lib/utils/
+    - Scroll positioning logic is in scrollCalculation.ts (well-tested)
     - Add new features behind feature flags or as optional props
     - Write tests for all new features (see /test and /tests/scroll)
     - Use TypeScript and Svelte 5 runes for all new code
@@ -110,7 +111,14 @@
      *    - Added comprehensive documentation
      *    - Optimized debug output to reduce noise
      *
-     * 9. Future Improvements (Planned)
+     * 9. Architecture Refactoring ✓
+     *    - Extracted scroll calculation logic to scrollCalculation.ts utility
+     *    - Extracted initialization logic to initialization.ts utility
+     *    - Extracted ResizeObserver utilities to resizeObserver.ts
+     *    - Added comprehensive test coverage for extracted utilities
+     *    - Improved separation of concerns and maintainability
+     *
+     * 10. Future Improvements (Planned)
      *    - Add horizontal scrolling support
      *    - Implement variable-sized item caching
      *    - Add keyboard navigation support
@@ -128,14 +136,19 @@
      * - Debug output optimization
      * - Accurate size calculations with caching
      * - Responsive size adjustments
+     * - Modular architecture with testable utility functions
      *
      * Current Architecture:
      * - Four-layer DOM structure for optimal performance
      * - State management using Svelte 5's $state
      * - Reactive height and scroll calculations
      * - Configurable buffer zones for smooth scrolling
-     * - Chunked processing system for large datasets
-     * - Separated debug utilities for better testing
+     * - Modular utility system with dedicated helper files:
+     *   * scrollCalculation.ts: Complex scroll positioning logic
+     *   * initialization.ts: Chunked processing for large datasets
+     *   * resizeObserver.ts: ResizeObserver management utilities
+     *   * heightCalculation.ts: Debounced height measurement
+     *   * virtualList.ts: Core virtual list calculations
      * - Height caching and estimation system
      * - Progressive size adjustment system
      */
