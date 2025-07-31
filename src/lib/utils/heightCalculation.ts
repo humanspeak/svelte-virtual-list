@@ -85,7 +85,7 @@ export const calculateAverageHeightDebounced = (
         updatedHeightCache: Record<number, number>
         clearedDirtyItems: Set<number>
     }) => void,
-    debounceTime = 200,
+    debounceTime: number,
     dirtyItems: Set<number>
 ): NodeJS.Timeout | null => {
     if (!BROWSER || isCalculatingHeight) return null

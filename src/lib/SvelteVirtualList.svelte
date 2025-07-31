@@ -261,7 +261,7 @@
                     )
                 }
             },
-            200, // debounceTime
+            100, // debounceTime
             dirtyItems // Pass dirty items for processing
         )
     }

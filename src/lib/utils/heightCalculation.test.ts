@@ -158,7 +158,7 @@ describe('calculateAverageHeightDebounced', () => {
         expect(onUpdate).not.toHaveBeenCalled()
     })
 
-    it('should return null when heightUpdateTimeout exists', () => {
+    it('should clear existing timeout and return new timeout when heightUpdateTimeout exists', () => {
         const onUpdate = vi.fn()
         const existingTimeout = setTimeout(() => {}, 1000)
         const result = calculateAverageHeightDebounced(
@@ -173,8 +173,12 @@ describe('calculateAverageHeightDebounced', () => {
             200,
             new Set()
         )
-        expect(result).toBeNull()
-        expect(onUpdate).not.toHaveBeenCalled()
+        expect(result).not.toBeNull() // Should return new timeout
+        expect(typeof result).toBe('object') // Should be a timeout object
+        expect(onUpdate).not.toHaveBeenCalled() // Callback shouldn't be called immediately
+
+        // Clean up the returned timeout
+        if (result) clearTimeout(result)
     })
 
     it('should return null when currentIndex equals lastMeasuredIndex', () => {
