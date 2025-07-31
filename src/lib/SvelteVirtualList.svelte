@@ -152,16 +152,16 @@
         calculateScrollPosition,
         calculateTransformY,
         calculateVisibleRange,
-        getScrollOffsetForIndex,
-        processChunked,
         updateHeightAndScroll as utilsUpdateHeightAndScroll
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
+    import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
+    import { initializeVirtualList } from '$lib/utils/initialization.js'
     import { BROWSER } from 'esm-env'
     import { onMount, tick } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-    const INTERNAL_DEBUG = true
+    const INTERNAL_DEBUG = false
     /**
      * Core configuration props with default values
      * @type {SvelteVirtualListProps}
@@ -530,50 +530,15 @@
         )
     }
 
-    /**
-     * Initializes large datasets in chunks to prevent UI blocking.
-     *
-     * This function processes items in smaller chunks using setTimeout to yield
-     * to the main thread, allowing other UI operations to remain responsive.
-     * Progress is tracked and reported through the processedItems state.
-     *
-     * For datasets larger than 1000 items, this method is automatically used
-     * instead of immediate initialization. The chunk size is controlled by the
-     * component's chunkSize state (default: 50).
-     *
-     * @async
-     * @example
-     * ```typescript
-     * // Component initialization
-     * $effect(() => {
-     *     if (BROWSER && items.length > 1000) {
-     *         initializeChunked()
-     *     } else {
-     *         initialized = true
-     *     }
-     * })
-     * ```
-     *
-     * @throws {Error} If processChunked fails to complete initialization
-     * @returns {Promise<void>} Resolves when all chunks have been processed
-     */
-    const initializeChunked = async () => {
-        if (!items.length) return
-
-        await processChunked(
-            items,
-            chunkSize,
-            (processed) => (processedItems = processed),
-            () => (initialized = true)
-        )
-    }
-
-    // Modify the mount effect to use chunked initialization
+    // Initialize the virtual list when items change
     $effect(() => {
-        if (BROWSER && items.length > 1000) {
-            initializeChunked()
-        } else {
-            initialized = true
+        if (BROWSER) {
+            initializeVirtualList({
+                items,
+                chunkSize,
+                onProgress: (processed) => (processedItems = processed),
+                onComplete: () => (initialized = true)
+            })
         }
     })
 
@@ -749,144 +714,30 @@
         }
 
         const { start: firstVisibleIndex, end: lastVisibleIndex } = visibleItems()
-        let scrollTarget: number | null = null
 
-        if (mode === 'bottomToTop') {
-            const totalHeight = items.length * calculatedItemHeight
-            const itemOffset = targetIndex * calculatedItemHeight
-            const itemHeight = calculatedItemHeight
-            if (align === 'auto') {
-                // If item is above the viewport, align to top
-                if (targetIndex < firstVisibleIndex) {
-                    scrollTarget = Math.max(0, totalHeight - (itemOffset + itemHeight))
-                    // If item is below the viewport, align to bottom
-                } else if (targetIndex > lastVisibleIndex - 1) {
-                    scrollTarget = Math.max(0, totalHeight - itemOffset - height)
-                } else {
-                    // Item is visible but not aligned: align to nearest edge
-                    // Calculate the offset of the item relative to the viewport
-                    const itemTop = totalHeight - (itemOffset + itemHeight)
-                    const itemBottom = totalHeight - itemOffset
-                    const distanceToTop = Math.abs(scrollTop - itemTop)
-                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
-                    if (distanceToTop < distanceToBottom) {
-                        // Closer to top, align to top
-                        scrollTarget = itemTop
-                    } else {
-                        // Closer to bottom, align to bottom
-                        scrollTarget = Math.max(0, itemBottom - height)
-                    }
-                }
-            } else if (align === 'top') {
-                // Align to top
-                scrollTarget = Math.max(0, totalHeight - (itemOffset + itemHeight))
-            } else if (align === 'bottom') {
-                // Align to bottom
-                scrollTarget = Math.max(0, totalHeight - itemOffset - height)
-            } else if (align === 'nearest') {
-                // If not visible, align to nearest edge; if visible, do nothing
-                const itemTop = totalHeight - (itemOffset + itemHeight)
-                const itemBottom = totalHeight - itemOffset
-                if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
-                    // Not visible, align to nearest edge
-                    const distanceToTop = Math.abs(scrollTop - itemTop)
-                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
-                    if (distanceToTop < distanceToBottom) {
-                        scrollTarget = itemTop
-                    } else {
-                        scrollTarget = Math.max(0, itemBottom - height)
-                    }
-                } else {
-                    // Already visible, do nothing
-                    return
-                }
-            }
-        } else {
-            // topToBottom (default)
-            if (align === 'auto') {
-                // If item is above the viewport, align to top
-                if (targetIndex < firstVisibleIndex) {
-                    scrollTarget = getScrollOffsetForIndex(
-                        heightCache,
-                        calculatedItemHeight,
-                        targetIndex
-                    )
-                    // If item is below the viewport, align to bottom
-                } else if (targetIndex > lastVisibleIndex - 1) {
-                    const itemBottom = getScrollOffsetForIndex(
-                        heightCache,
-                        calculatedItemHeight,
-                        targetIndex + 1
-                    )
-                    scrollTarget = Math.max(0, itemBottom - height)
-                } else {
-                    // Item is visible but not aligned: align to nearest edge
-                    const itemTop = getScrollOffsetForIndex(
-                        heightCache,
-                        calculatedItemHeight,
-                        targetIndex
-                    )
-                    const itemBottom = getScrollOffsetForIndex(
-                        heightCache,
-                        calculatedItemHeight,
-                        targetIndex + 1
-                    )
-                    const distanceToTop = Math.abs(scrollTop - itemTop)
-                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
-                    if (distanceToTop < distanceToBottom) {
-                        // Closer to top, align to top
-                        scrollTarget = itemTop
-                    } else {
-                        // Closer to bottom, align to bottom
-                        scrollTarget = Math.max(0, itemBottom - height)
-                    }
-                }
-            } else if (align === 'top') {
-                scrollTarget = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    targetIndex
-                )
-            } else if (align === 'bottom') {
-                const itemBottom = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    targetIndex + 1
-                )
-                scrollTarget = Math.max(0, itemBottom - height)
-            } else if (align === 'nearest') {
-                const itemTop = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    targetIndex
-                )
-                const itemBottom = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    targetIndex + 1
-                )
-                if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
-                    // Not visible, align to nearest edge
-                    const distanceToTop = Math.abs(scrollTop - itemTop)
-                    const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
-                    if (distanceToTop < distanceToBottom) {
-                        scrollTarget = itemTop
-                    } else {
-                        scrollTarget = Math.max(0, itemBottom - height)
-                    }
-                } else {
-                    // Already visible, do nothing
-                    return
-                }
-            }
+        // Use extracted scroll calculation utility
+        const scrollTarget = calculateScrollTarget({
+            mode,
+            align,
+            targetIndex,
+            itemsLength: items.length,
+            calculatedItemHeight,
+            height,
+            scrollTop,
+            firstVisibleIndex,
+            lastVisibleIndex,
+            heightCache
+        })
+
+        // Handle early return for 'nearest' alignment when item is already visible
+        if (scrollTarget === null) {
+            return
         }
 
-        if (scrollTarget !== null) {
-            viewportElement.scrollTo({
-                top: scrollTarget,
-                behavior: smoothScroll ? 'smooth' : 'auto'
-            })
-        }
+        viewportElement.scrollTo({
+            top: scrollTarget,
+            behavior: smoothScroll ? 'smooth' : 'auto'
+        })
     }
 
     /**
