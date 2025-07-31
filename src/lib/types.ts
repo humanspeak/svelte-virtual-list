@@ -75,7 +75,11 @@ export type SvelteVirtualListProps = {
  * @property {number} startIndex - Index of the first rendered item in the viewport.
  * @property {number} totalItems - Total number of items in the list.
  * @property {number} visibleItemsCount - Number of items currently visible in the viewport.
- * @property {number} processedItems - Number of items processed in the viewport.
+ * @property {number} processedItems - Number of items with measured heights in cache.
+ * @property {number} averageItemHeight - Current calculated average height per item.
+ * @property {boolean} atTop - Whether the list is scrolled to the top position.
+ * @property {boolean} atBottom - Whether the list is scrolled to the bottom position.
+ * @property {number} totalHeight - Total calculated height of all items in the list.
  */
 export type SvelteVirtualListDebugInfo = {
     endIndex: number
@@ -84,6 +88,9 @@ export type SvelteVirtualListDebugInfo = {
     visibleItemsCount: number
     processedItems: number
     averageItemHeight: number
+    atTop: boolean
+    atBottom: boolean
+    totalHeight: number
 }
 
 /**

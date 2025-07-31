@@ -1,5 +1,5 @@
 <script lang="ts">
-    import SvelteVirtualList from '$lib/index.js'
+    import SvelteVirtualList, { type SvelteVirtualListDebugInfo } from '$lib/index.js'
 
     const items = $state(
         Array.from({ length: 10000 }, (_, i) => ({
@@ -40,10 +40,14 @@
             itemElement.style.minHeight = '100px'
         }
     }
+
+    const debugFunction = (debugInfo: SvelteVirtualListDebugInfo) => {
+        console.log('debugFunction', debugInfo)
+    }
 </script>
 
 <div class="test-container" style="height: 500px;">
-    <SvelteVirtualList {items} testId="item-resize-list" debug>
+    <SvelteVirtualList {items} testId="item-resize-list" debug {debugFunction}>
         {#snippet renderItem(item)}
             <div
                 class="test-item"
