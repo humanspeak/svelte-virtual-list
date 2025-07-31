@@ -327,6 +327,18 @@
     })
 
     /**
+     * Calculate precise item height based on actual measurements when available
+     */
+    const preciseItemHeight = $derived(() => {
+        const measuredCount = Object.keys(heightCache).length
+        if (measuredCount > 100) {
+            const totalHeight = Object.values(heightCache).reduce((sum, h) => sum + h, 0)
+            return totalHeight / measuredCount
+        }
+        return calculatedItemHeight
+    })
+
+    /**
      * Calculates the range of items that should be rendered based on current scroll position.
      *
      * This derived calculation determines which items should be visible in the viewport,
@@ -353,51 +365,30 @@
         // This prevents showing wrong items when scrollTop starts at 0
         if (mode === 'bottomToTop' && !initialized && scrollTop === 0 && viewportHeight > 0) {
             // Calculate what the correct scroll position should be
-            const totalHeight = items.length * calculatedItemHeight
+            const totalHeight = items.length * preciseItemHeight()
             const targetScrollTop = Math.max(0, totalHeight - viewportHeight)
-
-            if (debug)
-                console.log('🔧 BottomToTop fix activated:', {
-                    scrollTop,
-                    initialized,
-                    viewportHeight,
-                    totalHeight,
-                    targetScrollTop
-                })
 
             // Use the target scroll position for visible range calculation
             const result = calculateVisibleRange(
                 targetScrollTop,
                 viewportHeight,
-                calculatedItemHeight,
+                preciseItemHeight(),
                 items.length,
                 bufferSize,
                 mode
             )
 
-            if (debug) console.log('🔧 Fixed visible range:', result)
             return result
         }
 
         const result = calculateVisibleRange(
             scrollTop,
             viewportHeight,
-            calculatedItemHeight,
+            preciseItemHeight(),
             items.length,
             bufferSize,
             mode
         )
-
-        if (debug && mode === 'bottomToTop' && (result.start === 0 || result.end < 0)) {
-            console.log('📊 Visible range:', {
-                scrollTop,
-                viewportHeight,
-                initialized,
-                itemHeight: calculatedItemHeight,
-                start: result.start,
-                end: result.end
-            })
-        }
 
         return result
     })
@@ -928,7 +919,25 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            style:height="{Math.max(height, items.length * calculatedItemHeight)}px"
+            style:height="{(() => {
+                // Use more precise height calculation by accounting for actual measured heights
+                let totalActualHeight = 0
+                const measuredCount = Object.keys(heightCache).length
+
+                if (measuredCount > 100) {
+                    // Calculate based on actual measurements when we have enough data
+                    const avgActualHeight =
+                        Object.values(heightCache).reduce((sum, h) => sum + h, 0) / measuredCount
+                    totalActualHeight = items.length * avgActualHeight
+                } else {
+                    // Fallback to estimated height
+                    totalActualHeight = items.length * calculatedItemHeight
+                }
+
+                const contentHeight = Math.max(height, totalActualHeight)
+
+                return contentHeight
+            })()}px"
         >
             <!-- Items container is translated to show correct items -->
             <div
@@ -941,15 +950,9 @@
                         items.length,
                         visibleItems().end,
                         visibleItems().start,
-                        calculatedItemHeight
+                        preciseItemHeight()
                     )
-                    if (debug && mode === 'bottomToTop' && Math.abs(transform - scrollTop) > 50) {
-                        console.log('🎯 Transform:', {
-                            transform,
-                            scrollTop,
-                            diff: Math.abs(transform - scrollTop)
-                        })
-                    }
+
                     return transform
                 })()}px)"
             >
@@ -957,9 +960,7 @@
                     const slice = mode === 'bottomToTop' ? items
                                   .slice(visibleItems().start, visibleItems().end)
                                   .reverse() : items.slice(visibleItems().start, visibleItems().end)
-                    if (debug && mode === 'bottomToTop' && slice.length > 0 && visibleItems().start === 0) {
-                        console.log( '🗂️ Rendered items (includes Item 0):', { start: visibleItems().start, end: visibleItems().end, count: slice.length, lastRendered: slice[slice.length - 1]?.text } )
-                    }
+
                     return slice
                 })() as currentItem, i ((currentItem as { id?: string | number })?.id ?? i)}
                     <!-- Only debug when visible range or average height changes -->
