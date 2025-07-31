@@ -43,16 +43,23 @@ describe('virtualListDebug utilities', () => {
         it('should create correct debug info object', () => {
             const visibleRange = { start: 5, end: 15 }
             const totalItems = 100
-            const estimatedItemHeight = 30
+            const processedItems = 50
+            const averageItemHeight = 30
 
-            const result = createDebugInfo(visibleRange, totalItems, estimatedItemHeight)
+            const result = createDebugInfo(
+                visibleRange,
+                totalItems,
+                processedItems,
+                averageItemHeight
+            )
 
             expect(result).toEqual({
                 visibleItemsCount: 10,
                 startIndex: 5,
                 endIndex: 15,
                 totalItems: 100,
-                estimatedItemHeight: 30
+                processedItems: 50,
+                averageItemHeight: 30
             })
         })
     })
