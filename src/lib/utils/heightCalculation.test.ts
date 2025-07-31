@@ -70,7 +70,9 @@ describe('calculateAverageHeightDebounced', () => {
             newHeight: 50,
             newLastMeasuredIndex: 0,
             updatedHeightCache: expect.any(Object),
-            clearedDirtyItems: expect.any(Set)
+            clearedDirtyItems: expect.any(Set),
+            newTotalHeight: expect.any(Number),
+            newValidCount: expect.any(Number)
         })
     })
 
@@ -136,7 +138,9 @@ describe('calculateAverageHeightDebounced', () => {
             newHeight: 50,
             newLastMeasuredIndex: 0,
             updatedHeightCache: expect.any(Object),
-            clearedDirtyItems: expect.any(Set)
+            clearedDirtyItems: expect.any(Set),
+            newTotalHeight: expect.any(Number),
+            newValidCount: expect.any(Number)
         })
     })
 

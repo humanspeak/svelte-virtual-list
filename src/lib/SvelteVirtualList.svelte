@@ -253,12 +253,9 @@
                 lastMeasuredIndex = result.newLastMeasuredIndex
                 heightCache = result.updatedHeightCache
 
-                // Update running totals for precise height calculation (only when significant changes)
-                if (result.clearedDirtyItems.size > 10) {
-                    const heights = Object.values(heightCache)
-                    totalMeasuredHeight = heights.reduce((sum, h) => sum + h, 0)
-                    measuredCount = heights.length
-                }
+                // Update running totals efficiently (O(1) instead of O(n)!)
+                totalMeasuredHeight = result.newTotalHeight
+                measuredCount = result.newValidCount
 
                 // Clear processed dirty items
                 result.clearedDirtyItems.forEach((index) => {
@@ -273,7 +270,9 @@
                 }
             },
             100, // debounceTime
-            dirtyItems // Pass dirty items for processing
+            dirtyItems, // Pass dirty items for processing
+            totalMeasuredHeight, // Current running total height
+            measuredCount // Current running total count
         )
     }
 
