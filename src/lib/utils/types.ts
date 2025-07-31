@@ -1,4 +1,4 @@
-import type { SvelteVirtualListMode } from '../types.js'
+import type { SvelteVirtualListMode } from '$lib/types.js'
 
 /**
  * Represents the internal state of a virtual list component.

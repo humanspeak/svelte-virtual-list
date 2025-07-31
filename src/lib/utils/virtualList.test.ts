@@ -159,16 +159,13 @@ describe('calculateAverageHeight', () => {
 
         expect(result.newHeight).toBe(40) // (30 + 50) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
-        expect(result.updatedHeightCache).toEqual({
-            0: { currentHeight: 30, dirty: false },
-            1: { currentHeight: 50, dirty: false }
-        })
+        expect(result.updatedHeightCache).toEqual({ 0: 30, 1: 50 })
     })
 
     it('should use cached heights when available', () => {
         const mockElements = [{ getBoundingClientRect: () => ({ height: 30 }) }] as HTMLElement[]
 
-        const existingCache = { 0: { currentHeight: 40, dirty: false } }
+        const existingCache = { 0: 40 }
 
         const result = calculateAverageHeight(mockElements, { start: 0 }, existingCache, 40)
 
@@ -222,16 +219,13 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: 50 }) }
         ] as HTMLElement[]
 
-        const existingCache = { 1: { currentHeight: 40, dirty: false } } // Cache for second element
+        const existingCache = { 1: 40 } // Cache for second element
 
         const result = calculateAverageHeight(mockElements, { start: 0 }, existingCache, 40)
 
         expect(result.newHeight).toBe(35) // (30 + 40) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
-        expect(result.updatedHeightCache).toEqual({
-            0: { currentHeight: 30, dirty: false },
-            1: { currentHeight: 40, dirty: false }
-        })
+        expect(result.updatedHeightCache).toEqual({ 0: 30, 1: 40 })
     })
 
     it('should handle empty height cache gracefully', () => {
@@ -363,11 +357,7 @@ describe('getScrollOffsetForIndex', () => {
     })
 
     it('computes offset using a partial heightCache (some heights measured)', () => {
-        const heightCache = {
-            0: { currentHeight: 30, dirty: false },
-            2: { currentHeight: 50, dirty: false },
-            3: { currentHeight: 60, dirty: false }
-        }
+        const heightCache = { 0: 30, 2: 50, 3: 60 }
         const calculatedItemHeight = 40
         const idx = 5
         // Expected offset: 30 (idx 0) + 40 (idx 1) + 50 (idx 2) + 60 (idx 3) + 40 (idx 4) = 220
@@ -376,13 +366,7 @@ describe('getScrollOffsetForIndex', () => {
     })
 
     it('computes offset using a full heightCache (all heights measured)', () => {
-        const heightCache = {
-            0: { currentHeight: 30, dirty: false },
-            1: { currentHeight: 40, dirty: false },
-            2: { currentHeight: 50, dirty: false },
-            3: { currentHeight: 60, dirty: false },
-            4: { currentHeight: 70, dirty: false }
-        }
+        const heightCache = { 0: 30, 1: 40, 2: 50, 3: 60, 4: 70 }
         const calculatedItemHeight = 40
         const idx = 5
         // Expected offset: 30 + 40 + 50 + 60 + 70 = 250
@@ -410,11 +394,7 @@ describe('getScrollOffsetForIndex', () => {
         })
 
         it('matches legacy logic for partial measured heights', () => {
-            const heightCache = {
-                0: { currentHeight: 5, dirty: false },
-                2: { currentHeight: 15, dirty: false },
-                19: { currentHeight: 100, dirty: false }
-            }
+            const heightCache = { 0: 5, 2: 15, 19: 100 }
             const calculatedItemHeight = 10
             const totalItems = 40
             const blockSums = buildBlockSums(heightCache, calculatedItemHeight, totalItems, 10)
@@ -432,18 +412,7 @@ describe('getScrollOffsetForIndex', () => {
         })
 
         it('handles block boundary and tail correctly', () => {
-            const heightCache = {
-                0: { currentHeight: 1, dirty: false },
-                1: { currentHeight: 2, dirty: false },
-                2: { currentHeight: 3, dirty: false },
-                3: { currentHeight: 4, dirty: false },
-                4: { currentHeight: 5, dirty: false },
-                5: { currentHeight: 6, dirty: false },
-                6: { currentHeight: 7, dirty: false },
-                7: { currentHeight: 8, dirty: false },
-                8: { currentHeight: 9, dirty: false },
-                9: { currentHeight: 10, dirty: false }
-            }
+            const heightCache = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10 }
             const calculatedItemHeight = 0
             const totalItems = 10
             const blockSums = buildBlockSums(heightCache, calculatedItemHeight, totalItems, 5)
@@ -479,23 +448,14 @@ describe('buildBlockSums', () => {
     })
 
     it('returns correct sums for all measured heights', () => {
-        const heightCache = {
-            0: { currentHeight: 10, dirty: false },
-            1: { currentHeight: 20, dirty: false },
-            2: { currentHeight: 30, dirty: false },
-            3: { currentHeight: 40, dirty: false },
-            4: { currentHeight: 50, dirty: false }
-        }
+        const heightCache = { 0: 10, 1: 20, 2: 30, 3: 40, 4: 50 }
         const sums = buildBlockSums(heightCache, 99, 5, 2)
         // Blocks: [0,1]=30, [2,3]=100, [4]=150 (cumulative sums)
         expect(sums).toEqual([30, 100, 150])
     })
 
     it('returns correct sums for partial measured heights', () => {
-        const heightCache = {
-            1: { currentHeight: 20, dirty: false },
-            3: { currentHeight: 40, dirty: false }
-        }
+        const heightCache = { 1: 20, 3: 40 }
         const sums = buildBlockSums(heightCache, 10, 5, 2)
         // [0]=10, [1]=20, [2]=10, [3]=40, [4]=10
         // Blocks: [0,1]=30, [2,3]=80, [4]=90 (cumulative sums)

@@ -1,8 +1,4 @@
-import type {
-    SvelteVirtualListHeightCache,
-    SvelteVirtualListMode,
-    SvelteVirtualListPreviousVisibleRange
-} from '$lib/types.js'
+import type { SvelteVirtualListMode, SvelteVirtualListPreviousVisibleRange } from '$lib/types.js'
 import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
 
 /**
@@ -167,12 +163,12 @@ export const updateHeightAndScroll = (
 export const calculateAverageHeight = (
     itemElements: HTMLElement[],
     visibleRange: { start: number },
-    heightCache: SvelteVirtualListHeightCache,
+    heightCache: Record<number, number>,
     currentItemHeight: number
 ): {
     newHeight: number
     newLastMeasuredIndex: number
-    updatedHeightCache: SvelteVirtualListHeightCache
+    updatedHeightCache: Record<number, number>
 } => {
     const validElements = itemElements.filter((el) => el)
     if (validElements.length === 0) {
@@ -192,7 +188,7 @@ export const calculateAverageHeight = (
             try {
                 const height = el.getBoundingClientRect().height
                 if (Number.isFinite(height) && height > 0) {
-                    newHeightCache[itemIndex] = { currentHeight: height, dirty: false }
+                    newHeightCache[itemIndex] = height
                 }
             } catch {
                 // Skip invalid measurements
@@ -201,9 +197,7 @@ export const calculateAverageHeight = (
     })
 
     // Calculate average from valid cached heights
-    const validHeights = Object.values(newHeightCache)
-        .map((entry) => entry.currentHeight)
-        .filter((h) => Number.isFinite(h) && h > 0)
+    const validHeights = Object.values(newHeightCache).filter((h) => Number.isFinite(h) && h > 0)
 
     return {
         newHeight:
@@ -275,7 +269,7 @@ export const processChunked = async (
  * @returns {number[]} Array of prefix sums at each block boundary
  */
 export const buildBlockSums = (
-    heightCache: SvelteVirtualListHeightCache,
+    heightCache: Record<number, number>,
     calculatedItemHeight: number,
     totalItems: number,
     blockSize = 1000
@@ -283,7 +277,7 @@ export const buildBlockSums = (
     const blockSums: number[] = []
     let sum = 0
     for (let i = 0; i < totalItems; i++) {
-        sum += heightCache[i]?.currentHeight ?? calculatedItemHeight
+        sum += heightCache[i] ?? calculatedItemHeight
         if ((i + 1) % blockSize === 0) {
             blockSums.push(sum)
         }
@@ -317,7 +311,7 @@ export const buildBlockSums = (
  * const offset = getScrollOffsetForIndex(heightCache, calculatedItemHeight, 12345, blockSums);
  */
 export const getScrollOffsetForIndex = (
-    heightCache: SvelteVirtualListHeightCache,
+    heightCache: Record<number, number>,
     calculatedItemHeight: number,
     idx: number,
     blockSums?: number[],
@@ -328,7 +322,7 @@ export const getScrollOffsetForIndex = (
         // Fallback: O(n) for a single query
         let offset = 0
         for (let i = 0; i < idx; i++) {
-            offset += heightCache[i]?.currentHeight ?? calculatedItemHeight
+            offset += heightCache[i] ?? calculatedItemHeight
         }
         return offset
     }
@@ -336,7 +330,7 @@ export const getScrollOffsetForIndex = (
     let offset = blockIdx > 0 ? blockSums[blockIdx - 1] : 0
     const start = blockIdx * blockSize
     for (let i = start; i < idx; i++) {
-        offset += heightCache[i]?.currentHeight ?? calculatedItemHeight
+        offset += heightCache[i] ?? calculatedItemHeight
     }
     return offset
 }

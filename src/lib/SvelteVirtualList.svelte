@@ -142,7 +142,6 @@
 
     import {
         DEFAULT_SCROLL_OPTIONS,
-        type SvelteVirtualListHeightCache,
         type SvelteVirtualListPreviousVisibleRange,
         type SvelteVirtualListProps,
         type SvelteVirtualListScrollOptions
@@ -214,7 +213,8 @@
     /**
      * Performance Optimization State
      */
-    let heightCache = $state<SvelteVirtualListHeightCache>({}) // Cache of measured item heights with dirty tracking
+    let heightCache = $state<Record<number, number>>({}) // Cache of measured item heights
+    let dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
     const chunkSize = $state(50) // Number of items to process in each chunk
     let processedItems = $state(0) // Number of items processed during initialization
 
@@ -505,22 +505,16 @@
 
                 if (elementIndex !== -1) {
                     const actualIndex = visibleItems().start + elementIndex
-                    const cachedEntry = heightCache[actualIndex]
 
-                    // ResizeObserver fired = element resized, so mark as dirty
-                    if (cachedEntry) {
-                        heightCache[actualIndex] = {
-                            currentHeight: cachedEntry.currentHeight,
-                            dirty: true
-                        }
-                    } else {
-                        // If no cached entry exists, create one marked as dirty with placeholder height
-                        heightCache[actualIndex] = {
-                            currentHeight: calculatedItemHeight,
-                            dirty: true
-                        }
-                    }
+                    // ResizeObserver fired = element resized, so add to dirty queue
+                    dirtyItems.add(actualIndex)
                     shouldRecalculate = true
+
+                    if (debug) {
+                        console.log(
+                            `Item ${actualIndex} marked dirty (resized), queue size: ${dirtyItems.size}`
+                        )
+                    }
                 }
             }
 
