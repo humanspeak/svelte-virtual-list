@@ -241,7 +241,21 @@
                 calculatedItemHeight = result.newHeight
                 lastMeasuredIndex = result.newLastMeasuredIndex
                 heightCache = result.updatedHeightCache
-            }
+
+                // Clear processed dirty items
+                result.clearedDirtyItems.forEach((index) => {
+                    dirtyItems.delete(index)
+                })
+
+                if (debug && result.clearedDirtyItems.size > 0) {
+                    console.log(
+                        `Cleared ${result.clearedDirtyItems.size} dirty items:`,
+                        Array.from(result.clearedDirtyItems)
+                    )
+                }
+            },
+            200, // debounceTime
+            dirtyItems // Pass dirty items for processing
         )
     }
 
@@ -251,14 +265,23 @@
             const totalHeight = Math.max(0, items.length * calculatedItemHeight)
             const targetScrollTop = Math.max(0, totalHeight - height)
 
-            // Only update if the difference is significant
-            if (Math.abs(viewportElement.scrollTop - targetScrollTop) > calculatedItemHeight) {
-                requestAnimationFrame(() => {
-                    if (viewportElement) {
-                        viewportElement.scrollTop = targetScrollTop
-                        scrollTop = targetScrollTop
-                    }
-                })
+            // Update scroll position when item height changes significantly
+            const scrollDifference = Math.abs(viewportElement.scrollTop - targetScrollTop)
+            if (scrollDifference > calculatedItemHeight * 2) {
+                // More lenient threshold
+                if (debug) {
+                    console.log(
+                        '🔄 Correcting scroll position from',
+                        viewportElement.scrollTop,
+                        'to',
+                        targetScrollTop,
+                        'diff:',
+                        scrollDifference
+                    )
+                }
+                // Use immediate assignment for more reliable positioning
+                viewportElement.scrollTop = targetScrollTop
+                scrollTop = targetScrollTop
             }
         }
     })
@@ -326,7 +349,37 @@
         if (!items.length) return { start: 0, end: 0 } as SvelteVirtualListPreviousVisibleRange
         const viewportHeight = height || 0
 
-        return calculateVisibleRange(
+        // For bottomToTop mode, don't calculate visible range until properly initialized
+        // This prevents showing wrong items when scrollTop starts at 0
+        if (mode === 'bottomToTop' && !initialized && scrollTop === 0 && viewportHeight > 0) {
+            // Calculate what the correct scroll position should be
+            const totalHeight = items.length * calculatedItemHeight
+            const targetScrollTop = Math.max(0, totalHeight - viewportHeight)
+
+            if (debug)
+                console.log('🔧 BottomToTop fix activated:', {
+                    scrollTop,
+                    initialized,
+                    viewportHeight,
+                    totalHeight,
+                    targetScrollTop
+                })
+
+            // Use the target scroll position for visible range calculation
+            const result = calculateVisibleRange(
+                targetScrollTop,
+                viewportHeight,
+                calculatedItemHeight,
+                items.length,
+                bufferSize,
+                mode
+            )
+
+            if (debug) console.log('🔧 Fixed visible range:', result)
+            return result
+        }
+
+        const result = calculateVisibleRange(
             scrollTop,
             viewportHeight,
             calculatedItemHeight,
@@ -334,6 +387,19 @@
             bufferSize,
             mode
         )
+
+        if (debug && mode === 'bottomToTop' && (result.start === 0 || result.end < 0)) {
+            console.log('📊 Visible range:', {
+                scrollTop,
+                viewportHeight,
+                initialized,
+                itemHeight: calculatedItemHeight,
+                start: result.start,
+                end: result.end
+            })
+        }
+
+        return result
     })
 
     /**
@@ -869,17 +935,33 @@
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
-                style:transform="translateY({calculateTransformY(
-                    mode,
-                    items.length,
-                    visibleItems().end,
-                    visibleItems().start,
-                    calculatedItemHeight
-                )}px)"
+                style:transform="translateY({(() => {
+                    const transform = calculateTransformY(
+                        mode,
+                        items.length,
+                        visibleItems().end,
+                        visibleItems().start,
+                        calculatedItemHeight
+                    )
+                    if (debug && mode === 'bottomToTop' && Math.abs(transform - scrollTop) > 50) {
+                        console.log('🎯 Transform:', {
+                            transform,
+                            scrollTop,
+                            diff: Math.abs(transform - scrollTop)
+                        })
+                    }
+                    return transform
+                })()}px)"
             >
-                {#each mode === 'bottomToTop' ? items
-                          .slice(visibleItems().start, visibleItems().end)
-                          .reverse() : items.slice(visibleItems().start, visibleItems().end) as currentItem, i (currentItem?.id ?? i)}
+                {#each (() => {
+                    const slice = mode === 'bottomToTop' ? items
+                                  .slice(visibleItems().start, visibleItems().end)
+                                  .reverse() : items.slice(visibleItems().start, visibleItems().end)
+                    if (debug && mode === 'bottomToTop' && slice.length > 0 && visibleItems().start === 0) {
+                        console.log( '🗂️ Rendered items (includes Item 0):', { start: visibleItems().start, end: visibleItems().end, count: slice.length, lastRendered: slice[slice.length - 1]?.text } )
+                    }
+                    return slice
+                })() as currentItem, i (currentItem?.id ?? i)}
                     <!-- Only debug when visible range or average height changes -->
                     {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, calculatedItemHeight)}
                         {@const debugInfo = createDebugInfo(

@@ -83,8 +83,10 @@ export const calculateAverageHeightDebounced = (
         newHeight: number
         newLastMeasuredIndex: number
         updatedHeightCache: Record<number, number>
+        clearedDirtyItems: Set<number>
     }) => void,
-    debounceTime = 200
+    debounceTime = 200,
+    dirtyItems: Set<number>
 ): NodeJS.Timeout | null => {
     if (!BROWSER || isCalculatingHeight || heightUpdateTimeout) return null
 
@@ -94,18 +96,21 @@ export const calculateAverageHeightDebounced = (
     if (currentIndex === lastMeasuredIndex) return null
 
     return setTimeout(() => {
-        const { newHeight, newLastMeasuredIndex, updatedHeightCache } = calculateAverageHeight(
-            itemElements,
-            visibleRange,
-            heightCache,
-            calculatedItemHeight
-        )
+        const { newHeight, newLastMeasuredIndex, updatedHeightCache, clearedDirtyItems } =
+            calculateAverageHeight(
+                itemElements,
+                visibleRange,
+                heightCache,
+                calculatedItemHeight,
+                dirtyItems
+            )
 
-        if (Math.abs(newHeight - calculatedItemHeight) > 1) {
+        if (Math.abs(newHeight - calculatedItemHeight) > 1 || dirtyItems.size > 0) {
             onUpdate({
                 newHeight,
                 newLastMeasuredIndex,
-                updatedHeightCache
+                updatedHeightCache,
+                clearedDirtyItems
             })
         }
     }, debounceTime)

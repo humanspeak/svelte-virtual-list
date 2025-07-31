@@ -142,11 +142,12 @@ describe('updateHeightAndScroll', () => {
 
 describe('calculateAverageHeight', () => {
     it('should return current height when no elements are provided', () => {
-        const result = calculateAverageHeight([], { start: 0 }, {}, 40)
+        const result = calculateAverageHeight([], { start: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40)
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(result.updatedHeightCache).toEqual({})
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should calculate average height from elements', () => {
@@ -155,11 +156,12 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: 50 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // (30 + 50) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(result.updatedHeightCache).toEqual({ 0: 30, 1: 50 })
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should use cached heights when available', () => {
@@ -167,9 +169,16 @@ describe('calculateAverageHeight', () => {
 
         const existingCache = { 0: 40 }
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, existingCache, 40)
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0 },
+            existingCache,
+            40,
+            new Set()
+        )
 
         expect(result.updatedHeightCache).toEqual(existingCache)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should handle invalid height measurements', () => {
@@ -179,11 +188,12 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: Infinity }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // Should fallback to currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should calculate average excluding invalid heights', () => {
@@ -193,11 +203,12 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: 50 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // (30 + 50) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(2)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should handle all invalid measurements', () => {
@@ -206,11 +217,12 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: Infinity }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // Falls back to currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should handle mixed cached and new measurements', () => {
@@ -221,20 +233,28 @@ describe('calculateAverageHeight', () => {
 
         const existingCache = { 1: 40 } // Cache for second element
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, existingCache, 40)
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0 },
+            existingCache,
+            40,
+            new Set()
+        )
 
         expect(result.newHeight).toBe(35) // (30 + 40) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(result.updatedHeightCache).toEqual({ 0: 30, 1: 40 })
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should handle empty height cache gracefully', () => {
         const mockElements = [] as HTMLElement[]
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40)
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should fallback to currentItemHeight when no valid heights exist', () => {
@@ -243,7 +263,7 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: -1 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45)
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45) // Should use currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -253,11 +273,12 @@ describe('calculateAverageHeight', () => {
     it('should use currentItemHeight when no heights are collected', () => {
         const mockElements = [null] as unknown as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45)
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45)
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should use currentItemHeight when getBoundingClientRect throws', () => {
@@ -269,11 +290,96 @@ describe('calculateAverageHeight', () => {
             } as unknown as HTMLElement
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45)
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45) // Should use currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+    })
+
+    it('should process only dirty items when provided', () => {
+        const mockElements = [
+            { getBoundingClientRect: () => ({ height: 30 }) },
+            { getBoundingClientRect: () => ({ height: 50 }) },
+            { getBoundingClientRect: () => ({ height: 70 }) }
+        ] as HTMLElement[]
+
+        // Only item 1 is dirty
+        const dirtyItems = new Set([1])
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, dirtyItems)
+
+        // Should only measure the dirty item (index 1 = 50px)
+        expect(result.updatedHeightCache).toEqual({ 1: 50 })
+        expect(result.clearedDirtyItems).toEqual(new Set([1]))
+        expect(result.newHeight).toBe(50) // Only one item measured
+    })
+
+    it('should process multiple dirty items', () => {
+        const mockElements = [
+            { getBoundingClientRect: () => ({ height: 30 }) },
+            { getBoundingClientRect: () => ({ height: 50 }) },
+            { getBoundingClientRect: () => ({ height: 70 }) }
+        ] as HTMLElement[]
+
+        // Items 0 and 2 are dirty
+        const dirtyItems = new Set([0, 2])
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, dirtyItems)
+
+        // Should measure both dirty items
+        expect(result.updatedHeightCache).toEqual({ 0: 30, 2: 70 })
+        expect(result.clearedDirtyItems).toEqual(new Set([0, 2]))
+        expect(result.newHeight).toBe(50) // (30 + 70) / 2
+    })
+
+    it('should handle dirty items outside visible range', () => {
+        const mockElements = [
+            { getBoundingClientRect: () => ({ height: 30 }) },
+            { getBoundingClientRect: () => ({ height: 50 }) }
+        ] as HTMLElement[]
+
+        // Item 5 is dirty but not in visible range (start: 0, elements 0-1)
+        const dirtyItems = new Set([0, 5])
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, dirtyItems)
+
+        // Should only measure item 0 (item 5 not visible)
+        expect(result.updatedHeightCache).toEqual({ 0: 30 })
+        expect(result.clearedDirtyItems).toEqual(new Set([0])) // Only visible item cleared
+        expect(result.newHeight).toBe(30) // Only item 0 measured
+    })
+
+    it('should handle empty elements array with dirty items', () => {
+        const mockElements = [] as HTMLElement[]
+
+        const dirtyItems = new Set([0, 1, 2])
+        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, dirtyItems)
+
+        // Should not clear any dirty items when no elements exist
+        expect(result.clearedDirtyItems).toEqual(new Set())
+        expect(result.updatedHeightCache).toEqual({})
+        expect(result.newHeight).toBe(40) // Falls back to currentItemHeight
+    })
+
+    it('should use existing cache with dirty items update', () => {
+        const mockElements = [
+            { getBoundingClientRect: () => ({ height: 35 }) }, // New measurement
+            { getBoundingClientRect: () => ({ height: 55 }) }
+        ] as HTMLElement[]
+
+        const existingCache = { 0: 30, 1: 50, 2: 60 } // Item 0 will be updated
+        const dirtyItems = new Set([0]) // Only item 0 is dirty
+
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0 },
+            existingCache,
+            40,
+            dirtyItems
+        )
+
+        // Should update dirty item and keep existing cache
+        expect(result.updatedHeightCache).toEqual({ 0: 35, 1: 50, 2: 60 })
+        expect(result.clearedDirtyItems).toEqual(new Set([0]))
+        expect(result.newHeight).toBe(48.333333333333336) // (35 + 50 + 60) / 3
     })
 })
 
