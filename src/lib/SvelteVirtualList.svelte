@@ -161,7 +161,7 @@
     import { onMount, tick } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-
+    const INTERNAL_DEBUG = true
     /**
      * Core configuration props with default values
      * @type {SvelteVirtualListProps<TItem>}
@@ -242,12 +242,19 @@
                 lastMeasuredIndex = result.newLastMeasuredIndex
                 heightCache = result.updatedHeightCache
 
+                // Update running totals for precise height calculation (only when significant changes)
+                if (result.clearedDirtyItems.size > 10) {
+                    const heights = Object.values(heightCache)
+                    totalMeasuredHeight = heights.reduce((sum, h) => sum + h, 0)
+                    measuredCount = heights.length
+                }
+
                 // Clear processed dirty items
                 result.clearedDirtyItems.forEach((index) => {
                     dirtyItems.delete(index)
                 })
 
-                if (debug && result.clearedDirtyItems.size > 0) {
+                if (INTERNAL_DEBUG && result.clearedDirtyItems.size > 0) {
                     console.log(
                         `Cleared ${result.clearedDirtyItems.size} dirty items:`,
                         Array.from(result.clearedDirtyItems)
@@ -269,7 +276,7 @@
             const scrollDifference = Math.abs(viewportElement.scrollTop - targetScrollTop)
             if (scrollDifference > calculatedItemHeight * 2) {
                 // More lenient threshold
-                if (debug) {
+                if (INTERNAL_DEBUG) {
                     console.log(
                         '🔄 Correcting scroll position from',
                         viewportElement.scrollTop,
@@ -329,11 +336,16 @@
     /**
      * Calculate precise item height based on actual measurements when available
      */
+    // Running totals for efficient precise height calculation
+    let totalMeasuredHeight = $state(0)
+    let measuredCount = $state(0)
     const preciseItemHeight = $derived(() => {
-        const measuredCount = Object.keys(heightCache).length
         if (measuredCount > 100) {
-            const totalHeight = Object.values(heightCache).reduce((sum, h) => sum + h, 0)
-            return totalHeight / measuredCount
+            const avgHeight = totalMeasuredHeight / measuredCount
+            // Only use if the difference is significant (more than 0.5px)
+            if (Math.abs(avgHeight - calculatedItemHeight) > 0.5) {
+                return avgHeight
+            }
         }
         return calculatedItemHeight
     })
@@ -365,14 +377,14 @@
         // This prevents showing wrong items when scrollTop starts at 0
         if (mode === 'bottomToTop' && !initialized && scrollTop === 0 && viewportHeight > 0) {
             // Calculate what the correct scroll position should be
-            const totalHeight = items.length * preciseItemHeight()
+            const totalHeight = items.length * calculatedItemHeight
             const targetScrollTop = Math.max(0, totalHeight - viewportHeight)
 
             // Use the target scroll position for visible range calculation
             const result = calculateVisibleRange(
                 targetScrollTop,
                 viewportHeight,
-                preciseItemHeight(),
+                calculatedItemHeight,
                 items.length,
                 bufferSize,
                 mode
@@ -384,7 +396,7 @@
         const result = calculateVisibleRange(
             scrollTop,
             viewportHeight,
-            preciseItemHeight(),
+            calculatedItemHeight,
             items.length,
             bufferSize,
             mode
@@ -552,7 +564,7 @@
         itemResizeObserver = new ResizeObserver((entries) => {
             let shouldRecalculate = false
 
-            if (debug) {
+            if (INTERNAL_DEBUG) {
                 console.log(`ResizeObserver fired for ${entries.length} entries`)
             }
 
@@ -567,7 +579,7 @@
                     dirtyItems.add(actualIndex)
                     shouldRecalculate = true
 
-                    if (debug) {
+                    if (INTERNAL_DEBUG) {
                         console.log(
                             `Item ${actualIndex} marked dirty (resized), queue size: ${dirtyItems.size}`
                         )
@@ -613,7 +625,7 @@
 
     // Add the effect in the script section
     $effect(() => {
-        if (debug) {
+        if (INTERNAL_DEBUG) {
             prevVisibleRange = visibleItems()
             prevHeight = calculatedItemHeight
         }
@@ -868,7 +880,7 @@
     function autoObserveItemResize(element: HTMLElement) {
         if (itemResizeObserver) {
             itemResizeObserver.observe(element)
-            if (debug) {
+            if (INTERNAL_DEBUG) {
                 console.log(
                     'Started observing element:',
                     element,
@@ -876,7 +888,7 @@
                     element.getBoundingClientRect().height
                 )
             }
-        } else if (debug) {
+        } else if (INTERNAL_DEBUG) {
             console.log('itemResizeObserver not available for element:', element)
         }
 
@@ -884,7 +896,7 @@
             destroy() {
                 if (itemResizeObserver) {
                     itemResizeObserver.unobserve(element)
-                    if (debug) {
+                    if (INTERNAL_DEBUG) {
                         console.log('Stopped observing element:', element)
                     }
                 }
@@ -920,23 +932,9 @@
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
             style:height="{(() => {
-                // Use more precise height calculation by accounting for actual measured heights
-                let totalActualHeight = 0
-                const measuredCount = Object.keys(heightCache).length
-
-                if (measuredCount > 100) {
-                    // Calculate based on actual measurements when we have enough data
-                    const avgActualHeight =
-                        Object.values(heightCache).reduce((sum, h) => sum + h, 0) / measuredCount
-                    totalActualHeight = items.length * avgActualHeight
-                } else {
-                    // Fallback to estimated height
-                    totalActualHeight = items.length * calculatedItemHeight
-                }
-
-                const contentHeight = Math.max(height, totalActualHeight)
-
-                return contentHeight
+                // Use precise height when available for better cross-browser compatibility
+                const totalActualHeight = items.length * preciseItemHeight()
+                return Math.max(height, totalActualHeight)
             })()}px"
         >
             <!-- Items container is translated to show correct items -->
@@ -950,7 +948,7 @@
                         items.length,
                         visibleItems().end,
                         visibleItems().start,
-                        preciseItemHeight()
+                        calculatedItemHeight
                     )
 
                     return transform
