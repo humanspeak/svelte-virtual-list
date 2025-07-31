@@ -835,7 +835,9 @@
                             visibleItems(),
                             items.length,
                             Object.keys(heightCache).length,
-                            calculatedItemHeight
+                            calculatedItemHeight,
+                            scrollTop,
+                            height || 0
                         )}
                         {debugFunction
                             ? debugFunction(debugInfo)
