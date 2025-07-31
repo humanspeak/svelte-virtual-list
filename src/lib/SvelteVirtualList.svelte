@@ -267,29 +267,48 @@
     }
 
     // Add new effect to handle height changes
+    // Track if user has scrolled away from bottom to prevent snap-back
+    let userHasScrolledAway = $state(false)
+    let lastCalculatedHeight = $state(0)
+
     $effect(() => {
         if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {
             const totalHeight = Math.max(0, items.length * calculatedItemHeight)
             const targetScrollTop = Math.max(0, totalHeight - height)
+            const currentScrollTop = viewportElement.scrollTop
+            const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
 
-            // Update scroll position when item height changes significantly
-            const scrollDifference = Math.abs(viewportElement.scrollTop - targetScrollTop)
-            if (scrollDifference > calculatedItemHeight * 2) {
-                // More lenient threshold
+            // Only correct scroll if:
+            // 1. Item height changed significantly (not just user scrolling)
+            // 2. User hasn't intentionally scrolled away from bottom
+            // 3. We're significantly off target
+            const heightChanged = Math.abs(calculatedItemHeight - lastCalculatedHeight) > 1
+            const shouldCorrect =
+                heightChanged && !userHasScrolledAway && scrollDifference > calculatedItemHeight * 3
+
+            if (shouldCorrect) {
                 if (INTERNAL_DEBUG) {
                     console.log(
                         '🔄 Correcting scroll position from',
-                        viewportElement.scrollTop,
+                        currentScrollTop,
                         'to',
                         targetScrollTop,
                         'diff:',
-                        scrollDifference
+                        scrollDifference,
+                        'heightChanged:',
+                        heightChanged
                     )
                 }
-                // Use immediate assignment for more reliable positioning
                 viewportElement.scrollTop = targetScrollTop
                 scrollTop = targetScrollTop
             }
+
+            // Track if user has scrolled significantly away from bottom
+            if (scrollDifference > calculatedItemHeight * 5) {
+                userHasScrolledAway = true
+            }
+
+            lastCalculatedHeight = calculatedItemHeight
         }
     })
 
