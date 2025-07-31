@@ -225,6 +225,18 @@ export const calculateAverageHeight = (
     const newHeightCache = { ...heightCache }
     const clearedDirtyItems = new Set<number>()
 
+    // Initialize running totals for O(1) average calculation
+    let totalValidHeight = 0
+    let validHeightCount = 0
+
+    // Calculate initial totals from existing cache
+    for (const height of Object.values(heightCache)) {
+        if (Number.isFinite(height) && height > 0) {
+            totalValidHeight += height
+            validHeightCount++
+        }
+    }
+
     // Process only dirty items if they exist, otherwise process all visible items
     if (dirtyItems.size > 0) {
         // Process only dirty items
@@ -239,6 +251,15 @@ export const calculateAverageHeight = (
                         const oldHeight = newHeightCache[itemIndex]
                         // Only update if height actually changed (use smaller tolerance for precision)
                         if (!oldHeight || Math.abs(oldHeight - height) >= 0.1) {
+                            // Update running totals
+                            if (oldHeight && Number.isFinite(oldHeight) && oldHeight > 0) {
+                                // Replace old height with new height in running total
+                                totalValidHeight = totalValidHeight - oldHeight + height
+                            } else {
+                                // Add new height to running total
+                                totalValidHeight += height
+                                validHeightCount++
+                            }
                             newHeightCache[itemIndex] = height
                         }
                     }
@@ -257,6 +278,9 @@ export const calculateAverageHeight = (
                 try {
                     const height = el.getBoundingClientRect().height
                     if (Number.isFinite(height) && height > 0) {
+                        // Add new height to running totals
+                        totalValidHeight += height
+                        validHeightCount++
                         newHeightCache[itemIndex] = height
                     }
                 } catch {
@@ -266,14 +290,9 @@ export const calculateAverageHeight = (
         })
     }
 
-    // Calculate average from valid cached heights
-    const validHeights = Object.values(newHeightCache).filter((h) => Number.isFinite(h) && h > 0)
-
+    // O(1) average calculation using running totals!
     return {
-        newHeight:
-            validHeights.length > 0
-                ? validHeights.reduce((sum, h) => sum + h, 0) / validHeights.length
-                : currentItemHeight,
+        newHeight: validHeightCount > 0 ? totalValidHeight / validHeightCount : currentItemHeight,
         newLastMeasuredIndex: visibleRange.start,
         updatedHeightCache: newHeightCache,
         clearedDirtyItems
