@@ -41,7 +41,7 @@
     - Only visible items + buffer are mounted in the DOM
     - Height caching and estimation for dynamic content
     - Handles resize events and dynamic content changes
-    - Supports chunked initialization for very large lists
+    - Optimized for very large lists through virtualization
     - Modular architecture with extracted utility functions
     - Bi-directional support: mode="topToBottom" or "bottomToTop"
     - Designed for extensibility and easy debugging
@@ -113,10 +113,10 @@
      *
      * 9. Architecture Refactoring ✓
      *    - Extracted scroll calculation logic to scrollCalculation.ts utility
-     *    - Extracted initialization logic to initialization.ts utility
      *    - Extracted ResizeObserver utilities to resizeObserver.ts
      *    - Added comprehensive test coverage for extracted utilities
      *    - Improved separation of concerns and maintainability
+     *    - Simplified initialization (removed unnecessary chunked processing)
      *
      * 10. Future Improvements (Planned)
      *    - Add horizontal scrolling support
@@ -145,10 +145,10 @@
      * - Configurable buffer zones for smooth scrolling
      * - Modular utility system with dedicated helper files:
      *   * scrollCalculation.ts: Complex scroll positioning logic
-     *   * initialization.ts: Chunked processing for large datasets
      *   * resizeObserver.ts: ResizeObserver management utilities
      *   * heightCalculation.ts: Debounced height measurement
      *   * virtualList.ts: Core virtual list calculations
+     *   * virtualListDebug.ts: Debug information utilities
      * - Height caching and estimation system
      * - Progressive size adjustment system
      */
@@ -169,7 +169,7 @@
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
-    import { initializeVirtualList } from '$lib/utils/initialization.js'
+
     import { BROWSER } from 'esm-env'
     import { onMount, tick } from 'svelte'
 
@@ -228,8 +228,6 @@
      */
     let heightCache = $state<Record<number, number>>({}) // Cache of measured item heights
     let dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
-    const chunkSize = $state(50) // Number of items to process in each chunk
-    let processedItems = $state(0) // Number of items processed during initialization
 
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
@@ -543,18 +541,6 @@
         )
     }
 
-    // Initialize the virtual list when items change
-    $effect(() => {
-        if (BROWSER) {
-            initializeVirtualList({
-                items,
-                chunkSize,
-                onProgress: (processed) => (processedItems = processed),
-                onComplete: () => (initialized = true)
-            })
-        }
-    })
-
     // Create itemResizeObserver immediately when in browser
     if (BROWSER) {
         // Watch for individual item size changes
@@ -849,7 +835,7 @@
                         {@const debugInfo = createDebugInfo(
                             visibleItems(),
                             items.length,
-                            processedItems,
+                            Object.keys(heightCache).length,
                             calculatedItemHeight
                         )}
                         {debugFunction
