@@ -232,19 +232,26 @@ describe('calculateAverageHeight', () => {
         ] as HTMLElement[]
 
         const existingCache = { 1: 40 } // Cache for second element
+        // Initial running totals from existing cache: {1: 40} = totalHeight: 40, count: 1
+        const initialTotalHeight = 40
+        const initialCount = 1
 
         const result = calculateAverageHeight(
             mockElements,
             { start: 0 },
             existingCache,
             40,
-            new Set()
+            new Set(),
+            initialTotalHeight,
+            initialCount
         )
 
         expect(result.newHeight).toBe(35) // (30 + 40) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(result.updatedHeightCache).toEqual({ 0: 30, 1: 40 })
         expect(result.clearedDirtyItems).toEqual(new Set())
+        expect(result.newTotalHeight).toBe(70) // 30 + 40
+        expect(result.newValidCount).toBe(2)
     })
 
     it('should handle empty height cache gracefully', () => {
@@ -367,19 +374,26 @@ describe('calculateAverageHeight', () => {
 
         const existingCache = { 0: 30, 1: 50, 2: 60 } // Item 0 will be updated
         const dirtyItems = new Set([0]) // Only item 0 is dirty
+        // Initial running totals from existing cache: {0: 30, 1: 50, 2: 60} = totalHeight: 140, count: 3
+        const initialTotalHeight = 140 // 30 + 50 + 60
+        const initialCount = 3
 
         const result = calculateAverageHeight(
             mockElements,
             { start: 0 },
             existingCache,
             40,
-            dirtyItems
+            dirtyItems,
+            initialTotalHeight,
+            initialCount
         )
 
         // Should update dirty item and keep existing cache
         expect(result.updatedHeightCache).toEqual({ 0: 35, 1: 50, 2: 60 })
         expect(result.clearedDirtyItems).toEqual(new Set([0]))
         expect(result.newHeight).toBe(48.333333333333336) // (35 + 50 + 60) / 3
+        expect(result.newTotalHeight).toBe(145) // 35 + 50 + 60 (30 was replaced with 35)
+        expect(result.newValidCount).toBe(3)
     })
 })
 

@@ -205,12 +205,16 @@ export const calculateAverageHeight = (
     visibleRange: { start: number },
     heightCache: Record<number, number>,
     currentItemHeight: number,
-    dirtyItems: Set<number>
+    dirtyItems: Set<number>,
+    currentTotalHeight: number = 0,
+    currentValidCount: number = 0
 ): {
     newHeight: number
     newLastMeasuredIndex: number
     updatedHeightCache: Record<number, number>
     clearedDirtyItems: Set<number>
+    newTotalHeight: number
+    newValidCount: number
 } => {
     const validElements = itemElements.filter((el) => el)
     if (validElements.length === 0) {
@@ -218,24 +222,18 @@ export const calculateAverageHeight = (
             newHeight: currentItemHeight,
             newLastMeasuredIndex: visibleRange.start,
             updatedHeightCache: heightCache,
-            clearedDirtyItems: new Set()
+            clearedDirtyItems: new Set(),
+            newTotalHeight: currentTotalHeight,
+            newValidCount: currentValidCount
         }
     }
 
     const newHeightCache = { ...heightCache }
     const clearedDirtyItems = new Set<number>()
 
-    // Initialize running totals for O(1) average calculation
-    let totalValidHeight = 0
-    let validHeightCount = 0
-
-    // Calculate initial totals from existing cache
-    for (const height of Object.values(heightCache)) {
-        if (Number.isFinite(height) && height > 0) {
-            totalValidHeight += height
-            validHeightCount++
-        }
-    }
+    // Start with current running totals (O(1) instead of O(n))
+    let totalValidHeight = currentTotalHeight
+    let validHeightCount = currentValidCount
 
     // Process only dirty items if they exist, otherwise process all visible items
     if (dirtyItems.size > 0) {
@@ -295,7 +293,9 @@ export const calculateAverageHeight = (
         newHeight: validHeightCount > 0 ? totalValidHeight / validHeightCount : currentItemHeight,
         newLastMeasuredIndex: visibleRange.start,
         updatedHeightCache: newHeightCache,
-        clearedDirtyItems
+        clearedDirtyItems,
+        newTotalHeight: totalValidHeight,
+        newValidCount: validHeightCount
     }
 }
 
