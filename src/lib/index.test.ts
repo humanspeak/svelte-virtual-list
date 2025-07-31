@@ -22,7 +22,8 @@ describe('index.ts exports', () => {
             startIndex: 0,
             endIndex: 10,
             totalItems: 100,
-            estimatedItemHeight: 30
+            processedItems: 50,
+            averageItemHeight: 30
         }
 
         const mode: SvelteVirtualListMode = 'topToBottom'

@@ -146,11 +146,14 @@
         type SvelteVirtualListProps,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
+    import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
     import {
         calculateScrollPosition,
         calculateTransformY,
         calculateVisibleRange,
+        getScrollOffsetForIndex,
+        processChunked,
         updateHeightAndScroll as utilsUpdateHeightAndScroll
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
@@ -190,17 +193,20 @@
      */
     let scrollTop = $state(0) // Current scroll position
     let height = $state(0) // Container height
-    let totalContentHeight = $state(items.length * defaultEstimatedItemHeight) // Total height of all items combined
+    let calculatedItemHeight = $state(defaultEstimatedItemHeight) // Current average item height
 
     /**
      * State Flags and Control
      */
     let initialized = $state(false) // Tracks if initial setup is complete
+    let isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isScrolling = $state(false) // Tracks active scrolling state
+    let lastMeasuredIndex = $state(-1) // Index of last measured item
 
     /**
      * Timers and Observers
      */
+    let heightUpdateTimeout: ReturnType<typeof setTimeout> | null = null // Debounce timer for height updates
     let resizeObserver: ResizeObserver | null = null // Watches for container size changes
     let itemResizeObserver: ResizeObserver | null = null // Watches for individual item size changes
 
@@ -209,61 +215,44 @@
      */
     let heightCache = $state<Record<number, number>>({}) // Cache of measured item heights
     let dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
+    const chunkSize = $state(50) // Number of items to process in each chunk
+    let processedItems = $state(0) // Number of items processed during initialization
 
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
 
-    // Update total content height when items change
+    // Trigger height calculation when items are rendered
     $effect(() => {
-        let newTotalHeight = items.length * defaultEstimatedItemHeight
-        // Add any cached height differences
-        Object.entries(heightCache).forEach(([index, cachedHeight]) => {
-            const itemIndex = parseInt(index)
-            if (itemIndex < items.length) {
-                newTotalHeight = newTotalHeight - defaultEstimatedItemHeight + cachedHeight
-            }
-        })
-        totalContentHeight = newTotalHeight
+        if (BROWSER && itemElements.length > 0 && !isCalculatingHeight) {
+            updateHeight()
+        }
     })
 
-    // Process dirty items when they accumulate
-    const processDirtyItems = () => {
-        if (dirtyItems.size === 0) return
-
-        dirtyItems.forEach((index) => {
-            const element = itemElements[index - visibleItems().start]
-            if (element) {
-                // Round to avoid sub-pixel precision issues
-                const newHeight = Math.round(element.getBoundingClientRect().height)
-                const oldHeight = heightCache[index] ?? defaultEstimatedItemHeight
-
-                // Only update if there's a meaningful difference (at least 1px)
-                if (Math.abs(oldHeight - newHeight) >= 1) {
-                    // Update running total: subtract old, add new
-                    totalContentHeight = totalContentHeight - oldHeight + newHeight
-                    heightCache[index] = newHeight
-
-                    if (debug) {
-                        console.log(
-                            `Updated item ${index}: ${oldHeight}px → ${newHeight}px, total: ${totalContentHeight}px`
-                        )
-                    }
-                }
+    const updateHeight = () => {
+        heightUpdateTimeout = calculateAverageHeightDebounced(
+            isCalculatingHeight,
+            heightUpdateTimeout,
+            visibleItems,
+            itemElements,
+            heightCache,
+            lastMeasuredIndex,
+            calculatedItemHeight,
+            (result) => {
+                calculatedItemHeight = result.newHeight
+                lastMeasuredIndex = result.newLastMeasuredIndex
+                heightCache = result.updatedHeightCache
             }
-        })
-
-        dirtyItems.clear()
+        )
     }
 
     // Add new effect to handle height changes
     $effect(() => {
         if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {
-            const targetScrollTop = Math.max(0, totalContentHeight - height)
+            const totalHeight = Math.max(0, items.length * calculatedItemHeight)
+            const targetScrollTop = Math.max(0, totalHeight - height)
 
             // Only update if the difference is significant
-            if (
-                Math.abs(viewportElement.scrollTop - targetScrollTop) > defaultEstimatedItemHeight
-            ) {
+            if (Math.abs(viewportElement.scrollTop - targetScrollTop) > calculatedItemHeight) {
                 requestAnimationFrame(() => {
                     if (viewportElement) {
                         viewportElement.scrollTop = targetScrollTop
@@ -291,7 +280,8 @@
             items.length &&
             !initialized
         ) {
-            const targetScrollTop = Math.max(0, totalContentHeight - height)
+            const totalHeight = Math.max(0, items.length * calculatedItemHeight)
+            const targetScrollTop = Math.max(0, totalHeight - height)
 
             // Add delay to ensure layout is complete
             tick().then(() => {
@@ -339,7 +329,7 @@
         return calculateVisibleRange(
             scrollTop,
             viewportHeight,
-            defaultEstimatedItemHeight,
+            calculatedItemHeight,
             items.length,
             bufferSize,
             mode
@@ -407,7 +397,7 @@
 
                             const targetScrollTop = calculateScrollPosition(
                                 items.length,
-                                defaultEstimatedItemHeight,
+                                calculatedItemHeight,
                                 finalHeight
                             )
 
@@ -439,7 +429,7 @@
                 mode,
                 containerElement,
                 viewportElement,
-                calculatedItemHeight: defaultEstimatedItemHeight,
+                calculatedItemHeight,
                 height,
                 scrollTop
             },
@@ -452,9 +442,49 @@
         )
     }
 
-    // Simple initialization - no chunking needed with our simplified height system
+    /**
+     * Initializes large datasets in chunks to prevent UI blocking.
+     *
+     * This function processes items in smaller chunks using setTimeout to yield
+     * to the main thread, allowing other UI operations to remain responsive.
+     * Progress is tracked and reported through the processedItems state.
+     *
+     * For datasets larger than 1000 items, this method is automatically used
+     * instead of immediate initialization. The chunk size is controlled by the
+     * component's chunkSize state (default: 50).
+     *
+     * @async
+     * @example
+     * ```typescript
+     * // Component initialization
+     * $effect(() => {
+     *     if (BROWSER && items.length > 1000) {
+     *         initializeChunked()
+     *     } else {
+     *         initialized = true
+     *     }
+     * })
+     * ```
+     *
+     * @throws {Error} If processChunked fails to complete initialization
+     * @returns {Promise<void>} Resolves when all chunks have been processed
+     */
+    const initializeChunked = async () => {
+        if (!items.length) return
+
+        await processChunked(
+            items,
+            chunkSize,
+            (processed) => (processedItems = processed),
+            () => (initialized = true)
+        )
+    }
+
+    // Modify the mount effect to use chunked initialization
     $effect(() => {
-        if (BROWSER) {
+        if (BROWSER && items.length > 1000) {
+            initializeChunked()
+        } else {
             initialized = true
         }
     })
@@ -489,9 +519,9 @@
             }
 
             if (shouldRecalculate) {
-                // Process dirty items immediately
+                // Trigger virtual list recalculation
                 rafSchedule(() => {
-                    processDirtyItems()
+                    updateHeight()
                 })
             }
         })
@@ -528,7 +558,7 @@
     $effect(() => {
         if (debug) {
             prevVisibleRange = visibleItems()
-            prevHeight = defaultEstimatedItemHeight
+            prevHeight = calculatedItemHeight
         }
     })
 
@@ -634,20 +664,21 @@
         let scrollTarget: number | null = null
 
         if (mode === 'bottomToTop') {
-            const itemOffset = targetIndex * defaultEstimatedItemHeight
-            const itemHeight = defaultEstimatedItemHeight
+            const totalHeight = items.length * calculatedItemHeight
+            const itemOffset = targetIndex * calculatedItemHeight
+            const itemHeight = calculatedItemHeight
             if (align === 'auto') {
                 // If item is above the viewport, align to top
                 if (targetIndex < firstVisibleIndex) {
-                    scrollTarget = Math.max(0, totalContentHeight - (itemOffset + itemHeight))
+                    scrollTarget = Math.max(0, totalHeight - (itemOffset + itemHeight))
                     // If item is below the viewport, align to bottom
                 } else if (targetIndex > lastVisibleIndex - 1) {
-                    scrollTarget = Math.max(0, totalContentHeight - itemOffset - height)
+                    scrollTarget = Math.max(0, totalHeight - itemOffset - height)
                 } else {
                     // Item is visible but not aligned: align to nearest edge
                     // Calculate the offset of the item relative to the viewport
-                    const itemTop = totalContentHeight - (itemOffset + itemHeight)
-                    const itemBottom = totalContentHeight - itemOffset
+                    const itemTop = totalHeight - (itemOffset + itemHeight)
+                    const itemBottom = totalHeight - itemOffset
                     const distanceToTop = Math.abs(scrollTop - itemTop)
                     const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
                     if (distanceToTop < distanceToBottom) {
@@ -660,14 +691,14 @@
                 }
             } else if (align === 'top') {
                 // Align to top
-                scrollTarget = Math.max(0, totalContentHeight - (itemOffset + itemHeight))
+                scrollTarget = Math.max(0, totalHeight - (itemOffset + itemHeight))
             } else if (align === 'bottom') {
                 // Align to bottom
-                scrollTarget = Math.max(0, totalContentHeight - itemOffset - height)
+                scrollTarget = Math.max(0, totalHeight - itemOffset - height)
             } else if (align === 'nearest') {
                 // If not visible, align to nearest edge; if visible, do nothing
-                const itemTop = totalContentHeight - (itemOffset + itemHeight)
-                const itemBottom = totalContentHeight - itemOffset
+                const itemTop = totalHeight - (itemOffset + itemHeight)
+                const itemBottom = totalHeight - itemOffset
                 if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
                     // Not visible, align to nearest edge
                     const distanceToTop = Math.abs(scrollTop - itemTop)
@@ -683,27 +714,35 @@
                 }
             }
         } else {
-            // topToBottom (default) - use simplified offset calculation
-            const getSimpleOffset = (index: number) => {
-                let offset = 0
-                for (let i = 0; i < index; i++) {
-                    offset += heightCache[i] ?? defaultEstimatedItemHeight
-                }
-                return offset
-            }
-
+            // topToBottom (default)
             if (align === 'auto') {
                 // If item is above the viewport, align to top
                 if (targetIndex < firstVisibleIndex) {
-                    scrollTarget = getSimpleOffset(targetIndex)
+                    scrollTarget = getScrollOffsetForIndex(
+                        heightCache,
+                        calculatedItemHeight,
+                        targetIndex
+                    )
                     // If item is below the viewport, align to bottom
                 } else if (targetIndex > lastVisibleIndex - 1) {
-                    const itemBottom = getSimpleOffset(targetIndex + 1)
+                    const itemBottom = getScrollOffsetForIndex(
+                        heightCache,
+                        calculatedItemHeight,
+                        targetIndex + 1
+                    )
                     scrollTarget = Math.max(0, itemBottom - height)
                 } else {
                     // Item is visible but not aligned: align to nearest edge
-                    const itemTop = getSimpleOffset(targetIndex)
-                    const itemBottom = getSimpleOffset(targetIndex + 1)
+                    const itemTop = getScrollOffsetForIndex(
+                        heightCache,
+                        calculatedItemHeight,
+                        targetIndex
+                    )
+                    const itemBottom = getScrollOffsetForIndex(
+                        heightCache,
+                        calculatedItemHeight,
+                        targetIndex + 1
+                    )
                     const distanceToTop = Math.abs(scrollTop - itemTop)
                     const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
                     if (distanceToTop < distanceToBottom) {
@@ -715,13 +754,29 @@
                     }
                 }
             } else if (align === 'top') {
-                scrollTarget = getSimpleOffset(targetIndex)
+                scrollTarget = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex
+                )
             } else if (align === 'bottom') {
-                const itemBottom = getSimpleOffset(targetIndex + 1)
+                const itemBottom = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex + 1
+                )
                 scrollTarget = Math.max(0, itemBottom - height)
             } else if (align === 'nearest') {
-                const itemTop = getSimpleOffset(targetIndex)
-                const itemBottom = getSimpleOffset(targetIndex + 1)
+                const itemTop = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex
+                )
+                const itemBottom = getScrollOffsetForIndex(
+                    heightCache,
+                    calculatedItemHeight,
+                    targetIndex + 1
+                )
                 if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
                     // Not visible, align to nearest edge
                     const distanceToTop = Math.abs(scrollTop - itemTop)
@@ -807,7 +862,7 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            style:height="{totalContentHeight}px"
+            style:height="{Math.max(height, items.length * calculatedItemHeight)}px"
         >
             <!-- Items container is translated to show correct items -->
             <div
@@ -819,18 +874,19 @@
                     items.length,
                     visibleItems().end,
                     visibleItems().start,
-                    defaultEstimatedItemHeight
+                    calculatedItemHeight
                 )}px)"
             >
                 {#each mode === 'bottomToTop' ? items
                           .slice(visibleItems().start, visibleItems().end)
                           .reverse() : items.slice(visibleItems().start, visibleItems().end) as currentItem, i ((currentItem as { id?: string | number })?.id ?? i)}
                     <!-- Only debug when visible range or average height changes -->
-                    {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, defaultEstimatedItemHeight)}
+                    {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, calculatedItemHeight)}
                         {@const debugInfo = createDebugInfo(
                             visibleItems(),
                             items.length,
-                            defaultEstimatedItemHeight
+                            processedItems,
+                            calculatedItemHeight
                         )}
                         {debugFunction
                             ? debugFunction(debugInfo)
