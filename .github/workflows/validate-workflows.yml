@@ -115,7 +115,7 @@ jobs:
                   if [ -z "${BASE_REF:-}" ]; then
                       echo "::warning::BASE_REF is not set, validating all workflow files"
                       # If no base ref (manual trigger), validate all workflows
-                      changed_files=$(find . -name "*.yml" -o -name "*.yaml" | grep -E '\.github/workflows/' | sed 's|^\./||' || true)
+                      changed_files=$(find . -name "*.yml" -o -name "*.yaml" | sed 's|^\./||' || true)
                   else
                       echo "Comparing against base ref: $BASE_REF"
 
@@ -136,7 +136,7 @@ jobs:
                       else
                           echo "::warning::Cannot find base ref ${BASE_REF} in any form"
                           echo "Falling back to validating all workflow files"
-                          changed_files=$(find . -name "*.yml" -o -name "*.yaml" | grep -E '\.github/workflows/' | sed 's|^\./||' || true)
+                          changed_files=$(find . -name "*.yml" -o -name "*.yaml" | sed 's|^\./||' || true)
                       fi
                   fi
 

@@ -17,6 +17,8 @@ if ! trunk check --fix >/dev/null 2>&1; then
 	echo "❌ Linting failed. Run 'trunk check' to see errors and fix them."
 	exit 1
 fi
+# Recapture staged files after trunk check --fix may have modified additional files
+STAGED_FILES=$(git diff --cached --name-only)
 if [ -n "${STAGED_FILES}" ]; then
 	echo "${STAGED_FILES}" | xargs git add
 fi
