@@ -124,7 +124,7 @@ jobs:
               id: version
               env:
                   PRERELEASE_TYPE: ${{ github.event.inputs.prerelease_type || 'beta' }}
-                  BASE_BUMP: ${{ github.event.inputs.base_version_bump || 'patch' }}
+                  BASE_BUMP: ${{ github.event.inputs.base_version_bump || 'minor' }}
                   BRANCH_NAME: ${{ github.ref_name }}
               run: |
                   # For workflow_dispatch, use input; for push, auto-determine

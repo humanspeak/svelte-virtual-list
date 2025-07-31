@@ -117,7 +117,7 @@ test.describe('Scrolling Performance', () => {
             return performance.now() - start
         })
 
-        // Render time shouldn't significantly degrade
-        expect(midScrollRenderTime).toBeLessThan(initialRenderTime * 2)
+        // Render time should remain very consistent (tightened after scroll optimization)
+        expect(midScrollRenderTime).toBeLessThan(initialRenderTime * 1.3) // Was 2x, now 1.3x
     })
 })
