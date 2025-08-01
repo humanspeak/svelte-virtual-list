@@ -869,9 +869,12 @@
                     // For bottomToTop mode with few items, provide reasonable initial positioning
                     // even when height is not yet measured to prevent flash
                     let effectiveHeight = viewportHeight
-                    if (mode === 'bottomToTop' && viewportHeight === 0) {
-                        // Use a reasonable default height estimate for initial positioning
-                        effectiveHeight = 400 // Common viewport height
+                    if (mode === 'bottomToTop' && viewportHeight === 0 && containerElement) {
+                        // Measure height synchronously if available
+                        effectiveHeight = containerElement.getBoundingClientRect().height || 400
+                    } else if (mode === 'bottomToTop' && viewportHeight === 0) {
+                        // Fallback to reasonable default height estimate for initial positioning
+                        effectiveHeight = 400
                     }
 
                     const transform = calculateTransformY(
