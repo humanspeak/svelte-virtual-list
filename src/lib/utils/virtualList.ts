@@ -218,10 +218,11 @@ export const updateHeightAndScroll = (
  */
 export const calculateAverageHeight = (
     itemElements: HTMLElement[],
-    visibleRange: { start: number },
+    visibleRange: { start: number; end: number },
     heightCache: Record<number, number>,
     currentItemHeight: number,
     dirtyItems: Set<number>,
+    mode: SvelteVirtualListMode,
     currentTotalHeight: number = 0,
     currentValidCount: number = 0
 ): {
@@ -231,6 +232,7 @@ export const calculateAverageHeight = (
     clearedDirtyItems: Set<number>
     newTotalHeight: number
     newValidCount: number
+    heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
 } => {
     const validElements = itemElements.filter((el) => el)
     if (validElements.length === 0) {
@@ -240,12 +242,19 @@ export const calculateAverageHeight = (
             updatedHeightCache: heightCache,
             clearedDirtyItems: new Set(),
             newTotalHeight: currentTotalHeight,
-            newValidCount: currentValidCount
+            newValidCount: currentValidCount,
+            heightChanges: []
         }
     }
 
     const newHeightCache = { ...heightCache }
     const clearedDirtyItems = new Set<number>()
+    const heightChanges: Array<{
+        index: number
+        oldHeight: number
+        newHeight: number
+        delta: number
+    }> = []
 
     // Start with current running totals (O(1) instead of O(n))
     let totalValidHeight = currentTotalHeight
@@ -255,16 +264,43 @@ export const calculateAverageHeight = (
     if (dirtyItems.size > 0) {
         // Process only dirty items
         dirtyItems.forEach((itemIndex) => {
-            const elementIndex = itemIndex - visibleRange.start
+            // Map original item index to position in itemElements array
+            let elementIndex: number
+            if (mode === 'bottomToTop') {
+                // In bottomToTop, itemElements is reversed relative to the visible range
+                // elementIndex should be based on position within the actual array, not theoretical end
+                elementIndex = validElements.length - 1 - (itemIndex - visibleRange.start)
+            } else {
+                // In topToBottom, itemElements is normal: [item0, item1, ..., item44, item45]
+                elementIndex = itemIndex - visibleRange.start
+            }
             const element = validElements[elementIndex]
-
             if (element && elementIndex >= 0 && elementIndex < validElements.length) {
                 try {
+                    // await tick()
+                    void element.offsetHeight
                     const height = element.getBoundingClientRect().height
+                    const oldHeight = newHeightCache[itemIndex]
+
                     if (Number.isFinite(height) && height > 0) {
-                        const oldHeight = newHeightCache[itemIndex]
                         // Only update if height actually changed (use smaller tolerance for precision)
                         if (!oldHeight || Math.abs(oldHeight - height) >= 0.1) {
+                            // Track the height change for scroll correction
+                            const actualOldHeight = oldHeight || currentItemHeight
+                            const delta = height - actualOldHeight
+                            console.log('🔥 HEIGHT CHANGE DETECTED:', {
+                                itemIndex,
+                                oldHeight: actualOldHeight,
+                                newHeight: height,
+                                delta
+                            })
+                            heightChanges.push({
+                                index: itemIndex,
+                                oldHeight: actualOldHeight,
+                                newHeight: height,
+                                delta
+                            })
+
                             // Update running totals
                             if (oldHeight && Number.isFinite(oldHeight) && oldHeight > 0) {
                                 // Replace old height with new height in running total
@@ -282,6 +318,8 @@ export const calculateAverageHeight = (
                     // Skip invalid measurements but still clear from dirty
                     clearedDirtyItems.add(itemIndex)
                 }
+            } else {
+                clearedDirtyItems.add(itemIndex) // Still clear it from dirty items
             }
         })
     } else {
@@ -311,7 +349,8 @@ export const calculateAverageHeight = (
         updatedHeightCache: newHeightCache,
         clearedDirtyItems,
         newTotalHeight: totalValidHeight,
-        newValidCount: validHeightCount
+        newValidCount: validHeightCount,
+        heightChanges
     }
 }
 

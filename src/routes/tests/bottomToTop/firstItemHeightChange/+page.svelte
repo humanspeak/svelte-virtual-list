@@ -10,9 +10,15 @@
     ])
     let virtualList: SvelteVirtualList | null = $state(null)
 
+    // Expose items to global scope for testing
+    if (typeof window !== 'undefined') {
+        ;(window as any).items = items
+    }
+
     setTimeout(() => {
         // Direct property assignment works fine in Svelte 5
         items[1].height = 100
+        console.log('🧪 Test: Changed items[1].height to 100px')
 
         // setTimeout(() => {
         //     virtualList?.scroll({

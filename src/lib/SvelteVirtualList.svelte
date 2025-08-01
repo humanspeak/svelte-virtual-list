@@ -228,13 +228,93 @@
      */
     let heightCache = $state<Record<number, number>>({}) // Cache of measured item heights
     let dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
+    let dirtyItemsCount = $state(0) // Reactive count of dirty items
 
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
 
+    /**
+     * Handles scroll correction when specific items change height in bottomToTop mode.
+     * This provides intelligent scroll correction by analyzing which items changed
+     * and where they are positioned relative to the current scroll position.
+     */
+    const handleHeightChangesScrollCorrection = (
+        heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
+    ) => {
+        if (!viewportElement || !initialized || userHasScrolledAway) return
+
+        // In bottomToTop mode, when we're at the bottom, don't apply scroll corrections
+        // This prevents jumping when items at the bottom change height
+        if (mode === 'bottomToTop') {
+            const currentVisibleRange = visibleItems()
+            const isAtBottom = currentVisibleRange.start === 0
+            if (isAtBottom) {
+                if (INTERNAL_DEBUG) {
+                    console.log('🔄 Skipping scroll correction in bottomToTop mode at bottom')
+                }
+                return
+            }
+        }
+
+        const currentScrollTop = viewportElement.scrollTop
+        const totalHeight = items.length * calculatedItemHeight
+        const maxScrollTop = Math.max(0, totalHeight - height)
+
+        // Calculate total height change impact above current visible area
+        let heightChangeAboveViewport = 0
+        const currentVisibleRange = visibleItems()
+
+        for (const change of heightChanges) {
+            // Only consider items that are above the current visible range
+            if (change.index < currentVisibleRange.start) {
+                heightChangeAboveViewport += change.delta
+            }
+        }
+
+        // If there are height changes above the viewport, adjust scroll to maintain position
+        if (Math.abs(heightChangeAboveViewport) > 1) {
+            const newScrollTop = Math.min(
+                maxScrollTop,
+                Math.max(0, currentScrollTop + heightChangeAboveViewport)
+            )
+
+            if (INTERNAL_DEBUG) {
+                console.log('🔄 Correcting scroll for height changes:', {
+                    changes: heightChanges,
+                    heightChangeAboveViewport,
+                    currentScrollTop,
+                    newScrollTop,
+                    visibleRange: currentVisibleRange
+                })
+            }
+
+            viewportElement.scrollTop = newScrollTop
+            scrollTop = newScrollTop
+        }
+    }
+
     // Trigger height calculation when items are rendered
     $effect(() => {
+        console.log('🔥 HEIGHT EFFECT CHECK:', {
+            BROWSER,
+            itemElementsLength: itemElements.length,
+            isCalculatingHeight,
+            dirtyItemsCount
+        })
         if (BROWSER && itemElements.length > 0 && !isCalculatingHeight) {
+            console.log('🔥 CALLING updateHeight()')
+            updateHeight()
+        }
+    })
+
+    // Trigger height calculation when dirty items are added
+    $effect(() => {
+        console.log('🔥 DIRTY ITEMS EFFECT:', {
+            dirtyItemsCount,
+            isCalculatingHeight
+        })
+        if (BROWSER && dirtyItemsCount > 0 && !isCalculatingHeight) {
+            console.log('🔥 CALLING updateHeight() for dirty items')
             updateHeight()
         }
     })
@@ -261,6 +341,12 @@
                 result.clearedDirtyItems.forEach((index) => {
                     dirtyItems.delete(index)
                 })
+                dirtyItemsCount = dirtyItems.size // Update reactive count
+
+                // Handle height changes for scroll correction
+                if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
+                    handleHeightChangesScrollCorrection(result.heightChanges)
+                }
 
                 if (INTERNAL_DEBUG && result.clearedDirtyItems.size > 0) {
                     console.log(
@@ -271,6 +357,7 @@
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
+            mode, // Pass mode for correct element indexing
             totalMeasuredHeight, // Current running total height
             measuredCount // Current running total count
         )
@@ -595,28 +682,40 @@
     if (BROWSER) {
         // Watch for individual item size changes
         itemResizeObserver = new ResizeObserver((entries) => {
-            let shouldRecalculate = false
+            tick().then(() => {
+                let shouldRecalculate = false
+                const visibleRange = visibleItems() // Cache once to avoid reactive loops
 
-            for (const entry of entries) {
-                const element = entry.target as HTMLElement
-                const elementIndex = itemElements.indexOf(element)
+                for (const entry of entries) {
+                    const element = entry.target as HTMLElement
+                    const elementIndex = itemElements.indexOf(element)
+                    console.log(
+                        '🔥 ELEMENT INDEX:',
+                        elementIndex,
+                        element.getBoundingClientRect().height,
+                        element.dataset.originalIndex
+                    )
 
-                if (elementIndex !== -1) {
-                    const actualIndex = visibleItems().start + elementIndex
-                    dirtyItems.add(actualIndex)
-                    shouldRecalculate = true
+                    if (elementIndex !== -1) {
+                        // Get the original index directly from the data attribute
+                        const actualIndex = parseInt(element.dataset.originalIndex || '-1', 10)
 
-                    if (INTERNAL_DEBUG) {
-                        console.log(`Item ${actualIndex} resized, queue size: ${dirtyItems.size}`)
+                        if (actualIndex >= 0) {
+                            console.log('🔥 MARKING ITEM', actualIndex, 'as DIRTY')
+
+                            dirtyItems.add(actualIndex)
+                            dirtyItemsCount = dirtyItems.size
+                            shouldRecalculate = true
+                        }
                     }
                 }
-            }
 
-            if (shouldRecalculate) {
-                rafSchedule(() => {
-                    updateHeight()
-                })
-            }
+                if (shouldRecalculate) {
+                    rafSchedule(() => {
+                        updateHeight()
+                    })
+                }
+            })
         })
     }
 
@@ -890,12 +989,16 @@
                 })()}px)"
             >
                 {#each (() => {
+                    const visibleRange = visibleItems()
                     const slice = mode === 'bottomToTop' ? items
-                                  .slice(visibleItems().start, visibleItems().end)
-                                  .reverse() : items.slice(visibleItems().start, visibleItems().end)
+                                  .slice(visibleRange.start, visibleRange.end)
+                                  .reverse() : items.slice(visibleRange.start, visibleRange.end)
 
-                    return slice
-                })() as currentItem, i (currentItem?.id ?? i)}
+                    // Map each item with its original index for proper DOM element tracking
+                    const itemsWithOriginalIndex = slice.map( (item, sliceIndex) => ({ item, originalIndex: mode === 'bottomToTop' ? visibleRange.end - 1 - sliceIndex : visibleRange.start + sliceIndex, sliceIndex }) )
+
+                    return itemsWithOriginalIndex
+                })() as currentItemWithIndex, i (currentItemWithIndex.originalIndex)}
                     <!-- Only debug when visible range or average height changes -->
                     {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, calculatedItemHeight)}
                         {@const debugInfo = createDebugInfo(
@@ -911,12 +1014,14 @@
                             : console.info('Virtual List Debug:', debugInfo)}
                     {/if}
                     <!-- Render each visible item -->
-                    <div bind:this={itemElements[i]} use:autoObserveItemResize>
+                    <div
+                        bind:this={itemElements[currentItemWithIndex.sliceIndex]}
+                        use:autoObserveItemResize
+                        data-original-index={currentItemWithIndex.originalIndex}
+                    >
                         {@render renderItem(
-                            currentItem,
-                            mode === 'bottomToTop'
-                                ? items.length - (visibleItems().start + i) - 1
-                                : visibleItems().start + i
+                            currentItemWithIndex.item,
+                            currentItemWithIndex.originalIndex
                         )}
                     </div>
                 {/each}
