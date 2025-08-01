@@ -54,7 +54,8 @@ describe('virtualListDebug utilities', () => {
                 processedItems,
                 averageItemHeight,
                 scrollTop,
-                viewportHeight
+                viewportHeight,
+                totalItems * averageItemHeight // totalHeight = 100 * 50 = 5000
             )
 
             expect(result).toEqual({
@@ -77,7 +78,8 @@ describe('virtualListDebug utilities', () => {
                 10,
                 50,
                 0, // At top
-                400
+                400,
+                5000 // totalHeight = 100 * 50
             )
 
             expect(result.atTop).toBe(true)
@@ -91,7 +93,8 @@ describe('virtualListDebug utilities', () => {
                 50,
                 50,
                 4600, // scrollTop = totalHeight (5000) - viewportHeight (400) = 4600
-                400
+                400,
+                5000 // totalHeight = 100 * 50
             )
 
             expect(result.atTop).toBe(false)
@@ -105,7 +108,8 @@ describe('virtualListDebug utilities', () => {
                 10,
                 50,
                 1, // Just at the tolerance boundary
-                400
+                400,
+                5000 // totalHeight = 100 * 50
             )
 
             expect(result.atTop).toBe(true) // Should still be considered at top due to tolerance
