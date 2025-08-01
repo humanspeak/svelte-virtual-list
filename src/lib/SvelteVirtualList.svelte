@@ -311,7 +311,7 @@
             isCalculatingHeight,
             dirtyItemsCount
         })
-        if (BROWSER && itemElements.length > 0 && !isCalculatingHeight) {
+        if (BROWSER && itemElements.length > 0) {
             console.log('🔥 CALLING updateHeight()')
             updateHeight()
         }
@@ -323,7 +323,7 @@
             dirtyItemsCount,
             isCalculatingHeight
         })
-        if (BROWSER && dirtyItemsCount > 0 && !isCalculatingHeight) {
+        if (BROWSER && dirtyItemsCount > 0) {
             console.log('🔥 CALLING updateHeight() for dirty items')
             updateHeight()
         }
@@ -378,6 +378,12 @@
     let userHasScrolledAway = $state(false)
     let lastCalculatedHeight = $state(0)
     let lastItemsLength = $state(0)
+
+    let atTop = $derived(scrollTop <= 1)
+    let atBottom = $derived(scrollTop >= items.length * calculatedItemHeight - height - 1)
+
+    $inspect('scrollState: atTop', atTop)
+    $inspect('scrollState: atBottom', atBottom)
 
     $effect(() => {
         if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {
@@ -916,25 +922,12 @@
     function autoObserveItemResize(element: HTMLElement) {
         if (itemResizeObserver) {
             itemResizeObserver.observe(element)
-            if (INTERNAL_DEBUG) {
-                console.log(
-                    'Started observing element:',
-                    element,
-                    'Current height:',
-                    element.getBoundingClientRect().height
-                )
-            }
-        } else if (INTERNAL_DEBUG) {
-            console.log('itemResizeObserver not available for element:', element)
         }
 
         return {
             destroy() {
                 if (itemResizeObserver) {
                     itemResizeObserver.unobserve(element)
-                    if (INTERNAL_DEBUG) {
-                        console.log('Stopped observing element:', element)
-                    }
                 }
             }
         }
