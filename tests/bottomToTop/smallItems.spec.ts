@@ -2,9 +2,9 @@ import { expect, test } from '@playwright/test'
 
 test.describe('BottomToTop Small Items', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/bottomToTop/smallItems')
+        await page.goto('/tests/bottomToTop/smallItems', { waitUntil: 'networkidle' })
         // Wait for the virtual list to be visible
-        await page.waitForSelector('[data-testid="basic-list"]')
+        await page.waitForSelector('[data-testid="basic-list-container"]')
     })
 
     test('should render 2 items correctly', async ({ page }) => {
@@ -120,7 +120,7 @@ test.describe('BottomToTop Small Items', () => {
 
     test('should have proper DOM structure', async ({ page }) => {
         // Check that the virtual list container exists
-        const virtualList = page.locator('[data-testid="basic-list"]')
+        const virtualList = page.locator('[data-testid="basic-list-container"]')
         await expect(virtualList).toBeVisible()
 
         // Check that items container exists
@@ -138,7 +138,7 @@ test.describe('BottomToTop Small Items', () => {
 
     test('should apply correct CSS classes and test IDs', async ({ page }) => {
         // Check main container has correct test ID
-        const mainContainer = page.locator('[data-testid="basic-list"]')
+        const mainContainer = page.locator('[data-testid="basic-list-container"]')
         await expect(mainContainer).toBeVisible()
 
         // Check items container has correct test ID

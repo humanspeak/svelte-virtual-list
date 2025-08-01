@@ -280,6 +280,7 @@
     // Track if user has scrolled away from bottom to prevent snap-back
     let userHasScrolledAway = $state(false)
     let lastCalculatedHeight = $state(0)
+    let lastItemsLength = $state(0)
 
     $effect(() => {
         if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {
@@ -320,6 +321,56 @@
 
             lastCalculatedHeight = calculatedItemHeight
         }
+    })
+
+    // Handle items being added/removed in bottomToTop mode
+    $effect(() => {
+        if (
+            BROWSER &&
+            initialized &&
+            mode === 'bottomToTop' &&
+            viewportElement &&
+            lastItemsLength > 0
+        ) {
+            const itemsAdded = items.length - lastItemsLength
+
+            if (itemsAdded !== 0) {
+                const currentScrollTop = viewportElement.scrollTop
+                const totalHeight = Math.max(0, items.length * calculatedItemHeight)
+                const maxScrollTop = Math.max(0, totalHeight - height)
+
+                // Check if user was at/near the bottom before items were added
+                const wasNearBottom =
+                    Math.abs(
+                        currentScrollTop -
+                            Math.max(0, lastItemsLength * calculatedItemHeight - height)
+                    ) <
+                    calculatedItemHeight * 2
+
+                if (wasNearBottom || currentScrollTop === 0) {
+                    // User was at bottom, keep them at bottom after new items are added
+                    const newScrollTop = maxScrollTop
+
+                    if (INTERNAL_DEBUG) {
+                        console.log(
+                            `📝 Items ${itemsAdded > 0 ? 'added' : 'removed'}: ${Math.abs(itemsAdded)}, staying at bottom`,
+                            'oldScroll:',
+                            currentScrollTop,
+                            'newScroll:',
+                            newScrollTop
+                        )
+                    }
+
+                    viewportElement.scrollTop = newScrollTop
+                    scrollTop = newScrollTop
+
+                    // Reset the "scrolled away" flag since we're actively managing position
+                    userHasScrolledAway = false
+                }
+            }
+        }
+
+        lastItemsLength = items.length
     })
 
     // Update container height when element is mounted
