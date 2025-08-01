@@ -222,9 +222,9 @@ export const calculateAverageHeight = (
     heightCache: Record<number, number>,
     currentItemHeight: number,
     dirtyItems: Set<number>,
-    mode: SvelteVirtualListMode,
     currentTotalHeight: number = 0,
-    currentValidCount: number = 0
+    currentValidCount: number = 0,
+    mode: SvelteVirtualListMode = 'topToBottom'
 ): {
     newHeight: number
     newLastMeasuredIndex: number
@@ -288,12 +288,7 @@ export const calculateAverageHeight = (
                             // Track the height change for scroll correction
                             const actualOldHeight = oldHeight || currentItemHeight
                             const delta = height - actualOldHeight
-                            console.log('🔥 HEIGHT CHANGE DETECTED:', {
-                                itemIndex,
-                                oldHeight: actualOldHeight,
-                                newHeight: height,
-                                delta
-                            })
+
                             heightChanges.push({
                                 index: itemIndex,
                                 oldHeight: actualOldHeight,

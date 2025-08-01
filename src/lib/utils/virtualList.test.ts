@@ -388,7 +388,7 @@ describe('calculateAverageHeight', () => {
 
         // Should only measure item 0 (item 5 not visible)
         expect(result.updatedHeightCache).toEqual({ 0: 30 })
-        expect(result.clearedDirtyItems).toEqual(new Set([0])) // Only visible item cleared
+        expect(result.clearedDirtyItems).toEqual(new Set([0, 5])) // Both items cleared to prevent infinite loop
         expect(result.newHeight).toBe(30) // Only item 0 measured
     })
 
