@@ -48,23 +48,30 @@ export const calculateVisibleRange = (
 ) => {
     if (mode === 'bottomToTop') {
         const visibleCount = Math.ceil(viewportHeight / itemHeight) + 1
-        const bottomIndex = totalItems - Math.floor(scrollTop / itemHeight)
 
-        // Safeguard: if bottomIndex is negative, it means scrollTop is too large for current itemHeight
-        // This can happen when itemHeight changes but scrollTop hasn't been corrected yet
-        if (bottomIndex < 0) {
-            // Calculate what scrollTop should be and use that for visible range
-            const totalHeight = totalItems * itemHeight
-            const correctedScrollTop = Math.max(0, totalHeight - viewportHeight)
-            const correctedBottomIndex = totalItems - Math.floor(correctedScrollTop / itemHeight)
-            const start = Math.max(0, correctedBottomIndex - visibleCount - bufferSize)
-            const end = Math.min(totalItems, correctedBottomIndex + bufferSize)
+        // In bottomToTop mode, scrollTop represents distance from the total content end
+        // scrollTop = 0 means we're at the beginning (showing first items)
+        // scrollTop = maxScrollTop means we're at the end (showing last items)
+        const totalHeight = totalItems * itemHeight
+        const maxScrollTop = Math.max(0, totalHeight - viewportHeight)
+
+        // Convert scrollTop to "distance from start" for bottomToTop
+        const distanceFromStart = maxScrollTop - scrollTop
+        const startIndex = Math.floor(distanceFromStart / itemHeight)
+
+        // Safeguard: handle edge cases
+        if (startIndex < 0) {
+            // We're scrolled beyond the maximum (showing first items)
+            const start = 0
+            const end = Math.min(totalItems, visibleCount + bufferSize * 2)
+
             return { start, end } as SvelteVirtualListPreviousVisibleRange
         }
 
         // Add buffer to both ends
-        const start = Math.max(0, bottomIndex - visibleCount - bufferSize)
-        const end = Math.min(totalItems, bottomIndex + bufferSize)
+        const start = Math.max(0, startIndex - bufferSize)
+        const end = Math.min(totalItems, startIndex + visibleCount + bufferSize)
+
         return { start, end } as SvelteVirtualListPreviousVisibleRange
     } else {
         const start = Math.floor(scrollTop / itemHeight)
@@ -124,7 +131,9 @@ export const calculateTransformY = (
         // In bottomToTop mode, we need to position the container so that
         // the first visible item (visibleStart) aligns with its correct position
         // from the bottom of the total content
-        return (totalItems - visibleEnd) * itemHeight
+        const transform = (totalItems - visibleEnd) * itemHeight
+
+        return transform
     } else {
         return visibleStart * itemHeight
     }

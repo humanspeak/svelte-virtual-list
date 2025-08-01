@@ -1,4 +1,4 @@
-import type { SvelteVirtualListMode, SvelteVirtualListScrollAlignment } from '$lib/types.js'
+import type { SvelteVirtualListMode, SvelteVirtualListScrollAlign } from '$lib/types.js'
 import { getScrollOffsetForIndex } from './virtualList.js'
 
 /**
@@ -6,7 +6,7 @@ import { getScrollOffsetForIndex } from './virtualList.js'
  */
 export interface ScrollTargetParams {
     mode: SvelteVirtualListMode
-    align: SvelteVirtualListScrollAlignment
+    align: SvelteVirtualListScrollAlign
     targetIndex: number
     itemsLength: number
     calculatedItemHeight: number
@@ -90,7 +90,7 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
  * Parameters for bottom-to-top scroll calculation
  */
 interface BottomToTopScrollParams {
-    align: SvelteVirtualListScrollAlignment
+    align: SvelteVirtualListScrollAlign
     targetIndex: number
     itemsLength: number
     calculatedItemHeight: number
@@ -171,7 +171,7 @@ const calculateBottomToTopScrollTarget = (params: BottomToTopScrollParams): numb
  * Parameters for top-to-bottom scroll calculation
  */
 interface TopToBottomScrollParams {
-    align: SvelteVirtualListScrollAlignment
+    align: SvelteVirtualListScrollAlign
     targetIndex: number
     calculatedItemHeight: number
     height: number
