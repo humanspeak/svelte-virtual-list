@@ -86,9 +86,9 @@ export function createDebugInfo(
     processedItems: number,
     averageItemHeight: number,
     scrollTop: number,
-    viewportHeight: number
+    viewportHeight: number,
+    totalHeight: number
 ): SvelteVirtualListDebugInfo {
-    const totalHeight = totalItems * averageItemHeight
     const atTop = scrollTop <= 1 // Small tolerance for floating point precision
     const atBottom = scrollTop >= totalHeight - viewportHeight - 1 // Small tolerance
 

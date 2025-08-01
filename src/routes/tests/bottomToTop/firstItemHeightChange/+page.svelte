@@ -25,7 +25,7 @@
         //         index: 0
         //     })
         // }, 50)
-    }, 1000 * 1)
+    }, 1000 * 5)
 </script>
 
 <div class="test-container" style="height: 500px;">
