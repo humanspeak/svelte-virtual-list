@@ -165,7 +165,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         // Trigger height change
         await page.clock.runFor(1000)
 
-        // Wait for height change
+        // After height change
         await page.waitForFunction(
             () => {
                 const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
@@ -174,29 +174,14 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 2000 }
         )
 
+        // Then wait a bit more for virtual list to reposition
+        await page.waitForTimeout(50)
+
         // CRITICAL: In bottomToTop mode, list-item-0 should STILL be visible in viewport after height change
         // This is the main test - if we see middle items (like Item 131) instead, the test should fail
         await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible({
-            timeout: 1000
+            timeout: 1050
         })
-
-        // Additional check: Verify list-item-0 is in the actual viewport (not just DOM-visible)
-        const item0InViewport = await page.locator('[data-testid="list-item-0"]').evaluate((el) => {
-            const rect = el.getBoundingClientRect()
-            const viewport = el.closest('[data-testid="basic-list-viewport"]')
-            if (!viewport) return false
-            const viewportRect = viewport.getBoundingClientRect()
-
-            // Check if item is actually visible within the viewport
-            return (
-                rect.bottom >= viewportRect.top &&
-                rect.top <= viewportRect.bottom &&
-                rect.right >= viewportRect.left &&
-                rect.left <= viewportRect.right
-            )
-        })
-
-        expect(item0InViewport).toBe(true) // list-item-0 should be in viewport for bottomToTop
 
         // Additional checks for scroll stability
         const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)

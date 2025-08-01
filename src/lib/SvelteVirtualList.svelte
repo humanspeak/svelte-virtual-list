@@ -253,7 +253,7 @@
 
             // In bottomToTop mode, we're "at bottom" when scroll is at max position
             // which shows the first items (indices 0-19) at the bottom of the viewport
-            const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) < calculatedItemHeight
+            const isAtBottom = atBottom
             if (isAtBottom) {
                 if (INTERNAL_DEBUG) {
                     console.log('🔄 Skipping scroll correction in bottomToTop mode at bottom', {
@@ -303,28 +303,14 @@
         }
     }
 
-    // Trigger height calculation when items are rendered
-    $effect(() => {
-        console.log('🔥 HEIGHT EFFECT CHECK:', {
-            BROWSER,
-            itemElementsLength: itemElements.length,
-            isCalculatingHeight,
-            dirtyItemsCount
-        })
-        if (BROWSER && itemElements.length > 0) {
-            console.log('🔥 CALLING updateHeight()')
-            updateHeight()
-        }
-    })
-
     // Trigger height calculation when dirty items are added
     $effect(() => {
         console.log('🔥 DIRTY ITEMS EFFECT:', {
-            dirtyItemsCount,
-            isCalculatingHeight
+            dirtyItemsCount
         })
         if (BROWSER && dirtyItemsCount > 0) {
             console.log('🔥 CALLING updateHeight() for dirty items')
+            wasAtBottomBeforeHeightChange = atBottom
             updateHeight()
         }
     })
@@ -364,6 +350,7 @@
                         Array.from(result.clearedDirtyItems)
                     )
                 }
+                wasAtBottomBeforeHeightChange = false
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
@@ -381,6 +368,8 @@
 
     let atTop = $derived(scrollTop <= 1)
     let atBottom = $derived(scrollTop >= items.length * calculatedItemHeight - height - 1)
+    let wasAtBottomBeforeHeightChange = false
+    let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
     $inspect('scrollState: atTop', atTop)
     $inspect('scrollState: atBottom', atBottom)
@@ -572,28 +561,34 @@
             const targetScrollTop = Math.max(0, totalHeight - viewportHeight)
 
             // Use the target scroll position for visible range calculation
-            const result = calculateVisibleRange(
+            lastVisibleRange = calculateVisibleRange(
                 targetScrollTop,
                 viewportHeight,
                 calculatedItemHeight,
                 items.length,
                 bufferSize,
-                mode
+                mode,
+                atBottom,
+                wasAtBottomBeforeHeightChange,
+                lastVisibleRange
             )
 
-            return result
+            return lastVisibleRange
         }
 
-        const result = calculateVisibleRange(
+        lastVisibleRange = calculateVisibleRange(
             scrollTop,
             viewportHeight,
             calculatedItemHeight,
             items.length,
             bufferSize,
-            mode
+            mode,
+            atBottom,
+            wasAtBottomBeforeHeightChange,
+            lastVisibleRange
         )
 
-        return result
+        return lastVisibleRange
     })
 
     /**
