@@ -257,7 +257,7 @@
             const isAtBottom = atBottom
             if (isAtBottom) {
                 if (INTERNAL_DEBUG) {
-                    console.log('🔄 Skipping scroll correction in bottomToTop mode at bottom', {
+                    console.log('🔄 Maintaining bottom anchor in bottomToTop mode', {
                         currentScrollTop,
                         maxScrollTop,
                         visibleStart: currentVisibleRange.start
@@ -717,12 +717,12 @@
                 for (const entry of entries) {
                     const element = entry.target as HTMLElement
                     const elementIndex = itemElements.indexOf(element)
-                    console.log(
-                        '🔥 ELEMENT INDEX:',
-                        elementIndex,
-                        element.getBoundingClientRect().height,
-                        element.dataset.originalIndex
-                    )
+                    // console.log(
+                    //     '🔥 ELEMENT INDEX:',
+                    //     elementIndex,
+                    //     element.getBoundingClientRect().height,
+                    //     element.dataset.originalIndex
+                    // )
 
                     if (elementIndex !== -1) {
                         // Get the original index directly from the data attribute
@@ -735,9 +735,9 @@
                             if (
                                 isSignificantHeightChange(actualIndex, currentHeight, heightCache)
                             ) {
-                                console.log(
-                                    `🔥 MARKING ITEM ${actualIndex} - DIRTY - height change: ${currentHeight}`
-                                )
+                                // console.log(
+                                //     `🔥 MARKING ITEM ${actualIndex} - DIRTY - height change: ${currentHeight}`
+                                // )
 
                                 // Capture bottom state when FIRST item gets marked dirty
                                 if (dirtyItemsCount === 0) {
@@ -753,16 +753,18 @@
                                 dirtyItems.add(actualIndex)
                                 dirtyItemsCount = dirtyItems.size
                                 shouldRecalculate = true
-                            } else {
-                                console.log(
-                                    `🔥 SKIPPING ITEM ${actualIndex} - height change too small: ${currentHeight}`
-                                )
                             }
+                            // else {
+                            //     console.log(
+                            //         `🔥 SKIPPING ITEM ${actualIndex} - height change too small: ${currentHeight}`
+                            //     )
+                            // }
                         }
                     }
                 }
 
                 if (shouldRecalculate) {
+                    console.log('🔥 SHOULD RECALCULATE')
                     rafSchedule(() => {
                         updateHeight()
                     })
