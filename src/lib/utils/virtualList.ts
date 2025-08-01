@@ -51,11 +51,11 @@ export const calculateVisibleRange = (
 ): SvelteVirtualListPreviousVisibleRange => {
     if (mode === 'bottomToTop') {
         if (wasAtBottomBeforeHeightChange && lastVisibleRange) {
-            console.log('calculateVisibleRange:wasAtBottomBeforeHeightChange', {
-                lastVisibleRange,
-                atBottom,
-                wasAtBottomBeforeHeightChange
-            })
+            // console.log('calculateVisibleRange:wasAtBottomBeforeHeightChange', {
+            //     lastVisibleRange,
+            //     atBottom,
+            //     wasAtBottomBeforeHeightChange
+            // })
             return lastVisibleRange
         }
         const visibleCount = Math.ceil(viewportHeight / itemHeight) + 1
@@ -75,13 +75,13 @@ export const calculateVisibleRange = (
             // We're scrolled beyond the maximum (showing first items)
             const start = 0
             const end = Math.min(totalItems, visibleCount + bufferSize * 2)
-            console.log('calculateVisibleRange:startIndex < 0', {
-                start,
-                end,
-                atBottom,
-                wasAtBottomBeforeHeightChange,
-                lastVisibleRange
-            })
+            // console.log('calculateVisibleRange:startIndex < 0', {
+            //     start,
+            //     end,
+            //     atBottom,
+            //     wasAtBottomBeforeHeightChange,
+            //     lastVisibleRange
+            // })
             return { start, end } as SvelteVirtualListPreviousVisibleRange
         }
 
@@ -89,13 +89,13 @@ export const calculateVisibleRange = (
         const start = Math.max(0, startIndex - bufferSize)
         const end = Math.min(totalItems, startIndex + visibleCount + bufferSize)
 
-        console.log('calculateVisibleRange:startIndex >= 0', {
-            start,
-            end,
-            atBottom,
-            wasAtBottomBeforeHeightChange,
-            lastVisibleRange
-        })
+        // console.log('calculateVisibleRange:startIndex >= 0', {
+        //     start,
+        //     end,
+        //     atBottom,
+        //     wasAtBottomBeforeHeightChange,
+        //     lastVisibleRange
+        // })
         return { start, end } as SvelteVirtualListPreviousVisibleRange
     } else {
         const start = Math.floor(scrollTop / itemHeight)
@@ -115,25 +115,25 @@ export const calculateVisibleRange = (
             const adjustedStart = Math.max(0, adjustedEnd - visibleItemCount)
 
             // TopToBottom safeguard is now active
-            console.log('calculateVisibleRange:isAtBottom', {
-                start: adjustedStart,
-                end: adjustedEnd,
-                atBottom,
-                wasAtBottomBeforeHeightChange,
-                lastVisibleRange
-            })
+            // console.log('calculateVisibleRange:isAtBottom', {
+            //     start: adjustedStart,
+            //     end: adjustedEnd,
+            //     atBottom,
+            //     wasAtBottomBeforeHeightChange,
+            //     lastVisibleRange
+            // })
             return {
                 start: adjustedStart,
                 end: adjustedEnd
             } as SvelteVirtualListPreviousVisibleRange
         }
-        console.log('calculateVisibleRange:isNotAtBottom', {
-            start: Math.max(0, start - bufferSize),
-            end: Math.min(totalItems, end + bufferSize),
-            atBottom,
-            wasAtBottomBeforeHeightChange,
-            lastVisibleRange
-        })
+        // console.log('calculateVisibleRange:isNotAtBottom', {
+        //     start: Math.max(0, start - bufferSize),
+        //     end: Math.min(totalItems, end + bufferSize),
+        //     atBottom,
+        //     wasAtBottomBeforeHeightChange,
+        //     lastVisibleRange
+        // })
         // Add buffer to both ends
         return {
             start: Math.max(0, start - bufferSize),
