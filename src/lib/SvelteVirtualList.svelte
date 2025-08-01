@@ -174,7 +174,7 @@
     import { onMount, tick } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-    const INTERNAL_DEBUG = false
+    const INTERNAL_DEBUG = true
     /**
      * Core configuration props with default values
      * @type {SvelteVirtualListProps}
@@ -546,31 +546,22 @@
         itemResizeObserver = new ResizeObserver((entries) => {
             let shouldRecalculate = false
 
-            if (INTERNAL_DEBUG) {
-                console.log(`ResizeObserver fired for ${entries.length} entries`)
-            }
-
             for (const entry of entries) {
                 const element = entry.target as HTMLElement
                 const elementIndex = itemElements.indexOf(element)
 
                 if (elementIndex !== -1) {
                     const actualIndex = visibleItems().start + elementIndex
-
-                    // ResizeObserver fired = element resized, so add to dirty queue
                     dirtyItems.add(actualIndex)
                     shouldRecalculate = true
 
                     if (INTERNAL_DEBUG) {
-                        console.log(
-                            `Item ${actualIndex} marked dirty (resized), queue size: ${dirtyItems.size}`
-                        )
+                        console.log(`Item ${actualIndex} resized, queue size: ${dirtyItems.size}`)
                     }
                 }
             }
 
             if (shouldRecalculate) {
-                // Trigger virtual list recalculation
                 rafSchedule(() => {
                     updateHeight()
                 })
@@ -716,7 +707,7 @@
         // Use extracted scroll calculation utility
         const scrollTarget = calculateScrollTarget({
             mode,
-            align,
+            align: align || 'auto',
             targetIndex,
             itemsLength: items.length,
             calculatedItemHeight,
@@ -732,9 +723,18 @@
             return
         }
 
+        if (INTERNAL_DEBUG) {
+            console.log(`Programmatic scroll initiated to index ${targetIndex}`)
+        }
+
         viewportElement.scrollTo({
             top: scrollTarget,
             behavior: smoothScroll ? 'smooth' : 'auto'
+        })
+
+        // Update scrollTop state in next frame to avoid synchronous re-renders
+        requestAnimationFrame(() => {
+            scrollTop = scrollTarget
         })
     }
 
@@ -811,11 +811,12 @@
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
                 style:transform="translateY({(() => {
+                    const visibleRange = visibleItems()
                     const transform = calculateTransformY(
                         mode,
                         items.length,
-                        visibleItems().end,
-                        visibleItems().start,
+                        visibleRange.end,
+                        visibleRange.start,
                         calculatedItemHeight
                     )
 

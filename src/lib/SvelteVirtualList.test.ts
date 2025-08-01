@@ -254,8 +254,7 @@ describe('SvelteVirtualList Component', () => {
             render(TestWrapper, {
                 props: {
                     testId: 'test-list',
-                    items,
-                    itemHeight: 40
+                    items
                 }
             })
 
@@ -400,8 +399,7 @@ describe('SvelteVirtualList Component', () => {
             render(TestWrapper, {
                 props: {
                     testId: 'test-list',
-                    items,
-                    itemHeight: 0
+                    items
                 }
             })
 

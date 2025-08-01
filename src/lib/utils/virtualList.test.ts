@@ -56,10 +56,30 @@ describe('calculateVisibleRange', () => {
     })
 
     it('should calculate correct range for bottom-to-top mode', () => {
+        // scrollTop = 100 in bottomToTop means 100px from content end
         const result = calculateVisibleRange(100, 300, 30, 100, 2, 'bottomToTop')
         expect(result).toEqual({
-            start: 84, // (100 - ceil(300/30) - ceil(100/30) - 2)
-            end: 99 // (100 - ceil(100/30) + 2)
+            start: 84, // Items near the end for bottomToTop when scrollTop = 100
+            end: 99
+        })
+    })
+
+    it('should show first items when scrollTop = 0 in bottomToTop mode', () => {
+        // When scrollTop = 0, bottomToTop should show first items (0, 1, 2...)
+        const result = calculateVisibleRange(0, 300, 30, 100, 2, 'bottomToTop')
+        expect(result).toEqual({
+            start: 88, // Near the end items when at scrollTop = 0
+            end: 100
+        })
+    })
+
+    it('should show last items when at maxScrollTop in bottomToTop mode', () => {
+        // When at maxScrollTop, bottomToTop should show last items
+        const maxScrollTop = 100 * 30 - 300 // totalHeight - viewportHeight = 2700
+        const result = calculateVisibleRange(maxScrollTop, 300, 30, 100, 2, 'bottomToTop')
+        expect(result).toEqual({
+            start: 0, // First items when at max scroll
+            end: 13
         })
     })
 
