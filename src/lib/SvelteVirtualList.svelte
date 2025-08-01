@@ -247,10 +247,20 @@
         // This prevents jumping when items at the bottom change height
         if (mode === 'bottomToTop') {
             const currentVisibleRange = visibleItems()
-            const isAtBottom = currentVisibleRange.start === 0
+            const totalHeight = items.length * calculatedItemHeight
+            const maxScrollTop = Math.max(0, totalHeight - height)
+            const currentScrollTop = viewportElement.scrollTop
+
+            // In bottomToTop mode, we're "at bottom" when scroll is at max position
+            // which shows the first items (indices 0-19) at the bottom of the viewport
+            const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) < calculatedItemHeight
             if (isAtBottom) {
                 if (INTERNAL_DEBUG) {
-                    console.log('🔄 Skipping scroll correction in bottomToTop mode at bottom')
+                    console.log('🔄 Skipping scroll correction in bottomToTop mode at bottom', {
+                        currentScrollTop,
+                        maxScrollTop,
+                        visibleStart: currentVisibleRange.start
+                    })
                 }
                 return
             }
@@ -357,9 +367,9 @@
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
-            mode, // Pass mode for correct element indexing
             totalMeasuredHeight, // Current running total height
-            measuredCount // Current running total count
+            measuredCount, // Current running total count
+            mode // Pass mode for correct element indexing
         )
     }
 
@@ -380,9 +390,17 @@
             // 1. Item height changed significantly (not just user scrolling)
             // 2. User hasn't intentionally scrolled away from bottom
             // 3. We're significantly off target
+            // 4. We're not at the bottom (where height changes should be handled more carefully)
             const heightChanged = Math.abs(calculatedItemHeight - lastCalculatedHeight) > 1
+            const maxScrollTop = Math.max(0, totalHeight - height)
+
+            // In bottomToTop mode, we're "at bottom" when scroll is at max position
+            const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) < calculatedItemHeight
             const shouldCorrect =
-                heightChanged && !userHasScrolledAway && scrollDifference > calculatedItemHeight * 3
+                heightChanged &&
+                !userHasScrolledAway &&
+                !isAtBottom && // Don't apply aggressive correction when at bottom
+                scrollDifference > calculatedItemHeight * 3
 
             if (shouldCorrect) {
                 if (INTERNAL_DEBUG) {

@@ -91,25 +91,18 @@ export const calculateAverageHeightDebounced = (
     }) => void,
     debounceTime: number,
     dirtyItems: Set<number>,
-    mode: SvelteVirtualListMode,
     currentTotalHeight: number = 0,
-    currentValidCount: number = 0
+    currentValidCount: number = 0,
+    mode: SvelteVirtualListMode = 'topToBottom'
 ): NodeJS.Timeout | null => {
     if (!BROWSER || isCalculatingHeight) return null
 
     const visibleRange = visibleItemsGetter()
     const currentIndex = visibleRange.start
 
-    console.log('🔥 HEIGHT CALCULATION CHECK:', {
-        currentIndex,
-        lastMeasuredIndex,
-        dirtyItemsSize: dirtyItems.size,
-        willSkip: currentIndex === lastMeasuredIndex && dirtyItems.size === 0
-    })
     if (currentIndex === lastMeasuredIndex && dirtyItems.size === 0) return null
     if (heightUpdateTimeout) clearTimeout(heightUpdateTimeout)
     return setTimeout(() => {
-        console.log('🔥 EXECUTING HEIGHT CALCULATION after debounce')
         const {
             newHeight,
             newLastMeasuredIndex,
@@ -124,9 +117,9 @@ export const calculateAverageHeightDebounced = (
             heightCache,
             calculatedItemHeight,
             dirtyItems,
-            mode,
             currentTotalHeight,
-            currentValidCount
+            currentValidCount,
+            mode
         )
 
         if (Math.abs(newHeight - calculatedItemHeight) > 1 || dirtyItems.size > 0) {
