@@ -154,6 +154,9 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
 
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
+        // In bottomToTop mode, list-item-0 should be visible at bottom initially
+        await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible()
+
         // Record initial state
         const initialScrollTop = await viewport.evaluate((el) => el.scrollTop)
         const item0 = page.locator('[data-testid="list-item-0"]')
@@ -171,12 +174,35 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 2000 }
         )
 
-        // Check final state
+        // CRITICAL: In bottomToTop mode, list-item-0 should STILL be visible in viewport after height change
+        // This is the main test - if we see middle items (like Item 131) instead, the test should fail
+        await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible({
+            timeout: 1000
+        })
+
+        // Additional check: Verify list-item-0 is in the actual viewport (not just DOM-visible)
+        const item0InViewport = await page.locator('[data-testid="list-item-0"]').evaluate((el) => {
+            const rect = el.getBoundingClientRect()
+            const viewport = el.closest('[data-testid="basic-list-viewport"]')
+            if (!viewport) return false
+            const viewportRect = viewport.getBoundingClientRect()
+
+            // Check if item is actually visible within the viewport
+            return (
+                rect.bottom >= viewportRect.top &&
+                rect.top <= viewportRect.bottom &&
+                rect.right >= viewportRect.left &&
+                rect.left <= viewportRect.right
+            )
+        })
+
+        expect(item0InViewport).toBe(true) // list-item-0 should be in viewport for bottomToTop
+
+        // Additional checks for scroll stability
         const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)
         const finalItem0Y = (await item0.boundingBox())?.y
 
-        // The scroll position should be stable or have minimal change
-        // (some change is expected due to height adjustment, but no wild jumping)
+        // The scroll should maintain bottom anchor - some change is expected but not massive jumps
         const scrollDifference = Math.abs(finalScrollTop - initialScrollTop)
         expect(scrollDifference).toBeLessThan(200) // Allow reasonable adjustment
 
