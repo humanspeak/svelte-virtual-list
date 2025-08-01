@@ -161,6 +161,7 @@
     } from '$lib/types.js'
     import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
+    import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
     import {
         calculateScrollPosition,
         calculateTransformY,
@@ -404,14 +405,22 @@
                         currentScrollTop,
                         'to',
                         targetScrollTop,
+                        '(rounded:',
+                        Math.round(targetScrollTop),
+                        ') totalHeight:',
+                        items.length * calculatedItemHeight,
+                        'height:',
+                        height,
                         'diff:',
                         scrollDifference,
                         'heightChanged:',
                         heightChanged
                     )
                 }
-                viewportElement.scrollTop = targetScrollTop
-                scrollTop = targetScrollTop
+                // Round to avoid subpixel positioning issues in bottomToTop mode
+                const roundedTargetScrollTop = Math.round(targetScrollTop)
+                viewportElement.scrollTop = roundedTargetScrollTop
+                scrollTop = roundedTargetScrollTop
             }
 
             // Track if user has scrolled significantly away from bottom
@@ -720,11 +729,35 @@
                         const actualIndex = parseInt(element.dataset.originalIndex || '-1', 10)
 
                         if (actualIndex >= 0) {
-                            console.log('🔥 MARKING ITEM', actualIndex, 'as DIRTY')
+                            const currentHeight = element.getBoundingClientRect().height
 
-                            dirtyItems.add(actualIndex)
-                            dirtyItemsCount = dirtyItems.size
-                            shouldRecalculate = true
+                            // Only mark as dirty if height change is significant
+                            if (
+                                isSignificantHeightChange(actualIndex, currentHeight, heightCache)
+                            ) {
+                                console.log(
+                                    `🔥 MARKING ITEM ${actualIndex} - DIRTY - height change: ${currentHeight}`
+                                )
+
+                                // Capture bottom state when FIRST item gets marked dirty
+                                if (dirtyItemsCount === 0) {
+                                    wasAtBottomBeforeHeightChange = atBottom
+                                    if (INTERNAL_DEBUG) {
+                                        console.log(
+                                            '🔥 FIRST DIRTY ITEM - capturing wasAtBottomBeforeHeightChange:',
+                                            atBottom
+                                        )
+                                    }
+                                }
+
+                                dirtyItems.add(actualIndex)
+                                dirtyItemsCount = dirtyItems.size
+                                shouldRecalculate = true
+                            } else {
+                                console.log(
+                                    `🔥 SKIPPING ITEM ${actualIndex} - height change too small: ${currentHeight}`
+                                )
+                            }
                         }
                     }
                 }
