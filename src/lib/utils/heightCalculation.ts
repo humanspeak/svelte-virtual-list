@@ -1,3 +1,4 @@
+import type { SvelteVirtualListMode } from '$lib/types.js'
 import { calculateAverageHeight } from '$lib/utils/virtualList.js'
 import { BROWSER } from 'esm-env'
 
@@ -86,9 +87,11 @@ export const calculateAverageHeightDebounced = (
         clearedDirtyItems: Set<number>
         newTotalHeight: number
         newValidCount: number
+        heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
     }) => void,
     debounceTime: number,
     dirtyItems: Set<number>,
+    mode: SvelteVirtualListMode,
     currentTotalHeight: number = 0,
     currentValidCount: number = 0
 ): NodeJS.Timeout | null => {
@@ -97,22 +100,31 @@ export const calculateAverageHeightDebounced = (
     const visibleRange = visibleItemsGetter()
     const currentIndex = visibleRange.start
 
-    if (currentIndex === lastMeasuredIndex) return null
+    console.log('🔥 HEIGHT CALCULATION CHECK:', {
+        currentIndex,
+        lastMeasuredIndex,
+        dirtyItemsSize: dirtyItems.size,
+        willSkip: currentIndex === lastMeasuredIndex && dirtyItems.size === 0
+    })
+    if (currentIndex === lastMeasuredIndex && dirtyItems.size === 0) return null
     if (heightUpdateTimeout) clearTimeout(heightUpdateTimeout)
     return setTimeout(() => {
+        console.log('🔥 EXECUTING HEIGHT CALCULATION after debounce')
         const {
             newHeight,
             newLastMeasuredIndex,
             updatedHeightCache,
             clearedDirtyItems,
             newTotalHeight,
-            newValidCount
+            newValidCount,
+            heightChanges
         } = calculateAverageHeight(
             itemElements,
             visibleRange,
             heightCache,
             calculatedItemHeight,
             dirtyItems,
+            mode,
             currentTotalHeight,
             currentValidCount
         )
@@ -124,7 +136,8 @@ export const calculateAverageHeightDebounced = (
                 updatedHeightCache,
                 clearedDirtyItems,
                 newTotalHeight,
-                newValidCount
+                newValidCount,
+                heightChanges
             })
         }
     }, debounceTime)
