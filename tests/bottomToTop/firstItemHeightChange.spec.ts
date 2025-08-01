@@ -31,6 +31,20 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         await page.clock.install()
         await page.goto(PAGE_URL, { waitUntil: 'networkidle' })
         await page.waitForSelector('[data-testid="basic-list-container"]')
+
+        // Wait for proper bottomToTop initialization - list should show items 0-19, not 9980-10000
+        await page.waitForFunction(
+            () => {
+                const debugElements = document.querySelectorAll(
+                    '[data-testid="list-item-0"], [data-testid="list-item-1"]'
+                )
+                return debugElements.length >= 2 // Both item 0 and 1 should be visible at bottom
+            },
+            { timeout: 5000 }
+        )
+
+        // Give extra time for all initialization effects to complete
+        await page.clock.runFor(100)
     })
 
     test('should render initial items with correct heights at bottom', async ({ page }) => {
