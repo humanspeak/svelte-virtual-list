@@ -94,15 +94,33 @@ describe('calculateVisibleRange', () => {
 
 describe('calculateTransformY', () => {
     it('should calculate transform for top-to-bottom mode', () => {
-        expect(calculateTransformY('topToBottom', 100, 20, 5, 30)).toBe(150)
+        expect(calculateTransformY('topToBottom', 100, 20, 5, 30, 400)).toBe(150)
     })
 
     it('should calculate transform for bottom-to-top mode', () => {
-        expect(calculateTransformY('bottomToTop', 100, 20, 5, 30)).toBe(2400)
+        expect(calculateTransformY('bottomToTop', 100, 20, 5, 30, 400)).toBe(2400)
     })
 
     it('should handle edge case with zero visible items', () => {
-        expect(calculateTransformY('topToBottom', 100, 0, 0, 30)).toBe(0)
+        expect(calculateTransformY('topToBottom', 100, 0, 0, 30, 400)).toBe(0)
+    })
+
+    it('should position few items at bottom in bottomToTop mode', () => {
+        // 2 items, each 30px high = 60px total content
+        // Viewport is 400px high, so items should be pushed down by 340px
+        expect(calculateTransformY('bottomToTop', 2, 2, 0, 30, 400)).toBe(340)
+    })
+
+    it('should not add bottom offset when content fills viewport in bottomToTop mode', () => {
+        // 20 items, each 30px high = 600px total content
+        // Viewport is 400px high, so no bottom offset needed (content > viewport)
+        expect(calculateTransformY('bottomToTop', 20, 20, 0, 30, 400)).toBe(0)
+    })
+
+    it('should handle exact content height match in bottomToTop mode', () => {
+        // 10 items, each 40px high = 400px total content
+        // Viewport is 400px high, so no bottom offset needed (content = viewport)
+        expect(calculateTransformY('bottomToTop', 10, 10, 0, 40, 400)).toBe(0)
     })
 })
 

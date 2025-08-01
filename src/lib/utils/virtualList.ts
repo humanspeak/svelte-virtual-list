@@ -118,6 +118,7 @@ export const calculateVisibleRange = (
  * @param {number} visibleEnd - Index of the last visible item
  * @param {number} visibleStart - Index of the first visible item
  * @param {number} itemHeight - Height of each list item in pixels
+ * @param {number} viewportHeight - Height of the viewport in pixels
  * @returns {number} The calculated transform Y value in pixels
  */
 export const calculateTransformY = (
@@ -125,15 +126,21 @@ export const calculateTransformY = (
     totalItems: number,
     visibleEnd: number,
     visibleStart: number,
-    itemHeight: number
+    itemHeight: number,
+    viewportHeight: number
 ) => {
     if (mode === 'bottomToTop') {
         // In bottomToTop mode, we need to position the container so that
         // the first visible item (visibleStart) aligns with its correct position
         // from the bottom of the total content
-        const transform = (totalItems - visibleEnd) * itemHeight
+        const basicTransform = (totalItems - visibleEnd) * itemHeight
 
-        return transform
+        // When there are few items (total content height < viewport height),
+        // push items to the bottom of the viewport to maintain bottomToTop behavior
+        const totalContentHeight = totalItems * itemHeight
+        const bottomOffset = Math.max(0, viewportHeight - totalContentHeight)
+
+        return basicTransform + bottomOffset
     } else {
         return visibleStart * itemHeight
     }
