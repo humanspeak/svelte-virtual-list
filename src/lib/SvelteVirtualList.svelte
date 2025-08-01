@@ -244,32 +244,47 @@
     ) => {
         if (!viewportElement || !initialized || userHasScrolledAway) return
 
-        // In bottomToTop mode, when we're at the bottom, don't apply scroll corrections
-        // This prevents jumping when items at the bottom change height
-        if (mode === 'bottomToTop') {
-            const currentVisibleRange = visibleItems()
-            const totalHeight = items.length * calculatedItemHeight
-            const maxScrollTop = Math.max(0, totalHeight - height)
-            const currentScrollTop = viewportElement.scrollTop
+        // In bottomToTop mode, when we were at bottom before height change,
+        // scroll to bring Item 0 into view, then use scrollIntoView for precise positioning
+        if (mode === 'bottomToTop' && wasAtBottomBeforeHeightChange) {
+            // First, scroll to approximate position to ensure Item 0 gets rendered
+            const approximateScrollTop = Math.max(0, totalHeight() - height)
+            viewportElement.scrollTop = approximateScrollTop
+            scrollTop = approximateScrollTop
 
-            // In bottomToTop mode, we're "at bottom" when scroll is at max position
-            // which shows the first items (indices 0-19) at the bottom of the viewport
-            const isAtBottom = atBottom
-            if (isAtBottom) {
-                if (INTERNAL_DEBUG) {
-                    console.log('🔄 Maintaining bottom anchor in bottomToTop mode', {
-                        currentScrollTop,
-                        maxScrollTop,
-                        visibleStart: currentVisibleRange.start
-                    })
-                }
-                return
+            if (INTERNAL_DEBUG) {
+                console.log('🔄 Two-step scroll: first approximate, then precise', {
+                    approximateScrollTop,
+                    totalHeight: totalHeight(),
+                    height
+                })
             }
+
+            // Wait for virtual list to render Item 0, then use scrollIntoView for precise positioning
+            tick().then(() => {
+                const item0Element = viewportElement.querySelector('[data-testid="list-item-0"]')
+                if (item0Element) {
+                    if (INTERNAL_DEBUG) {
+                        console.log('🔄 ScrollIntoView: precisely positioning Item 0 at bottom')
+                    }
+
+                    // Precisely position Item 0 at bottom edge (instant, no delay!)
+                    item0Element.scrollIntoView({
+                        block: 'end',
+                        behavior: 'smooth',
+                        inline: 'nearest'
+                    })
+
+                    // Update our scroll state to match
+                    scrollTop = viewportElement.scrollTop
+                }
+            })
+
+            return
         }
 
         const currentScrollTop = viewportElement.scrollTop
-        const totalHeight = items.length * calculatedItemHeight
-        const maxScrollTop = Math.max(0, totalHeight - height)
+        const maxScrollTop = Math.max(0, totalHeight() - height)
 
         // Calculate total height change impact above current visible area
         let heightChangeAboveViewport = 0
@@ -367,8 +382,29 @@
     let lastCalculatedHeight = $state(0)
     let lastItemsLength = $state(0)
 
+    // Calculate total height using actual measured heights where available
+    let totalHeight = $derived(() => {
+        let total = 0
+        let measuredCount = 0
+
+        // Sum up actual measured heights
+        for (let i = 0; i < items.length; i++) {
+            if (heightCache[i] !== undefined) {
+                total += heightCache[i]
+                measuredCount++
+            }
+        }
+
+        // Add estimated height for unmeasured items
+        const unmeasuredCount = items.length - measuredCount
+        const averageOfMeasured = measuredCount > 0 ? total / measuredCount : calculatedItemHeight
+        total += unmeasuredCount * averageOfMeasured
+
+        return total
+    })
+
     let atTop = $derived(scrollTop <= 1)
-    let atBottom = $derived(scrollTop >= items.length * calculatedItemHeight - height - 1)
+    let atBottom = $derived(scrollTop >= totalHeight() - height - 1)
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
@@ -377,8 +413,7 @@
 
     $effect(() => {
         if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {
-            const totalHeight = Math.max(0, items.length * calculatedItemHeight)
-            const targetScrollTop = Math.max(0, totalHeight - height)
+            const targetScrollTop = Math.max(0, totalHeight() - height)
             const currentScrollTop = viewportElement.scrollTop
             const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
 
@@ -388,7 +423,7 @@
             // 3. We're significantly off target
             // 4. We're not at the bottom (where height changes should be handled more carefully)
             const heightChanged = Math.abs(calculatedItemHeight - lastCalculatedHeight) > 1
-            const maxScrollTop = Math.max(0, totalHeight - height)
+            const maxScrollTop = Math.max(0, totalHeight() - height)
 
             // In bottomToTop mode, we're "at bottom" when scroll is at max position
             const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) < calculatedItemHeight
@@ -408,7 +443,7 @@
                         '(rounded:',
                         Math.round(targetScrollTop),
                         ') totalHeight:',
-                        items.length * calculatedItemHeight,
+                        totalHeight,
                         'height:',
                         height,
                         'diff:',
@@ -445,8 +480,7 @@
 
             if (itemsAdded !== 0) {
                 const currentScrollTop = viewportElement.scrollTop
-                const totalHeight = Math.max(0, items.length * calculatedItemHeight)
-                const maxScrollTop = Math.max(0, totalHeight - height)
+                const maxScrollTop = Math.max(0, totalHeight() - height)
 
                 // Check if user was at/near the bottom before items were added
                 const wasNearBottom =
@@ -499,8 +533,7 @@
             items.length &&
             !initialized
         ) {
-            const totalHeight = Math.max(0, items.length * calculatedItemHeight)
-            const targetScrollTop = Math.max(0, totalHeight - height)
+            const targetScrollTop = Math.max(0, totalHeight() - height)
 
             // Add delay to ensure layout is complete
             tick().then(() => {
@@ -566,8 +599,7 @@
         // This prevents showing wrong items when scrollTop starts at 0
         if (mode === 'bottomToTop' && !initialized && scrollTop === 0 && viewportHeight > 0) {
             // Calculate what the correct scroll position should be
-            const totalHeight = items.length * calculatedItemHeight
-            const targetScrollTop = Math.max(0, totalHeight - viewportHeight)
+            const targetScrollTop = Math.max(0, totalHeight() - viewportHeight)
 
             // Use the target scroll position for visible range calculation
             lastVisibleRange = calculateVisibleRange(
@@ -1048,7 +1080,8 @@
                             Object.keys(heightCache).length,
                             calculatedItemHeight,
                             scrollTop,
-                            height || 0
+                            height || 0,
+                            totalHeight()
                         )}
                         {debugFunction
                             ? debugFunction(debugInfo)
