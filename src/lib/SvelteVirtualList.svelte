@@ -810,14 +810,26 @@
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
+                style:visibility={height === 0 && mode === 'bottomToTop' ? 'hidden' : 'visible'}
                 style:transform="translateY({(() => {
+                    const viewportHeight = height || 0
                     const visibleRange = visibleItems()
+
+                    // For bottomToTop mode with few items, provide reasonable initial positioning
+                    // even when height is not yet measured to prevent flash
+                    let effectiveHeight = viewportHeight
+                    if (mode === 'bottomToTop' && viewportHeight === 0) {
+                        // Use a reasonable default height estimate for initial positioning
+                        effectiveHeight = 400 // Common viewport height
+                    }
+
                     const transform = calculateTransformY(
                         mode,
                         items.length,
                         visibleRange.end,
                         visibleRange.start,
-                        calculatedItemHeight
+                        calculatedItemHeight,
+                        effectiveHeight
                     )
 
                     return transform
