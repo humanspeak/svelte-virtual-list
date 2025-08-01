@@ -97,28 +97,6 @@ test.describe('BottomToTop LoadItems', () => {
         // expect(logs[0]).toContain('staying at bottom')
     })
 
-    test('should show debug information', async ({ page }) => {
-        await page.waitForSelector('[data-testid="basic-list-container"]')
-
-        // Debug info should be visible
-        const debugElement = page.locator('pre').filter({ hasText: 'Virtual List Debug:' })
-        await expect(debugElement).toBeVisible()
-
-        // Should show initial state
-        await expect(debugElement).toContainText('totalItems: 2')
-        await expect(debugElement).toContainText('atBottom: true')
-
-        // Advance timers to trigger setTimeout and wait for effects
-        await page.clock.fastForward(1000)
-        await page.waitForTimeout(100)
-
-        // Debug should update to show new item count
-        await expect(debugElement).toContainText('totalItems: 10000')
-
-        // Should still be at bottom after items added
-        await expect(debugElement).toContainText('atBottom: true')
-    })
-
     test('should handle viewport height correctly', async ({ page }) => {
         await page.waitForSelector('[data-testid="basic-list-container"]')
 

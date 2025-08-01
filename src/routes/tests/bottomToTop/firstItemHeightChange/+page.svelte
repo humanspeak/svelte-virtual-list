@@ -11,7 +11,7 @@
     let virtualList: SvelteVirtualList | null = $state(null)
 
     setTimeout(() => {
-        // Use array assignment instead of push() for proper Svelte 5 reactivity
+        // Direct property assignment works fine in Svelte 5
         items[1].height = 100
 
         // setTimeout(() => {
