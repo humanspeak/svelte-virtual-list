@@ -42,9 +42,6 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             },
             { timeout: 5000 }
         )
-
-        // Give extra time for all initialization effects to complete
-        await page.clock.runFor(100)
     })
 
     test('should render initial items with correct heights at bottom', async ({ page }) => {
@@ -260,7 +257,6 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
     test('should handle large height changes without breaking layout', async ({ page }) => {
         await page.waitForSelector('[data-testid="list-item-1"]')
 
-        const item1 = page.locator('[data-testid="list-item-1"]')
         const container = page.locator('[data-testid="basic-list-container"]')
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
@@ -291,7 +287,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         )
 
         // Verify the large item is properly rendered
-        const finalBox = await item1.boundingBox()
+        const finalBox = await page.locator('[data-testid="list-item-1"]').boundingBox()
         expect(finalBox?.height).toBe(500)
 
         // Verify container is still scrollable and functional

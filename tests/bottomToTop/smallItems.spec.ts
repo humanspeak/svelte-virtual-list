@@ -76,34 +76,6 @@ test.describe('BottomToTop Small Items', () => {
         expect(item0Box!.y).toBeGreaterThan(item1Box!.y)
     })
 
-    test('should show debug information when debug prop is enabled', async ({ page }) => {
-        // Check for debug output in console (if any is logged)
-        const logs: string[] = []
-        page.on('console', (msg) => {
-            if (msg.type() === 'info') {
-                logs.push(msg.text())
-            }
-        })
-
-        // Wait for component to initialize and render items
-        await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible()
-        await expect(page.locator('[data-testid="list-item-1"]')).toBeVisible()
-
-        // Wait for any debug output to be logged
-        await page.waitForTimeout(500)
-
-        // Check if we have debug logs (may not always output in test environment)
-        const debugLogs = logs.filter((log) => log.includes('Virtual List Debug:'))
-
-        // Debug output may not always appear in test environment, so make this optional
-        if (debugLogs.length === 0) {
-            console.log('Debug output not detected in test environment - this is acceptable')
-        }
-
-        // Instead of requiring debug logs, just verify the debug prop is being passed
-        expect(true).toBe(true) // This test passes if we reach here without errors
-    })
-
     test('should handle container scrolling properly with few items', async ({ page }) => {
         const container = page.locator('.test-container')
 
