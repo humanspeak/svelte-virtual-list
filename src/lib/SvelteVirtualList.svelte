@@ -170,7 +170,7 @@
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
-
+    import { createThrottledCallback } from '$lib/utils/throttle.js'
     import { BROWSER } from 'esm-env'
     import { onMount, tick, untrack } from 'svelte'
 
@@ -356,13 +356,18 @@
         }
     }
 
-    // Trigger height calculation when dirty items are added
-    $effect(() => {
+    // Create throttled height update function to prevent excessive calls to debounced updateHeight()
+    const throttledHeightUpdate = createThrottledCallback(() => {
         if (BROWSER && dirtyItemsCount > 0) {
             // Capture bottom state before any height processing to prevent cascading corrections
             wasAtBottomBeforeHeightChange = atBottom
             updateHeight()
         }
+    }, 16) // ~60fps throttle to match typical RAF timing
+
+    // Trigger height calculation when dirty items are added (throttled)
+    $effect(() => {
+        throttledHeightUpdate()
     })
 
     const updateHeight = () => {
