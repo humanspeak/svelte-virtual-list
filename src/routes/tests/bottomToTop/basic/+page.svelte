@@ -15,7 +15,7 @@
         mode="bottomToTop"
     >
         {#snippet renderItem(item)}
-            <div class="test-item" data-testid="list-item-{item.id}">
+            <div>
                 {item.text}
             </div>
         {/snippet}

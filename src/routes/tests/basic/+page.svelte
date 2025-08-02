@@ -10,7 +10,7 @@
 <div class="test-container" style="height: 500px;">
     <SvelteVirtualList defaultEstimatedItemHeight={22} {items} testId="basic-list">
         {#snippet renderItem(item)}
-            <div class="test-item" data-testid="list-item-{item.id}">
+            <div>
                 {item.text}
             </div>
         {/snippet}
