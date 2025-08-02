@@ -182,7 +182,7 @@ test.describe('BottomToTop LoadItems', () => {
 
         // Should be able to scroll to top
         await viewport.evaluate((el) => el.scrollTo({ top: 0 }))
-
+        await page.waitForTimeout(300)
         // Wait until scroll position actually reaches top (with timeout for race conditions)
         await page
             .waitForFunction(
