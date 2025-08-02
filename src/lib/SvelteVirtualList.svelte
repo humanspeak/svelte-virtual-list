@@ -420,16 +420,7 @@
                 untrack(() => {
                     // Process height changes with ReactiveHeightManager (O(dirty) instead of O(n)!)
                     if (result.heightChanges.length > 0) {
-                        console.log(
-                            '🎯 Calling processDirtyHeights with',
-                            result.heightChanges.length,
-                            'changes'
-                        )
                         heightManager.processDirtyHeights(result.heightChanges)
-                    } else {
-                        console.log(
-                            '⚠️ No heightChanges to process - this is why processedItems stays 0!'
-                        )
                     }
 
                     // Clear processed dirty items (all dirty items were processed)
