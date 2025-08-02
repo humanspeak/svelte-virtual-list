@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
     createContainerResizeObserver,
-    createItemResizeObserver,
     ResizeObserverManager,
     safeObserve
 } from './resizeObserver.js'
@@ -63,84 +62,6 @@ describe('resizeObserver utilities', () => {
         mockElement = document.createElement('div')
         itemElements = [mockElement]
         dirtyItems = new Set()
-    })
-
-    describe('createItemResizeObserver', () => {
-        it('should create a ResizeObserver', () => {
-            const observer = createItemResizeObserver(
-                itemElements,
-                () => ({ start: 0, end: 10 }),
-                dirtyItems
-            )
-
-            expect(observer).toBeInstanceOf(MockResizeObserver)
-        })
-
-        it('should mark items as dirty when resized', () => {
-            const onItemsDirty = vi.fn()
-            const observer = createItemResizeObserver(
-                itemElements,
-                () => ({ start: 5, end: 15 }),
-                dirtyItems,
-                { onItemsDirty }
-            ) as MockResizeObserver
-
-            observer.observe(mockElement)
-            observer.triggerResize(mockElement)
-
-            expect(dirtyItems.has(5)).toBe(true) // start (5) + elementIndex (0) = 5
-            expect(onItemsDirty).toHaveBeenCalledWith(new Set([5]))
-        })
-
-        it('should handle debug logging', () => {
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-            const observer = createItemResizeObserver(
-                itemElements,
-                () => ({ start: 0, end: 10 }),
-                dirtyItems,
-                { debug: true }
-            ) as MockResizeObserver
-
-            observer.observe(mockElement)
-            observer.triggerResize(mockElement)
-
-            expect(consoleSpy).toHaveBeenCalledWith('ResizeObserver fired for 1 entries')
-            expect(consoleSpy).toHaveBeenCalledWith('Item 0 marked dirty (resized), queue size: 1')
-
-            consoleSpy.mockRestore()
-        })
-
-        it('should ignore elements not in itemElements array', () => {
-            const otherElement = document.createElement('div')
-            const onItemsDirty = vi.fn()
-
-            const observer = createItemResizeObserver(
-                itemElements,
-                () => ({ start: 0, end: 10 }),
-                dirtyItems,
-                { onItemsDirty }
-            ) as MockResizeObserver
-
-            observer.observe(otherElement)
-            observer.triggerResize(otherElement)
-
-            expect(dirtyItems.size).toBe(0)
-            expect(onItemsDirty).not.toHaveBeenCalled()
-        })
-
-        it('should work without config options', () => {
-            const observer = createItemResizeObserver(
-                itemElements,
-                () => ({ start: 0, end: 10 }),
-                dirtyItems
-            ) as MockResizeObserver
-
-            observer.observe(mockElement)
-            observer.triggerResize(mockElement)
-
-            expect(dirtyItems.has(0)).toBe(true)
-        })
     })
 
     describe('createContainerResizeObserver', () => {
