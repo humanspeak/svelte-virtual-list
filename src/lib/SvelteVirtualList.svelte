@@ -175,7 +175,11 @@
     import { onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-    const INTERNAL_DEBUG = false
+
+    // Package-specific debug flag - safe for library distribution
+    // Enable with: NODE_ENV=development SVELTE_VIRTUAL_LIST_DEBUG=true
+    const INTERNAL_DEBUG =
+        import.meta.env.DEV && import.meta.env.VITE_SVELTE_VIRTUAL_LIST_DEBUG === 'true'
     /**
      * Core configuration props with default values
      * @type {SvelteVirtualListProps<TItem>}
@@ -454,28 +458,7 @@
      *
      * Used by: atBottom calculation, scroll corrections, maxScrollTop calculations
      */
-    let totalHeight = $derived(() => {
-        let total = 0
-        let measuredCount = 0
-
-        // Sum up actual measured heights from heightCache
-        for (let i = 0; i < items.length; i++) {
-            if (heightCache[i] !== undefined) {
-                total += heightCache[i]
-                measuredCount++
-            }
-        }
-
-        // Estimate height for unmeasured items using average of measured items
-        const unmeasuredCount = items.length - measuredCount
-        const averageOfMeasured = measuredCount > 0 ? total / measuredCount : calculatedItemHeight
-        total += unmeasuredCount * averageOfMeasured
-
-        return total
-    })
-
-    let atTop = $derived(scrollTop <= 1)
-    let atBottom = $derived(scrollTop >= totalHeight() - height - 1)
+    // atTop, atBottom moved after totalHeight declaration to fix variable ordering
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
@@ -642,6 +625,31 @@
     // Running totals for efficient precise height calculation
     let totalMeasuredHeight = $state(0)
     let measuredCount = $state(0)
+
+    /**
+     * Calculate total list height using pre-calculated totals (O(1) optimization)
+     *
+     * Previously this was O(n) - looping through all items to sum heights.
+     * Now uses totalMeasuredHeight and measuredCount from calculateAverageHeightDebounced.
+     *
+     * This function is called reactively whenever heightCache or items change,
+     * ensuring scroll calculations always use the most accurate height data available.
+     *
+     * Used by: atBottom calculation, scroll corrections, maxScrollTop calculations
+     */
+    let totalHeight = $derived(() => {
+        // Estimate height for unmeasured items using average of measured items
+        const unmeasuredCount = items.length - measuredCount
+        const averageOfMeasured =
+            measuredCount > 0 ? totalMeasuredHeight / measuredCount : calculatedItemHeight
+        const estimatedHeight = unmeasuredCount * averageOfMeasured
+
+        return totalMeasuredHeight + estimatedHeight
+    })
+
+    let atTop = $derived(scrollTop <= 1)
+    let atBottom = $derived(scrollTop >= totalHeight() - height - 1)
+
     const preciseItemHeight = $derived(() => {
         if (measuredCount > 100) {
             const avgHeight = totalMeasuredHeight / measuredCount
