@@ -373,21 +373,10 @@
     // Create throttled height update function with trailing execution to ensure measurement always happens
     const triggerHeightUpdate = createAdvancedThrottledCallback(
         () => {
-            // DEBUG: Log update calls
-            console.log('🔄 triggerHeightUpdate called:', {
-                dirtyItemsCount,
-                hasDirtyItems: dirtyItemsCount > 0,
-                dirtyItemsArray: Array.from(dirtyItems),
-                inBrowser: BROWSER
-            })
-
             if (BROWSER && dirtyItemsCount > 0) {
                 // Capture bottom state before any height processing to prevent cascading corrections
                 wasAtBottomBeforeHeightChange = atBottom
-                console.log('🚀 Calling updateHeight() with dirty items:', Array.from(dirtyItems))
                 updateHeight()
-            } else {
-                console.log('⚠️ NOT calling updateHeight - no dirty items or not in browser')
             }
         },
         16,
@@ -399,10 +388,6 @@
 
     // Trigger height calculation when dirty items are added
     $effect(() => {
-        console.log(
-            '🎯 $effect triggered - about to call triggerHeightUpdate, dirtyItemsCount:',
-            dirtyItemsCount
-        )
         triggerHeightUpdate()
     })
 
@@ -421,15 +406,6 @@
             lastMeasuredIndex,
             heightManager.averageHeight,
             (result) => {
-                // DEBUG: Log updateHeight callback result
-                console.log('📊 updateHeight callback received:', {
-                    newHeight: result.newHeight,
-                    heightChangesLength: result.heightChanges.length,
-                    heightChanges: result.heightChanges,
-                    newLastMeasuredIndex: result.newLastMeasuredIndex,
-                    dirtyItemsBeforeProcessing: Array.from(dirtyItems)
-                })
-
                 // Critical updates that must trigger reactive effects immediately
                 heightManager.itemHeight = result.newHeight
                 lastMeasuredIndex = result.newLastMeasuredIndex
@@ -457,7 +433,6 @@
                     }
 
                     // Clear processed dirty items (all dirty items were processed)
-                    console.log('🧹 Clearing dirty items after processing heightChanges')
                     dirtyItems.clear()
                     dirtyItemsCount = 0
 
@@ -868,18 +843,6 @@
                     const elementIndex = itemElements.indexOf(element)
                     const actualIndex = parseInt(element.dataset.originalIndex || '-1', 10)
 
-                    // DEBUG: Log ResizeObserver activity for item 0
-                    if (actualIndex === 0) {
-                        console.log('🔍 ResizeObserver fired for ITEM 0:', {
-                            elementIndex,
-                            actualIndex,
-                            currentHeight: element.getBoundingClientRect().height,
-                            cachedHeight: heightCache[actualIndex],
-                            dirtyItemsCount,
-                            isInBottomToTopMode: mode === 'bottomToTop'
-                        })
-                    }
-
                     if (elementIndex !== -1) {
                         if (actualIndex >= 0) {
                             const currentHeight = element.getBoundingClientRect().height
@@ -889,26 +852,8 @@
                                 heightCache
                             )
 
-                            // DEBUG: Extra logging for item 0
-                            if (actualIndex === 0) {
-                                console.log('🔍 Item 0 height check:', {
-                                    currentHeight,
-                                    cachedHeight: heightCache[actualIndex],
-                                    isSignificant,
-                                    willMarkDirty: isSignificant
-                                })
-                            }
-
                             // Only mark as dirty if height change is significant
                             if (isSignificant) {
-                                // DEBUG: Log when item 0 gets marked dirty
-                                if (actualIndex === 0) {
-                                    console.log('🔥 MARKING ITEM 0 AS DIRTY!', {
-                                        currentHeight,
-                                        dirtyItemsCountBefore: dirtyItemsCount
-                                    })
-                                }
-
                                 // Capture bottom state when FIRST item gets marked dirty
                                 if (dirtyItemsCount === 0) {
                                     wasAtBottomBeforeHeightChange = atBottom
@@ -921,27 +866,8 @@
                                 }
 
                                 dirtyItems.add(actualIndex)
-                                const newCount = dirtyItems.size
-                                console.log(
-                                    '📈 dirtyItemsCount changing from',
-                                    dirtyItemsCount,
-                                    'to',
-                                    newCount,
-                                    'for item',
-                                    actualIndex
-                                )
-                                dirtyItemsCount = newCount
+                                dirtyItemsCount = dirtyItems.size
                                 shouldRecalculate = true
-
-                                // DEBUG: Log after marking item 0 dirty
-                                if (actualIndex === 0) {
-                                    console.log(
-                                        '🔥 Item 0 marked dirty! New dirtyItemsCount:',
-                                        dirtyItemsCount
-                                    )
-                                }
-                            } else if (actualIndex === 0) {
-                                console.log('⚠️ Item 0 NOT marked dirty - height change too small')
                             }
                         }
                     }
