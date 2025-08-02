@@ -172,7 +172,7 @@
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
 
     import { BROWSER } from 'esm-env'
-    import { onMount, tick } from 'svelte'
+    import { onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
     const INTERNAL_DEBUG = false
@@ -375,30 +375,36 @@
             lastMeasuredIndex,
             calculatedItemHeight,
             (result) => {
+                // Critical updates that must trigger reactive effects immediately
                 calculatedItemHeight = result.newHeight
                 lastMeasuredIndex = result.newLastMeasuredIndex
                 heightCache = result.updatedHeightCache
 
-                // Update running totals efficiently (O(1) instead of O(n)!)
-                totalMeasuredHeight = result.newTotalHeight
-                measuredCount = result.newValidCount
-
-                // Clear processed dirty items (all dirty items were processed)
-                dirtyItems.clear()
-                dirtyItemsCount = 0
-
-                // Handle height changes for scroll correction
+                // Handle height changes for scroll correction (needs updated heightCache)
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
                     handleHeightChangesScrollCorrection(result.heightChanges)
                 }
 
-                if (INTERNAL_DEBUG && result.clearedDirtyItems.size > 0) {
-                    console.log(
-                        `Cleared ${result.clearedDirtyItems.size} dirty items:`,
-                        Array.from(result.clearedDirtyItems)
-                    )
-                }
-                wasAtBottomBeforeHeightChange = false
+                // Non-critical updates wrapped in untrack to prevent reactive cascades
+                untrack(() => {
+                    // Update running totals efficiently (O(1) instead of O(n)!)
+                    totalMeasuredHeight = result.newTotalHeight
+                    measuredCount = result.newValidCount
+
+                    // Clear processed dirty items (all dirty items were processed)
+                    dirtyItems.clear()
+                    dirtyItemsCount = 0
+
+                    // Reset bottom state flag
+                    wasAtBottomBeforeHeightChange = false
+
+                    if (INTERNAL_DEBUG && result.clearedDirtyItems.size > 0) {
+                        console.log(
+                            `Cleared ${result.clearedDirtyItems.size} dirty items:`,
+                            Array.from(result.clearedDirtyItems)
+                        )
+                    }
+                })
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
