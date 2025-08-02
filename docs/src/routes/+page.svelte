@@ -34,7 +34,12 @@
                             </Card.Description>
                         </Card.Header>
                         <Card.Content class="flex min-h-0 flex-1 flex-col">
-                            <SvelteVirtualList {items} debug debugFunction={topToBottomDebug}>
+                            <SvelteVirtualList
+                                defaultEstimatedItemHeight={21}
+                                {items}
+                                debug
+                                debugFunction={topToBottomDebug}
+                            >
                                 {#snippet renderItem(item: Item, _index: number)}
                                     <div>
                                         {item.text}
@@ -54,6 +59,7 @@
                         </Card.Header>
                         <Card.Content class="flex min-h-0 flex-1 flex-col">
                             <SvelteVirtualList
+                                defaultEstimatedItemHeight={21}
                                 {items}
                                 mode="bottomToTop"
                                 debug
