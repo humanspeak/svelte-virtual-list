@@ -48,7 +48,7 @@
 
 <div class="test-container" style="height: 500px;">
     <SvelteVirtualList
-        defaultEstimatedItemHeight={21}
+        defaultEstimatedItemHeight={22}
         {items}
         testId="item-resize-list"
         debug={false}

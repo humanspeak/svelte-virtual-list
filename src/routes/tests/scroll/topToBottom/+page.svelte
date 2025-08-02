@@ -55,7 +55,7 @@
     style="height: 500px; border: 1px solid pink;padding: 10px; border-radius: 10px;"
 >
     <SvelteVirtualList
-        defaultEstimatedItemHeight={21}
+        defaultEstimatedItemHeight={22}
         {items}
         testId="basic-list"
         mode="topToBottom"

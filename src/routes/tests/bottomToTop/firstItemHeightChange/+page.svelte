@@ -11,9 +11,9 @@
     let virtualList: SvelteVirtualList | null = $state(null)
 
     // Expose items to global scope for testing
-    if (typeof window !== 'undefined') {
-        ;(window as any).items = items
-    }
+    // if (typeof window !== 'undefined') {
+    //     ;(window as any).items = items
+    // }
 
     setTimeout(() => {
         // Direct property assignment works fine in Svelte 5
@@ -30,12 +30,12 @@
 
 <div class="test-container" style="height: 500px;">
     <SvelteVirtualList
-        defaultEstimatedItemHeight={21}
+        defaultEstimatedItemHeight={22}
         bind:this={virtualList}
         {items}
         testId="basic-list"
         mode="bottomToTop"
-        debug={false}
+        debug={true}
     >
         {#snippet renderItem(item)}
             <div
