@@ -184,6 +184,89 @@ describe('ReactiveHeightManager', () => {
         })
     })
 
+    describe('Average Height Calculations', () => {
+        it('should return itemHeight when no items measured', () => {
+            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 42 })
+
+            expect(manager.averageHeight).toBe(42)
+        })
+
+        it('should calculate correct average from measured items', () => {
+            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 40 })
+
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 50 },
+                { index: 1, oldHeight: undefined, newHeight: 30 },
+                { index: 2, oldHeight: undefined, newHeight: 60 }
+            ])
+
+            // Average = (50 + 30 + 60) / 3 = 46.67
+            expect(manager.averageHeight).toBeCloseTo(46.67, 2)
+        })
+
+        it('should update average when items change height', () => {
+            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 40 })
+
+            // Initial measurements
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 40 },
+                { index: 1, oldHeight: undefined, newHeight: 40 }
+            ])
+
+            expect(manager.averageHeight).toBe(40)
+
+            // Update item 0 height
+            manager.processDirtyHeights([{ index: 0, oldHeight: 40, newHeight: 80 }])
+
+            // Average = (80 + 40) / 2 = 60
+            expect(manager.averageHeight).toBe(60)
+        })
+
+        it('should handle complex height change scenarios', () => {
+            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 30 })
+
+            // Measure some initial items
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 20 },
+                { index: 1, oldHeight: undefined, newHeight: 40 },
+                { index: 2, oldHeight: undefined, newHeight: 60 }
+            ])
+
+            expect(manager.averageHeight).toBe(40) // (20+40+60)/3
+
+            // Remove one item and add a new one
+            manager.processDirtyHeights([
+                { index: 1, oldHeight: 40, newHeight: undefined }, // Remove
+                { index: 3, oldHeight: undefined, newHeight: 100 } // Add
+            ])
+
+            // Now we have: 20, 60, 100 = average 60
+            expect(manager.averageHeight).toBe(60)
+            expect(manager.measuredCount).toBe(3)
+        })
+
+        it('should fall back to itemHeight after all items removed', () => {
+            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 35 })
+
+            // Add some measurements
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 50 },
+                { index: 1, oldHeight: undefined, newHeight: 70 }
+            ])
+
+            expect(manager.averageHeight).toBe(60) // (50+70)/2
+
+            // Remove all measurements
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: 50, newHeight: undefined },
+                { index: 1, oldHeight: 70, newHeight: undefined }
+            ])
+
+            expect(manager.averageHeight).toBe(35) // Back to itemHeight
+            expect(manager.measuredCount).toBe(0)
+        })
+    })
+
     describe('Testing Limitations', () => {
         it('should document that reactivity cannot be unit tested', () => {
             // ❌ LIMITATION: We cannot test reactivity in isolation

@@ -44,7 +44,8 @@
         "dist",
         "!dist/**/*.test.*",
         "!dist/**/*.spec.*",
-        "!dist/test/**/*"
+        "!dist/test/**/*",
+        "!dist/reactive-height-manager/test/**/*"
     ],
     "scripts": {
         "build": "vite build && npm run package",

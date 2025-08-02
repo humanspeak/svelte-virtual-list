@@ -171,6 +171,7 @@
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
     import { createThrottledCallback } from '$lib/utils/throttle.js'
+    import { ReactiveHeightManager } from '$lib/reactive-height-manager/index.js'
     import { BROWSER } from 'esm-env'
     import { onMount, tick, untrack } from 'svelte'
 
@@ -236,6 +237,15 @@
 
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
+
+    /**
+     * Reactive Height Manager - O(1) height calculation system
+     * Replaces O(n) totalHeight loop with incremental updates
+     */
+    let heightManager = new ReactiveHeightManager({
+        itemLength: items.length,
+        itemHeight: defaultEstimatedItemHeight
+    })
 
     /**
      * Handles scroll position corrections when item heights change, ensuring proper positioning
@@ -373,6 +383,11 @@
         throttledHeightUpdate()
     })
 
+    // Keep height manager synchronized with items length
+    $effect(() => {
+        heightManager.updateItemLength(items.length)
+    })
+
     const updateHeight = () => {
         heightUpdateTimeout = calculateAverageHeightDebounced(
             isCalculatingHeight,
@@ -381,10 +396,10 @@
             itemElements,
             heightCache,
             lastMeasuredIndex,
-            calculatedItemHeight,
+            heightManager.averageHeight,
             (result) => {
                 // Critical updates that must trigger reactive effects immediately
-                calculatedItemHeight = result.newHeight
+                heightManager.itemHeight = result.newHeight
                 lastMeasuredIndex = result.newLastMeasuredIndex
                 heightCache = result.updatedHeightCache
 
@@ -395,9 +410,10 @@
 
                 // Non-critical updates wrapped in untrack to prevent reactive cascades
                 untrack(() => {
-                    // Update running totals efficiently (O(1) instead of O(n)!)
-                    totalMeasuredHeight = result.newTotalHeight
-                    measuredCount = result.newValidCount
+                    // Process height changes with ReactiveHeightManager (O(dirty) instead of O(n)!)
+                    if (result.heightChanges.length > 0) {
+                        heightManager.processDirtyHeights(result.heightChanges)
+                    }
 
                     // Clear processed dirty items (all dirty items were processed)
                     dirtyItems.clear()
@@ -412,12 +428,18 @@
                             Array.from(result.clearedDirtyItems)
                         )
                     }
+
+                    if (INTERNAL_DEBUG && result.heightChanges.length > 0) {
+                        console.log(
+                            `Processed ${result.heightChanges.length} height changes with ReactiveHeightManager`
+                        )
+                    }
                 })
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
-            totalMeasuredHeight, // Current running total height
-            measuredCount, // Current running total count
+            0, // Don't pass ReactiveHeightManager state - let each system manage its own totals
+            0, // Don't pass ReactiveHeightManager state - let each system manage its own totals
             mode // Pass mode for correct element indexing
         )
     }
@@ -429,53 +451,37 @@
     let lastItemsLength = $state(0)
 
     /**
-     * CRITICAL: Accurate Total Height Calculation
-     * ==========================================
+     * CRITICAL: O(1) Reactive Total Height Calculation
+     * ===============================================
      *
-     * This derived calculation fixes the root cause of massive scroll jumps in bottomToTop mode.
+     * Uses ReactiveHeightManager for O(1) height calculations instead of O(n) loops.
+     * This fixes the root cause of massive scroll jumps in bottomToTop mode.
      *
-     * Problem with Previous Approach:
+     * Problem with Previous O(n) Approach:
+     * - Looped through ALL items on every reactive update
      * - Used simple: items.length * calculatedItemHeight
      * - When 1 item changes from 20px to 100px in 10,000 items:
      *   - calculatedItemHeight jumps from 20 to 22.35 (+2.35px)
      *   - Total height jumps from 200,000px to 223,500px (+23,500px!)
      *   - This 23,500px error caused massive scroll position overshoots
      *
-     * Solution:
-     * - Use actual measured heights from heightCache where available
-     * - Only estimate heights for items that haven't been measured yet
-     * - Calculate average from measured items only (not all items)
+     * Solution with ReactiveHeightManager:
+     * - O(1) reactive calculations using incremental updates
+     * - Uses actual measured heights from heightCache where available
+     * - Only estimates heights for items that haven't been measured yet
+     * - Processes only dirty/changed heights instead of all items
      *
-     * Example with Same Scenario:
+     * Example with O(1) Approach:
      * - 20 items measured: 19 × 20px + 1 × 100px = 460px measured
      * - 9,980 unmeasured: 9,980 × 23px (avg of measured) = 229,540px estimated
      * - Total: 460px + 229,540px = 230,000px (only +30,000px vs +23,500px error)
      * - Much smaller error that doesn't cause massive scroll jumps
+     * - Updates incrementally using processDirtyHeights() instead of recalculating all
      *
-     * This function is called reactively whenever heightCache or items change,
-     * ensuring scroll calculations always use the most accurate height data available.
-     *
+     * This getter is reactive and updates whenever heightManager's internal state changes.
      * Used by: atBottom calculation, scroll corrections, maxScrollTop calculations
      */
-    let totalHeight = $derived(() => {
-        let total = 0
-        let measuredCount = 0
-
-        // Sum up actual measured heights from heightCache
-        for (let i = 0; i < items.length; i++) {
-            if (heightCache[i] !== undefined) {
-                total += heightCache[i]
-                measuredCount++
-            }
-        }
-
-        // Estimate height for unmeasured items using average of measured items
-        const unmeasuredCount = items.length - measuredCount
-        const averageOfMeasured = measuredCount > 0 ? total / measuredCount : calculatedItemHeight
-        total += unmeasuredCount * averageOfMeasured
-
-        return total
-    })
+    let totalHeight = $derived(() => heightManager.totalHeight)
 
     let atTop = $derived(scrollTop <= 1)
     let atBottom = $derived(scrollTop >= totalHeight() - height - 1)
@@ -640,23 +646,6 @@
     })
 
     /**
-     * Calculate precise item height based on actual measurements when available
-     */
-    // Running totals for efficient precise height calculation
-    let totalMeasuredHeight = $state(0)
-    let measuredCount = $state(0)
-    const preciseItemHeight = $derived(() => {
-        if (measuredCount > 100) {
-            const avgHeight = totalMeasuredHeight / measuredCount
-            // Only use if the difference is significant (more than 0.5px)
-            if (Math.abs(avgHeight - calculatedItemHeight) > 0.5) {
-                return avgHeight
-            }
-        }
-        return calculatedItemHeight
-    })
-
-    /**
      * Calculates the range of items that should be rendered based on current scroll position.
      *
      * This derived calculation determines which items should be visible in the viewport,
@@ -689,13 +678,14 @@
             lastVisibleRange = calculateVisibleRange(
                 targetScrollTop,
                 viewportHeight,
-                calculatedItemHeight,
+                heightManager.averageHeight,
                 items.length,
                 bufferSize,
                 mode,
                 atBottom,
                 wasAtBottomBeforeHeightChange,
-                lastVisibleRange
+                lastVisibleRange,
+                totalHeight()
             )
 
             return lastVisibleRange
@@ -704,13 +694,14 @@
         lastVisibleRange = calculateVisibleRange(
             scrollTop,
             viewportHeight,
-            calculatedItemHeight,
+            heightManager.averageHeight,
             items.length,
             bufferSize,
             mode,
             atBottom,
             wasAtBottomBeforeHeightChange,
-            lastVisibleRange
+            lastVisibleRange,
+            totalHeight()
         )
 
         return lastVisibleRange
@@ -1109,9 +1100,8 @@
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
             style:height="{(() => {
-                // Use precise height when available for better cross-browser compatibility
-                const totalActualHeight = items.length * preciseItemHeight()
-                return Math.max(height, totalActualHeight)
+                // Use ReactiveHeightManager's accurate total height for better cross-browser compatibility
+                return Math.max(height, totalHeight())
             })()}px"
         >
             <!-- Items container is translated to show correct items -->
@@ -1140,7 +1130,7 @@
                         items.length,
                         visibleRange.end,
                         visibleRange.start,
-                        calculatedItemHeight,
+                        heightManager.averageHeight,
                         effectiveHeight
                     )
 

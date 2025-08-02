@@ -63,19 +63,22 @@ export class ReactiveHeightManager {
     }
 
     /**
+     * Get the calculated average height of measured items
+     * Falls back to itemHeight if no items have been measured yet
+     */
+    get averageHeight(): number {
+        return this._measuredCount > 0
+            ? this._totalMeasuredHeight / this._measuredCount
+            : this._itemHeight
+    }
+
+    /**
      * Get the reactive total height of all items (measured + estimated)
      * This automatically updates when any dependencies change
      */
     get totalHeight(): number {
         const unmeasuredCount = this._itemLength - this._measuredCount
-
-        // Use the better of measured average or item height for estimation
-        const averageOfMeasured =
-            this._measuredCount > 0
-                ? this._totalMeasuredHeight / this._measuredCount
-                : this._itemHeight
-
-        const estimatedHeight = unmeasuredCount * averageOfMeasured
+        const estimatedHeight = unmeasuredCount * this.averageHeight
         return this._totalMeasuredHeight + estimatedHeight
     }
 
@@ -168,6 +171,7 @@ export class ReactiveHeightManager {
             coveragePercent:
                 this._itemLength > 0 ? (this._measuredCount / this._itemLength) * 100 : 0,
             itemHeight: this._itemHeight,
+            averageHeight: this.averageHeight,
             totalHeight: this.totalHeight
         }
     }

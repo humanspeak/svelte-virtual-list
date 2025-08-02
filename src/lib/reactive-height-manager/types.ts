@@ -36,6 +36,8 @@ export interface HeightManagerDebugInfo {
     coveragePercent: number
     /** Current height to use for unmeasured items */
     itemHeight: number
+    /** Calculated average height of measured items */
+    averageHeight: number
     /** Current total height (measured + estimated) */
     totalHeight: number
 }
