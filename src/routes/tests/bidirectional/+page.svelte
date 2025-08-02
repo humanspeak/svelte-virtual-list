@@ -9,7 +9,7 @@
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 500px;">
     <div>
-        <SvelteVirtualList defaultEstimatedItemHeight={21} {items} testId="top-to-bottom">
+        <SvelteVirtualList defaultEstimatedItemHeight={22} {items} testId="top-to-bottom">
             {#snippet renderItem(item)}
                 <div class="test-item" data-testid="ttb-item-{item.id}">
                     {item.text}
@@ -19,7 +19,7 @@
     </div>
     <div>
         <SvelteVirtualList
-            defaultEstimatedItemHeight={21}
+            defaultEstimatedItemHeight={22}
             {items}
             mode="bottomToTop"
             testId="bottom-to-top"

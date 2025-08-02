@@ -29,7 +29,7 @@
 
 <div class="test-container" style="height: 500px;">
     <SvelteVirtualList
-        defaultEstimatedItemHeight={21}
+        defaultEstimatedItemHeight={22}
         bind:this={virtualList}
         {items}
         testId="basic-list"
