@@ -172,33 +172,10 @@
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
 
     import { BROWSER } from 'esm-env'
-    import { onMount, tick, untrack } from 'svelte'
+    import { onMount, tick } from 'svelte'
 
     const rafSchedule = createRafScheduler()
     const INTERNAL_DEBUG = false
-
-    /**
-     * Creates a throttled callback function that limits execution frequency.
-     * Useful for preventing excessive calls to debounced functions.
-     *
-     * @param callback - Function to throttle
-     * @param delay - Minimum time between executions (ms)
-     * @returns Throttled version of the callback
-     */
-    const createThrottledCallback = <T extends (...args: any[]) => void>(
-        callback: T,
-        delay = 16 // ~60fps default
-    ): T => {
-        let lastExecutionTime = 0
-
-        return ((...args: Parameters<T>) => {
-            const now = performance.now()
-            if (now - lastExecutionTime >= delay) {
-                lastExecutionTime = now
-                callback(...args)
-            }
-        }) as T
-    }
     /**
      * Core configuration props with default values
      * @type {SvelteVirtualListProps<TItem>}
@@ -379,18 +356,13 @@
         }
     }
 
-    // Create throttled height update function to prevent excessive calls
-    const throttledHeightUpdate = createThrottledCallback(() => {
+    // Trigger height calculation when dirty items are added
+    $effect(() => {
         if (BROWSER && dirtyItemsCount > 0) {
             // Capture bottom state before any height processing to prevent cascading corrections
             wasAtBottomBeforeHeightChange = atBottom
             updateHeight()
         }
-    }, 16) // ~60fps throttle
-
-    // Trigger height calculation when dirty items are added (throttled)
-    $effect(() => {
-        throttledHeightUpdate()
     })
 
     const updateHeight = () => {
@@ -403,36 +375,30 @@
             lastMeasuredIndex,
             calculatedItemHeight,
             (result) => {
-                // Critical updates that must trigger reactive effects immediately
                 calculatedItemHeight = result.newHeight
                 lastMeasuredIndex = result.newLastMeasuredIndex
                 heightCache = result.updatedHeightCache
 
-                // Handle height changes for scroll correction (needs updated heightCache)
+                // Update running totals efficiently (O(1) instead of O(n)!)
+                totalMeasuredHeight = result.newTotalHeight
+                measuredCount = result.newValidCount
+
+                // Clear processed dirty items (all dirty items were processed)
+                dirtyItems.clear()
+                dirtyItemsCount = 0
+
+                // Handle height changes for scroll correction
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
                     handleHeightChangesScrollCorrection(result.heightChanges)
                 }
 
-                // Non-critical updates wrapped in untrack to prevent reactive cascades
-                untrack(() => {
-                    // Update running totals efficiently (O(1) instead of O(n)!)
-                    totalMeasuredHeight = result.newTotalHeight
-                    measuredCount = result.newValidCount
-
-                    // Clear processed dirty items (all dirty items were processed)
-                    dirtyItems.clear()
-                    dirtyItemsCount = 0
-
-                    // Reset bottom state flag
-                    wasAtBottomBeforeHeightChange = false
-
-                    if (INTERNAL_DEBUG && result.clearedDirtyItems.size > 0) {
-                        console.log(
-                            `Cleared ${result.clearedDirtyItems.size} dirty items:`,
-                            Array.from(result.clearedDirtyItems)
-                        )
-                    }
-                })
+                if (INTERNAL_DEBUG && result.clearedDirtyItems.size > 0) {
+                    console.log(
+                        `Cleared ${result.clearedDirtyItems.size} dirty items:`,
+                        Array.from(result.clearedDirtyItems)
+                    )
+                }
+                wasAtBottomBeforeHeightChange = false
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
