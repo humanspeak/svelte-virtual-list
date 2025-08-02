@@ -28,7 +28,13 @@
 </script>
 
 <div class="test-container" style="height: 500px;">
-    <SvelteVirtualList bind:this={virtualList} {items} testId="basic-list" mode="bottomToTop" debug>
+    <SvelteVirtualList
+        bind:this={virtualList}
+        {items}
+        testId="basic-list"
+        mode="bottomToTop"
+        debug={false}
+    >
         {#snippet renderItem(item)}
             <div
                 class="test-item"

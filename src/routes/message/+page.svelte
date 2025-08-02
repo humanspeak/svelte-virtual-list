@@ -15,7 +15,7 @@
 </script>
 
 <div style="height: 500px;">
-    <SvelteVirtualList items={messages} mode="bottomToTop" debug>
+    <SvelteVirtualList items={messages} mode="bottomToTop" debug={false}>
         {#snippet renderItem(message)}
             <div class="message-container">
                 <p>{message.text}</p>

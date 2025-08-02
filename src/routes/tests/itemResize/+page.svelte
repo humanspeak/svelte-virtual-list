@@ -47,7 +47,7 @@
 </script>
 
 <div class="test-container" style="height: 500px;">
-    <SvelteVirtualList {items} testId="item-resize-list" debug {debugFunction}>
+    <SvelteVirtualList {items} testId="item-resize-list" debug={false} {debugFunction}>
         {#snippet renderItem(item)}
             <div
                 class="test-item"
