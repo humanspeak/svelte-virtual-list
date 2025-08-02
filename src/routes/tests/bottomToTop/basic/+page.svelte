@@ -3,7 +3,7 @@
 
     const items = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
-        text: `Item ${i}`
+        text: `Item ${i}` // eslint-disable-line svelte/no-at-html-tags
     }))
 </script>
 
@@ -13,6 +13,7 @@
         {items}
         testId="basic-list"
         mode="bottomToTop"
+        debug
     >
         {#snippet renderItem(item)}
             <div>

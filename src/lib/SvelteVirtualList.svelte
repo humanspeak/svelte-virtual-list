@@ -170,7 +170,7 @@
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
-    import { createThrottledCallback } from '$lib/utils/throttle.js'
+    import { createAdvancedThrottledCallback } from '$lib/utils/throttle.js'
     import { ReactiveHeightManager } from '$lib/reactive-height-manager/index.js'
     import { BROWSER } from 'esm-env'
     import { onMount, tick, untrack } from 'svelte'
@@ -316,7 +316,7 @@
 
             // Step 2: Use native scrollIntoView for precise bottom-edge positioning after DOM updates
             tick().then(() => {
-                const item0Element = viewportElement.querySelector('[data-testid="list-item-0"]')
+                const item0Element = viewportElement.querySelector('[data-original-index="0"]')
                 if (item0Element) {
                     // Native browser API handles all positioning edge cases perfectly
                     item0Element.scrollIntoView({
@@ -369,18 +369,41 @@
         }
     }
 
-    // Create throttled height update function to prevent excessive calls to debounced updateHeight()
-    const throttledHeightUpdate = createThrottledCallback(() => {
-        if (BROWSER && dirtyItemsCount > 0) {
-            // Capture bottom state before any height processing to prevent cascading corrections
-            wasAtBottomBeforeHeightChange = atBottom
-            updateHeight()
-        }
-    }, 16) // ~60fps throttle to match typical RAF timing
+    // Height update function - removed throttling to fix race condition on initial load
+    // Create throttled height update function with trailing execution to ensure measurement always happens
+    const triggerHeightUpdate = createAdvancedThrottledCallback(
+        () => {
+            // DEBUG: Log update calls
+            console.log('🔄 triggerHeightUpdate called:', {
+                dirtyItemsCount,
+                hasDirtyItems: dirtyItemsCount > 0,
+                dirtyItemsArray: Array.from(dirtyItems),
+                inBrowser: BROWSER
+            })
 
-    // Trigger height calculation when dirty items are added (throttled)
+            if (BROWSER && dirtyItemsCount > 0) {
+                // Capture bottom state before any height processing to prevent cascading corrections
+                wasAtBottomBeforeHeightChange = atBottom
+                console.log('🚀 Calling updateHeight() with dirty items:', Array.from(dirtyItems))
+                updateHeight()
+            } else {
+                console.log('⚠️ NOT calling updateHeight - no dirty items or not in browser')
+            }
+        },
+        16,
+        {
+            leading: true, // Execute immediately for responsiveness
+            trailing: true // CRUCIAL: Execute the last call after delay to ensure measurement always happens
+        }
+    )
+
+    // Trigger height calculation when dirty items are added
     $effect(() => {
-        throttledHeightUpdate()
+        console.log(
+            '🎯 $effect triggered - about to call triggerHeightUpdate, dirtyItemsCount:',
+            dirtyItemsCount
+        )
+        triggerHeightUpdate()
     })
 
     // Keep height manager synchronized with items length
@@ -398,6 +421,15 @@
             lastMeasuredIndex,
             heightManager.averageHeight,
             (result) => {
+                // DEBUG: Log updateHeight callback result
+                console.log('📊 updateHeight callback received:', {
+                    newHeight: result.newHeight,
+                    heightChangesLength: result.heightChanges.length,
+                    heightChanges: result.heightChanges,
+                    newLastMeasuredIndex: result.newLastMeasuredIndex,
+                    dirtyItemsBeforeProcessing: Array.from(dirtyItems)
+                })
+
                 // Critical updates that must trigger reactive effects immediately
                 heightManager.itemHeight = result.newHeight
                 lastMeasuredIndex = result.newLastMeasuredIndex
@@ -412,10 +444,20 @@
                 untrack(() => {
                     // Process height changes with ReactiveHeightManager (O(dirty) instead of O(n)!)
                     if (result.heightChanges.length > 0) {
+                        console.log(
+                            '🎯 Calling processDirtyHeights with',
+                            result.heightChanges.length,
+                            'changes'
+                        )
                         heightManager.processDirtyHeights(result.heightChanges)
+                    } else {
+                        console.log(
+                            '⚠️ No heightChanges to process - this is why processedItems stays 0!'
+                        )
                     }
 
                     // Clear processed dirty items (all dirty items were processed)
+                    console.log('🧹 Clearing dirty items after processing heightChanges')
                     dirtyItems.clear()
                     dirtyItemsCount = 0
 
@@ -824,27 +866,48 @@
                 for (const entry of entries) {
                     const element = entry.target as HTMLElement
                     const elementIndex = itemElements.indexOf(element)
-                    // console.log(
-                    //     '🔥 ELEMENT INDEX:',
-                    //     elementIndex,
-                    //     element.getBoundingClientRect().height,
-                    //     element.dataset.originalIndex
-                    // )
+                    const actualIndex = parseInt(element.dataset.originalIndex || '-1', 10)
+
+                    // DEBUG: Log ResizeObserver activity for item 0
+                    if (actualIndex === 0) {
+                        console.log('🔍 ResizeObserver fired for ITEM 0:', {
+                            elementIndex,
+                            actualIndex,
+                            currentHeight: element.getBoundingClientRect().height,
+                            cachedHeight: heightCache[actualIndex],
+                            dirtyItemsCount,
+                            isInBottomToTopMode: mode === 'bottomToTop'
+                        })
+                    }
 
                     if (elementIndex !== -1) {
-                        // Get the original index directly from the data attribute
-                        const actualIndex = parseInt(element.dataset.originalIndex || '-1', 10)
-
                         if (actualIndex >= 0) {
                             const currentHeight = element.getBoundingClientRect().height
+                            const isSignificant = isSignificantHeightChange(
+                                actualIndex,
+                                currentHeight,
+                                heightCache
+                            )
+
+                            // DEBUG: Extra logging for item 0
+                            if (actualIndex === 0) {
+                                console.log('🔍 Item 0 height check:', {
+                                    currentHeight,
+                                    cachedHeight: heightCache[actualIndex],
+                                    isSignificant,
+                                    willMarkDirty: isSignificant
+                                })
+                            }
 
                             // Only mark as dirty if height change is significant
-                            if (
-                                isSignificantHeightChange(actualIndex, currentHeight, heightCache)
-                            ) {
-                                // console.log(
-                                //     `🔥 MARKING ITEM ${actualIndex} - DIRTY - height change: ${currentHeight}`
-                                // )
+                            if (isSignificant) {
+                                // DEBUG: Log when item 0 gets marked dirty
+                                if (actualIndex === 0) {
+                                    console.log('🔥 MARKING ITEM 0 AS DIRTY!', {
+                                        currentHeight,
+                                        dirtyItemsCountBefore: dirtyItemsCount
+                                    })
+                                }
 
                                 // Capture bottom state when FIRST item gets marked dirty
                                 if (dirtyItemsCount === 0) {
@@ -858,14 +921,28 @@
                                 }
 
                                 dirtyItems.add(actualIndex)
-                                dirtyItemsCount = dirtyItems.size
+                                const newCount = dirtyItems.size
+                                console.log(
+                                    '📈 dirtyItemsCount changing from',
+                                    dirtyItemsCount,
+                                    'to',
+                                    newCount,
+                                    'for item',
+                                    actualIndex
+                                )
+                                dirtyItemsCount = newCount
                                 shouldRecalculate = true
+
+                                // DEBUG: Log after marking item 0 dirty
+                                if (actualIndex === 0) {
+                                    console.log(
+                                        '🔥 Item 0 marked dirty! New dirtyItemsCount:',
+                                        dirtyItemsCount
+                                    )
+                                }
+                            } else if (actualIndex === 0) {
+                                console.log('⚠️ Item 0 NOT marked dirty - height change too small')
                             }
-                            // else {
-                            //     console.log(
-                            //         `🔥 SKIPPING ITEM ${actualIndex} - height change too small: ${currentHeight}`
-                            //     )
-                            // }
                         }
                     }
                 }
@@ -1131,7 +1208,8 @@
                         visibleRange.end,
                         visibleRange.start,
                         heightManager.averageHeight,
-                        effectiveHeight
+                        effectiveHeight,
+                        totalHeight() // Pass ReactiveHeightManager's accurate total height
                     )
 
                     return transform

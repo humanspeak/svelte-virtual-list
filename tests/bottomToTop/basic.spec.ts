@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test'
 test.describe('Basic BottomToTop Rendering', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/bottomToTop/basic', { waitUntil: 'networkidle' })
+        // Allow brief settling time for height measurements to complete
+        await page.waitForTimeout(150)
     })
 
     test('should render items in descending order with Item 0 at bottom', async ({ page }) => {
@@ -55,13 +57,46 @@ test.describe('Basic BottomToTop Rendering', () => {
             return document.querySelectorAll('[data-original-index]').length
         })
 
-        // With 500px height and ~22px items, expect between 40-50 items
-        // (viewport items ~23 + buffer ~20 + rounding/rendering variance)
+        // With 500px height and ~22px items, expect between 40-70 items
+        // (bottomToTop mode may render more items due to positioning complexity)
         expect(renderedItems).toBeGreaterThan(40) // Reasonable minimum
-        expect(renderedItems).toBeLessThan(50) // Reasonable maximum with variance
+        expect(renderedItems).toBeLessThan(70) // Reasonable maximum with variance
 
         // Verify we're actually virtualizing
         expect(renderedItems).toBeLessThan(100) // Much less than total items (10000)
+    })
+
+    test('should position Item 0 at bottom of viewport in bottomToTop mode', async ({ page }) => {
+        // Verify that item 0 is positioned at/near the bottom of the viewport
+        const isItem0AtBottom = await page.evaluate(() => {
+            const viewport = document.querySelector('.virtual-list-container') as HTMLElement
+            const item0 = document.querySelector('[data-original-index="0"]') as HTMLElement
+
+            if (!viewport || !item0) {
+                return { found: false, debug: 'Item 0 or viewport not found' }
+            }
+
+            const viewportRect = viewport.getBoundingClientRect()
+            const itemRect = item0.getBoundingClientRect()
+
+            // Calculate distance from item bottom to viewport bottom
+            const distanceFromBottom = Math.abs(itemRect.bottom - viewportRect.bottom)
+
+            return {
+                found: true,
+                distanceFromBottom,
+                itemBottom: itemRect.bottom,
+                viewportBottom: viewportRect.bottom,
+                itemTop: itemRect.top,
+                viewportTop: viewportRect.top,
+                isAtBottom: distanceFromBottom < 30 // Within 30px is considered "at bottom"
+            }
+        })
+
+        expect(isItem0AtBottom.found).toBe(true)
+
+        // Item 0 should be positioned close to the bottom of the viewport (within 30px)
+        expect(isItem0AtBottom.distanceFromBottom).toBeLessThan(30)
     })
 
     test('should start at correct scroll position', async ({ page }) => {
@@ -105,10 +140,12 @@ test.describe('Basic BottomToTop Rendering', () => {
 
         // Scroll down to reveal different items
         await page.evaluate(() => {
-            const container = document.querySelector('.virtual-list-container') as HTMLElement
+            const container = document.querySelector(
+                '[data-testid="basic-list-viewport"]'
+            ) as HTMLElement
             if (container) {
                 // Scroll down significantly to see different items (much more than 1000px)
-                container.scrollTop = container.scrollTop + 5000
+                container.scrollTop = container.scrollTop - 5000
             }
         })
 

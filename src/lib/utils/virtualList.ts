@@ -159,18 +159,18 @@ export const calculateTransformY = (
     visibleEnd: number,
     visibleStart: number,
     itemHeight: number,
-    viewportHeight: number
+    viewportHeight: number,
+    totalContentHeight?: number
 ) => {
     if (mode === 'bottomToTop') {
-        // In bottomToTop mode, we need to position the container so that
-        // the first visible item (visibleStart) aligns with its correct position
-        // from the bottom of the total content
+        // In bottomToTop mode, position items so they stack from bottom up
+        const actualTotalHeight = totalContentHeight ?? totalItems * itemHeight
+
+        // Calculate transform to position visible items correctly
         const basicTransform = (totalItems - visibleEnd) * itemHeight
 
-        // When there are few items (total content height < viewport height),
-        // push items to the bottom of the viewport to maintain bottomToTop behavior
-        const totalContentHeight = totalItems * itemHeight
-        const bottomOffset = Math.max(0, viewportHeight - totalContentHeight)
+        // When content is smaller than viewport, push to bottom
+        const bottomOffset = Math.max(0, viewportHeight - actualTotalHeight)
 
         return basicTransform + bottomOffset
     } else {
