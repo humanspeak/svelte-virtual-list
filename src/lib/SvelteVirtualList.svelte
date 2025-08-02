@@ -470,8 +470,8 @@
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
-    $inspect('scrollState: atTop', atTop)
-    $inspect('scrollState: atBottom', atBottom)
+    // $inspect('scrollState: atTop', atTop)
+    // $inspect('scrollState: atBottom', atBottom)
 
     $effect(() => {
         if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {
@@ -531,6 +531,9 @@
 
     // Handle items being added/removed in bottomToTop mode
     $effect(() => {
+        // Only track items.length to prevent re-runs on other reactive changes
+        const currentItemsLength = items.length
+
         if (
             BROWSER &&
             initialized &&
@@ -538,19 +541,26 @@
             viewportElement &&
             lastItemsLength > 0
         ) {
-            const itemsAdded = items.length - lastItemsLength
+            const itemsAdded = currentItemsLength - lastItemsLength
 
             if (itemsAdded !== 0) {
+                // Capture all reactive values immediately to prevent re-triggering
                 const currentScrollTop = viewportElement.scrollTop
-                const maxScrollTop = Math.max(0, totalHeight() - height)
+                const currentCalculatedItemHeight = calculatedItemHeight
+                const currentHeight = height
+                const currentTotalHeight = totalHeight()
+                const maxScrollTop = Math.max(0, currentTotalHeight - currentHeight)
 
                 // Check if user was at/near the bottom before items were added
                 const wasNearBottom =
                     Math.abs(
                         currentScrollTop -
-                            Math.max(0, lastItemsLength * calculatedItemHeight - height)
+                            Math.max(
+                                0,
+                                lastItemsLength * currentCalculatedItemHeight - currentHeight
+                            )
                     ) <
-                    calculatedItemHeight * 2
+                    currentCalculatedItemHeight * 2
 
                 if (wasNearBottom || currentScrollTop === 0) {
                     // User was at bottom, keep them at bottom after new items are added
@@ -575,7 +585,7 @@
             }
         }
 
-        lastItemsLength = items.length
+        lastItemsLength = currentItemsLength
     })
 
     // Update container height when element is mounted

@@ -18,7 +18,7 @@
     setTimeout(() => {
         // Direct property assignment works fine in Svelte 5
         items[1].height = 100
-        console.log('🧪 Test: Changed items[1].height to 100px')
+        // console.log('🧪 Test: Changed items[1].height to 100px')
 
         // setTimeout(() => {
         //     virtualList?.scroll({
