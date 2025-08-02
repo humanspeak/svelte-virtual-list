@@ -383,11 +383,9 @@
                 totalMeasuredHeight = result.newTotalHeight
                 measuredCount = result.newValidCount
 
-                // Clear processed dirty items
-                result.clearedDirtyItems.forEach((index) => {
-                    dirtyItems.delete(index)
-                })
-                dirtyItemsCount = dirtyItems.size // Update reactive count
+                // Clear processed dirty items (all dirty items were processed)
+                dirtyItems.clear()
+                dirtyItemsCount = 0
 
                 // Handle height changes for scroll correction
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
