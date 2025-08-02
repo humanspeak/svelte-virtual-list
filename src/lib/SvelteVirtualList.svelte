@@ -175,7 +175,10 @@
     import { onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-    const INTERNAL_DEBUG = false
+    // Package-specific debug flag - safe for library distribution
+    // Enable with: NODE_ENV=development SVELTE_VIRTUAL_LIST_DEBUG=true
+    const INTERNAL_DEBUG =
+        import.meta.env.DEV && import.meta.env.VITE_SVELTE_VIRTUAL_LIST_DEBUG === 'true'
     /**
      * Core configuration props with default values
      * @type {SvelteVirtualListProps}
