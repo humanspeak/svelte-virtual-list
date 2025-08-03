@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { VirtualListSetters, VirtualListState } from './types.js'
 import {
-    buildBlockSums,
     calculateAverageHeight,
     calculateScrollPosition,
     calculateTransformY,
@@ -530,99 +529,5 @@ describe('getScrollOffsetForIndex', () => {
         // Expected offset: 30 + 40 + 50 + 60 + 70 = 250
         const offset = getScrollOffsetForIndex(heightCache, calculatedItemHeight, idx)
         expect(offset).toBe(250)
-    })
-
-    describe('block sums', () => {
-        it('matches legacy logic for all estimated heights', () => {
-            const heightCache = {}
-            const calculatedItemHeight = 10
-            const totalItems = 100
-            const blockSums = buildBlockSums(heightCache, calculatedItemHeight, totalItems, 20)
-            for (let idx = 0; idx <= totalItems; idx += 10) {
-                const legacy = getScrollOffsetForIndex(heightCache, calculatedItemHeight, idx)
-                const block = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    idx,
-                    blockSums,
-                    20
-                )
-                expect(block).toBe(legacy)
-            }
-        })
-
-        it('matches legacy logic for partial measured heights', () => {
-            const heightCache = { 0: 5, 2: 15, 19: 100 }
-            const calculatedItemHeight = 10
-            const totalItems = 40
-            const blockSums = buildBlockSums(heightCache, calculatedItemHeight, totalItems, 10)
-            for (let idx = 0; idx <= totalItems; idx += 7) {
-                const legacy = getScrollOffsetForIndex(heightCache, calculatedItemHeight, idx)
-                const block = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    idx,
-                    blockSums,
-                    10
-                )
-                expect(block).toBe(legacy)
-            }
-        })
-
-        it('handles block boundary and tail correctly', () => {
-            const heightCache = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10 }
-            const calculatedItemHeight = 0
-            const totalItems = 10
-            const blockSums = buildBlockSums(heightCache, calculatedItemHeight, totalItems, 5)
-            // Block sums: [1+2+3+4+5=15], [6+7+8+9+10=40]
-            // idx=7: blockIdx=1, offset=15, tail=6+7=13, total=28
-            const offset = getScrollOffsetForIndex(
-                heightCache,
-                calculatedItemHeight,
-                7,
-                blockSums,
-                5
-            )
-            expect(offset).toBe(28)
-        })
-
-        it('returns 0 for idx <= 0', () => {
-            const blockSums = buildBlockSums({}, 10, 10, 5)
-            expect(getScrollOffsetForIndex({}, 10, 0, blockSums, 5)).toBe(0)
-            expect(getScrollOffsetForIndex({}, 10, -5, blockSums, 5)).toBe(0)
-        })
-    })
-})
-
-describe('buildBlockSums', () => {
-    it('returns empty array for zero items', () => {
-        const sums = buildBlockSums({}, 40, 0)
-        expect(sums).toEqual([])
-    })
-
-    it('returns one sum for fewer than blockSize items (all estimated)', () => {
-        const sums = buildBlockSums({}, 10, 5, 10)
-        expect(sums).toEqual([50])
-    })
-
-    it('returns correct sums for all measured heights', () => {
-        const heightCache = { 0: 10, 1: 20, 2: 30, 3: 40, 4: 50 }
-        const sums = buildBlockSums(heightCache, 99, 5, 2)
-        // Blocks: [0,1]=30, [2,3]=100, [4]=150 (cumulative sums)
-        expect(sums).toEqual([30, 100, 150])
-    })
-
-    it('returns correct sums for partial measured heights', () => {
-        const heightCache = { 1: 20, 3: 40 }
-        const sums = buildBlockSums(heightCache, 10, 5, 2)
-        // [0]=10, [1]=20, [2]=10, [3]=40, [4]=10
-        // Blocks: [0,1]=30, [2,3]=80, [4]=90 (cumulative sums)
-        expect(sums).toEqual([30, 80, 90])
-    })
-
-    it('handles blockSize exactly dividing totalItems', () => {
-        const sums = buildBlockSums({}, 5, 6, 3)
-        // 3+3=6 items, block size 3: [0,1,2]=15, [3,4,5]=15
-        expect(sums).toEqual([15, 30])
     })
 })

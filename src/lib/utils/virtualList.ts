@@ -51,14 +51,14 @@ export const calculateVisibleRange = (
     totalContentHeight?: number
 ): SvelteVirtualListPreviousVisibleRange => {
     if (mode === 'bottomToTop') {
-        if (wasAtBottomBeforeHeightChange && lastVisibleRange) {
-            // console.log('calculateVisibleRange:wasAtBottomBeforeHeightChange', {
-            //     lastVisibleRange,
-            //     atBottom,
-            //     wasAtBottomBeforeHeightChange
-            // })
-            return lastVisibleRange
-        }
+        // if (wasAtBottomBeforeHeightChange && lastVisibleRange) {
+        //     // console.log('calculateVisibleRange:wasAtBottomBeforeHeightChange', {
+        //     //     lastVisibleRange,
+        //     //     atBottom,
+        //     //     wasAtBottomBeforeHeightChange
+        //     // })
+        //     return lastVisibleRange
+        // }
         const visibleCount = Math.ceil(viewportHeight / itemHeight) + 1
 
         // In bottomToTop mode, scrollTop represents distance from the total content end
@@ -71,11 +71,19 @@ export const calculateVisibleRange = (
         const distanceFromStart = maxScrollTop - scrollTop
         const startIndex = Math.floor(distanceFromStart / itemHeight)
 
+        // console.log(
+        //     `[DEBUG] calculateVisibleRange bottomToTop: scrollTop=${scrollTop}, maxScrollTop=${maxScrollTop}, distanceFromStart=${distanceFromStart}, startIndex=${startIndex}`
+        // )
+
         // Safeguard: handle edge cases
         if (startIndex < 0) {
             // We're scrolled beyond the maximum (showing first items)
             const start = 0
             const end = Math.min(totalItems, visibleCount + bufferSize * 2)
+
+            // console.log(
+            //     `[DEBUG] calculateVisibleRange (startIndex < 0): start=${start}, end=${end}`
+            // )
             // console.log('calculateVisibleRange:startIndex < 0', {
             //     start,
             //     end,
@@ -89,6 +97,8 @@ export const calculateVisibleRange = (
         // Add buffer to both ends
         const start = Math.max(0, startIndex - bufferSize)
         const end = Math.min(totalItems, startIndex + visibleCount + bufferSize)
+
+        // console.log(`[DEBUG] calculateVisibleRange result: start=${start}, end=${end}`)
 
         // console.log('calculateVisibleRange:startIndex >= 0', {
         //     start,
@@ -431,37 +441,6 @@ export const processChunked = async (
 }
 
 /**
- * Builds a block sum array for fast offset calculation in large virtual lists.
- * Each entry in the array is the total height up to the end of that block (exclusive).
- *
- * @param {HeightCache} heightCache - Map of measured item heights with dirty tracking
- * @param {number} calculatedItemHeight - Estimated height for unmeasured items
- * @param {number} totalItems - Total number of items in the list
- * @param {number} blockSize - Number of items per block
- * @returns {number[]} Array of prefix sums at each block boundary
- */
-export const buildBlockSums = (
-    heightCache: Record<number, number>,
-    calculatedItemHeight: number,
-    totalItems: number,
-    blockSize = 1000
-): number[] => {
-    const blockSums: number[] = []
-    let sum = 0
-    for (let i = 0; i < totalItems; i++) {
-        sum += heightCache[i] ?? calculatedItemHeight
-        if ((i + 1) % blockSize === 0) {
-            blockSums.push(sum)
-        }
-    }
-    // Push the last partial block if needed
-    if (totalItems % blockSize !== 0) {
-        blockSums.push(sum)
-    }
-    return blockSums
-}
-
-/**
  * Calculates the scroll offset (in pixels) needed to bring a specific item into view in a virtual list.
  *
  * Uses block memoization for efficient O(b) offset calculation, where b = block size (default 1000).
@@ -493,9 +472,12 @@ export const getScrollOffsetForIndex = (
     if (!blockSums) {
         // Fallback: O(n) for a single query
         let offset = 0
+
         for (let i = 0; i < idx; i++) {
-            offset += heightCache[i] ?? calculatedItemHeight
+            const height = heightCache[i] ?? calculatedItemHeight
+            offset += height
         }
+
         return offset
     }
     const blockIdx = Math.floor(idx / blockSize)

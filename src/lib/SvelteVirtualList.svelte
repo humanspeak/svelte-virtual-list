@@ -263,7 +263,14 @@
     const handleHeightChangesScrollCorrection = (
         heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
     ) => {
-        if (!viewportElement || !initialized || userHasScrolledAway) return
+        if (
+            !viewportElement ||
+            !initialized ||
+            userHasScrolledAway ||
+            programmaticScrollInProgress
+        ) {
+            return
+        }
 
         /**
          * CRITICAL: BottomToTop Mode Height Change Fix
@@ -455,6 +462,7 @@
     // Add new effect to handle height changes
     // Track if user has scrolled away from bottom to prevent snap-back
     let userHasScrolledAway = $state(false)
+    let programmaticScrollInProgress = $state(false)
     let lastCalculatedHeight = $state(0)
     let lastItemsLength = $state(0)
 
@@ -588,7 +596,7 @@
                     ) <
                     currentCalculatedItemHeight * 2
 
-                if (wasNearBottom || currentScrollTop === 0) {
+                if ((wasNearBottom || currentScrollTop === 0) && !programmaticScrollInProgress) {
                     // User was at bottom, keep them at bottom after new items are added
                     const newScrollTop = maxScrollTop
 
@@ -635,14 +643,18 @@
 
             // Add delay to ensure layout is complete
             tick().then(() => {
-                if (viewportElement) {
+                if (viewportElement && !programmaticScrollInProgress) {
                     // Start at the bottom for bottom-to-top mode
                     viewportElement.scrollTop = targetScrollTop
                     scrollTop = targetScrollTop
 
                     // Double-check the scroll position after a frame
                     requestAnimationFrame(() => {
-                        if (viewportElement && viewportElement.scrollTop !== targetScrollTop) {
+                        if (
+                            viewportElement &&
+                            viewportElement.scrollTop !== targetScrollTop &&
+                            !programmaticScrollInProgress
+                        ) {
                             viewportElement.scrollTop = targetScrollTop
                             scrollTop = targetScrollTop
                         }
@@ -1017,7 +1029,7 @@
             align: align || 'auto',
             targetIndex,
             itemsLength: items.length,
-            calculatedItemHeight,
+            calculatedItemHeight: heightManager.averageHeight, // Use dynamic average from ReactiveHeightManager
             height,
             scrollTop,
             firstVisibleIndex,
@@ -1034,6 +1046,9 @@
             console.log(`Programmatic scroll initiated to index ${targetIndex}`)
         }
 
+        // Prevent height recalculation from overriding our programmatic scroll
+        programmaticScrollInProgress = true
+
         viewportElement.scrollTo({
             top: scrollTarget,
             behavior: smoothScroll ? 'smooth' : 'auto'
@@ -1043,6 +1058,12 @@
         requestAnimationFrame(() => {
             scrollTop = scrollTarget
         })
+
+        // Clear the flag after scroll completes - longer delay to ensure height recalculations are done
+        setTimeout(() => {
+            // Clear the flag to allow height recalculations again
+            programmaticScrollInProgress = false
+        }, 200) // Increased from 100ms to 200ms
     }
 
     /**
