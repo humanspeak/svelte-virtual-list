@@ -222,6 +222,12 @@
     let lastMeasuredIndex = $state(-1) // Index of last measured item
 
     /**
+     * Browser Detection
+     */
+    const isFirefox =
+        typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('firefox')
+
+    /**
      * Timers and Observers
      */
     let heightUpdateTimeout: ReturnType<typeof setTimeout> | null = null // Debounce timer for height updates
@@ -263,12 +269,7 @@
     const handleHeightChangesScrollCorrection = (
         heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
     ) => {
-        if (
-            !viewportElement ||
-            !initialized ||
-            userHasScrolledAway ||
-            programmaticScrollInProgress
-        ) {
+        if (!viewportElement || !initialized || userHasScrolledAway) {
             return
         }
 
@@ -315,7 +316,11 @@
          * Test coverage: tests/bottomToTop/firstItemHeightChange.spec.ts (45 comprehensive tests)
          * Related fixes: See aggressive scroll correction logic ~line 410 with !wasAtBottomBeforeHeightChange
          */
-        if (mode === 'bottomToTop' && wasAtBottomBeforeHeightChange) {
+        if (
+            mode === 'bottomToTop' &&
+            wasAtBottomBeforeHeightChange &&
+            !programmaticScrollInProgress
+        ) {
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
             viewportElement.scrollTop = approximateScrollTop
@@ -462,7 +467,7 @@
     // Add new effect to handle height changes
     // Track if user has scrolled away from bottom to prevent snap-back
     let userHasScrolledAway = $state(false)
-    let programmaticScrollInProgress = $state(false)
+    let programmaticScrollInProgress = $state(false) // Prevent bottom-anchoring during programmatic scrolls
     let lastCalculatedHeight = $state(0)
     let lastItemsLength = $state(0)
 
@@ -504,8 +509,8 @@
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
-    // $inspect('scrollState: atTop', atTop)
-    // $inspect('scrollState: atBottom', atBottom)
+    $inspect('scrollState: atTop', atTop)
+    $inspect('scrollState: atBottom', atBottom)
 
     $effect(() => {
         if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {
@@ -527,6 +532,7 @@
                 heightChanged &&
                 !userHasScrolledAway &&
                 !isAtBottom && // Don't apply aggressive correction when at bottom
+                !programmaticScrollInProgress && // Don't interfere with programmatic scrolls
                 scrollDifference > calculatedItemHeight * 3
 
             if (shouldCorrect) {
@@ -596,7 +602,7 @@
                     ) <
                     currentCalculatedItemHeight * 2
 
-                if ((wasNearBottom || currentScrollTop === 0) && !programmaticScrollInProgress) {
+                if (wasNearBottom || currentScrollTop === 0) {
                     // User was at bottom, keep them at bottom after new items are added
                     const newScrollTop = maxScrollTop
 
@@ -643,18 +649,14 @@
 
             // Add delay to ensure layout is complete
             tick().then(() => {
-                if (viewportElement && !programmaticScrollInProgress) {
+                if (viewportElement) {
                     // Start at the bottom for bottom-to-top mode
                     viewportElement.scrollTop = targetScrollTop
                     scrollTop = targetScrollTop
 
                     // Double-check the scroll position after a frame
                     requestAnimationFrame(() => {
-                        if (
-                            viewportElement &&
-                            viewportElement.scrollTop !== targetScrollTop &&
-                            !programmaticScrollInProgress
-                        ) {
+                        if (viewportElement && viewportElement.scrollTop !== targetScrollTop) {
                             viewportElement.scrollTop = targetScrollTop
                             scrollTop = targetScrollTop
                         }
@@ -991,10 +993,10 @@
      *   {/snippet}
      * </SvelteVirtualList>
      *
-     * @returns {void}
+     * @returns {Promise<void>} Promise that resolves when scrolling is complete
      * @throws {Error} If the index is out of bounds and shouldThrowOnBounds is true
      */
-    export const scroll = (options: SvelteVirtualListScrollOptions): void => {
+    export const scroll = async (options: SvelteVirtualListScrollOptions): Promise<void> => {
         const { index, smoothScroll, shouldThrowOnBounds, align } = {
             ...DEFAULT_SCROLL_OPTIONS,
             ...options
@@ -1043,11 +1045,41 @@
         }
 
         if (INTERNAL_DEBUG) {
-            console.log(`Programmatic scroll initiated to index ${targetIndex}`)
+            console.log(
+                `Programmatic scroll initiated to index ${targetIndex} with a target of ${scrollTarget}`
+            )
         }
 
-        // Prevent height recalculation from overriding our programmatic scroll
+        // Prevent bottom-anchoring logic from interfering with programmatic scroll
         programmaticScrollInProgress = true
+
+        // BROWSER COMPATIBILITY FIX:
+        // Firefox has a bug with smooth scrolling in bottomToTop mode - scrollTo() calls are ignored
+        // Disable smooth scrolling for Firefox bottomToTop mode as a workaround
+
+        if (isFirefox && mode === 'bottomToTop' && smoothScroll && atBottom) {
+            console.warn(
+                'Firefox smooth scrolling in bottomToTop mode is not supported, using instant scroll'
+            )
+            // Find the element with the highest original-index in the current viewport
+            const visibleElements = viewportElement.querySelectorAll('[data-original-index]')
+            let maxIndex = -1
+            let maxElement: HTMLElement | null = null
+            for (const el of visibleElements) {
+                const index = parseInt(el.getAttribute('data-original-index') || '-1')
+                if (index > maxIndex) {
+                    maxIndex = index
+                    maxElement = el as HTMLElement
+                }
+            }
+
+            maxElement?.scrollIntoView({
+                behavior: 'smooth'
+            })
+            await tick()
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            await tick()
+        }
 
         viewportElement.scrollTo({
             top: scrollTarget,
@@ -1059,11 +1091,13 @@
             scrollTop = scrollTarget
         })
 
-        // Clear the flag after scroll completes - longer delay to ensure height recalculations are done
-        setTimeout(() => {
-            // Clear the flag to allow height recalculations again
-            programmaticScrollInProgress = false
-        }, 200) // Increased from 100ms to 200ms
+        // Clear the flag after scroll completes
+        setTimeout(
+            () => {
+                programmaticScrollInProgress = false
+            },
+            smoothScroll ? 500 : 100
+        )
     }
 
     /**
