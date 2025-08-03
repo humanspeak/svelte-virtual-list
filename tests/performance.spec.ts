@@ -120,4 +120,75 @@ test.describe('Scrolling Performance', () => {
         // Render time should remain very consistent (tightened after scroll optimization)
         expect(midScrollRenderTime).toBeLessThan(initialRenderTime * 1.3) // Was 2x, now 1.3x
     })
+
+    test('should handle large scroll jumps efficiently', async ({ page }) => {
+        const jumpTimes = await page.evaluate(async () => {
+            const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
+            const times = []
+
+            // Test massive scroll jumps (common when using scrollbars or programmatic scrolling)
+            const positions = [0, 25000, 75000, 50000, 90000, 10000]
+
+            for (const pos of positions) {
+                const start = performance.now()
+                if (viewport) viewport.scrollTop = pos
+                await new Promise((resolve) => requestAnimationFrame(resolve))
+                times.push(performance.now() - start)
+            }
+
+            return times
+        })
+
+        const avgJumpTime = jumpTimes.reduce((a, b) => a + b) / jumpTimes.length
+        expect(avgJumpTime).toBeLessThan(50) // Large jumps should complete < 50ms
+    })
+
+    test('should maintain optimal DOM node count during scroll', async ({ page }) => {
+        const domEfficiency = await page.evaluate(async () => {
+            const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
+            const measurements = []
+
+            // Test DOM node count at different scroll positions
+            const positions = [0, 10000, 25000, 50000, 75000, 90000]
+
+            for (const pos of positions) {
+                if (viewport) viewport.scrollTop = pos
+                await new Promise((resolve) => setTimeout(resolve, 100))
+
+                const renderedItems = document.querySelectorAll('.test-item').length
+                measurements.push(renderedItems)
+            }
+
+            return {
+                min: Math.min(...measurements),
+                max: Math.max(...measurements),
+                avg: measurements.reduce((a, b) => a + b) / measurements.length
+            }
+        })
+
+        // Virtualization should keep DOM nodes reasonably consistent (allows for intelligent buffering)
+        expect(domEfficiency.max - domEfficiency.min).toBeLessThan(25) // Allow adaptive rendering
+        expect(domEfficiency.avg).toBeLessThan(60) // Efficient virtualization (~52 nodes for 100K items = 99.95% efficiency)
+    })
+
+    test('should efficiently handle rapid direction changes', async ({ page }) => {
+        const directionChangeTime = await page.evaluate(async () => {
+            const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
+            const start = performance.now()
+
+            // Rapid direction changes (common user behavior - scroll down, then back up)
+            for (let i = 0; i < 5; i++) {
+                if (viewport) {
+                    viewport.scrollTop += 2000 // Down
+                    await new Promise((resolve) => setTimeout(resolve, 10))
+                    viewport.scrollTop -= 1000 // Up
+                    await new Promise((resolve) => setTimeout(resolve, 10))
+                }
+            }
+
+            return performance.now() - start
+        })
+
+        expect(directionChangeTime).toBeLessThan(200) // Direction changes should be smooth < 200ms
+    })
 })
