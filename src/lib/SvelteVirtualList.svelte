@@ -1057,7 +1057,7 @@
         // Firefox has a bug with smooth scrolling in bottomToTop mode - scrollTo() calls are ignored
         // Disable smooth scrolling for Firefox bottomToTop mode as a workaround
 
-        if (isFirefox && mode === 'bottomToTop' && smoothScroll && atBottom) {
+        if (mode === 'bottomToTop' && smoothScroll && atBottom) {
             console.warn(
                 'Firefox smooth scrolling in bottomToTop mode is not supported, using instant scroll'
             )
