@@ -222,12 +222,6 @@
     let lastMeasuredIndex = $state(-1) // Index of last measured item
 
     /**
-     * Browser Detection
-     */
-    const isFirefox =
-        typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('firefox')
-
-    /**
      * Timers and Observers
      */
     let heightUpdateTimeout: ReturnType<typeof setTimeout> | null = null // Debounce timer for height updates
@@ -366,16 +360,6 @@
                 Math.max(0, currentScrollTop + heightChangeAboveViewport)
             )
 
-            if (INTERNAL_DEBUG) {
-                console.log('🔄 Correcting scroll for height changes:', {
-                    changes: heightChanges,
-                    heightChangeAboveViewport,
-                    currentScrollTop,
-                    newScrollTop,
-                    visibleRange: currentVisibleRange
-                })
-            }
-
             viewportElement.scrollTop = newScrollTop
             scrollTop = newScrollTop
         }
@@ -441,19 +425,6 @@
 
                     // Reset bottom state flag
                     wasAtBottomBeforeHeightChange = false
-
-                    if (INTERNAL_DEBUG && result.clearedDirtyItems.size > 0) {
-                        console.log(
-                            `Cleared ${result.clearedDirtyItems.size} dirty items:`,
-                            Array.from(result.clearedDirtyItems)
-                        )
-                    }
-
-                    if (INTERNAL_DEBUG && result.heightChanges.length > 0) {
-                        console.log(
-                            `Processed ${result.heightChanges.length} height changes with ReactiveHeightManager`
-                        )
-                    }
                 })
             },
             100, // debounceTime
@@ -536,24 +507,6 @@
                 scrollDifference > calculatedItemHeight * 3
 
             if (shouldCorrect) {
-                if (INTERNAL_DEBUG) {
-                    console.log(
-                        '🔄 Correcting scroll position from',
-                        currentScrollTop,
-                        'to',
-                        targetScrollTop,
-                        '(rounded:',
-                        Math.round(targetScrollTop),
-                        ') totalHeight:',
-                        totalHeight,
-                        'height:',
-                        height,
-                        'diff:',
-                        scrollDifference,
-                        'heightChanged:',
-                        heightChanged
-                    )
-                }
                 // Round to avoid subpixel positioning issues in bottomToTop mode
                 const roundedTargetScrollTop = Math.round(targetScrollTop)
                 viewportElement.scrollTop = roundedTargetScrollTop
@@ -605,16 +558,6 @@
                 if (wasNearBottom || currentScrollTop === 0) {
                     // User was at bottom, keep them at bottom after new items are added
                     const newScrollTop = maxScrollTop
-
-                    if (INTERNAL_DEBUG) {
-                        console.log(
-                            `📝 Items ${itemsAdded > 0 ? 'added' : 'removed'}: ${Math.abs(itemsAdded)}, staying at bottom`,
-                            'oldScroll:',
-                            currentScrollTop,
-                            'newScroll:',
-                            newScrollTop
-                        )
-                    }
 
                     viewportElement.scrollTop = newScrollTop
                     scrollTop = newScrollTop
@@ -862,12 +805,6 @@
                                 // Capture bottom state when FIRST item gets marked dirty
                                 if (dirtyItemsCount === 0) {
                                     wasAtBottomBeforeHeightChange = atBottom
-                                    if (INTERNAL_DEBUG) {
-                                        console.log(
-                                            '🔥 FIRST DIRTY ITEM - capturing wasAtBottomBeforeHeightChange:',
-                                            atBottom
-                                        )
-                                    }
                                 }
 
                                 dirtyItems.add(actualIndex)
@@ -879,9 +816,6 @@
                 }
 
                 if (shouldRecalculate) {
-                    if (INTERNAL_DEBUG) {
-                        console.log('🔥 SHOULD RECALCULATE')
-                    }
                     rafSchedule(() => {
                         updateHeight()
                     })
@@ -1044,23 +978,15 @@
             return
         }
 
-        if (INTERNAL_DEBUG) {
-            console.log(
-                `Programmatic scroll initiated to index ${targetIndex} with a target of ${scrollTarget}`
-            )
-        }
-
         // Prevent bottom-anchoring logic from interfering with programmatic scroll
         programmaticScrollInProgress = true
 
-        // BROWSER COMPATIBILITY FIX:
-        // Firefox has a bug with smooth scrolling in bottomToTop mode - scrollTo() calls are ignored
-        // Disable smooth scrolling for Firefox bottomToTop mode as a workaround
-
-        if (mode === 'bottomToTop' && smoothScroll && atBottom) {
-            console.warn(
-                'Firefox smooth scrolling in bottomToTop mode is not supported, using instant scroll'
-            )
+        // CROSS-BROWSER COMPATIBILITY FIX:
+        // All major browsers (Chrome, Firefox, Safari) have inconsistent behavior with scrollTo()
+        // in bottomToTop mode when using smooth scrolling. Using scrollIntoView() on the highest
+        // visible element provides consistent cross-browser smooth scrolling behavior.
+        // This approach works universally and maintains the user's expected smooth scroll experience.
+        if (mode === 'bottomToTop' && smoothScroll) {
             // Find the element with the highest original-index in the current viewport
             const visibleElements = viewportElement.querySelectorAll('[data-original-index]')
             let maxIndex = -1
