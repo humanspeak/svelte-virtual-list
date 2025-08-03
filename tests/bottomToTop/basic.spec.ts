@@ -145,7 +145,7 @@ test.describe('Basic BottomToTop Rendering', () => {
             ) as HTMLElement
             if (container) {
                 // Scroll down significantly to see different items (much more than 1000px)
-                container.scrollTop = container.scrollTop - 5000
+                container.scrollTop -= 5000
             }
         })
 
