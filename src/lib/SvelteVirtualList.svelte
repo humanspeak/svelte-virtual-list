@@ -60,7 +60,7 @@
     MIT License © Humanspeak, Inc.
 -->
 
-<script lang="ts" generics="TItem = never">
+<script lang="ts" generics="TItem = any">
     /**
      * SvelteVirtualList Implementation Journey
      *
