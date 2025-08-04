@@ -727,7 +727,7 @@
             >
                 {#each mode === 'bottomToTop' ? items
                           .slice(visibleItems().start, visibleItems().end)
-                          .reverse() : items.slice(visibleItems().start, visibleItems().end) as currentItem, i ((currentItem as { id?: any })?.id ?? i)}
+                          .reverse() : items.slice(visibleItems().start, visibleItems().end) as currentItem, i ((currentItem as { id?: string | number })?.id ?? i)}
                     <!-- Only debug when visible range or average height changes -->
                     {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, calculatedItemHeight)}
                         {@const debugInfo = createDebugInfo(
