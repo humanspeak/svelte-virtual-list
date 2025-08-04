@@ -1,7 +1,7 @@
 <script lang="ts">
     import SvelteVirtualList, { type SvelteVirtualListScrollAlign } from '$lib/index.js'
 
-    let virtualList: SvelteVirtualList
+    let virtualList: SvelteVirtualList<any>
 
     type Item = {
         id: number
