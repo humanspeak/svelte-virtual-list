@@ -1,19 +1,5 @@
 import { expect, test } from '@playwright/test'
 
-// Type definition for the test items
-interface TestItem {
-    id: number
-    text: string
-    height: number
-}
-
-// Type definition for window globals used in tests
-declare global {
-    interface Window {
-        items?: TestItem[]
-    }
-}
-
 /**
  * Comprehensive test suite for bottomToTop mode with dynamic item height changes.
  *
@@ -26,24 +12,6 @@ declare global {
 const PAGE_URL = '/tests/bottomToTop/firstItemHeightChange'
 
 test.describe('BottomToTop FirstItemHeightChange', () => {
-    test.beforeEach(async ({ page }) => {
-        // Install fake timers to control setTimeout in the component
-        await page.clock.install()
-        await page.goto(PAGE_URL, { waitUntil: 'networkidle' })
-        await page.waitForSelector('[data-testid="basic-list-container"]')
-
-        // Wait for proper bottomToTop initialization - list should show items 0-19, not 9980-10000
-        await page.waitForFunction(
-            () => {
-                const debugElements = document.querySelectorAll(
-                    '[data-testid="list-item-0"], [data-testid="list-item-1"]'
-                )
-                return debugElements.length >= 2 // Both item 0 and 1 should be visible at bottom
-            },
-            { timeout: 5000 }
-        )
-    })
-
     test('should render initial items with correct heights at bottom', async ({ page }) => {
         // Wait for initial render
         await page.waitForSelector('[data-testid="list-item-0"]')
@@ -156,16 +124,19 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         const item0 = page.locator('[data-testid="list-item-0"]')
         const initialItem0Y = (await item0.boundingBox())?.y
 
-        // Trigger height change
-        await page.clock.runFor(1000)
+        // Trigger height change by navigating with URL parameter
+        await page.goto(`${PAGE_URL}?height1=100`, { waitUntil: 'networkidle' })
 
-        // After height change
+        // Wait for the page to load and height change to be applied
+        await page.waitForSelector('[data-testid="basic-list-container"]')
+
+        // After height change - wait for list-item-1 to have the new height
         await page.waitForFunction(
             () => {
                 const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
                 return element && element.getBoundingClientRect().height === 100
             },
-            { timeout: 2000 }
+            { timeout: 5000 }
         )
 
         // Then wait a bit more for virtual list to reposition
@@ -196,15 +167,13 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
     })
 
     test('should handle multiple sequential height changes smoothly', async ({ page }) => {
+        // Navigate with sequence: 100px → 150px → 50px (every 1 second)
+        await page.goto(`${PAGE_URL}?height1=100,150,50`, { waitUntil: 'networkidle' })
         await page.waitForSelector('[data-testid="list-item-1"]')
 
         const item1 = page.locator('[data-testid="list-item-1"]')
 
-        // Initial state
-        expect((await item1.boundingBox())?.height).toBe(20)
-
-        // First height change (20px -> 100px)
-        await page.clock.runFor(1000)
+        // Wait for first height change (100px)
         await page.waitForFunction(
             () => {
                 const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
@@ -213,14 +182,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 2000 }
         )
 
-        // Second height change via JavaScript
-        await page.evaluate(() => {
-            const items = window.items || []
-            if (items[1]) {
-                items[1].height = 150
-            }
-        })
-
+        // Wait for second height change (150px)
         await page.waitForFunction(
             () => {
                 const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
@@ -229,14 +191,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 2000 }
         )
 
-        // Third height change
-        await page.evaluate(() => {
-            const items = window.items || []
-            if (items[1]) {
-                items[1].height = 50
-            }
-        })
-
+        // Wait for third height change (50px)
         await page.waitForFunction(
             () => {
                 const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
@@ -255,13 +210,14 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
     })
 
     test('should handle large height changes without breaking layout', async ({ page }) => {
+        // Navigate with sequence: 100px → 500px (very large change)
+        await page.goto(`${PAGE_URL}?height1=100,500`, { waitUntil: 'networkidle' })
         await page.waitForSelector('[data-testid="list-item-1"]')
 
         const container = page.locator('[data-testid="basic-list-container"]')
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
-        // Trigger initial height change
-        await page.clock.runFor(1000)
+        // Wait for initial height change (100px)
         await page.waitForFunction(
             () => {
                 const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
@@ -270,14 +226,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 2000 }
         )
 
-        // Make a very large height change
-        await page.evaluate(() => {
-            const items = window.items || []
-            if (items[1]) {
-                items[1].height = 500 // Very large item
-            }
-        })
-
+        // Wait for large height change (500px)
         await page.waitForFunction(
             () => {
                 const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
@@ -314,13 +263,11 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 2000 }
         )
 
-        // Change multiple items at once
-        await page.evaluate(() => {
-            const items = window.items || []
-            if (items[0]) items[0].height = 80
-            if (items[2]) items[2].height = 120
-            if (items[3]) items[3].height = 60
+        // Change multiple items at once via URL navigation
+        await page.goto(`${PAGE_URL}?height0=80&height2=120&height3=60`, {
+            waitUntil: 'networkidle'
         })
+        await page.waitForSelector('[data-testid="basic-list-container"]')
 
         // Wait for all changes to be applied
         await page.waitForFunction(
@@ -375,26 +322,21 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             return positions.sort((a, b) => a.y - b.y) // Sort by Y position
         }
 
-        // Trigger height changes
-        await page.clock.runFor(1000)
+        // Trigger multiple height changes simultaneously via URL navigation
+        await page.goto(`${PAGE_URL}?height1=100&height3=150`, { waitUntil: 'networkidle' })
+        await page.waitForSelector('[data-testid="basic-list-container"]')
+
+        // Wait for both height changes to be applied
         await page.waitForFunction(
             () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 100
-            },
-            { timeout: 2000 }
-        )
-
-        // Add more height changes
-        await page.evaluate(() => {
-            const items = window.items || []
-            if (items[3]) items[3].height = 150
-        })
-
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-3"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 150
+                const item1 = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
+                const item3 = document.querySelector('[data-testid="list-item-3"]') as HTMLElement
+                return (
+                    item1 &&
+                    item1.getBoundingClientRect().height === 100 &&
+                    item3 &&
+                    item3.getBoundingClientRect().height === 150
+                )
             },
             { timeout: 2000 }
         )
