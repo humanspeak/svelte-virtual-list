@@ -29,6 +29,19 @@ export class ReactiveHeightManager {
     private _measuredCount = $state(0)
     private _itemLength = $state(0)
     private _itemHeight = $state(40)
+    private _averageHeight = $state(40)
+    private _totalHeight = $state(0)
+    private _measuredFlags: Uint8Array | null = null
+
+    private recomputeDerivedHeights(): void {
+        const average =
+            this._measuredCount > 0
+                ? this._totalMeasuredHeight / this._measuredCount
+                : this._itemHeight
+        this._averageHeight = average
+        const unmeasuredCount = this._itemLength - this._measuredCount
+        this._totalHeight = this._totalMeasuredHeight + unmeasuredCount * average
+    }
 
     /**
      * Get total measured height of all measured items
@@ -60,6 +73,7 @@ export class ReactiveHeightManager {
 
     set itemHeight(value: number) {
         this._itemHeight = value
+        this.recomputeDerivedHeights()
     }
 
     /**
@@ -67,9 +81,7 @@ export class ReactiveHeightManager {
      * Falls back to itemHeight if no items have been measured yet
      */
     get averageHeight(): number {
-        return this._measuredCount > 0
-            ? this._totalMeasuredHeight / this._measuredCount
-            : this._itemHeight
+        return this._averageHeight
     }
 
     /**
@@ -77,9 +89,7 @@ export class ReactiveHeightManager {
      * This automatically updates when any dependencies change
      */
     get totalHeight(): number {
-        const unmeasuredCount = this._itemLength - this._measuredCount
-        const estimatedHeight = unmeasuredCount * this.averageHeight
-        return this._totalMeasuredHeight + estimatedHeight
+        return this._totalHeight
     }
 
     /**
@@ -90,6 +100,8 @@ export class ReactiveHeightManager {
     constructor(config: HeightManagerConfig) {
         this._itemLength = config.itemLength
         this._itemHeight = config.itemHeight
+        this._measuredFlags = new Uint8Array(Math.max(0, this._itemLength))
+        this.recomputeDerivedHeights()
     }
 
     /**
@@ -104,12 +116,13 @@ export class ReactiveHeightManager {
      * @param dirtyResults - Array of height changes to process
      */
     processDirtyHeights(dirtyResults: HeightChange[]): void {
+        if (dirtyResults.length === 0) return
         // Batch calculate changes to trigger reactivity only once
         let heightDelta = 0
         let countDelta = 0
 
         for (const change of dirtyResults) {
-            const { oldHeight, newHeight } = change
+            const { index, oldHeight, newHeight } = change
 
             // Remove old contribution if it existed
             if (oldHeight !== undefined) {
@@ -122,11 +135,18 @@ export class ReactiveHeightManager {
                 heightDelta += newHeight
                 countDelta += 1
             }
+
+            // Track measured flag (best-effort; full coalescing handled separately)
+            if (this._measuredFlags && index >= 0 && index < this._measuredFlags.length) {
+                this._measuredFlags[index] = 1
+            }
         }
 
+        if (heightDelta === 0 && countDelta === 0) return
         // Apply all changes at once - triggers reactivity only once
         this._totalMeasuredHeight += heightDelta
         this._measuredCount += countDelta
+        this.recomputeDerivedHeights()
     }
 
     /**
@@ -136,6 +156,8 @@ export class ReactiveHeightManager {
      */
     updateItemLength(newLength: number): void {
         this._itemLength = newLength
+        this._measuredFlags = new Uint8Array(Math.max(0, newLength))
+        this.recomputeDerivedHeights()
     }
 
     /**
@@ -144,7 +166,9 @@ export class ReactiveHeightManager {
      * @param newEstimatedHeight - New estimated height
      */
     updateEstimatedHeight(newEstimatedHeight: number): void {
-        this._estimatedHeight = newEstimatedHeight
+        // Keep a single source of truth for the estimated height
+        this._itemHeight = newEstimatedHeight
+        this.recomputeDerivedHeights()
     }
 
     /**
@@ -155,7 +179,9 @@ export class ReactiveHeightManager {
     reset(): void {
         this._totalMeasuredHeight = 0
         this._measuredCount = 0
+        this._measuredFlags = this._itemLength > 0 ? new Uint8Array(this._itemLength) : null
         // Note: Don't reset _itemLength, _itemHeight as they represent configuration, not measured state
+        this.recomputeDerivedHeights()
     }
 
     /**

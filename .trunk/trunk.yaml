@@ -35,7 +35,7 @@ lint:
     enabled:
         - sort-package-json@3.4.0
         - actionlint@1.7.7
-        - checkov@3.2.457
+        - checkov@3.2.458
         - eslint@9.32.0
         - git-diff-check
         - markdownlint@0.45.0
@@ -51,7 +51,7 @@ lint:
         - shfmt@3.6.0
         - svgo@4.0.0
         - taplo@0.9.3
-        - trufflehog@3.90.2
+        - trufflehog@3.90.3
         - yamllint@1.37.1
 actions:
     disabled:
