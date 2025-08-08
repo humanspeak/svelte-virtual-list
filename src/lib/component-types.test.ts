@@ -17,7 +17,7 @@ describe('SvelteVirtualList component generic inference', () => {
         type Props = ComponentProps<VirtualList<Message>>
         // Svelte compiles snippets to callable functions
         type Args = Props['renderItem'] extends (...args: infer A) => any ? A : never
-        expectTypeOf<Args>().toMatchTypeOf<[Message, number]>()
+        expectTypeOf<Args>().toEqualTypeOf<[Message, number]>()
     })
 
     it('defaults to any when type parameter is omitted', () => {
@@ -25,6 +25,7 @@ describe('SvelteVirtualList component generic inference', () => {
         type DefaultProps = ComponentProps<VirtualList>
         type DefaultArgs = DefaultProps['renderItem'] extends (...args: infer A) => any ? A : never
         // Validate individual parameters for clarity
+        expectTypeOf<ComponentProps<VirtualList>['items']>().toEqualTypeOf<any[]>()
         expectTypeOf<DefaultArgs[0]>().toEqualTypeOf<any>()
         expectTypeOf<DefaultArgs[1]>().toEqualTypeOf<number>()
     })

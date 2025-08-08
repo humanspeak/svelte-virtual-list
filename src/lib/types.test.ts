@@ -18,13 +18,14 @@ describe('SvelteVirtualList generics', () => {
         type Props = SvelteVirtualListProps<Message>
         type Args = ExtractSnippetArgs<Props['renderItem']>
         // renderItem is Snippet<[Message, number]> which is callable with args [Message, number]
-        expectTypeOf<Args>().toMatchTypeOf<[Message, number]>()
+        expectTypeOf<Args>().toEqualTypeOf<[Message, number]>()
     })
 
     it('defaults to any when no generic is provided', () => {
         type DefaultProps = SvelteVirtualListProps
         type DefaultArgs = ExtractSnippetArgs<DefaultProps['renderItem']>
         // Default TItem is any
+        expectTypeOf<DefaultProps['items']>().toEqualTypeOf<any[]>()
         expectTypeOf<DefaultArgs[0]>().toEqualTypeOf<any>()
         expectTypeOf<DefaultArgs[1]>().toEqualTypeOf<number>()
     })
