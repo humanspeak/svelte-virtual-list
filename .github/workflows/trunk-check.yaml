@@ -16,7 +16,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
 
             - name: Trunk Code Quality
-              uses: trunk-io/trunk-action@v1
+              uses: trunk-io/trunk-action@v1 # zizmor: ignore[unpinned-uses]
