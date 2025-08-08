@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from 'vitest'
-import type { SvelteVirtualListProps } from '../../src/lib/types.js'
+import type { SvelteVirtualListProps } from './types.js'
 
 interface Message {
     id: number

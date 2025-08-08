@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'svelte'
 import { describe, expectTypeOf, it } from 'vitest'
-import type VirtualList from '../../src/lib/SvelteVirtualList.svelte'
+import type VirtualList from './SvelteVirtualList.svelte'
 
 interface Message {
     id: number
