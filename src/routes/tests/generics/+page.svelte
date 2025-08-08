@@ -12,7 +12,7 @@
 </script>
 
 <SvelteVirtualList {items}>
-    {#snippet renderItem(item: Message, index)}
+    {#snippet renderItem(item, index)}
         <div data-testid="generic-item-{index}">{item.text}</div>
     {/snippet}
 </SvelteVirtualList>
