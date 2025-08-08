@@ -3,12 +3,18 @@
 
     const items = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
-        text: `Item ${i}`
+        text: `Item ${i}` // eslint-disable-line svelte/no-at-html-tags
     }))
 </script>
 
 <div class="test-container" style="height: 500px;">
-    <SvelteVirtualList defaultEstimatedItemHeight={22} {items} testId="basic-list">
+    <SvelteVirtualList
+        defaultEstimatedItemHeight={22}
+        {items}
+        testId="basic-list"
+        mode="bottomToTop"
+        debug
+    >
         {#snippet renderItem(item)}
             <div>
                 {item.text}

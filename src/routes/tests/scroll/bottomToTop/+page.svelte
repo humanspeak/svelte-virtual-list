@@ -54,7 +54,13 @@
     class="test-container"
     style="height: 500px; border: 1px solid pink;padding: 10px; border-radius: 10px;"
 >
-    <SvelteVirtualList {items} testId="basic-list" mode="bottomToTop" bind:this={virtualList}>
+    <SvelteVirtualList
+        defaultEstimatedItemHeight={22}
+        {items}
+        testId="basic-list"
+        mode="bottomToTop"
+        bind:this={virtualList}
+    >
         {#snippet renderItem(item: Item)}
             <div class="test-item" data-testid="list-item-{item.id}">
                 {item.text}
