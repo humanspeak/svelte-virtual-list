@@ -13,7 +13,7 @@
         {items}
         testId="basic-list"
         mode="bottomToTop"
-        debug
+        debug={false}
     >
         {#snippet renderItem(item)}
             <div>

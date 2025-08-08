@@ -14,6 +14,7 @@
         {items}
         testId="performance-list"
         mode="bottomToTop"
+        debug={false}
     >
         {#snippet renderItem(item)}
             <div class="test-item" data-testid="list-item-{item.id}">

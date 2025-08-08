@@ -35,7 +35,7 @@
         {items}
         testId="basic-list"
         mode="bottomToTop"
-        debug={true}
+        debug={false}
     >
         {#snippet renderItem(item)}
             <div

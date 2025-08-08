@@ -60,6 +60,7 @@
         testId="basic-list"
         mode="topToBottom"
         bind:this={virtualList}
+        debug={false}
     >
         {#snippet renderItem(item: Item)}
             <div class="test-item" data-testid="list-item-{item.id}">

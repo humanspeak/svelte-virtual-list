@@ -20,7 +20,7 @@
 
 <div class="layout">
     <div class="sidebar">
-        <SvelteVirtualList {items}>
+        <SvelteVirtualList {items} debug={false}>
             {#snippet renderItem(item)}
                 <a href={`/tests/layout/${item.id}`}>{item.label}</a>
             {/snippet}
