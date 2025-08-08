@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Scrolling Performance', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/performance')
+        await page.goto('/tests/topToBottom/performance')
         // Wait for initial render
         await page.waitForSelector('[data-testid="performance-list-viewport"]')
     })

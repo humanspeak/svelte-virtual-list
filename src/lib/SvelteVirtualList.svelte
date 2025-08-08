@@ -501,8 +501,8 @@
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
-    $inspect('scrollState: atTop', atTop)
-    $inspect('scrollState: atBottom', atBottom)
+    // $inspect('scrollState: atTop', atTop)
+    // $inspect('scrollState: atBottom', atBottom)
 
     $effect(() => {
         if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {

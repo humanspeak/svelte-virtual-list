@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Item Resize Functionality', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/itemResize', { waitUntil: 'networkidle' })
+        await page.goto('/tests/topToBottom/itemResize', { waitUntil: 'networkidle' })
         // Wait for initial render
         await page.waitForSelector('[data-testid="item-resize-list-viewport"]')
     })

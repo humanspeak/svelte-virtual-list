@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Basic Rendering', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/basic', { waitUntil: 'networkidle' })
+        await page.goto('/tests/topToBottom/basic', { waitUntil: 'networkidle' })
     })
 
     test('should render initial viewport items', async ({ page }) => {

@@ -1,8 +1,17 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
+    import { page } from '$app/state'
+
+    type Item = {
+        id: number
+        text: string
+    }
+
+    const raw = page.url.searchParams.get('itemHeight')
+    const itemHeight = Number.isNaN(parseInt(raw ?? '', 10)) ? 40 : parseInt(raw!, 10)
 
     // Create a large dataset to test performance
-    const items = Array.from({ length: 100000 }, (_, i) => ({
+    const items: Item[] = Array.from({ length: 1000 }, (_, i) => ({
         id: i,
         text: `Item ${i}`
     }))
@@ -10,11 +19,11 @@
 
 <div class="test-container" style="height: 500px;">
     <SvelteVirtualList
-        defaultEstimatedItemHeight={22}
+        defaultEstimatedItemHeight={itemHeight}
         {items}
-        testId="performance-list"
+        testId="wrong-item-size-list"
         mode="bottomToTop"
-        debug={false}
+        debug={true}
     >
         {#snippet renderItem(item)}
             <div class="test-item" data-testid="list-item-{item.id}">
