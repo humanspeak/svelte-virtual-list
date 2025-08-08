@@ -174,34 +174,80 @@ test.describe('BottomToTop LoadItems', () => {
     test('should handle scrolling after items are added', async ({ page }) => {
         await page.waitForSelector('[data-testid="list-item-0"]')
 
-        // Advance timers to trigger setTimeout
+        // Advance timers to trigger setTimeout and then allow two frames to settle
         await page.clock.fastForward(1000)
         await page.waitForSelector('[data-testid="list-item-2"]')
+        await page.evaluate(
+            () =>
+                new Promise<void>((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+                )
+        )
 
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
         // Should be able to scroll to top
         await viewport.evaluate((el) => el.scrollTo({ top: 0 }))
-        await page.waitForTimeout(300)
-        // Wait until scroll position actually reaches top (with timeout for race conditions)
-        await page
-            .waitForFunction(
-                () => {
-                    const viewport = document.querySelector('[data-testid="basic-list-viewport"]')
-                    return viewport && viewport.scrollTop < 100
-                },
-                { timeout: 2000 }
-            )
-            .catch(() => {
-                // If timeout, continue with test - this might be the expected behavior
-            })
+        // Wait for a stable scrollTop near 0 across consecutive frames (handles WebKit/Firefox timing)
+        await page.waitForFunction(
+            () => {
+                const el = document.querySelector(
+                    '[data-testid="basic-list-viewport"]'
+                ) as HTMLElement | null
+                if (!el) return false
+                const w = window as unknown as {
+                    __svlStableCountTop?: number
+                    __svlLastTop?: number
+                }
+                const current = el.scrollTop
+                if (typeof w.__svlStableCountTop !== 'number') {
+                    w.__svlStableCountTop = 0
+                    w.__svlLastTop = current
+                }
+                const nearTop = current < 100
+                if (nearTop && current === w.__svlLastTop) {
+                    w.__svlStableCountTop += 1
+                } else {
+                    w.__svlStableCountTop = 0
+                }
+                w.__svlLastTop = current
+                return w.__svlStableCountTop >= 3
+            },
+            { timeout: 4000 }
+        )
 
         const scrollTop = await viewport.evaluate((el) => el.scrollTop)
         expect(scrollTop).toBeLessThan(100)
 
         // Should be able to scroll back to bottom
-        await viewport.evaluate((el) => el.scrollTo({ top: 999999 })) // Scroll to bottom
-        await page.waitForTimeout(300)
+        await viewport.evaluate((el) => el.scrollTo({ top: 999999 }))
+        // Wait for scrollTop to stabilize above threshold
+        await page.waitForFunction(
+            () => {
+                const el = document.querySelector(
+                    '[data-testid="basic-list-viewport"]'
+                ) as HTMLElement | null
+                if (!el) return false
+                const w = window as unknown as {
+                    __svlStableCountBottom?: number
+                    __svlLastBottom?: number
+                }
+                const current = el.scrollTop
+                if (typeof w.__svlStableCountBottom !== 'number') {
+                    w.__svlStableCountBottom = 0
+                    w.__svlLastBottom = current
+                }
+                const pastThreshold = current > 1000
+                if (pastThreshold && current === w.__svlLastBottom) {
+                    w.__svlStableCountBottom += 1
+                } else {
+                    w.__svlStableCountBottom = 0
+                }
+                w.__svlLastBottom = current
+                return w.__svlStableCountBottom >= 2
+            },
+            { timeout: 4000 }
+        )
 
         const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)
         expect(finalScrollTop).toBeGreaterThan(1000)
