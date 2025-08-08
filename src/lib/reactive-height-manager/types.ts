@@ -8,8 +8,8 @@ export interface HeightChange {
     readonly index: number
     /** The previous height (undefined if first measurement) */
     readonly oldHeight: number | undefined
-    /** The new height measurement */
-    readonly newHeight: number
+    /** The new height measurement (undefined represents removal/unset) */
+    readonly newHeight: number | undefined
 }
 
 /**

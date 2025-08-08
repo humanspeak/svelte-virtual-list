@@ -62,7 +62,7 @@ describe('calculateScrollTarget', () => {
 
         describe('top alignment', () => {
             it('should align item to top of viewport', () => {
-                const params = {
+                const params: ScrollTargetParams = {
                     ...baseParams,
                     align: 'top',
                     targetIndex: 10
@@ -75,7 +75,7 @@ describe('calculateScrollTarget', () => {
 
         describe('bottom alignment', () => {
             it('should align item to bottom of viewport', () => {
-                const params = {
+                const params: ScrollTargetParams = {
                     ...baseParams,
                     align: 'bottom',
                     targetIndex: 10
@@ -88,7 +88,7 @@ describe('calculateScrollTarget', () => {
 
         describe('nearest alignment', () => {
             it('should scroll to nearest edge when item is not visible', () => {
-                const params = {
+                const params: ScrollTargetParams = {
                     ...baseParams,
                     align: 'nearest',
                     targetIndex: 2, // Not visible
@@ -103,7 +103,7 @@ describe('calculateScrollTarget', () => {
             })
 
             it('should return null when item is already visible', () => {
-                const params = {
+                const params: ScrollTargetParams = {
                     ...baseParams,
                     align: 'nearest',
                     targetIndex: 8, // Visible
@@ -119,7 +119,7 @@ describe('calculateScrollTarget', () => {
     })
 
     describe('bottomToTop mode', () => {
-        const bottomToTopParams = {
+        const bottomToTopParams: ScrollTargetParams = {
             ...baseParams,
             mode: 'bottomToTop' as const,
             itemsLength: 20 // Smaller list for easier calculations
@@ -179,7 +179,7 @@ describe('calculateScrollTarget', () => {
 
         describe('top alignment', () => {
             it('should align item to top of viewport', () => {
-                const params = {
+                const params: ScrollTargetParams = {
                     ...bottomToTopParams,
                     align: 'top',
                     targetIndex: 10
@@ -195,7 +195,7 @@ describe('calculateScrollTarget', () => {
 
         describe('bottom alignment', () => {
             it('should align item to bottom of viewport', () => {
-                const params = {
+                const params: ScrollTargetParams = {
                     ...bottomToTopParams,
                     align: 'bottom',
                     targetIndex: 10
@@ -211,7 +211,7 @@ describe('calculateScrollTarget', () => {
 
         describe('nearest alignment', () => {
             it('should scroll to nearest edge when item is not visible', () => {
-                const params = {
+                const params: ScrollTargetParams = {
                     ...bottomToTopParams,
                     align: 'nearest',
                     targetIndex: 2,
@@ -234,7 +234,7 @@ describe('calculateScrollTarget', () => {
             })
 
             it('should return null when item is already visible', () => {
-                const params = {
+                const params: ScrollTargetParams = {
                     ...bottomToTopParams,
                     align: 'nearest',
                     targetIndex: 8,
@@ -259,7 +259,7 @@ describe('calculateScrollTarget', () => {
 
     describe('edge cases', () => {
         it('should handle zero height gracefully', () => {
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 height: 0
             }
@@ -269,7 +269,7 @@ describe('calculateScrollTarget', () => {
         })
 
         it('should handle single item list', () => {
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 itemsLength: 1,
                 targetIndex: 0,
@@ -282,7 +282,7 @@ describe('calculateScrollTarget', () => {
         })
 
         it('should handle large item height', () => {
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 calculatedItemHeight: 1000,
                 targetIndex: 5
@@ -293,7 +293,7 @@ describe('calculateScrollTarget', () => {
         })
 
         it('should respect minimum scroll position of 0', () => {
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 mode: 'bottomToTop' as const,
                 align: 'bottom',
@@ -316,7 +316,7 @@ describe('calculateScrollTarget', () => {
                 3: 19.8,
                 4: 21.3
             }
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 mode: 'bottomToTop' as const,
                 targetIndex: 3,
@@ -342,7 +342,7 @@ describe('calculateScrollTarget', () => {
                 50: 22.3,
                 51: 19.7
             }
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 mode: 'bottomToTop' as const,
                 targetIndex: 25, // In the gap between cached items
@@ -365,7 +365,7 @@ describe('calculateScrollTarget', () => {
                 // Large gap: indices 2-999 not cached
                 1000: 22.3
             }
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 mode: 'bottomToTop' as const,
                 targetIndex: 500, // In the large gap
@@ -382,7 +382,7 @@ describe('calculateScrollTarget', () => {
         })
 
         it('should handle fractional heights from ReactiveHeightManager', () => {
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 mode: 'bottomToTop' as const,
                 targetIndex: 100,
@@ -402,7 +402,7 @@ describe('calculateScrollTarget', () => {
     describe('cross-browser compatibility', () => {
         it('should produce consistent results regardless of browser differences', () => {
             // Test the specific scenario that worked in Chrome but failed in Firefox
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 mode: 'bottomToTop' as const,
                 targetIndex: 667,
@@ -425,7 +425,7 @@ describe('calculateScrollTarget', () => {
         })
 
         it('should handle coordinate system correctly for bottomToTop', () => {
-            const params = {
+            const params: ScrollTargetParams = {
                 ...baseParams,
                 mode: 'bottomToTop' as const,
                 targetIndex: 50,

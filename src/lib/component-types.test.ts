@@ -1,6 +1,5 @@
-import type { ComponentProps } from 'svelte'
 import { describe, expectTypeOf, it } from 'vitest'
-import type VirtualList from './SvelteVirtualList.svelte'
+import type { SvelteVirtualListProps } from './types.js'
 
 interface Message {
     id: number
@@ -8,13 +7,13 @@ interface Message {
 }
 
 describe('SvelteVirtualList component generic inference', () => {
-    it('items prop is Message[] when using VirtualList<Message>', () => {
-        type Props = ComponentProps<VirtualList<Message>>
+    it('items prop is Message[] when using SvelteVirtualListProps<Message>', () => {
+        type Props = SvelteVirtualListProps<Message>
         expectTypeOf<Props['items']>().toEqualTypeOf<Message[]>()
     })
 
-    it('renderItem snippet parameters are [Message, number] when using VirtualList<Message>', () => {
-        type Props = ComponentProps<VirtualList<Message>>
+    it('renderItem snippet parameters are [Message, number] when using SvelteVirtualListProps<Message>', () => {
+        type Props = SvelteVirtualListProps<Message>
         // Svelte compiles snippets to callable functions
         type Args = Props['renderItem'] extends (...args: infer A) => any ? A : never
         expectTypeOf<Args>().toEqualTypeOf<[Message, number]>()
@@ -22,10 +21,10 @@ describe('SvelteVirtualList component generic inference', () => {
 
     it('defaults to any when type parameter is omitted', () => {
         // No generic specified → defaults to any per current public API
-        type DefaultProps = ComponentProps<VirtualList>
+        type DefaultProps = SvelteVirtualListProps
         type DefaultArgs = DefaultProps['renderItem'] extends (...args: infer A) => any ? A : never
         // Validate individual parameters for clarity
-        expectTypeOf<ComponentProps<VirtualList>['items']>().toEqualTypeOf<any[]>()
+        expectTypeOf<DefaultProps['items']>().toEqualTypeOf<any[]>()
         expectTypeOf<DefaultArgs[0]>().toEqualTypeOf<any>()
         expectTypeOf<DefaultArgs[1]>().toEqualTypeOf<number>()
     })

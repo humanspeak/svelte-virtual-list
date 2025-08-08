@@ -1,12 +1,12 @@
 <script lang="ts">
     import SvelteVirtualList, { type SvelteVirtualListScrollAlign } from '$lib/index.js'
 
-    let virtualList: SvelteVirtualList<any>
-
     type Item = {
         id: number
         text: string
     }
+
+    let virtualList: SvelteVirtualList<Item>
 
     const items: Item[] = Array.from({ length: 10000 }, (_, i) => ({
         id: i,

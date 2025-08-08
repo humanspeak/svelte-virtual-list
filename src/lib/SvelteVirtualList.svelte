@@ -61,7 +61,7 @@
     MIT License © Humanspeak, Inc.
 -->
 
-<script lang="ts">
+<script lang="ts" generics="TItem = any">
     /**
      * SvelteVirtualList Implementation Journey
      *
@@ -182,7 +182,7 @@
         import.meta.env.DEV && import.meta.env.VITE_SVELTE_VIRTUAL_LIST_DEBUG === 'true'
     /**
      * Core configuration props with default values
-     * @type {SvelteVirtualListProps}
+     * @type {SvelteVirtualListProps<TItem>}
      */
     const {
         items = [], // Array of items to be rendered in the virtual list
@@ -197,7 +197,7 @@
         mode = 'topToBottom', // Scroll direction mode
         bufferSize = 20, // Number of items to render outside visible area
         testId // Base test ID for component elements (undefined = no data-testid attributes)
-    }: SvelteVirtualListProps = $props()
+    }: SvelteVirtualListProps<TItem> = $props()
 
     /**
      * DOM References and Core State
