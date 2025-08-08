@@ -220,6 +220,7 @@
     let isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isScrolling = $state(false) // Tracks active scrolling state
     let lastMeasuredIndex = $state(-1) // Index of last measured item
+    let lastScrollTopSnapshot = $state(0) // Previous scroll position snapshot
 
     /**
      * Timers and Observers
@@ -246,6 +247,22 @@
         itemLength: items.length,
         itemHeight: defaultEstimatedItemHeight
     })
+
+    // Dynamic update coordination to avoid UA scroll anchoring interference
+    let dynamicUpdateInProgress = $state(false)
+    let suppressBottomAnchoringUntilMs = $state(0)
+    function beginDynamicUpdate(): void {
+        dynamicUpdateInProgress = true
+        if (viewportElement) {
+            viewportElement.style.setProperty('overflow-anchor', 'none')
+        }
+    }
+    function endDynamicUpdate(): void {
+        dynamicUpdateInProgress = false
+        if (viewportElement) {
+            viewportElement.style.setProperty('overflow-anchor', 'auto')
+        }
+    }
 
     /**
      * Handles scroll position corrections when item heights change, ensuring proper positioning
@@ -313,7 +330,9 @@
         if (
             mode === 'bottomToTop' &&
             wasAtBottomBeforeHeightChange &&
-            !programmaticScrollInProgress
+            !programmaticScrollInProgress &&
+            performance.now() >= suppressBottomAnchoringUntilMs &&
+            !dynamicUpdateInProgress
         ) {
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
@@ -372,6 +391,7 @@
             if (BROWSER && dirtyItemsCount > 0) {
                 // Capture bottom state before any height processing to prevent cascading corrections
                 wasAtBottomBeforeHeightChange = atBottom
+                beginDynamicUpdate()
                 updateHeight()
             }
         },
@@ -426,6 +446,7 @@
                     // Reset bottom state flag
                     wasAtBottomBeforeHeightChange = false
                 })
+                endDynamicUpdate()
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
@@ -504,6 +525,8 @@
                 !userHasScrolledAway &&
                 !isAtBottom && // Don't apply aggressive correction when at bottom
                 !programmaticScrollInProgress && // Don't interfere with programmatic scrolls
+                performance.now() >= suppressBottomAnchoringUntilMs &&
+                !dynamicUpdateInProgress &&
                 scrollDifference > calculatedItemHeight * 3
 
             if (shouldCorrect) {
@@ -557,13 +580,14 @@
 
                 if (wasNearBottom || currentScrollTop === 0) {
                     // User was at bottom, keep them at bottom after new items are added
+                    beginDynamicUpdate()
                     const newScrollTop = maxScrollTop
-
                     viewportElement.scrollTop = newScrollTop
                     scrollTop = newScrollTop
 
                     // Reset the "scrolled away" flag since we're actively managing position
                     userHasScrolledAway = false
+                    endDynamicUpdate()
                 }
             }
         }
@@ -699,7 +723,16 @@
         if (!isScrolling) {
             isScrolling = true
             rafSchedule(() => {
-                scrollTop = viewportElement.scrollTop
+                const current = viewportElement.scrollTop
+                if (mode === 'bottomToTop') {
+                    const delta = lastScrollTopSnapshot - current
+                    if (delta > 0.5) {
+                        suppressBottomAnchoringUntilMs = performance.now() + 300
+                        userHasScrolledAway = true
+                    }
+                }
+                lastScrollTopSnapshot = current
+                scrollTop = current
                 isScrolling = false
             })
         }

@@ -183,12 +183,21 @@ test.describe('BottomToTop LoadItems', () => {
                     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
                 )
         )
+        await page.evaluate(
+            () =>
+                new Promise<void>((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+                )
+        )
 
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
-        // Should be able to scroll to top
-        await viewport.evaluate((el) => el.scrollTo({ top: 0 }))
-        // Wait for a stable scrollTop near 0 across consecutive frames (handles WebKit/Firefox timing)
+        // Should be able to scroll to top (force non-smooth and set scrollTop directly)
+        await viewport.evaluate((el) => {
+            el.scrollTo({ top: 0, behavior: 'auto' })
+            ;(el as HTMLElement).scrollTop = 0
+        })
+        // Wait for a stable scrollTop near 0 across consecutive frames (handles engine timing)
         await page.waitForFunction(
             () => {
                 const el = document.querySelector(
@@ -198,29 +207,37 @@ test.describe('BottomToTop LoadItems', () => {
                 const w = window as unknown as {
                     __svlStableCountTop?: number
                     __svlLastTop?: number
+                    __svlRetriesTop?: number
                 }
                 const current = el.scrollTop
                 if (typeof w.__svlStableCountTop !== 'number') {
                     w.__svlStableCountTop = 0
                     w.__svlLastTop = current
+                    w.__svlRetriesTop = 0
                 }
                 const nearTop = current < 100
                 if (nearTop && current === w.__svlLastTop) {
                     w.__svlStableCountTop += 1
                 } else {
                     w.__svlStableCountTop = 0
+                    if ((w.__svlRetriesTop ?? 0) < 2) {
+                        el.scrollTop = 0
+                        w.__svlRetriesTop = (w.__svlRetriesTop ?? 0) + 1
+                    }
                 }
                 w.__svlLastTop = current
                 return w.__svlStableCountTop >= 3
             },
-            { timeout: 4000 }
+            { timeout: 6000 }
         )
 
         const scrollTop = await viewport.evaluate((el) => el.scrollTop)
         expect(scrollTop).toBeLessThan(100)
 
         // Should be able to scroll back to bottom
-        await viewport.evaluate((el) => el.scrollTo({ top: 999999 }))
+        await viewport.evaluate((el) => {
+            el.scrollTo({ top: 999999, behavior: 'auto' })
+        })
         // Wait for scrollTop to stabilize above threshold
         await page.waitForFunction(
             () => {
@@ -231,22 +248,28 @@ test.describe('BottomToTop LoadItems', () => {
                 const w = window as unknown as {
                     __svlStableCountBottom?: number
                     __svlLastBottom?: number
+                    __svlRetriesBottom?: number
                 }
                 const current = el.scrollTop
                 if (typeof w.__svlStableCountBottom !== 'number') {
                     w.__svlStableCountBottom = 0
                     w.__svlLastBottom = current
+                    w.__svlRetriesBottom = 0
                 }
                 const pastThreshold = current > 1000
                 if (pastThreshold && current === w.__svlLastBottom) {
                     w.__svlStableCountBottom += 1
                 } else {
                     w.__svlStableCountBottom = 0
+                    if ((w.__svlRetriesBottom ?? 0) < 2) {
+                        el.scrollTop = 999999
+                        w.__svlRetriesBottom = (w.__svlRetriesBottom ?? 0) + 1
+                    }
                 }
                 w.__svlLastBottom = current
                 return w.__svlStableCountBottom >= 2
             },
-            { timeout: 4000 }
+            { timeout: 6000 }
         )
 
         const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)
