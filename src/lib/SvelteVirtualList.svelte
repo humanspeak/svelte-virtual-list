@@ -738,9 +738,8 @@
             return lastVisibleRange
         }
 
-        const safeScrollTop = Math.min(scrollTop, Math.max(0, totalHeight() - viewportHeight))
         lastVisibleRange = calculateVisibleRange(
-            safeScrollTop,
+            scrollTop,
             viewportHeight,
             heightManager.averageHeight,
             items.length,
@@ -1201,12 +1200,6 @@
                 })
                 // sync internal state
                 scrollTop = viewportElement.scrollTop
-                // Final clamp to exact bottom after height changes settle (cross-browser)
-                const maxScrollTop = Math.max(0, totalHeight() - height)
-                if (Math.abs(scrollTop - maxScrollTop) > 1) {
-                    viewportElement.scrollTop = maxScrollTop
-                    scrollTop = maxScrollTop
-                }
             }
         }
 
