@@ -41,10 +41,3 @@ export type VirtualListSetters = {
     setScrollTop: (scrollTop: number) => void // eslint-disable-line no-unused-vars
     setInitialized: (initialized: boolean) => void // eslint-disable-line no-unused-vars
 }
-
-/**
- * Cache for storing measured item heights
- * - Key: Item index in the list
- * - Value: Measured height in pixels
- */
-export type HeightCache = Record<number, number>

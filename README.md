@@ -58,11 +58,23 @@ You can now programmatically scroll to any item in the list using the `scroll` m
 
 ### API
 
-- `scroll(options: { index: number; smoothScroll?: boolean; shouldThrowOnBounds?: boolean; align?: 'auto' | 'top' | 'bottom' })`
+- `scroll(options: { index: number; smoothScroll?: boolean; shouldThrowOnBounds?: boolean; align?: 'auto' | 'top' | 'bottom' | 'nearest' })`
     - `index`: The item index to scroll to (0-based)
     - `smoothScroll`: If true, uses smooth scrolling (default: true)
     - `shouldThrowOnBounds`: If true, throws if index is out of bounds (default: true)
-    - `align`: Where to align the item in the viewport. `'auto'` (default) scrolls only if the item is out of view, aligning to top or bottom as needed. `'top'` always aligns to the top, `'bottom'` always aligns to the bottom.
+    - `align`: Where to align the item in the viewport:
+        - `'auto'` (default): Only scroll if not visible, align to top or bottom as appropriate
+        - `'top'`: Always align to the top
+        - `'bottom'`: Always align to the bottom
+        - `'nearest'`: Scroll as little as possible to bring the item into view (like native scrollIntoView({ block: 'nearest' }))
+
+#### Usage Examples
+
+```svelte
+<button on:click={() => listRef.scroll({ index: 5000, align: 'nearest' })}>
+    Scroll to item 5000 (nearest)
+</button>
+```
 
 ## Installation
 
@@ -124,19 +136,44 @@ npm install @humanspeak/svelte-virtual-list
 </div>
 ```
 
+### Bottom-to-top mode
+
+Use `mode="bottomToTop"` for chat-like lists anchored to the bottom. Programmatic scrolling uses the same API as top-to-bottom lists:
+
+```svelte
+<script lang="ts">
+    import SvelteVirtualList from '@humanspeak/svelte-virtual-list'
+    let listRef
+    const messages = Array.from({ length: 2000 }, (_, i) => ({ id: i, text: `Msg ${i}` }))
+</script>
+
+<SvelteVirtualList items={messages} mode="bottomToTop" bind:this={listRef} />
+<button on:click={() => listRef.scroll({ index: messages.length - 1, align: 'bottom' })}>
+    Jump to latest
+</button>
+```
+
 ## Props
 
-| Prop                | Type                             | Default         | Description                                 |
-| ------------------- | -------------------------------- | --------------- | ------------------------------------------- |
-| `items`             | `T[]`                            | Required        | Array of items to render                    |
-| `defaultItemHeight` | `number`                         | `40`            | Initial height for items before measurement |
-| `mode`              | `'topToBottom' \| 'bottomToTop'` | `'topToBottom'` | Scroll direction                            |
-| `bufferSize`        | `number`                         | `20`            | Number of items to render outside viewport  |
-| `debug`             | `boolean`                        | `false`         | Enable debug logging and visualizations     |
-| `containerClass`    | `string`                         | `''`            | Class for outer container                   |
-| `viewportClass`     | `string`                         | `''`            | Class for scrollable viewport               |
-| `contentClass`      | `string`                         | `''`            | Class for content wrapper                   |
-| `itemsClass`        | `string`                         | `''`            | Class for items container                   |
+| Prop                         | Type                             | Default         | Description                                                                   |
+| ---------------------------- | -------------------------------- | --------------- | ----------------------------------------------------------------------------- |
+| `items`                      | `T[]`                            | Required        | Array of items to render                                                      |
+| `defaultEstimatedItemHeight` | `number`                         | `40`            | Initial height estimate used until items are measured                         |
+| `mode`                       | `'topToBottom' \| 'bottomToTop'` | `'topToBottom'` | Scroll direction and anchoring behavior                                       |
+| `bufferSize`                 | `number`                         | `20`            | Number of items rendered outside the viewport                                 |
+| `debug`                      | `boolean`                        | `false`         | Enable debug logging and visualizations                                       |
+| `containerClass`             | `string`                         | `''`            | Class for outer container                                                     |
+| `viewportClass`              | `string`                         | `''`            | Class for scrollable viewport                                                 |
+| `contentClass`               | `string`                         | `''`            | Class for content wrapper                                                     |
+| `itemsClass`                 | `string`                         | `''`            | Class for items container                                                     |
+| `testId`                     | `string`                         | `''`            | Base test id used in internal test hooks (useful for E2E/tests and debugging) |
+
+## Testing
+
+- Unit tests (Vitest): `npm test`
+- E2E tests (Playwright):
+    - One-time: `npx playwright install`
+    - Run: `npm run test:e2e`
 
 ## Performance Considerations
 

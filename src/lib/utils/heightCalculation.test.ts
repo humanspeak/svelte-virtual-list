@@ -25,7 +25,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
         expect(result).toBeNull()
         expect(onUpdate).not.toHaveBeenCalled()
@@ -54,7 +56,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
 
         expect(timeoutId).toBeDefined()
@@ -65,7 +69,11 @@ describe('calculateAverageHeightDebounced', () => {
         expect(onUpdate).toHaveBeenCalledWith({
             newHeight: 50,
             newLastMeasuredIndex: 0,
-            updatedHeightCache: expect.any(Object)
+            updatedHeightCache: expect.any(Object),
+            clearedDirtyItems: expect.any(Set),
+            newTotalHeight: expect.any(Number),
+            newValidCount: expect.any(Number),
+            heightChanges: expect.any(Array)
         })
     })
 
@@ -88,7 +96,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
 
         vi.advanceTimersByTime(200)
@@ -117,7 +127,8 @@ describe('calculateAverageHeightDebounced', () => {
             -1,
             40,
             onUpdate,
-            customDebounceTime
+            customDebounceTime,
+            new Set()
         )
 
         vi.advanceTimersByTime(499)
@@ -127,7 +138,11 @@ describe('calculateAverageHeightDebounced', () => {
         expect(onUpdate).toHaveBeenCalledWith({
             newHeight: 50,
             newLastMeasuredIndex: 0,
-            updatedHeightCache: expect.any(Object)
+            updatedHeightCache: expect.any(Object),
+            clearedDirtyItems: expect.any(Set),
+            newTotalHeight: expect.any(Number),
+            newValidCount: expect.any(Number),
+            heightChanges: expect.any(Array)
         })
     })
 
@@ -141,13 +156,15 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
         expect(result).toBeNull()
         expect(onUpdate).not.toHaveBeenCalled()
     })
 
-    it('should return null when heightUpdateTimeout exists', () => {
+    it('should clear existing timeout and return new timeout when heightUpdateTimeout exists', () => {
         const onUpdate = vi.fn()
         const existingTimeout = setTimeout(() => {}, 1000)
         const result = calculateAverageHeightDebounced(
@@ -158,10 +175,16 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             -1,
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
-        expect(result).toBeNull()
-        expect(onUpdate).not.toHaveBeenCalled()
+        expect(result).not.toBeNull() // Should return new timeout
+        expect(typeof result).toBe('object') // Should be a timeout object
+        expect(onUpdate).not.toHaveBeenCalled() // Callback shouldn't be called immediately
+
+        // Clean up the returned timeout
+        if (result) clearTimeout(result)
     })
 
     it('should return null when currentIndex equals lastMeasuredIndex', () => {
@@ -174,7 +197,9 @@ describe('calculateAverageHeightDebounced', () => {
             {},
             5, // matches start index
             40,
-            onUpdate
+            onUpdate,
+            200,
+            new Set()
         )
         expect(result).toBeNull()
         expect(onUpdate).not.toHaveBeenCalled()

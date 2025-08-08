@@ -12,7 +12,8 @@ export type SvelteVirtualListMode = 'topToBottom' | 'bottomToTop'
  *
  * @typedef {Object} SvelteVirtualListProps
  */
-export type SvelteVirtualListProps<TItem = any> = { // eslint-disable-line @typescript-eslint/no-explicit-any
+/* trunk-ignore(eslint/@typescript-eslint/no-explicit-any) */
+export type SvelteVirtualListProps<TItem = any> = {
     /**
      * Number of items to render outside the visible viewport for smooth scrolling.
      * @default 20
@@ -75,7 +76,11 @@ export type SvelteVirtualListProps<TItem = any> = { // eslint-disable-line @type
  * @property {number} startIndex - Index of the first rendered item in the viewport.
  * @property {number} totalItems - Total number of items in the list.
  * @property {number} visibleItemsCount - Number of items currently visible in the viewport.
- * @property {number} processedItems - Number of items processed in the viewport.
+ * @property {number} processedItems - Number of items with measured heights in cache.
+ * @property {number} averageItemHeight - Current calculated average height per item.
+ * @property {boolean} atTop - Whether the list is scrolled to the top position.
+ * @property {boolean} atBottom - Whether the list is scrolled to the bottom position.
+ * @property {number} totalHeight - Total calculated height of all items in the list.
  */
 export type SvelteVirtualListDebugInfo = {
     endIndex: number
@@ -84,9 +89,15 @@ export type SvelteVirtualListDebugInfo = {
     visibleItemsCount: number
     processedItems: number
     averageItemHeight: number
+    atTop: boolean
+    atBottom: boolean
+    totalHeight: number
 }
 
-export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom'
+/**
+ * Alignment options for programmatic scrolling.
+ */
+export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest'
 
 /**
  * Options for scrolling to a specific index in the virtual list.
@@ -110,3 +121,7 @@ export const DEFAULT_SCROLL_OPTIONS: Partial<SvelteVirtualListScrollOptions> = {
     shouldThrowOnBounds: true,
     align: 'auto' as SvelteVirtualListScrollAlign
 }
+
+export type SvelteVirtualListHeightCacheItem = { currentHeight: number; dirty: boolean }
+export type SvelteVirtualListHeightCache = Record<number, SvelteVirtualListHeightCacheItem>
+export type SvelteVirtualListPreviousVisibleRange = { start: number; end: number }

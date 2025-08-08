@@ -1,12 +1,12 @@
 <script lang="ts">
     import SvelteVirtualList, { type SvelteVirtualListScrollAlign } from '$lib/index.js'
 
-    let virtualList: SvelteVirtualList<any>
-
     type Item = {
         id: number
         text: string
     }
+
+    let virtualList: SvelteVirtualList<Item>
 
     const items: Item[] = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
@@ -36,6 +36,7 @@
                 <option value="auto">Auto</option>
                 <option value="top">Top</option>
                 <option value="bottom">Bottom</option>
+                <option value="nearest">Nearest</option>
             </select>
         </label>
     </div>
@@ -53,7 +54,14 @@
     class="test-container"
     style="height: 500px; border: 1px solid pink;padding: 10px; border-radius: 10px;"
 >
-    <SvelteVirtualList {items} testId="basic-list" mode="bottomToTop" bind:this={virtualList} debug>
+    <SvelteVirtualList
+        defaultEstimatedItemHeight={22}
+        {items}
+        testId="basic-list"
+        mode="bottomToTop"
+        bind:this={virtualList}
+        debug={false}
+    >
         {#snippet renderItem(item: Item)}
             <div class="test-item" data-testid="list-item-{item.id}">
                 {item.text}

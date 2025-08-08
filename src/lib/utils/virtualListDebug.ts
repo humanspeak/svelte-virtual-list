@@ -1,4 +1,4 @@
-import type { SvelteVirtualListDebugInfo } from '../types.js'
+import type { SvelteVirtualListDebugInfo } from '$lib/types.js'
 
 /**
  * Determines whether debug information should be displayed based on state changes in the virtual list.
@@ -49,9 +49,10 @@ export function shouldShowDebugInfo(
  *
  * This utility function generates a structured debug object that captures the complete
  * state of a virtual list at any given moment. It includes critical metrics such as
- * visible item count, viewport boundaries, total items, processing progress, and
- * height calculations. This information is essential for performance monitoring,
- * debugging scroll behavior, and optimizing virtual list configurations.
+ * visible item count, viewport boundaries, total items, processed items with measured
+ * heights, height calculations, scroll position, and total content dimensions.
+ * This information is essential for performance monitoring, debugging scroll behavior,
+ * and optimizing virtual list configurations.
  *
  * Performance considerations:
  * - All calculations are O(1)
@@ -60,16 +61,20 @@ export function shouldShowDebugInfo(
  *
  * @param visibleRange - Current visible range object containing start and end indices
  * @param totalItems - Total number of items in the virtual list
- * @param processedItems - Number of items that have been processed/measured
+ * @param processedItems - Number of items with measured heights (heightCache.length)
  * @param averageItemHeight - Current calculated average height per item in pixels
+ * @param scrollTop - Current scroll position in pixels
+ * @param viewportHeight - Height of the viewport in pixels
  * @returns {SvelteVirtualListDebugInfo} A structured debug information object
  *
  * @example
  * const debugInfo = createDebugInfo(
  *   { start: 0, end: 10 },
  *   1000,
- *   100,
- *   50
+ *   50,
+ *   45,
+ *   200,
+ *   400
  * );
  * console.log('Virtual List State:', debugInfo);
  *
@@ -79,14 +84,23 @@ export function createDebugInfo(
     visibleRange: { start: number; end: number },
     totalItems: number,
     processedItems: number,
-    averageItemHeight: number
+    averageItemHeight: number,
+    scrollTop: number,
+    viewportHeight: number,
+    totalHeight: number
 ): SvelteVirtualListDebugInfo {
+    const atTop = scrollTop <= 1 // Small tolerance for floating point precision
+    const atBottom = scrollTop >= totalHeight - viewportHeight - 1 // Small tolerance
+
     return {
         visibleItemsCount: visibleRange.end - visibleRange.start,
         startIndex: visibleRange.start,
         endIndex: visibleRange.end,
         totalItems,
-        processedItems,
-        averageItemHeight
+        processedItems, // Number of items with measured heights in heightCache
+        averageItemHeight,
+        atTop,
+        atBottom,
+        totalHeight
     }
 }

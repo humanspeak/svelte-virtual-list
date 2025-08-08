@@ -14,6 +14,7 @@ export default [
             '**/.DS_Store',
             '**/node_modules',
             'postcss.config.cjs',
+            'coverage',
             '**/build',
             '.svelte-kit',
             'package',
@@ -25,7 +26,7 @@ export default [
             '**/yarn.lock',
             'src/routes/poc',
             '**/dist',
-            'vite.config.ts.*'
+            '**/*.test.ts'
         ]
     },
     js.configs.recommended,
@@ -40,7 +41,6 @@ export default [
                 ...globals.node
             }
         },
-
         rules: {
             semi: ['warn', 'never'],
             quotes: ['error', 'single'],
@@ -64,13 +64,6 @@ export default [
             'no-var': ['error'],
             'prefer-const': ['error'],
 
-            'no-unused-vars': [
-                'warn',
-                {
-                    argsIgnorePattern: '^_',
-                    ignoreRestSiblings: true
-                }
-            ],
             '@typescript-eslint/no-unused-expressions': [
                 'error',
                 {
@@ -78,35 +71,31 @@ export default [
                     allowTernary: true,
                     allowTaggedTemplates: true
                 }
-            ]
-        }
-    },
-    {
-        files: ['**/*.svelte'],
-        languageOptions: {
-            parserOptions: {
-                parser: ts.parser
-            }
-        }
-    },
-    {
-        /* location of your components where you would like to apply these rules  */
-        files: ['**/shadcn/components/ui/**/*.svelte', '**/shadcn/components/ui/**/*.ts'],
-        languageOptions: {
-            parserOptions: {
-                parser: ts.parser
-            }
-        },
-        rules: {
+            ],
+
+            'no-unused-vars': [
+                'warn',
+                {
+                    argsIgnorePattern: '^_',
+                    ignoreRestSiblings: true
+                }
+            ],
+
             '@typescript-eslint/no-unused-vars': [
                 'warn',
                 {
                     argsIgnorePattern: '^_',
-                    varsIgnorePattern: '^\\$\\$(Props|Events|Slots|Generic)$'
+                    ignoreRestSiblings: true
                 }
-            ],
-            'prefer-const': ['off'],
-            'no-unused-vars': ['off']
+            ]
+        }
+    },
+    {
+        files: ['**/*.svelte', '**/*.svelte.ts'],
+        languageOptions: {
+            parserOptions: {
+                parser: ts.parser
+            }
         }
     }
 ]

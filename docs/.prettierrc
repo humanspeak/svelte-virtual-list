@@ -1,4 +1,5 @@
 {
+    "jsonRecursiveSort": true,
     "overrides": [
         {
             "files": "*.svelte",

@@ -39,7 +39,7 @@ jobs:
                   cache-dependency-path: ./package.json
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --prefer-offline --no-audit --ignore-scripts
 
             - name: Run lint check
               run: npm run lint
