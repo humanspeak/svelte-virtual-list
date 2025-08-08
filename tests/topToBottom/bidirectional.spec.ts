@@ -6,8 +6,8 @@ test.describe('Bidirectional Scrolling', () => {
         // Wait for both lists to render
         await page.waitForSelector('[data-testid="top-to-bottom-viewport"]')
         await page.waitForSelector('[data-testid="bottom-to-top-viewport"]')
-        // Allow extra time for height measurements to complete (2 lists = more time needed)
-        await page.waitForTimeout(300)
+        // Give ResizeObserver a frame to propagate height and buffer rendering
+        await page.waitForTimeout(16)
     })
 
     test('should render user content correctly in both directions', async ({ page }) => {

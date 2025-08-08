@@ -646,12 +646,16 @@
         lastItemsLength = currentItemsLength
     })
 
-    // Update container height when element is mounted
+    // Update container height continuously to reflect layout changes that
+    // may occur outside ResizeObserver timing (keeps buffers correct across engines)
     $effect(() => {
         if (BROWSER && containerElement) {
-            height = containerElement.getBoundingClientRect().height
+            const h = containerElement.getBoundingClientRect().height
+            if (Number.isFinite(h) && h > 0) height = h
         }
     })
+
+    // One-time fallback measurement when height hasn't been established yet
 
     // Provide a one-time synchronous measurement only when height is still 0,
     // to avoid DOM reads inside render-time expressions.
