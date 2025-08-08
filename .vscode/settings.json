@@ -20,5 +20,11 @@
     },
     "editor.defaultFormatter": "trunk.io",
     "editor.formatOnPaste": true,
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "search.exclude": {
+        "**/.svelte-kit/**": true,
+        "**/build/**": true,
+        "**/dist/**": true,
+        "**/node_modules/**": true
+    }
 }

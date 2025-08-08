@@ -86,14 +86,6 @@ test.describe('BottomToTop LoadItems', () => {
         // Scroll position should have changed significantly (moved down to accommodate new items)
         expect(finalScrollTop).toBeGreaterThan(100000) // Should be a large scroll position
         // console.log('Scroll position changed from', initialScrollTop, 'to', finalScrollTop)
-
-        // Verify that our "stick to bottom" functionality worked
-        // The debug log should show: "📝 Items added: 9998, staying at bottom"
-
-        // TODO: Verify debug logs were generated (temporarily disabled)
-        // expect(logs.length).toBeGreaterThan(0)
-        // expect(logs[0]).toContain('Items added: 9998')
-        // expect(logs[0]).toContain('staying at bottom')
     })
 
     test('should handle viewport height correctly', async ({ page }) => {

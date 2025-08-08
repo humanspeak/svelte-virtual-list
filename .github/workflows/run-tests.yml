@@ -15,6 +15,10 @@ on:
             - '!docs/**'
             - package.json
             - package-lock.json
+            - svelte.config.*
+            - vite.config.*
+            - playwright.config.*
+            - tsconfig*.json
             - .github/workflows/run-tests.yml
 
 concurrency:

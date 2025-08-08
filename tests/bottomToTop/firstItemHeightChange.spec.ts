@@ -13,6 +13,8 @@ const PAGE_URL = '/tests/bottomToTop/firstItemHeightChange'
 
 test.describe('BottomToTop FirstItemHeightChange', () => {
     test.beforeEach(async ({ page }) => {
+        // Install fake timers for page.clock.runFor usage in tests
+        await page.clock.install()
         // Navigate to the base page so selectors are present; tests may navigate again with params
         await page.goto(PAGE_URL, { waitUntil: 'networkidle' })
         await page.waitForSelector('[data-testid="basic-list-container"]')
