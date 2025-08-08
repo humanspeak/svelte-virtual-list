@@ -1,7 +1,7 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
 
-    let items: { id: number; text: string }[] = $state([
+    let items: { id: number; text: string; height: number }[] = $state([
         ...Array.from({ length: 2 }, (_, i) => ({
             id: i,
             text: `Item ${i}`,

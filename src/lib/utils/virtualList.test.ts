@@ -47,7 +47,17 @@ describe('calculateScrollPosition', () => {
 
 describe('calculateVisibleRange', () => {
     it('should calculate correct range for top-to-bottom mode', () => {
-        const result = calculateVisibleRange(100, 300, 30, 100, 2, 'topToBottom')
+        const result = calculateVisibleRange(
+            100,
+            300,
+            30,
+            100,
+            2,
+            'topToBottom',
+            false,
+            false,
+            null
+        )
         expect(result).toEqual({
             start: 1, // (100/30 - 2) rounded down
             end: 16 // (floor(100/30) + ceil(300/30) + 1 + 2) = 3 + 10 + 1 + 2
@@ -56,7 +66,17 @@ describe('calculateVisibleRange', () => {
 
     it('should calculate correct range for bottom-to-top mode', () => {
         // scrollTop = 100 in bottomToTop means 100px from content end
-        const result = calculateVisibleRange(100, 300, 30, 100, 2, 'bottomToTop')
+        const result = calculateVisibleRange(
+            100,
+            300,
+            30,
+            100,
+            2,
+            'bottomToTop',
+            false,
+            false,
+            null
+        )
         expect(result).toEqual({
             start: 84, // Items near the end for bottomToTop when scrollTop = 100
             end: 99
@@ -65,7 +85,7 @@ describe('calculateVisibleRange', () => {
 
     it('should show first items when scrollTop = 0 in bottomToTop mode', () => {
         // When scrollTop = 0, bottomToTop should show first items (0, 1, 2...)
-        const result = calculateVisibleRange(0, 300, 30, 100, 2, 'bottomToTop')
+        const result = calculateVisibleRange(0, 300, 30, 100, 2, 'bottomToTop', false, false, null)
         expect(result).toEqual({
             start: 88, // Near the end items when at scrollTop = 0
             end: 100
@@ -75,7 +95,17 @@ describe('calculateVisibleRange', () => {
     it('should show last items when at maxScrollTop in bottomToTop mode', () => {
         // When at maxScrollTop, bottomToTop should show last items
         const maxScrollTop = 100 * 30 - 300 // totalHeight - viewportHeight = 2700
-        const result = calculateVisibleRange(maxScrollTop, 300, 30, 100, 2, 'bottomToTop')
+        const result = calculateVisibleRange(
+            maxScrollTop,
+            300,
+            30,
+            100,
+            2,
+            'bottomToTop',
+            false,
+            false,
+            null
+        )
         expect(result).toEqual({
             start: 0, // First items when at max scroll
             end: 13
@@ -83,7 +113,7 @@ describe('calculateVisibleRange', () => {
     })
 
     it('should handle edge cases with buffer exceeding bounds', () => {
-        const result = calculateVisibleRange(0, 300, 30, 10, 5, 'topToBottom')
+        const result = calculateVisibleRange(0, 300, 30, 10, 5, 'topToBottom', false, false, null)
         expect(result).toEqual({
             start: 0,
             end: 10
@@ -179,7 +209,7 @@ describe('updateHeightAndScroll', () => {
 
 describe('calculateAverageHeight', () => {
     it('should return current height when no elements are provided', () => {
-        const result = calculateAverageHeight([], { start: 0 }, {}, 40, new Set())
+        const result = calculateAverageHeight([], { start: 0, end: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40)
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -193,7 +223,7 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: 50 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 2 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // (30 + 50) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -208,7 +238,7 @@ describe('calculateAverageHeight', () => {
 
         const result = calculateAverageHeight(
             mockElements,
-            { start: 0 },
+            { start: 0, end: 1 },
             existingCache,
             40,
             new Set()
@@ -225,7 +255,7 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: Infinity }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 3 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // Should fallback to currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -240,7 +270,7 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: 50 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 3 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // (30 + 50) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -254,7 +284,7 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: Infinity }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 2 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // Falls back to currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -275,7 +305,7 @@ describe('calculateAverageHeight', () => {
 
         const result = calculateAverageHeight(
             mockElements,
-            { start: 0 },
+            { start: 0, end: 2 },
             existingCache,
             40,
             new Set(),
@@ -293,7 +323,7 @@ describe('calculateAverageHeight', () => {
 
     it('should handle empty height cache gracefully', () => {
         const mockElements = [] as HTMLElement[]
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, new Set())
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40)
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -307,7 +337,7 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: -1 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45, new Set())
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 1 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45) // Should use currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -317,7 +347,7 @@ describe('calculateAverageHeight', () => {
     it('should use currentItemHeight when no heights are collected', () => {
         const mockElements = [null] as unknown as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45, new Set())
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 0 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45)
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -334,7 +364,7 @@ describe('calculateAverageHeight', () => {
             } as unknown as HTMLElement
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45, new Set())
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 0 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45) // Should use currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -350,7 +380,13 @@ describe('calculateAverageHeight', () => {
 
         // Only item 1 is dirty
         const dirtyItems = new Set([1])
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, dirtyItems)
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 3 },
+            {},
+            40,
+            dirtyItems
+        )
 
         // Should only measure the dirty item (index 1 = 50px)
         expect(result.updatedHeightCache).toEqual({ 1: 50 })
@@ -367,7 +403,13 @@ describe('calculateAverageHeight', () => {
 
         // Items 0 and 2 are dirty
         const dirtyItems = new Set([0, 2])
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, dirtyItems)
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 3 },
+            {},
+            40,
+            dirtyItems
+        )
 
         // Should measure both dirty items
         expect(result.updatedHeightCache).toEqual({ 0: 30, 2: 70 })
@@ -383,7 +425,13 @@ describe('calculateAverageHeight', () => {
 
         // Item 5 is dirty but not in visible range (start: 0, elements 0-1)
         const dirtyItems = new Set([0, 5])
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, dirtyItems)
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 2 },
+            {},
+            40,
+            dirtyItems
+        )
 
         // Should only measure item 0 (item 5 not visible)
         expect(result.updatedHeightCache).toEqual({ 0: 30 })
@@ -395,7 +443,13 @@ describe('calculateAverageHeight', () => {
         const mockElements = [] as HTMLElement[]
 
         const dirtyItems = new Set([0, 1, 2])
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40, dirtyItems)
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 0 },
+            {},
+            40,
+            dirtyItems
+        )
 
         // Should not clear any dirty items when no elements exist
         expect(result.clearedDirtyItems).toEqual(new Set())
@@ -417,7 +471,7 @@ describe('calculateAverageHeight', () => {
 
         const result = calculateAverageHeight(
             mockElements,
-            { start: 0 },
+            { start: 0, end: 2 },
             existingCache,
             40,
             dirtyItems,

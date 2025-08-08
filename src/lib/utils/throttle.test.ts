@@ -102,12 +102,21 @@ describe('throttle utilities', () => {
 
         it('should work with different function signatures', () => {
             const voidCallback = vi.fn(() => {})
-            const numberCallback = vi.fn((x: number) => x * 2)
-            const objectCallback = vi.fn((obj: { id: number }) => obj.id)
+            const numberCallback = vi.fn((x: number) => {
+                // no-op side effect to satisfy void signature
+                void x
+            })
+            const objectCallback = vi.fn((obj: { id: number }) => {
+                void obj
+            })
 
             const throttledVoid = createThrottledCallback(voidCallback, 50)
-            const throttledNumber = createThrottledCallback(numberCallback, 50)
-            const throttledObject = createThrottledCallback(objectCallback, 50)
+            const throttledNumber = createThrottledCallback((...args: unknown[]) => {
+                numberCallback(args[0] as number)
+            }, 50)
+            const throttledObject = createThrottledCallback((...args: unknown[]) => {
+                objectCallback(args[0] as { id: number })
+            }, 50)
 
             throttledVoid()
             throttledNumber(5)
