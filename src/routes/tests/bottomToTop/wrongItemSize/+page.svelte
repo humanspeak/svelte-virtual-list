@@ -22,6 +22,7 @@
         defaultEstimatedItemHeight={itemHeight}
         {items}
         testId="wrong-item-size-list"
+        mode="bottomToTop"
         debug={true}
     >
         {#snippet renderItem(item)}
