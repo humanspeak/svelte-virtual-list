@@ -2,7 +2,11 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
     testDir: './tests',
-    reporter: [['junit', { outputFile: 'junit-playwright.xml' }]],
+    // Produce artifacts that are easy to collect in CI
+    reporter: [
+        ['junit', { outputFile: 'test-results/junit-playwright.xml' }],
+        ['html', { open: 'never' }]
+    ],
     webServer: {
         command: 'npm run build && npm run preview',
         port: 4173,
@@ -13,9 +17,15 @@ export default defineConfig({
     },
     use: {
         baseURL: 'http://localhost:4173',
-        trace: 'on-first-retry'
+        trace: 'on-first-retry',
+        screenshot: 'only-on-failure',
+        video: 'retain-on-failure'
     },
-    timeout: 60000,
+    // Lower the default per-test timeout to speed up failures in CI
+    timeout: 30000,
+    // Make CI a bit more forgiving for transient issues
+    retries: process.env.CI ? 1 : 0,
+    forbidOnly: !!process.env.CI,
     projects: [
         {
             name: 'chromium',

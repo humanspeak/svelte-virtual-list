@@ -17,20 +17,27 @@ on:
             - package-lock.json
             - .github/workflows/run-tests.yml
 
+concurrency:
+    group: run-tests-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
-    run-tests:
+    unit-tests:
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: Checkout
               uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
               with:
                   persist-credentials: false
+                  fetch-depth: 1
 
             - name: Use Node.js - 22
               uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: 22
                   cache: npm
+                  cache-dependency-path: package-lock.json
 
             - name: Cache build artifacts
               uses: actions/cache@v4 # zizmor: ignore[unpinned-uses]
@@ -42,7 +49,7 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-build-
 
-            - name: Cache test artifacts
+            - name: Cache vitest artifacts
               uses: actions/cache@v4 # zizmor: ignore[unpinned-uses]
               with:
                   path: |
@@ -53,13 +60,70 @@ jobs:
                       ${{ runner.os }}-vitest-
 
             - name: Install dependencies
-              run: npm ci --prefer-offline --no-audit --ignore-scripts
+              run: npm ci --prefer-offline --no-audit --ignore-scripts --no-fund
 
             - name: Run unit tests
               run: npm test
 
+            - name: Upload unit test results
+              if: always()
+              uses: actions/upload-artifact@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  name: unit-test-results
+                  path: |
+                      coverage/**
+                      test-results/**
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    e2e-tests:
+        needs: unit-tests
+        runs-on: ubuntu-latest
+        timeout-minutes: 25
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1/2, 2/2]
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  persist-credentials: false
+                  fetch-depth: 1
+
+            - name: Use Node.js - 22
+              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci --prefer-offline --no-audit --ignore-scripts --no-fund
+
+            - name: Cache Playwright browsers
+              uses: actions/cache@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  path: ~/.cache/ms-playwright
+                  key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-playwright-
+
             - name: Install Playwright browsers
               run: npx playwright install --with-deps
 
-            - name: Run e2e tests
-              run: npm run test:e2e
+            - name: Run e2e tests (sharded)
+              env:
+                  CI: true
+              run: npm run test:e2e -- --shard=${{ matrix.shard }} --reporter=line
+
+            - name: Upload Playwright artifacts
+              if: always()
+              uses: actions/upload-artifact@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  name: playwright-artifacts-${{ matrix.shard }}
+                  path: |
+                      playwright-report/**
+                      test-results/**
+                      blob-report/**
+                  if-no-files-found: ignore
+                  retention-days: 7
