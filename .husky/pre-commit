@@ -25,4 +25,11 @@ if [ -n "${STAGED_FILES}" ]; then
 	echo "${STAGED_FILES}" | xargs -I {} sh -c 'test -f "{}" && git add "{}"'
 fi
 
+# Run type and Svelte checks to catch TS/Svelte typing regressions
+echo "🧪 Running svelte-check..."
+if ! npm run -s check >/dev/null 2>&1; then
+	echo "❌ Type/Svelte checks failed. Run 'npm run check' to see details."
+	exit 1
+fi
+
 echo "✅ All pre-commit checks passed!"
