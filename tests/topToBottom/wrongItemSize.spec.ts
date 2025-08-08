@@ -49,11 +49,28 @@ test.describe('TopToBottom wrong item size alignment', () => {
                     if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
                 })
 
-                // allow repaint & item render
-                await page.waitForTimeout(250)
-
+                // Ensure the last item is rendered
                 const target = page.locator('[data-original-index="999"]')
                 await target.waitFor({ state: 'visible', timeout: 5000 })
+
+                // Wait for tail force-measure + correction to settle
+                await page.waitForFunction(
+                    () => {
+                        const viewport = document.querySelector(
+                            '[data-testid="wrong-item-size-list-viewport"]'
+                        ) as HTMLElement | null
+                        const itemWrapper = document.querySelector(
+                            '[data-original-index="999"]'
+                        ) as HTMLElement | null
+                        if (!viewport || !itemWrapper) return false
+                        const vRect = viewport.getBoundingClientRect()
+                        const iRect = itemWrapper.getBoundingClientRect()
+                        const distance = Math.abs(iRect.bottom - vRect.bottom)
+                        // allow tiny sub-pixel fluctuations
+                        return Number.isFinite(distance) && distance <= 1
+                    },
+                    { timeout: 5000 }
+                )
 
                 const result = await page.evaluate(() => {
                     const viewport = document.querySelector(
@@ -62,15 +79,11 @@ test.describe('TopToBottom wrong item size alignment', () => {
                     const itemWrapper = document.querySelector(
                         '[data-original-index="999"]'
                     ) as HTMLElement | null
-
-                    if (!viewport || !itemWrapper) {
+                    if (!viewport || !itemWrapper)
                         return { ok: false, reason: 'viewport or item wrapper not found' }
-                    }
-
                     const vRect = viewport.getBoundingClientRect()
                     const iRect = itemWrapper.getBoundingClientRect()
-                    const distance = Math.abs(iRect.bottom - vRect.bottom)
-                    return { ok: true, distance }
+                    return { ok: true, distance: Math.abs(iRect.bottom - vRect.bottom) }
                 })
 
                 expect(result.ok, result.reason || 'DOM query failed').toBe(true)

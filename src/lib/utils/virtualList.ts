@@ -48,7 +48,8 @@ export const calculateVisibleRange = (
     atBottom: boolean,
     wasAtBottomBeforeHeightChange: boolean,
     lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null,
-    totalContentHeight?: number
+    totalContentHeight?: number,
+    heightCache?: Record<number, number>
 ): SvelteVirtualListPreviousVisibleRange => {
     if (mode === 'bottomToTop') {
         const visibleCount = Math.ceil(viewportHeight / itemHeight) + 1
@@ -84,18 +85,26 @@ export const calculateVisibleRange = (
         // Safeguard for topToBottom: ensure last item is fully visible when at max scroll
         const totalHeight = totalContentHeight ?? totalItems * itemHeight
         const maxScrollTop = Math.max(0, totalHeight - viewportHeight)
-        // Add dynamic tolerance based on item height for browser rendering precision
-        const tolerance = Math.max(itemHeight, 10) // At least one full item height or 10px minimum
+        // Use strict tolerance to avoid premature bottom anchoring that leaves a visible gap
+        const tolerance = 1 // pixels
         const isAtBottom = Math.abs(scrollTop - maxScrollTop) <= tolerance
 
         if (isAtBottom) {
-            // When at the bottom, ensure we include all items up to the end
+            // Pack from the end using measured heights when available: walk backward until viewport filled
             const adjustedEnd = totalItems
-            const visibleItemCount = Math.ceil(viewportHeight / itemHeight) + bufferSize + 1
-            const adjustedStart = Math.max(0, adjustedEnd - visibleItemCount)
-
+            let startCore = adjustedEnd
+            let acc = 0
+            const getH = (i: number) => {
+                const v = heightCache ? heightCache[i] : undefined
+                return Number.isFinite(v) && (v as number) > 0 ? (v as number) : itemHeight
+            }
+            while (startCore > 0 && acc < viewportHeight) {
+                const h = getH(startCore - 1)
+                acc += h
+                startCore -= 1
+            }
             return {
-                start: adjustedStart,
+                start: Math.max(0, startCore - bufferSize),
                 end: adjustedEnd
             } as SvelteVirtualListPreviousVisibleRange
         }
@@ -133,8 +142,11 @@ export const calculateTransformY = (
     visibleStart: number,
     itemHeight: number,
     viewportHeight: number,
-    totalContentHeight?: number
+    totalContentHeight?: number,
+    heightCache?: Record<number, number>,
+    measuredFallbackHeight?: number
 ) => {
+    const effectiveViewport = viewportHeight || measuredFallbackHeight || 0
     if (mode === 'bottomToTop') {
         // In bottomToTop mode, position items so they stack from bottom up
         const actualTotalHeight = totalContentHeight ?? totalItems * itemHeight
@@ -143,10 +155,15 @@ export const calculateTransformY = (
         const basicTransform = (totalItems - visibleEnd) * itemHeight
 
         // When content is smaller than viewport, push to bottom
-        const bottomOffset = Math.max(0, viewportHeight - actualTotalHeight)
+        const bottomOffset = Math.max(0, effectiveViewport - actualTotalHeight)
 
         return basicTransform + bottomOffset
     } else {
+        // For topToBottom, prefer precise offset using measured heights when available
+        if (heightCache) {
+            const offset = getScrollOffsetForIndex(heightCache, itemHeight, visibleStart)
+            return Math.max(0, Math.round(offset))
+        }
         return visibleStart * itemHeight
     }
 }
@@ -431,23 +448,35 @@ export const getScrollOffsetForIndex = (
     blockSums?: number[],
     blockSize = 1000
 ): number => {
-    if (idx <= 0) return 0
+    // normalize and clamp index
+    const safeIdx = Math.max(0, Math.floor(idx))
+    if (safeIdx <= 0) return 0
     if (!blockSums) {
         // Fallback: O(n) for a single query
         let offset = 0
 
-        for (let i = 0; i < idx; i++) {
-            const height = heightCache[i] ?? calculatedItemHeight
+        for (let i = 0; i < safeIdx; i++) {
+            const raw = heightCache[i]
+            const height =
+                Number.isFinite(raw) && (raw as number) > 0 ? (raw as number) : calculatedItemHeight
             offset += height
         }
 
         return offset
     }
-    const blockIdx = Math.floor(idx / blockSize)
-    let offset = blockIdx > 0 ? blockSums[blockIdx - 1] : 0
+    const blockIdx = Math.floor(safeIdx / blockSize)
+    let offsetBase = 0
+    if (blockIdx > 0) {
+        const base = blockSums[blockIdx - 1]
+        offsetBase = Number.isFinite(base) ? (base as number) : 0
+    }
+    let offset = offsetBase
     const start = blockIdx * blockSize
-    for (let i = start; i < idx; i++) {
-        offset += heightCache[i] ?? calculatedItemHeight
+    for (let i = start; i < safeIdx; i++) {
+        const raw = heightCache[i]
+        const height =
+            Number.isFinite(raw) && (raw as number) > 0 ? (raw as number) : calculatedItemHeight
+        offset += height
     }
     return offset
 }

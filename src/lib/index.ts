@@ -6,8 +6,7 @@ import type {
     SvelteVirtualListScrollAlign,
     SvelteVirtualListScrollOptions
 } from '$lib/types.js'
-
-export default SvelteVirtualList
+// cleaned: no extra exports for debugging UI
 export type {
     SvelteVirtualListDebugInfo,
     SvelteVirtualListMode,
@@ -15,3 +14,5 @@ export type {
     SvelteVirtualListScrollAlign,
     SvelteVirtualListScrollOptions
 }
+
+export default SvelteVirtualList

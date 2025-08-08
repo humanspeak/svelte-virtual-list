@@ -166,7 +166,8 @@
         calculateScrollPosition,
         calculateTransformY,
         calculateVisibleRange,
-        updateHeightAndScroll as utilsUpdateHeightAndScroll
+        updateHeightAndScroll as utilsUpdateHeightAndScroll,
+        getScrollOffsetForIndex
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
@@ -235,9 +236,15 @@
     let heightCache = $state<Record<number, number>>({}) // Cache of measured item heights
     let dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
     let dirtyItemsCount = $state(0) // Reactive count of dirty items
+    // Fallback measurement used only when height has not been established yet
+    let measuredFallbackHeight = $state(0)
 
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
+    let prevTotalHeightForScrollCorrection = $state<number>(0)
+    let tailMeasureInProgress = $state(false)
+    let lastTailMeasureKey = $state('')
+    let lastBottomDistance = $state<number | null>(null)
 
     /**
      * Reactive Height Manager - O(1) height calculation system
@@ -413,6 +420,8 @@
     })
 
     const updateHeight = () => {
+        // Capture previous total height for scroll correction (topToBottom anchoring)
+        prevTotalHeightForScrollCorrection = heightManager.totalHeight
         heightUpdateTimeout = calculateAverageHeightDebounced(
             isCalculatingHeight,
             heightUpdateTimeout,
@@ -430,6 +439,29 @@
                 // Handle height changes for scroll correction (needs updated heightCache)
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
                     handleHeightChangesScrollCorrection(result.heightChanges)
+                }
+
+                // TopToBottom: maintain bottom anchoring when total height changes
+                if (mode === 'topToBottom' && viewportElement && initialized) {
+                    const oldTotal = prevTotalHeightForScrollCorrection
+                    const newTotal = heightManager.totalHeight
+                    const deltaTotal = newTotal - oldTotal
+                    // Ignore micro deltas to prevent oscillation
+                    if (Math.abs(deltaTotal) > 1) {
+                        const maxScrollTop = Math.max(0, newTotal - (height || 0))
+                        const tolerance = Math.max(heightManager.averageHeight, 10)
+                        const currentScrollTop = viewportElement.scrollTop
+                        const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) <= tolerance
+                        if (isAtBottom) {
+                            // Adjust scrollTop by total height delta to hold bottom anchor
+                            const adjusted = Math.min(
+                                maxScrollTop,
+                                Math.max(0, currentScrollTop + deltaTotal)
+                            )
+                            viewportElement.scrollTop = adjusted
+                            scrollTop = adjusted
+                        }
+                    }
                 }
 
                 // Non-critical updates wrapped in untrack to prevent reactive cascades
@@ -500,6 +532,22 @@
     let atBottom = $derived(scrollTop >= totalHeight() - height - 1)
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
+
+    function updateDebugTailDistance() {
+        if (!viewportElement) return
+        const last = viewportElement.querySelector(
+            '[data-original-index="999"]'
+        ) as HTMLElement | null
+        if (!last) return
+        const v = viewportElement.getBoundingClientRect()
+        const r = last.getBoundingClientRect()
+        lastBottomDistance = Math.round(Math.abs(r.bottom - v.bottom))
+        if (debug) {
+            console.log('[SVL] bottomDistance(px):', lastBottomDistance)
+        }
+    }
+
+    // no UI export; rely on console logs when debug=true
 
     // $inspect('scrollState: atTop', atTop)
     // $inspect('scrollState: atBottom', atBottom)
@@ -602,6 +650,15 @@
         }
     })
 
+    // Provide a one-time synchronous measurement only when height is still 0,
+    // to avoid DOM reads inside render-time expressions.
+    $effect(() => {
+        if (BROWSER && height === 0 && containerElement) {
+            const h = containerElement.getBoundingClientRect().height
+            if (Number.isFinite(h) && h > 0) measuredFallbackHeight = h
+        }
+    })
+
     // Special handling for bottom-to-top mode initialization
     $effect(() => {
         if (
@@ -674,14 +731,16 @@
                 atBottom,
                 wasAtBottomBeforeHeightChange,
                 lastVisibleRange,
-                totalHeight()
+                totalHeight(),
+                heightCache
             )
 
             return lastVisibleRange
         }
 
+        const safeScrollTop = Math.min(scrollTop, Math.max(0, totalHeight() - viewportHeight))
         lastVisibleRange = calculateVisibleRange(
-            scrollTop,
+            safeScrollTop,
             viewportHeight,
             heightManager.averageHeight,
             items.length,
@@ -690,10 +749,76 @@
             atBottom,
             wasAtBottomBeforeHeightChange,
             lastVisibleRange,
-            totalHeight()
+            totalHeight(),
+            heightCache
         )
 
         return lastVisibleRange
+    })
+
+    // Force-measure tail window when at the end to eliminate estimate error before anchoring
+    $effect(() => {
+        if (!BROWSER || mode !== 'topToBottom' || !viewportElement) return
+        const vr = visibleItems()
+        const isTail = vr.end === items.length && (height || 0) > 0
+        if (!isTail) return
+
+        // Detect if any item in the current window is unmeasured or invalid
+        let hasMissing = false
+        for (let i = vr.start; i < vr.end; i++) {
+            const raw = heightCache[i]
+            if (!(Number.isFinite(raw) && (raw as number) > 0)) {
+                hasMissing = true
+                break
+            }
+        }
+
+        const key = `${vr.start}-${vr.end}-${items.length}`
+        if (!hasMissing || tailMeasureInProgress || lastTailMeasureKey === key) return
+
+        tailMeasureInProgress = true
+        tick().then(() => {
+            requestAnimationFrame(() => {
+                try {
+                    const nodes = Array.from(
+                        viewportElement.querySelectorAll('[data-original-index]')
+                    ) as HTMLElement[]
+                    const heightChanges: Array<{
+                        index: number
+                        oldHeight: number
+                        newHeight: number
+                        delta: number
+                    }> = []
+
+                    for (const el of nodes) {
+                        const idx = parseInt(el.dataset.originalIndex || '-1')
+                        if (idx >= vr.start && idx < vr.end) {
+                            const h = el.getBoundingClientRect().height
+                            if (Number.isFinite(h) && h > 0) {
+                                const old = heightCache[idx] ?? heightManager.averageHeight
+                                if (!heightCache[idx] || Math.abs(old - h) >= 0.1) {
+                                    heightCache[idx] = h
+                                    heightChanges.push({
+                                        index: idx,
+                                        oldHeight: old,
+                                        newHeight: h,
+                                        delta: h - old
+                                    })
+                                }
+                            }
+                        }
+                    }
+
+                    if (heightChanges.length > 0) {
+                        heightManager.processDirtyHeights(heightChanges)
+                    }
+
+                    lastTailMeasureKey = key
+                } finally {
+                    tailMeasureInProgress = false
+                }
+            })
+        })
     })
 
     /**
@@ -733,6 +858,18 @@
                 }
                 lastScrollTopSnapshot = current
                 scrollTop = current
+                updateDebugTailDistance()
+                if (debug) {
+                    const vr = visibleItems()
+                    console.log('[SVL] onscroll', {
+                        mode,
+                        scrollTop,
+                        height,
+                        totalHeight: totalHeight(),
+                        averageItemHeight: heightManager.averageHeight,
+                        visibleRange: vr
+                    })
+                }
                 isScrolling = false
             })
         }
@@ -1050,6 +1187,29 @@
             scrollTop = scrollTarget
         })
 
+        // Ensure exact end alignment for topToBottom when aligning to bottom
+        if (mode === 'topToBottom' && align === 'bottom') {
+            await tick()
+            await new Promise((resolve) => requestAnimationFrame(resolve))
+            const targetEl = viewportElement.querySelector(
+                `[data-original-index="${targetIndex}"]`
+            ) as HTMLElement | null
+            if (targetEl) {
+                targetEl.scrollIntoView({
+                    block: 'end',
+                    behavior: smoothScroll ? 'smooth' : 'auto'
+                })
+                // sync internal state
+                scrollTop = viewportElement.scrollTop
+                // Final clamp to exact bottom after height changes settle (cross-browser)
+                const maxScrollTop = Math.max(0, totalHeight() - height)
+                if (Math.abs(scrollTop - maxScrollTop) > 1) {
+                    viewportElement.scrollTop = maxScrollTop
+                    scrollTop = maxScrollTop
+                }
+            }
+        }
+
         // Clear the flag after scroll completes
         setTimeout(
             () => {
@@ -1119,29 +1279,57 @@
                 class={itemsClass ?? 'virtual-list-items'}
                 style:visibility={height === 0 && mode === 'bottomToTop' ? 'hidden' : 'visible'}
                 style:transform="translateY({(() => {
-                    const viewportHeight = height || 0
+                    const viewportHeight = height || measuredFallbackHeight || 0
                     const visibleRange = visibleItems()
 
-                    // For bottomToTop mode with few items, provide reasonable initial positioning
-                    // even when height is not yet measured to prevent flash
-                    let effectiveHeight = viewportHeight
-                    if (mode === 'bottomToTop' && viewportHeight === 0 && containerElement) {
-                        // Measure height synchronously if available
-                        effectiveHeight = containerElement.getBoundingClientRect().height || 400
-                    } else if (mode === 'bottomToTop' && viewportHeight === 0) {
-                        // Fallback to reasonable default height estimate for initial positioning
-                        effectiveHeight = 400
-                    }
+                    // Avoid synchronous DOM reads here; fall back once if height is 0
+                    let effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
 
-                    const transform = calculateTransformY(
-                        mode,
-                        items.length,
-                        visibleRange.end,
-                        visibleRange.start,
-                        heightManager.averageHeight,
-                        effectiveHeight,
-                        totalHeight() // Pass ReactiveHeightManager's accurate total height
-                    )
+                    // Use precise offset for topToBottom using measured heights when available
+                    let transform: number
+                    if (
+                        mode === 'topToBottom' &&
+                        heightCache &&
+                        visibleRange.end === items.length
+                    ) {
+                        // Tail window: compute exact window height and exact start offset from cache
+                        let windowH = 0
+                        for (let i = visibleRange.start; i < visibleRange.end; i++) {
+                            const raw = heightCache[i]
+                            const h =
+                                Number.isFinite(raw) && (raw as number) > 0
+                                    ? (raw as number)
+                                    : heightManager.averageHeight
+                            windowH += h
+                        }
+                        const totalH = totalHeight()
+                        if (windowH <= effectiveHeight) {
+                            // Content shorter than viewport: push items to bottom exactly
+                            transform = Math.max(0, Math.round(totalH - windowH))
+                        } else {
+                            // Window taller than viewport: align start exactly using measured offset
+                            const startOffset = getScrollOffsetForIndex(
+                                heightCache,
+                                heightManager.averageHeight,
+                                visibleRange.start
+                            )
+                            transform = Math.max(0, Math.round(startOffset))
+                        }
+                    } else {
+                        transform = Math.round(
+                            calculateTransformY(
+                                mode,
+                                items.length,
+                                visibleRange.end,
+                                visibleRange.start,
+                                heightManager.averageHeight,
+                                effectiveHeight,
+                                totalHeight(),
+                                heightCache,
+                                measuredFallbackHeight
+                            )
+                        )
+                    }
 
                     return transform
                 })()}px)"

@@ -122,8 +122,16 @@ describe('calculateVisibleRange', () => {
 })
 
 describe('calculateTransformY', () => {
-    it('should calculate transform for top-to-bottom mode', () => {
+    it('should calculate transform for top-to-bottom mode (estimated)', () => {
         expect(calculateTransformY('topToBottom', 100, 20, 5, 30, 400)).toBe(150)
+    })
+
+    it('should calculate transform for top-to-bottom mode using heightCache when provided', () => {
+        const heightCache = { 0: 35, 1: 45, 2: 25, 3: 50, 4: 60 }
+        // visibleStart = 5 → offset = sum(0..4) = 35+45+25+50+60 = 215
+        expect(
+            calculateTransformY('topToBottom', 100, 20, 5, 30, 0, undefined, heightCache, 400)
+        ).toBe(215)
     })
 
     it('should calculate transform for bottom-to-top mode', () => {
