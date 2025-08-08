@@ -1177,6 +1177,11 @@
                         bind:this={itemElements[currentItemWithIndex.sliceIndex]}
                         use:autoObserveItemResize
                         data-original-index={currentItemWithIndex.originalIndex}
+                        {...testId
+                            ? {
+                                  'data-testid': `${testId}-item-${currentItemWithIndex.originalIndex}`
+                              }
+                            : {}}
                     >
                         {@render renderItem(
                             currentItemWithIndex.item,

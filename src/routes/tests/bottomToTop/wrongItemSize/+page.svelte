@@ -23,10 +23,10 @@
         {items}
         testId="wrong-item-size-list"
         mode="bottomToTop"
-        debug={true}
+        debug={false}
     >
         {#snippet renderItem(item)}
-            <div class="test-item" data-testid="list-item-{item.id}">
+            <div class="test-item">
                 {item.text}
             </div>
         {/snippet}
