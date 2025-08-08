@@ -62,7 +62,7 @@ jobs:
                   node-version: 22
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --prefer-offline --no-audit --ignore-scripts
 
             - name: Run tests
               run: npm test
@@ -97,7 +97,7 @@ jobs:
                   scope: '@humanspeak'
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --prefer-offline --no-audit --ignore-scripts
 
             - name: Import GPG key
               id: import_gpg
