@@ -12,5 +12,6 @@
         "strict": true,
         "types": ["vitest/globals"]
     },
+    "exclude": ["docs"],
     "extends": "./.svelte-kit/tsconfig.json"
 }

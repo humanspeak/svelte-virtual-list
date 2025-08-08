@@ -17,9 +17,7 @@ export default defineConfig({
     },
     use: {
         baseURL: 'http://localhost:4173',
-        trace: 'on-first-retry',
-        screenshot: 'only-on-failure',
-        video: 'retain-on-failure'
+        trace: 'on-first-retry'
     },
     // Lower the default per-test timeout to speed up failures in CI
     timeout: 30000,

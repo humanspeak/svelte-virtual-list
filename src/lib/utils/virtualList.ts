@@ -47,23 +47,16 @@ export const calculateVisibleRange = (
     mode: SvelteVirtualListMode,
     atBottom: boolean,
     wasAtBottomBeforeHeightChange: boolean,
-    lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null
+    lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null,
+    totalContentHeight?: number
 ): SvelteVirtualListPreviousVisibleRange => {
     if (mode === 'bottomToTop') {
-        if (wasAtBottomBeforeHeightChange && lastVisibleRange) {
-            // console.log('calculateVisibleRange:wasAtBottomBeforeHeightChange', {
-            //     lastVisibleRange,
-            //     atBottom,
-            //     wasAtBottomBeforeHeightChange
-            // })
-            return lastVisibleRange
-        }
         const visibleCount = Math.ceil(viewportHeight / itemHeight) + 1
 
         // In bottomToTop mode, scrollTop represents distance from the total content end
         // scrollTop = 0 means we're at the beginning (showing first items)
         // scrollTop = maxScrollTop means we're at the end (showing last items)
-        const totalHeight = totalItems * itemHeight
+        const totalHeight = totalContentHeight ?? totalItems * itemHeight
         const maxScrollTop = Math.max(0, totalHeight - viewportHeight)
 
         // Convert scrollTop to "distance from start" for bottomToTop
@@ -75,13 +68,7 @@ export const calculateVisibleRange = (
             // We're scrolled beyond the maximum (showing first items)
             const start = 0
             const end = Math.min(totalItems, visibleCount + bufferSize * 2)
-            // console.log('calculateVisibleRange:startIndex < 0', {
-            //     start,
-            //     end,
-            //     atBottom,
-            //     wasAtBottomBeforeHeightChange,
-            //     lastVisibleRange
-            // })
+
             return { start, end } as SvelteVirtualListPreviousVisibleRange
         }
 
@@ -89,20 +76,13 @@ export const calculateVisibleRange = (
         const start = Math.max(0, startIndex - bufferSize)
         const end = Math.min(totalItems, startIndex + visibleCount + bufferSize)
 
-        // console.log('calculateVisibleRange:startIndex >= 0', {
-        //     start,
-        //     end,
-        //     atBottom,
-        //     wasAtBottomBeforeHeightChange,
-        //     lastVisibleRange
-        // })
         return { start, end } as SvelteVirtualListPreviousVisibleRange
     } else {
         const start = Math.floor(scrollTop / itemHeight)
         const end = Math.min(totalItems, start + Math.ceil(viewportHeight / itemHeight) + 1)
 
         // Safeguard for topToBottom: ensure last item is fully visible when at max scroll
-        const totalHeight = totalItems * itemHeight
+        const totalHeight = totalContentHeight ?? totalItems * itemHeight
         const maxScrollTop = Math.max(0, totalHeight - viewportHeight)
         // Add dynamic tolerance based on item height for browser rendering precision
         const tolerance = Math.max(itemHeight, 10) // At least one full item height or 10px minimum
@@ -114,30 +94,19 @@ export const calculateVisibleRange = (
             const visibleItemCount = Math.ceil(viewportHeight / itemHeight) + bufferSize + 1
             const adjustedStart = Math.max(0, adjustedEnd - visibleItemCount)
 
-            // TopToBottom safeguard is now active
-            // console.log('calculateVisibleRange:isAtBottom', {
-            //     start: adjustedStart,
-            //     end: adjustedEnd,
-            //     atBottom,
-            //     wasAtBottomBeforeHeightChange,
-            //     lastVisibleRange
-            // })
             return {
                 start: adjustedStart,
                 end: adjustedEnd
             } as SvelteVirtualListPreviousVisibleRange
         }
-        // console.log('calculateVisibleRange:isNotAtBottom', {
-        //     start: Math.max(0, start - bufferSize),
-        //     end: Math.min(totalItems, end + bufferSize),
-        //     atBottom,
-        //     wasAtBottomBeforeHeightChange,
-        //     lastVisibleRange
-        // })
+
         // Add buffer to both ends
+        const finalStart = Math.max(0, start - bufferSize)
+        const finalEnd = Math.min(totalItems, end + bufferSize)
+
         return {
-            start: Math.max(0, start - bufferSize),
-            end: Math.min(totalItems, end + bufferSize)
+            start: finalStart,
+            end: finalEnd
         } as SvelteVirtualListPreviousVisibleRange
     }
 }
@@ -163,18 +132,18 @@ export const calculateTransformY = (
     visibleEnd: number,
     visibleStart: number,
     itemHeight: number,
-    viewportHeight: number
+    viewportHeight: number,
+    totalContentHeight?: number
 ) => {
     if (mode === 'bottomToTop') {
-        // In bottomToTop mode, we need to position the container so that
-        // the first visible item (visibleStart) aligns with its correct position
-        // from the bottom of the total content
+        // In bottomToTop mode, position items so they stack from bottom up
+        const actualTotalHeight = totalContentHeight ?? totalItems * itemHeight
+
+        // Calculate transform to position visible items correctly
         const basicTransform = (totalItems - visibleEnd) * itemHeight
 
-        // When there are few items (total content height < viewport height),
-        // push items to the bottom of the viewport to maintain bottomToTop behavior
-        const totalContentHeight = totalItems * itemHeight
-        const bottomOffset = Math.max(0, viewportHeight - totalContentHeight)
+        // When content is smaller than viewport, push to bottom
+        const bottomOffset = Math.max(0, viewportHeight - actualTotalHeight)
 
         return basicTransform + bottomOffset
     } else {
@@ -435,37 +404,6 @@ export const processChunked = async (
 }
 
 /**
- * Builds a block sum array for fast offset calculation in large virtual lists.
- * Each entry in the array is the total height up to the end of that block (exclusive).
- *
- * @param {HeightCache} heightCache - Map of measured item heights with dirty tracking
- * @param {number} calculatedItemHeight - Estimated height for unmeasured items
- * @param {number} totalItems - Total number of items in the list
- * @param {number} blockSize - Number of items per block
- * @returns {number[]} Array of prefix sums at each block boundary
- */
-export const buildBlockSums = (
-    heightCache: Record<number, number>,
-    calculatedItemHeight: number,
-    totalItems: number,
-    blockSize = 1000
-): number[] => {
-    const blockSums: number[] = []
-    let sum = 0
-    for (let i = 0; i < totalItems; i++) {
-        sum += heightCache[i] ?? calculatedItemHeight
-        if ((i + 1) % blockSize === 0) {
-            blockSums.push(sum)
-        }
-    }
-    // Push the last partial block if needed
-    if (totalItems % blockSize !== 0) {
-        blockSums.push(sum)
-    }
-    return blockSums
-}
-
-/**
  * Calculates the scroll offset (in pixels) needed to bring a specific item into view in a virtual list.
  *
  * Uses block memoization for efficient O(b) offset calculation, where b = block size (default 1000).
@@ -497,9 +435,12 @@ export const getScrollOffsetForIndex = (
     if (!blockSums) {
         // Fallback: O(n) for a single query
         let offset = 0
+
         for (let i = 0; i < idx; i++) {
-            offset += heightCache[i] ?? calculatedItemHeight
+            const height = heightCache[i] ?? calculatedItemHeight
+            offset += height
         }
+
         return offset
     }
     const blockIdx = Math.floor(idx / blockSize)
