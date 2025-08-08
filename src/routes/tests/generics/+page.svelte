@@ -11,7 +11,7 @@
     // This usage should infer TItem = Message from items and forward it to renderItem
 </script>
 
-<SvelteVirtualList {items}>
+<SvelteVirtualList {items} debug={false}>
     {#snippet renderItem(item, index)}
         <div data-testid="generic-item-{index}">{item.text}</div>
     {/snippet}
