@@ -111,10 +111,13 @@ jobs:
             - name: Install Playwright browsers
               run: npx playwright install --with-deps
 
+            - name: Sanity check - list discovered tests
+              run: npx playwright test --list | head -n 50 | cat
+
             - name: Run e2e tests (sharded)
               env:
                   CI: true
-              run: npm run test:e2e -- --shard=${{ matrix.shard }} --reporter=line
+              run: npx playwright test tests --config=playwright.config.ts --shard=${{ matrix.shard }} --reporter=line
 
             - name: Upload Playwright artifacts
               if: always()
