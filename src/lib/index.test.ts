@@ -30,7 +30,7 @@ describe('index.ts exports', () => {
 
         // Use a mock Snippet for renderItem
         const mockSnippet: Snippet = (() => {}) as unknown as Snippet
-        const props: SvelteVirtualListProps = {
+        const props: SvelteVirtualListProps<any> = {
             items: [],
             renderItem: mockSnippet
         }

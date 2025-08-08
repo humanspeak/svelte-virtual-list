@@ -23,7 +23,7 @@ describe('testing initialization', () => {
             props: {
                 testId: 'test-id',
                 items: []
-            } as unknown as SvelteVirtualListProps
+            } as unknown as SvelteVirtualListProps<any>
         })
 
         // Wait for all timers and effects to settle

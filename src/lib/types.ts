@@ -12,7 +12,7 @@ export type SvelteVirtualListMode = 'topToBottom' | 'bottomToTop'
  *
  * @typedef {Object} SvelteVirtualListProps
  */
-export type SvelteVirtualListProps = {
+export type SvelteVirtualListProps<TItem = any> = { // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Number of items to render outside the visible viewport for smooth scrolling.
      * @default 20
@@ -43,7 +43,7 @@ export type SvelteVirtualListProps = {
     /**
      * The complete array of items to be virtualized.
      */
-    items: any[] // eslint-disable-line @typescript-eslint/no-explicit-any
+    items: TItem[]
     /**
      * CSS class to apply to individual item containers.
      */
@@ -56,7 +56,7 @@ export type SvelteVirtualListProps = {
     /**
      * Svelte snippet function that defines how each item should be rendered. Receives the item and its index as arguments.
      */
-    renderItem: Snippet<[item: any, index: number]> // eslint-disable-line @typescript-eslint/no-explicit-any
+    renderItem: Snippet<[item: TItem, index: number]>
     /**
      * Base test ID for component elements to facilitate testing.
      */
