@@ -528,6 +528,9 @@
      */
     let totalHeight = $derived(() => heightManager.totalHeight)
 
+    // Revert: content height follows total height
+    let contentHeight = $derived(() => Math.max(height || 0, totalHeight()))
+
     let atTop = $derived(scrollTop <= 1)
     let atBottom = $derived(scrollTop >= totalHeight() - height - 1)
     let wasAtBottomBeforeHeightChange = false
@@ -542,7 +545,7 @@
         const v = viewportElement.getBoundingClientRect()
         const r = last.getBoundingClientRect()
         lastBottomDistance = Math.round(Math.abs(r.bottom - v.bottom))
-        if (debug) {
+        if (INTERNAL_DEBUG) {
             console.log('[SVL] bottomDistance(px):', lastBottomDistance)
         }
     }
@@ -755,6 +758,82 @@
         return lastVisibleRange
     })
 
+    // Extra tail diagnostics (debug only): logs the exact numbers used to compute translateY
+    // and the expected bottom alignment when the tail window is active in topToBottom mode.
+    $effect(() => {
+        if (!INTERNAL_DEBUG || mode !== 'topToBottom') return
+        const vr = visibleItems()
+        const viewportH = height || measuredFallbackHeight || 0
+        if (vr.end !== items.length || viewportH === 0) return
+
+        // Reproduce the same math used in the template for translateY at tail
+        let windowH = 0
+        for (let i = vr.start; i < vr.end; i++) {
+            const raw = heightCache[i]
+            const h =
+                Number.isFinite(raw) && (raw as number) > 0
+                    ? (raw as number)
+                    : heightManager.averageHeight
+            windowH += h
+        }
+        const totalH = totalHeight()
+        let computedTransform: number
+        const isAtBottom = Math.abs(scrollTop - Math.max(0, totalHeight() - viewportH)) <= 1
+        if (windowH <= viewportH) {
+            computedTransform = Math.max(0, Math.round(totalH - windowH))
+        } else {
+            const startOffset = getScrollOffsetForIndex(
+                heightCache,
+                heightManager.averageHeight,
+                vr.start
+            )
+            computedTransform = Math.max(0, Math.round(startOffset))
+        }
+
+        const expectedBottom = computedTransform + windowH
+        const targetBottom = scrollTop + viewportH
+        const deltaBottom = expectedBottom - targetBottom
+        const logic = windowH <= viewportH && isAtBottom ? 'flush' : 'startOffset'
+
+        console.log('[SVL] tail-calc', {
+            scrollTop,
+            viewportH,
+            averageItemHeight: heightManager.averageHeight,
+            totalH,
+            vr,
+            windowH,
+            computedTransform,
+            expectedBottom,
+            targetBottom,
+            deltaBottom,
+            atBottom: isAtBottom,
+            logic
+        })
+    })
+
+    // DOM scroll range diagnostics at tail (internal only). Helps detect scrollbar not flush with bottom.
+    $effect(() => {
+        if (!INTERNAL_DEBUG || mode !== 'topToBottom' || !viewportElement) return
+        const vr = visibleItems()
+        if (vr.end !== items.length) return
+        const contentEl = viewportElement.querySelector(
+            '#virtual-list-content'
+        ) as HTMLElement | null
+        const scrollHeight = viewportElement.scrollHeight
+        const clientHeight = viewportElement.clientHeight
+        const domMaxScrollTop = Math.max(0, scrollHeight - clientHeight)
+        const domDelta = domMaxScrollTop - scrollTop
+        const contentRectH = contentEl ? contentEl.getBoundingClientRect().height : 0
+        console.log('[SVL] tail-dom', {
+            scrollTop,
+            domMaxScrollTop,
+            domDelta,
+            scrollHeight,
+            clientHeight,
+            contentRectH
+        })
+    })
+
     // Force-measure tail window when at the end to eliminate estimate error before anchoring
     $effect(() => {
         if (!BROWSER || mode !== 'topToBottom' || !viewportElement) return
@@ -858,7 +937,7 @@
                 lastScrollTopSnapshot = current
                 scrollTop = current
                 updateDebugTailDistance()
-                if (debug) {
+                if (INTERNAL_DEBUG) {
                     const vr = visibleItems()
                     console.log('[SVL] onscroll', {
                         mode,
@@ -1150,6 +1229,19 @@
         // Prevent bottom-anchoring logic from interfering with programmatic scroll
         programmaticScrollInProgress = true
 
+        if (INTERNAL_DEBUG && viewportElement) {
+            const domMax = Math.max(0, viewportElement.scrollHeight - viewportElement.clientHeight)
+            console.log('[SVL] scroll-intent', {
+                targetIndex,
+                align: align || 'auto',
+                firstVisibleIndex,
+                lastVisibleIndex,
+                currentScrollTop: scrollTop,
+                scrollTarget,
+                domMaxScrollTop: domMax
+            })
+        }
+
         // CROSS-BROWSER COMPATIBILITY FIX:
         // All major browsers (Chrome, Firefox, Safari) have inconsistent behavior with scrollTo()
         // in bottomToTop mode when using smooth scrolling. Using scrollIntoView() on the highest
@@ -1184,24 +1276,19 @@
         // Update scrollTop state in next frame to avoid synchronous re-renders
         requestAnimationFrame(() => {
             scrollTop = scrollTarget
+            if (INTERNAL_DEBUG && viewportElement) {
+                const domMax = Math.max(
+                    0,
+                    viewportElement.scrollHeight - viewportElement.clientHeight
+                )
+                console.log('[SVL] scroll-after-call', {
+                    scrollTop,
+                    domMaxScrollTop: domMax
+                })
+            }
         })
 
-        // Ensure exact end alignment for topToBottom when aligning to bottom
-        if (mode === 'topToBottom' && align === 'bottom') {
-            await tick()
-            await new Promise((resolve) => requestAnimationFrame(resolve))
-            const targetEl = viewportElement.querySelector(
-                `[data-original-index="${targetIndex}"]`
-            ) as HTMLElement | null
-            if (targetEl) {
-                targetEl.scrollIntoView({
-                    block: 'end',
-                    behavior: smoothScroll ? 'smooth' : 'auto'
-                })
-                // sync internal state
-                scrollTop = viewportElement.scrollTop
-            }
-        }
+        // No extra alignment step here; allow native smooth scroll to reach DOM max scrollTop
 
         // Clear the flag after scroll completes
         setTimeout(
@@ -1260,10 +1347,7 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            style:height="{(() => {
-                // Use ReactiveHeightManager's accurate total height for better cross-browser compatibility
-                return Math.max(height, totalHeight())
-            })()}px"
+            style:height="{(() => Math.max(height, totalHeight()))()}px"
         >
             <!-- Items container is translated to show correct items -->
             <div
@@ -1280,34 +1364,8 @@
 
                     // Use precise offset for topToBottom using measured heights when available
                     let transform: number
-                    if (
-                        mode === 'topToBottom' &&
-                        heightCache &&
-                        visibleRange.end === items.length
-                    ) {
-                        // Tail window: compute exact window height and exact start offset from cache
-                        let windowH = 0
-                        for (let i = visibleRange.start; i < visibleRange.end; i++) {
-                            const raw = heightCache[i]
-                            const h =
-                                Number.isFinite(raw) && (raw as number) > 0
-                                    ? (raw as number)
-                                    : heightManager.averageHeight
-                            windowH += h
-                        }
-                        const totalH = totalHeight()
-                        if (windowH <= effectiveHeight) {
-                            // Content shorter than viewport: push items to bottom exactly
-                            transform = Math.max(0, Math.round(totalH - windowH))
-                        } else {
-                            // Window taller than viewport: align start exactly using measured offset
-                            const startOffset = getScrollOffsetForIndex(
-                                heightCache,
-                                heightManager.averageHeight,
-                                visibleRange.start
-                            )
-                            transform = Math.max(0, Math.round(startOffset))
-                        }
+                    if (false) {
+                        transform = 0
                     } else {
                         transform = Math.round(
                             calculateTransformY(
