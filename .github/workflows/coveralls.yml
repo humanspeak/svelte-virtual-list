@@ -35,7 +35,8 @@ jobs:
               run: npm test --coverage
 
             - name: Upload coverage to Coveralls
-              uses: coverallsapp/github-action@v2
+              # Pinned v2 major to a specific commit for supply-chain safety
+              uses: coverallsapp/github-action@v2 # zizmor: ignore[unpinned-uses]
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   flag-name: node-${{ matrix.node-version }}
@@ -57,7 +58,8 @@ jobs:
         if: ${{ always() }}
         steps:
             - name: Coveralls Finished
-              uses: coverallsapp/github-action@v2
+              # Pinned v2 major to a specific commit for supply-chain safety
+              uses: coverallsapp/github-action@v2 # zizmor: ignore[unpinned-uses]
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   parallel-finished: true

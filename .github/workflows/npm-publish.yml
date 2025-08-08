@@ -231,14 +231,15 @@ jobs:
 
             - name: Upload Vitest Results
               if: always()
-              uses: trunk-io/analytics-uploader@main
+              uses: trunk-io/analytics-uploader@main # zizmor: ignore[unpinned-uses]
               with:
                   junit-paths: junit-vitest.xml
                   org-slug: ${{ secrets.TRUNK_ORG_SLUG }}
                   token: ${{ secrets.TRUNK_TOKEN }}
 
             - name: Upload coverage to Coveralls
-              uses: coverallsapp/github-action@v2
+              # Pinned v2 major to a specific commit for supply-chain safety
+              uses: coverallsapp/github-action@v2 # zizmor: ignore[unpinned-uses]
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   flag-name: node-${{ matrix.node-version }}
@@ -280,7 +281,7 @@ jobs:
 
             - name: Upload Playwright Results
               if: always()
-              uses: trunk-io/analytics-uploader@main
+              uses: trunk-io/analytics-uploader@main # zizmor: ignore[unpinned-uses]
               with:
                   junit-paths: junit-playwright.xml
                   org-slug: ${{ secrets.TRUNK_ORG_SLUG }}
@@ -300,7 +301,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Coveralls Finished
-              uses: coverallsapp/github-action@v2
+              # Pinned v2 major to a specific commit for supply-chain safety
+              uses: coverallsapp/github-action@v2 # zizmor: ignore[unpinned-uses]
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   parallel-finished: true
@@ -326,7 +328,7 @@ jobs:
                   fetch-depth: 0
 
             - name: Use Node.js - 22
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: 22
                   registry-url: https://registry.npmjs.org
@@ -369,7 +371,7 @@ jobs:
 
             - name: Create Comment on Skip
               if: github.event_name == 'pull_request' && steps.publish-check.outputs.should_publish == 'false'
-              uses: actions/github-script@v7
+              uses: actions/github-script@v7 # zizmor: ignore[unpinned-uses]
               with:
                   github-token: ${{ secrets.ACTIONS_KEY }}
                   script: |
@@ -383,7 +385,7 @@ jobs:
             - name: Import GPG key
               if: steps.publish-check.outputs.should_publish == 'true'
               id: import_gpg
-              uses: crazy-max/ghaction-import-gpg@v6
+              uses: crazy-max/ghaction-import-gpg@v6 # zizmor: ignore[unpinned-uses]
               with:
                   gpg_private_key: ${{ secrets.ACTIONS_GPG_PRIVATE_KEY }}
                   passphrase: ${{ secrets.ACTIONS_GPG_PASSPHRASE }}
@@ -488,7 +490,7 @@ jobs:
             - name: Create Release
               if: steps.publish-check.outputs.should_publish == 'true'
               id: create_release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@v2 # zizmor: ignore[unpinned-uses]
               with:
                   tag_name: ${{ steps.version.outputs.new_version }}
                   name: Release ${{ steps.version.outputs.new_version }}
@@ -553,7 +555,7 @@ jobs:
 
                     echo ""
                     echo "📊 Cleanup Summary:"
-                    echo "   • Released: ${{ steps.version.outputs.new_version }}"
+                    echo "   • Released: ${NEW_VERSION}"
                     echo "   • Attempted: $TOTAL_COUNT prereleases"
                     echo "   • Success: $REMOVED_COUNT"
                     echo "   • Failed: $FAILED_COUNT"

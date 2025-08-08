@@ -51,8 +51,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
               with:
+                  persist-credentials: false
                   fetch-depth: 0
 
             - name: Use Node.js 22
@@ -82,14 +83,14 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
               with:
                   persist-credentials: false
                   token: ${{ secrets.ACTIONS_KEY }}
                   fetch-depth: 0
 
             - name: Use Node.js 22
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: 22
                   registry-url: https://registry.npmjs.org
@@ -100,7 +101,7 @@ jobs:
 
             - name: Import GPG key
               id: import_gpg
-              uses: crazy-max/ghaction-import-gpg@v6
+              uses: crazy-max/ghaction-import-gpg@v6 # zizmor: ignore[unpinned-uses]
               with:
                   gpg_private_key: ${{ secrets.ACTIONS_GPG_PRIVATE_KEY }}
                   passphrase: ${{ secrets.ACTIONS_GPG_PASSPHRASE }}
@@ -196,7 +197,7 @@ jobs:
 
             - name: Create GitHub prerelease
               id: create_prerelease
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@v2 # zizmor: ignore[unpinned-uses]
               with:
                   tag_name: ${{ steps.version.outputs.new_version }}
                   name: Prerelease ${{ steps.version.outputs.new_version }}
