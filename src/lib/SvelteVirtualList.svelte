@@ -232,7 +232,6 @@
     /**
      * Performance Optimization State
      */
-    let heightCache = $state<Record<number, number>>({}) // Cache of measured item heights
     let dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
     let dirtyItemsCount = $state(0) // Reactive count of dirty items
     // Fallback measurement used only when height has not been established yet
@@ -426,16 +425,20 @@
             heightUpdateTimeout,
             visibleItems,
             itemElements,
-            heightCache,
+            heightManager.getHeightCache(),
             lastMeasuredIndex,
             heightManager.averageHeight,
             (result) => {
                 // Critical updates that must trigger reactive effects immediately
                 heightManager.itemHeight = result.newHeight
                 lastMeasuredIndex = result.newLastMeasuredIndex
-                heightCache = result.updatedHeightCache
 
-                // Handle height changes for scroll correction (needs updated heightCache)
+                // Update manager totals/cache before any scroll correction logic relies on them
+                if (result.heightChanges.length > 0) {
+                    heightManager.processDirtyHeights(result.heightChanges)
+                }
+
+                // Handle height changes for scroll correction (manager totals already updated)
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
                     handleHeightChangesScrollCorrection(result.heightChanges)
                 }
@@ -465,11 +468,6 @@
 
                 // Non-critical updates wrapped in untrack to prevent reactive cascades
                 untrack(() => {
-                    // Process height changes with ReactiveListManager (O(dirty) instead of O(n)!)
-                    if (result.heightChanges.length > 0) {
-                        heightManager.processDirtyHeights(result.heightChanges)
-                    }
-
                     // Clear processed dirty items (all dirty items were processed)
                     dirtyItems.clear()
                     dirtyItemsCount = 0
@@ -1050,7 +1048,7 @@
                             const isSignificant = isSignificantHeightChange(
                                 actualIndex,
                                 currentHeight,
-                                heightCache
+                                heightManager.getHeightCache()
                             )
 
                             // Only mark as dirty if height change is significant
@@ -1223,7 +1221,7 @@
             scrollTop,
             firstVisibleIndex,
             lastVisibleIndex,
-            heightCache
+            heightCache: heightManager.getHeightCache()
         })
 
         // Handle early return for 'nearest' alignment when item is already visible
