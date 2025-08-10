@@ -1,8 +1,8 @@
-# ReactiveHeightManager
+# ReactiveListManager (formerly ReactiveListManager)
 
 > A standalone, high-performance reactive height calculation system for virtualized lists
 
-<!-- [![Tests](https://img.shields.io/badge/tests-13%20passing-brightgreen)](./ReactiveHeightManager.test.ts)
+<!-- [![Tests](https://img.shields.io/badge/tests-13%20passing-brightgreen)](./ReactiveListManager.test.ts)
 [![Performance](https://img.shields.io/badge/performance-1000%20updates%20%3C1ms-blue)](#performance)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/) -->
 
@@ -27,7 +27,7 @@ for (let i = 0; i < items.length; i++) {
 }
 ```
 
-ReactiveHeightManager processes only **dirty/changed items**:
+ReactiveListManager processes only **dirty/changed items**:
 
 ```typescript
 // ✅ O(dirty items) - Fast and reactive
@@ -39,19 +39,19 @@ const totalHeight = manager.getDerivedTotalHeight()
 
 ```bash
 # If using within svelte-virtual-list project
-import { ReactiveHeightManager } from '$lib/reactive-height-manager'
+import { ReactiveListManager } from '$lib/reactive-list-manager'
 
 # For standalone usage (copy the module)
-cp -r src/lib/reactive-height-manager your-project/src/lib/
+cp -r src/lib/reactive-list-manager your-project/src/lib/
 ```
 
 ## 🚀 Quick Start
 
 ```typescript
-import { ReactiveHeightManager } from './reactive-height-manager'
+import { ReactiveListManager } from './reactive-list-manager'
 
 // Create manager
-const manager = new ReactiveHeightManager({
+const manager = new ReactiveListManager({
     itemLength: 10000,
     itemHeight: 40
 })
@@ -76,7 +76,7 @@ console.log(`Total height: ${totalHeight}px`)
 ### Constructor
 
 ```typescript
-new ReactiveHeightManager(config: HeightManagerConfig)
+new ReactiveListManager(config: ListManagerConfig)
 ```
 
 **Parameters:**
@@ -128,7 +128,7 @@ Reset all state to initial values.
 
 ### Utilities
 
-#### `getDebugInfo(): HeightManagerDebugInfo`
+#### `getDebugInfo(): ListManagerDebugInfo`
 
 Get comprehensive debug information.
 
@@ -152,7 +152,7 @@ Check if manager has sufficient measurement data.
 
 ```typescript
 // Create manager
-const heightManager = new ReactiveHeightManager({
+const heightManager = new ReactiveListManager({
     itemLength: items.length,
     estimatedHeight: defaultEstimatedItemHeight
 })
@@ -188,9 +188,9 @@ let totalHeight = $derived(() => heightManager.totalHeight)
 ### Standalone Usage
 
 ```typescript
-import { ReactiveHeightManager, benchmarkHeightManager } from './reactive-height-manager'
+import { ReactiveListManager, benchmarkHeightManager } from './reactive-list-manager'
 
-const manager = new ReactiveHeightManager({ itemLength: 1000, estimatedHeight: 50 })
+const manager = new ReactiveListManager({ itemLength: 1000, estimatedHeight: 50 })
 
 // Performance monitoring
 const results = benchmarkHeightManager(10000, 1000, 100)
@@ -234,10 +234,10 @@ manager.totalHeight // ~0.01ms
 
 ```bash
 # Run all tests
-npm run test -- ReactiveHeightManager.test.ts
+npm run test -- ReactiveListManager.test.ts
 
 # Verbose output
-npm run test -- ReactiveHeightManager.test.ts --reporter=verbose
+npm run test -- ReactiveListManager.test.ts --reporter=verbose
 
 # Performance benchmarking
 npm run test -- --grep "Performance Tests"
@@ -286,12 +286,12 @@ interface HeightChange {
     readonly newHeight: number
 }
 
-interface HeightManagerConfig {
+interface ListManagerConfig {
     itemLength: number
     estimatedHeight: number
 }
 
-interface HeightManagerDebugInfo {
+interface ListManagerDebugInfo {
     totalMeasuredHeight: number
     measuredCount: number
     itemLength: number
@@ -310,7 +310,7 @@ interface HeightManagerDebugInfo {
 
 ## 🤝 Contributing
 
-1. Run tests: `npm run test -- ReactiveHeightManager.test.ts`
+1. Run tests: `npm run test -- ReactiveListManager.test.ts`
 2. Add performance benchmarks for new features
 3. Maintain O(1) or O(dirty) complexity
 4. Update type definitions

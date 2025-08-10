@@ -13,9 +13,9 @@ export interface HeightChange {
 }
 
 /**
- * Configuration options for ReactiveHeightManager
+ * Configuration options for ReactiveListManager (formerly ReactiveListManager)
  */
-export interface HeightManagerConfig {
+export interface ListManagerConfig {
     /** Total number of items in the list */
     itemLength: number
     /** Height to use for unmeasured items */
@@ -25,7 +25,7 @@ export interface HeightManagerConfig {
 /**
  * Debug information about the height manager state
  */
-export interface HeightManagerDebugInfo {
+export interface ListManagerDebugInfo {
     /** Total measured height of all measured items */
     totalMeasuredHeight: number
     /** Number of items that have been measured */

@@ -1,11 +1,11 @@
-import { createHeightManager } from './index.js'
+import { createListManager } from './index.js'
 
-export function benchmarkHeightManager(
+export function benchmarkListManager(
     itemCount: number,
     dirtyCount: number,
     iterations: number = 100
 ): { avgTime: number; totalTime: number; opsPerSecond: number } {
-    const manager = createHeightManager(itemCount)
+    const manager = createListManager(itemCount)
     const times: number[] = []
 
     for (let i = 0; i < iterations; i++) {

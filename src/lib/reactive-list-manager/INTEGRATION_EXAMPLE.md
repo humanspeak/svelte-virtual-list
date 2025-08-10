@@ -1,4 +1,4 @@
-# ReactiveHeightManager Integration Examples
+# ReactiveListManager Integration Examples
 
 > Detailed integration patterns for common use cases
 
@@ -6,19 +6,19 @@
 
 ## SvelteVirtualList Integration
 
-### 1. Import the ReactiveHeightManager
+### 1. Import the ReactiveListManager
 
 ```typescript
-import { ReactiveHeightManager } from '$lib/reactive-height-manager'
+import { ReactiveListManager } from '$lib/reactive-list-manager'
 ```
 
 ### 2. Create the manager instance
 
 ```typescript
-// Create reactive height manager
-const heightManager = new ReactiveHeightManager({
+// Create reactive list manager
+const heightManager = new ReactiveListManager({
     itemLength: items.length,
-    estimatedHeight: defaultEstimatedItemHeight
+    itemHeight: defaultEstimatedItemHeight
 })
 
 // Update when items change
@@ -91,7 +91,7 @@ let totalHeight = $derived(() => heightManager.totalHeight)
 
 ## Type Compatibility
 
-The `ReactiveHeightManager` uses its own types but is designed to be compatible:
+The `ReactiveListManager` uses its own types but is designed to be compatible:
 
 ```typescript
 // If SvelteVirtualList heightChanges are compatible, use directly:
@@ -121,14 +121,14 @@ if (heightManager.hasSufficientMeasurements(20)) {
 
 ## Testing
 
-The ReactiveHeightManager comes with comprehensive performance tests:
+The ReactiveListManager comes with comprehensive performance tests:
 
 ```bash
 # Run specific tests
-npm run test -- ReactiveHeightManager.test.ts --reporter=verbose
+npm run test -- ReactiveListManager.test.ts --reporter=verbose
 
 # Performance benchmarking
-import { benchmarkHeightManager } from '$lib/reactive-height-manager'
+import { benchmarkHeightManager } from '$lib/reactive-list-manager'
 
 const results = benchmarkHeightManager(10000, 1000, 100)
 console.log(`Average time: ${results.avgTime.toFixed(2)}ms`)

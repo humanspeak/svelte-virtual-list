@@ -1,7 +1,7 @@
-import type { HeightChange, HeightManagerConfig, HeightManagerDebugInfo } from './types.js'
+import type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './types.js'
 
 /**
- * ReactiveHeightManager - A standalone reactive height calculation system
+ * ReactiveListManager - A standalone reactive height calculation system
  *
  * Efficiently manages height calculations for virtualized lists by:
  * - Tracking measured vs unmeasured items incrementally
@@ -11,7 +11,7 @@ import type { HeightChange, HeightManagerConfig, HeightManagerDebugInfo } from '
  *
  * @example
  * ```typescript
- * const manager = new ReactiveHeightManager({ itemLength: 10000, estimatedHeight: 40 })
+ * const manager = new ReactiveListManager({ itemLength: 10000, estimatedHeight: 40 })
  *
  * // Process height changes incrementally
  * manager.processDirtyHeights(dirtyResults)
@@ -23,7 +23,7 @@ import type { HeightChange, HeightManagerConfig, HeightManagerDebugInfo } from '
  * const totalHeight = manager.totalHeight
  * ```
  */
-export class ReactiveHeightManager {
+export class ReactiveListManager {
     // Reactive state using Svelte 5 runes
     private _totalMeasuredHeight = $state(0)
     private _measuredCount = $state(0)
@@ -93,11 +93,11 @@ export class ReactiveHeightManager {
     }
 
     /**
-     * Create a new ReactiveHeightManager instance
+     * Create a new ReactiveListManager instance
      *
      * @param config - Configuration object containing itemLength and itemHeight
      */
-    constructor(config: HeightManagerConfig) {
+    constructor(config: ListManagerConfig) {
         this._itemLength = config.itemLength
         this._itemHeight = config.itemHeight
         this._measuredFlags = new Uint8Array(Math.max(0, this._itemLength))
@@ -189,7 +189,7 @@ export class ReactiveHeightManager {
      *
      * @returns Debug information object
      */
-    getDebugInfo(): HeightManagerDebugInfo {
+    getDebugInfo(): ListManagerDebugInfo {
         return {
             totalMeasuredHeight: this._totalMeasuredHeight,
             measuredCount: this._measuredCount,

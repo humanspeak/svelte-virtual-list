@@ -1,10 +1,10 @@
 <script lang="ts">
     import { untrack } from 'svelte'
-    import { ReactiveHeightManager } from '../ReactiveHeightManager.svelte.js'
-    import type { HeightChange, HeightManagerConfig } from '../types.js'
+    import { ReactiveListManager } from '$lib/index.js'
+    import type { HeightChange, ListManagerConfig } from '../types.js'
 
     interface Props {
-        config: HeightManagerConfig
+        config: ListManagerConfig
         onReactiveUpdate?: (data: {
             totalHeight: number
             measuredCount: number
@@ -15,7 +15,7 @@
     let { config, onReactiveUpdate }: Props = $props()
 
     // Create the manager
-    const manager = new ReactiveHeightManager(config)
+    const manager = new ReactiveListManager(config)
 
     // Derived reactive values (clean, no side effects)
     let currentTotalHeight = $derived(manager.totalHeight)

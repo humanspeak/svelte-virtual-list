@@ -3,7 +3,7 @@ import { tick } from 'svelte'
 import { describe, expect, it, vi } from 'vitest'
 import TestComponent from './TestComponent.svelte'
 
-describe('ReactiveHeightManager - Integration Tests', () => {
+describe('ReactiveListManager - Integration Tests', () => {
     it('should trigger reactive updates when processDirtyHeights is called', async () => {
         const mockOnUpdate = vi.fn()
 

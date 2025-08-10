@@ -12,11 +12,11 @@
  *
  * @example Basic Usage
  * ```typescript
- * import { ReactiveHeightManager } from './reactive-height-manager'
+ * import { ReactiveListManager } from './reactive-list-manager'
  *
- * const manager = new ReactiveHeightManager({
+ * const manager = new ReactiveListManager({
  *   itemLength: 10000,
- *   estimatedHeight: 40
+ *   itemHeight: 40
  * })
  *
  * // Process height changes incrementally
@@ -34,12 +34,12 @@
  * ```
  */
 
-// Export the main class
-export { ReactiveHeightManager } from './ReactiveHeightManager.svelte.js'
-import { ReactiveHeightManager as ReactiveHeightManagerType } from './ReactiveHeightManager.svelte.js'
+// Export the main class under the new name; keep legacy name as alias
+export { ReactiveListManager } from './ReactiveListManager.svelte.js'
+import { ReactiveListManager as ReactiveListManagerType } from './ReactiveListManager.svelte.js'
 
 // Export all types
-export type { HeightChange, HeightManagerConfig, HeightManagerDebugInfo } from './types.js'
+export type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './types.js'
 
 // Export version for potential npm package
 export const VERSION = '1.0.0'
@@ -48,19 +48,16 @@ export const VERSION = '1.0.0'
 export const DEFAULT_ESTIMATED_HEIGHT = 40
 export const DEFAULT_MEASUREMENT_THRESHOLD = 10 // percentage
 
-/**
- * Factory function for creating ReactiveHeightManager instances
- * with common configurations
- */
-export function createHeightManager(
+// New factory alias with the renamed type
+export function createListManager(
     itemLength: number,
     itemHeight: number = DEFAULT_ESTIMATED_HEIGHT
-): ReactiveHeightManagerType {
-    return new ReactiveHeightManagerType({ itemLength, itemHeight })
+): ReactiveListManagerType {
+    return new ReactiveListManagerType({ itemLength, itemHeight })
 }
 
 /**
  * Performance benchmarking utility
  */
 // Moved out to keep index clean; re-exported from benchmark.ts
-export { benchmarkHeightManager } from './benchmark.js'
+export { benchmarkListManager } from './benchmark.js'

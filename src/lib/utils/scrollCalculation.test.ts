@@ -321,7 +321,7 @@ describe('calculateScrollTarget', () => {
                 mode: 'bottomToTop' as const,
                 targetIndex: 3,
                 itemsLength: 10,
-                calculatedItemHeight: 19.2, // Realistic fractional height from ReactiveHeightManager
+                calculatedItemHeight: 19.2, // Realistic fractional height from ReactiveListManager
                 heightCache,
                 firstVisibleIndex: 0,
                 lastVisibleIndex: 5
@@ -381,7 +381,7 @@ describe('calculateScrollTarget', () => {
             expect(result).toBeGreaterThanOrEqual(0)
         })
 
-        it('should handle fractional heights from ReactiveHeightManager', () => {
+        it('should handle fractional heights from ReactiveListManager', () => {
             const params: ScrollTargetParams = {
                 ...baseParams,
                 mode: 'bottomToTop' as const,

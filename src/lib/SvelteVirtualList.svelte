@@ -172,7 +172,7 @@
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
     import { createAdvancedThrottledCallback } from '$lib/utils/throttle.js'
-    import { ReactiveHeightManager } from '$lib/reactive-height-manager/index.js'
+    import { ReactiveListManager } from '$lib/index.js'
     import { BROWSER } from 'esm-env'
     import { onMount, tick, untrack } from 'svelte'
 
@@ -250,7 +250,7 @@
      * Reactive Height Manager - O(1) height calculation system
      * Replaces O(n) totalHeight loop with incremental updates
      */
-    let heightManager = new ReactiveHeightManager({
+    let heightManager = new ReactiveListManager({
         itemLength: items.length,
         itemHeight: defaultEstimatedItemHeight
     })
@@ -466,7 +466,7 @@
 
                 // Non-critical updates wrapped in untrack to prevent reactive cascades
                 untrack(() => {
-                    // Process height changes with ReactiveHeightManager (O(dirty) instead of O(n)!)
+                    // Process height changes with ReactiveListManager (O(dirty) instead of O(n)!)
                     if (result.heightChanges.length > 0) {
                         heightManager.processDirtyHeights(result.heightChanges)
                     }
@@ -482,8 +482,8 @@
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
-            0, // Don't pass ReactiveHeightManager state - let each system manage its own totals
-            0, // Don't pass ReactiveHeightManager state - let each system manage its own totals
+            0, // Don't pass ReactiveListManager state - let each system manage its own totals
+            0, // Don't pass ReactiveListManager state - let each system manage its own totals
             mode // Pass mode for correct element indexing
         )
     }
@@ -499,7 +499,7 @@
      * CRITICAL: O(1) Reactive Total Height Calculation
      * ===============================================
      *
-     * Uses ReactiveHeightManager for O(1) height calculations instead of O(n) loops.
+     * Uses ReactiveListManager for O(1) height calculations instead of O(n) loops.
      * This fixes the root cause of massive scroll jumps in bottomToTop mode.
      *
      * Problem with Previous O(n) Approach:
@@ -510,7 +510,7 @@
      *   - Total height jumps from 200,000px to 223,500px (+23,500px!)
      *   - This 23,500px error caused massive scroll position overshoots
      *
-     * Solution with ReactiveHeightManager:
+     * Solution with ReactiveListManager:
      * - O(1) reactive calculations using incremental updates
      * - Uses actual measured heights from heightCache where available
      * - Only estimates heights for items that haven't been measured yet
@@ -1217,7 +1217,7 @@
             align: align || 'auto',
             targetIndex,
             itemsLength: items.length,
-            calculatedItemHeight: heightManager.averageHeight, // Use dynamic average from ReactiveHeightManager
+            calculatedItemHeight: heightManager.averageHeight, // Use dynamic average from ReactiveListManager
             height,
             scrollTop,
             firstVisibleIndex,

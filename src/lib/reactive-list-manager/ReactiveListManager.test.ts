@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { ReactiveHeightManager } from './ReactiveHeightManager.svelte.js'
+import { ReactiveListManager } from './index.js'
 import type { HeightChange } from './types.js'
 
-describe('ReactiveHeightManager', () => {
-    let manager: ReactiveHeightManager
+describe('ReactiveListManager (alias)', () => {
+    let manager: ReactiveListManager
 
     beforeEach(() => {
-        manager = new ReactiveHeightManager({
+        manager = new ReactiveListManager({
             itemLength: 10000,
             itemHeight: 40
         })
@@ -186,13 +186,13 @@ describe('ReactiveHeightManager', () => {
 
     describe('Average Height Calculations', () => {
         it('should return itemHeight when no items measured', () => {
-            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 42 })
+            const manager = new ReactiveListManager({ itemLength: 100, itemHeight: 42 })
 
             expect(manager.averageHeight).toBe(42)
         })
 
         it('should calculate correct average from measured items', () => {
-            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 40 })
+            const manager = new ReactiveListManager({ itemLength: 100, itemHeight: 40 })
 
             manager.processDirtyHeights([
                 { index: 0, oldHeight: undefined, newHeight: 50 },
@@ -205,7 +205,7 @@ describe('ReactiveHeightManager', () => {
         })
 
         it('should update average when items change height', () => {
-            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 40 })
+            const manager = new ReactiveListManager({ itemLength: 100, itemHeight: 40 })
 
             // Initial measurements
             manager.processDirtyHeights([
@@ -223,7 +223,7 @@ describe('ReactiveHeightManager', () => {
         })
 
         it('should handle complex height change scenarios', () => {
-            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 30 })
+            const manager = new ReactiveListManager({ itemLength: 100, itemHeight: 30 })
 
             // Measure some initial items
             manager.processDirtyHeights([
@@ -246,7 +246,7 @@ describe('ReactiveHeightManager', () => {
         })
 
         it('should fall back to itemHeight after all items removed', () => {
-            const manager = new ReactiveHeightManager({ itemLength: 100, itemHeight: 35 })
+            const manager = new ReactiveListManager({ itemLength: 100, itemHeight: 35 })
 
             // Add some measurements
             manager.processDirtyHeights([
