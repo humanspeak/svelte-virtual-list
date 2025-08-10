@@ -32,6 +32,8 @@ export class ReactiveListManager {
     private _averageHeight = $state(40)
     private _totalHeight = $state(0)
     private _measuredFlags: Uint8Array | null = null
+    // Internal cache of measured heights by index
+    private _heightCache: Record<number, number> = {}
 
     private recomputeDerivedHeights(): void {
         const average =
@@ -93,6 +95,13 @@ export class ReactiveListManager {
     }
 
     /**
+     * Read-only view of measured heights cache
+     */
+    getHeightCache(): Readonly<Record<number, number>> {
+        return this._heightCache
+    }
+
+    /**
      * Create a new ReactiveListManager instance
      *
      * @param config - Configuration object containing itemLength and itemHeight
@@ -134,6 +143,10 @@ export class ReactiveListManager {
             if (newHeight !== undefined) {
                 heightDelta += newHeight
                 countDelta += 1
+                this._heightCache[index] = newHeight
+            } else {
+                // Unset measurement
+                delete this._heightCache[index]
             }
 
             // Track measured flag (best-effort; full coalescing handled separately)
@@ -169,6 +182,24 @@ export class ReactiveListManager {
         // Keep a single source of truth for the estimated height
         this._itemHeight = newEstimatedHeight
         this.recomputeDerivedHeights()
+    }
+
+    /**
+     * Set a single measured height and update totals
+     */
+    setMeasuredHeight(index: number, height: number): void {
+        if (index < 0 || index >= this._itemLength) return
+        const prev = this._heightCache[index]
+        if (Number.isFinite(prev) && (prev as number) > 0) {
+            this._totalMeasuredHeight -= prev as number
+        } else {
+            this._measuredCount += 1
+        }
+        if (Number.isFinite(height) && height > 0) {
+            this._heightCache[index] = height
+            this._totalMeasuredHeight += height
+            this.recomputeDerivedHeights()
+        }
     }
 
     /**

@@ -739,7 +739,7 @@
                 wasAtBottomBeforeHeightChange,
                 lastVisibleRange,
                 totalHeight(),
-                heightCache
+                heightManager.getHeightCache()
             )
 
             return lastVisibleRange
@@ -756,7 +756,7 @@
             wasAtBottomBeforeHeightChange,
             lastVisibleRange,
             totalHeight(),
-            heightCache
+            heightManager.getHeightCache()
         )
 
         return lastVisibleRange
@@ -771,9 +771,10 @@
         if (vr.end !== items.length || viewportH === 0) return
 
         // Reproduce the same math used in the template for translateY at tail
+        const cache = heightManager.getHeightCache()
         let windowH = 0
         for (let i = vr.start; i < vr.end; i++) {
-            const raw = heightCache[i]
+            const raw = cache[i]
             const h =
                 Number.isFinite(raw) && (raw as number) > 0
                     ? (raw as number)
@@ -787,7 +788,7 @@
             computedTransform = Math.max(0, Math.round(totalH - windowH))
         } else {
             const startOffset = getScrollOffsetForIndex(
-                heightCache,
+                cache,
                 heightManager.averageHeight,
                 vr.start
             )
@@ -846,9 +847,10 @@
         if (!isTail) return
 
         // Detect if any item in the current window is unmeasured or invalid
+        const cache = heightManager.getHeightCache()
         let hasMissing = false
         for (let i = vr.start; i < vr.end; i++) {
-            const raw = heightCache[i]
+            const raw = cache[i]
             if (!(Number.isFinite(raw) && (raw as number) > 0)) {
                 hasMissing = true
                 break
@@ -877,9 +879,8 @@
                         if (idx >= vr.start && idx < vr.end) {
                             const h = el.getBoundingClientRect().height
                             if (Number.isFinite(h) && h > 0) {
-                                const old = heightCache[idx] ?? heightManager.averageHeight
-                                if (!heightCache[idx] || Math.abs(old - h) >= 0.1) {
-                                    heightCache[idx] = h
+                                const old = cache[idx] ?? heightManager.averageHeight
+                                if (!cache[idx] || Math.abs(old - h) >= 0.1) {
                                     heightChanges.push({
                                         index: idx,
                                         oldHeight: old,
@@ -1380,7 +1381,7 @@
                                 heightManager.averageHeight,
                                 effectiveHeight,
                                 totalHeight(),
-                                heightCache,
+                                heightManager.getHeightCache(),
                                 measuredFallbackHeight
                             )
                         )
@@ -1405,7 +1406,7 @@
                         {@const debugInfo = createDebugInfo(
                             visibleItems(),
                             items.length,
-                            Object.keys(heightCache).length,
+                            Object.keys(heightManager.getHeightCache()).length,
                             heightManager.averageHeight,
                             scrollTop,
                             height || 0,
