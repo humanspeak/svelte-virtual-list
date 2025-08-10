@@ -212,7 +212,6 @@
      */
     let scrollTop = $state(0) // Current scroll position
     let height = $state(0) // Container height
-    let calculatedItemHeight = $state(defaultEstimatedItemHeight) // Current average item height
 
     /**
      * State Flags and Control
@@ -566,11 +565,12 @@
             // 2. User hasn't intentionally scrolled away from bottom
             // 3. We're significantly off target
             // 4. We're not at the bottom (where height changes should be handled more carefully)
-            const heightChanged = Math.abs(calculatedItemHeight - lastCalculatedHeight) > 1
+            const heightChanged = Math.abs(heightManager.averageHeight - lastCalculatedHeight) > 1
             const maxScrollTop = Math.max(0, totalHeight() - height)
 
             // In bottomToTop mode, we're "at bottom" when scroll is at max position
-            const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) < calculatedItemHeight
+            const isAtBottom =
+                Math.abs(currentScrollTop - maxScrollTop) < heightManager.averageHeight
             const shouldCorrect =
                 heightChanged &&
                 !userHasScrolledAway &&
@@ -578,7 +578,7 @@
                 !programmaticScrollInProgress && // Don't interfere with programmatic scrolls
                 performance.now() >= suppressBottomAnchoringUntilMs &&
                 !dynamicUpdateInProgress &&
-                scrollDifference > calculatedItemHeight * 3
+                scrollDifference > heightManager.averageHeight * 3
 
             if (shouldCorrect) {
                 // Round to avoid subpixel positioning issues in bottomToTop mode
@@ -588,11 +588,11 @@
             }
 
             // Track if user has scrolled significantly away from bottom
-            if (scrollDifference > calculatedItemHeight * 5) {
+            if (scrollDifference > heightManager.averageHeight * 5) {
                 userHasScrolledAway = true
             }
 
-            lastCalculatedHeight = calculatedItemHeight
+            lastCalculatedHeight = heightManager.averageHeight
         }
     })
 
@@ -613,7 +613,7 @@
             if (itemsAdded !== 0) {
                 // Capture all reactive values immediately to prevent re-triggering
                 const currentScrollTop = viewportElement.scrollTop
-                const currentCalculatedItemHeight = calculatedItemHeight
+                const currentCalculatedItemHeight = heightManager.averageHeight
                 const currentHeight = height
                 const currentTotalHeight = totalHeight()
                 const maxScrollTop = Math.max(0, currentTotalHeight - currentHeight)
@@ -985,7 +985,7 @@
 
                             const targetScrollTop = calculateScrollPosition(
                                 items.length,
-                                calculatedItemHeight,
+                                heightManager.averageHeight,
                                 finalHeight
                             )
 
@@ -1017,7 +1017,7 @@
                 mode,
                 containerElement,
                 viewportElement,
-                calculatedItemHeight,
+                calculatedItemHeight: heightManager.averageHeight,
                 height,
                 scrollTop
             },
@@ -1107,7 +1107,7 @@
     $effect(() => {
         if (INTERNAL_DEBUG) {
             prevVisibleRange = visibleItems()
-            prevHeight = calculatedItemHeight
+            prevHeight = heightManager.averageHeight
         }
     })
 
@@ -1401,12 +1401,12 @@
                     return itemsWithOriginalIndex
                 })() as currentItemWithIndex, i (currentItemWithIndex.originalIndex)}
                     <!-- Only debug when visible range or average height changes -->
-                    {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, calculatedItemHeight)}
+                    {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, heightManager.averageHeight)}
                         {@const debugInfo = createDebugInfo(
                             visibleItems(),
                             items.length,
                             Object.keys(heightCache).length,
-                            calculatedItemHeight,
+                            heightManager.averageHeight,
                             scrollTop,
                             height || 0,
                             totalHeight()
