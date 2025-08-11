@@ -32,6 +32,7 @@ export class ReactiveListManager {
     private _averageHeight = $state(40)
     private _totalHeight = $state(0)
     private _measuredFlags: Uint8Array | null = null
+    private _initialized = $state(false)
     // Internal cache of measured heights by index
     private _heightCache: Record<number, number> = {}
 
@@ -76,6 +77,22 @@ export class ReactiveListManager {
     set itemHeight(value: number) {
         this._itemHeight = value
         this.recomputeDerivedHeights()
+    }
+
+    /**
+     * Get/Set initialized flag
+     */
+    get initialized(): boolean {
+        return this._initialized
+    }
+
+    set initialized(value: boolean) {
+        if (this._initialized) {
+            throw new Error(
+                'ReactiveListManager: initialized flag cannot be set to true after it has been set to true'
+            )
+        }
+        this._initialized = value
     }
 
     /**

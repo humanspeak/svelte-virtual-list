@@ -166,8 +166,7 @@
         calculateScrollPosition,
         calculateTransformY,
         calculateVisibleRange,
-        updateHeightAndScroll as utilsUpdateHeightAndScroll,
-        getScrollOffsetForIndex
+        updateHeightAndScroll as utilsUpdateHeightAndScroll
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
@@ -216,7 +215,7 @@
     /**
      * State Flags and Control
      */
-    let initialized = $state(false) // Tracks if initial setup is complete
+
     let isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isScrolling = $state(false) // Tracks active scrolling state
     let lastMeasuredIndex = $state(-1) // Index of last measured item
@@ -285,7 +284,7 @@
     const handleHeightChangesScrollCorrection = (
         heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
     ) => {
-        if (!viewportElement || !initialized || userHasScrolledAway) {
+        if (!viewportElement || !heightManager.initialized || userHasScrolledAway) {
             return
         }
 
@@ -444,7 +443,7 @@
                 }
 
                 // TopToBottom: maintain bottom anchoring when total height changes
-                if (mode === 'topToBottom' && viewportElement && initialized) {
+                if (mode === 'topToBottom' && viewportElement && heightManager.initialized) {
                     const oldTotal = prevTotalHeightForScrollCorrection
                     const newTotal = heightManager.totalHeight
                     const deltaTotal = newTotal - oldTotal
@@ -549,7 +548,7 @@
     // $inspect('scrollState: atBottom', atBottom)
 
     $effect(() => {
-        if (BROWSER && initialized && mode === 'bottomToTop' && viewportElement) {
+        if (BROWSER && heightManager.initialized && mode === 'bottomToTop' && viewportElement) {
             const targetScrollTop = Math.max(0, totalHeight() - height)
             const currentScrollTop = viewportElement.scrollTop
             const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
@@ -597,7 +596,7 @@
 
         if (
             BROWSER &&
-            initialized &&
+            heightManager.initialized &&
             mode === 'bottomToTop' &&
             viewportElement &&
             lastItemsLength > 0
@@ -668,7 +667,7 @@
             viewportElement &&
             height > 0 &&
             items.length &&
-            !initialized
+            !heightManager.initialized
         ) {
             const targetScrollTop = Math.max(0, totalHeight() - height)
 
@@ -685,7 +684,7 @@
                             viewportElement.scrollTop = targetScrollTop
                             scrollTop = targetScrollTop
                         }
-                        initialized = true
+                        heightManager.initialized = true
                     })
                 }
             })
@@ -717,7 +716,12 @@
 
         // For bottomToTop mode, don't calculate visible range until properly initialized
         // This prevents showing wrong items when scrollTop starts at 0
-        if (mode === 'bottomToTop' && !initialized && scrollTop === 0 && viewportHeight > 0) {
+        if (
+            mode === 'bottomToTop' &&
+            !heightManager.initialized &&
+            scrollTop === 0 &&
+            viewportHeight > 0
+        ) {
             // Calculate what the correct scroll position should be
             const targetScrollTop = Math.max(0, totalHeight() - viewportHeight)
 
@@ -825,7 +829,7 @@
      * @param immediate - Whether to skip the delay (used for resize events)
      */
     const updateHeightAndScroll = (immediate = false) => {
-        if (!initialized && mode === 'bottomToTop') {
+        if (!heightManager.initialized && mode === 'bottomToTop') {
             tick().then(() => {
                 if (containerElement) {
                     const initialHeight = containerElement.getBoundingClientRect().height
@@ -854,7 +858,7 @@
                                         viewportElement.scrollTop = targetScrollTop
                                         scrollTop = targetScrollTop
                                     }
-                                    initialized = true
+                                    heightManager.initialized = true
                                 }
                             })
                         }
@@ -866,7 +870,7 @@
 
         utilsUpdateHeightAndScroll(
             {
-                initialized,
+                initialized: heightManager.initialized,
                 mode,
                 containerElement,
                 viewportElement,
@@ -877,7 +881,7 @@
             {
                 setHeight: (h) => (height = h),
                 setScrollTop: (st) => (scrollTop = st),
-                setInitialized: (i) => (initialized = i)
+                setInitialized: (i) => (heightManager.initialized = i)
             },
             immediate
         )
