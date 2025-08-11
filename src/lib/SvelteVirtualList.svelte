@@ -525,10 +525,6 @@
      */
     let totalHeight = $derived(() => heightManager.totalHeight)
 
-    // Revert: content height follows total height
-    let contentHeight = $derived(() => Math.max(height || 0, totalHeight()))
-
-    let atTop = $derived(scrollTop <= 1)
     let atBottom = $derived(scrollTop >= totalHeight() - height - 1)
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
