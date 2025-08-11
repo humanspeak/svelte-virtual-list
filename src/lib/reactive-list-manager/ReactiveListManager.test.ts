@@ -24,6 +24,20 @@ describe('ReactiveListManager (alias)', () => {
             const totalHeight = manager.totalHeight
             expect(totalHeight).toBe(10000 * 40) // All items estimated
         })
+
+        it('should allow initialized=true once and then throw on subsequent true sets', () => {
+            expect(manager.initialized).toBe(false)
+            manager.initialized = true
+            expect(manager.initialized).toBe(true)
+            expect(() => {
+                // intentional double set to verify invariant
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                manager.initialized = true
+            }).toThrowError(
+                'ReactiveListManager: initialized flag cannot be set to true after it has been set to true'
+            )
+        })
     })
 
     describe('Performance Tests', () => {
@@ -143,6 +157,16 @@ describe('ReactiveListManager (alias)', () => {
             expect(manager.totalMeasuredHeight).toBe(0)
             expect(manager.measuredCount).toBe(0)
         })
+
+        it('reset should not change initialized; updateItemLength should not change initialized', () => {
+            expect(manager.initialized).toBe(false)
+            manager.updateItemLength(15000)
+            expect(manager.initialized).toBe(false)
+            manager.initialized = true
+            expect(manager.initialized).toBe(true)
+            manager.reset()
+            expect(manager.initialized).toBe(true)
+        })
     })
 
     describe('Utility Methods', () => {
@@ -181,6 +205,22 @@ describe('ReactiveListManager (alias)', () => {
             expect(debugInfo.itemLength).toBe(10000)
             expect(debugInfo.coveragePercent).toBe(0.02) // 2/10000 * 100
             expect(debugInfo.itemHeight).toBe(40)
+        })
+
+        it('hasSufficientMeasurements threshold edges', () => {
+            expect(manager.hasSufficientMeasurements(0)).toBe(true)
+            expect(manager.hasSufficientMeasurements(0.01)).toBe(false)
+
+            const dirty100 = Array.from({ length: 100 }, (_, i) => ({
+                index: i,
+                oldHeight: undefined,
+                newHeight: 40
+            })) as HeightChange[]
+            manager.processDirtyHeights(dirty100)
+
+            expect(manager.getMeasurementCoverage()).toBeCloseTo(1, 5)
+            expect(manager.hasSufficientMeasurements(1)).toBe(true)
+            expect(manager.hasSufficientMeasurements(1.01)).toBe(false)
         })
     })
 
@@ -265,6 +305,16 @@ describe('ReactiveListManager (alias)', () => {
             expect(manager.averageHeight).toBe(35) // Back to itemHeight
             expect(manager.measuredCount).toBe(0)
         })
+
+        it('should compute averages correctly with fractional heights', () => {
+            const manager = new ReactiveListManager({ itemLength: 10, itemHeight: 10 })
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 10.5 },
+                { index: 1, oldHeight: undefined, newHeight: 9.25 },
+                { index: 2, oldHeight: undefined, newHeight: 11.75 }
+            ])
+            expect(manager.averageHeight).toBeCloseTo(10.5, 6)
+        })
     })
 
     describe('Testing Limitations', () => {
@@ -309,6 +359,73 @@ describe('ReactiveListManager (alias)', () => {
             const debugInfo = manager.getDebugInfo()
             expect(debugInfo.totalMeasuredHeight).toBe(110)
             expect(debugInfo.measuredCount).toBe(2)
+        })
+    })
+
+    describe('Mutations and removals', () => {
+        it('processDirtyHeights should remove measurements when newHeight is undefined', () => {
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 50 },
+                { index: 1, oldHeight: undefined, newHeight: 60 }
+            ])
+            expect(manager.measuredCount).toBe(2)
+            expect(manager.totalMeasuredHeight).toBe(110)
+
+            manager.processDirtyHeights([{ index: 1, oldHeight: 60, newHeight: undefined }])
+            expect(manager.measuredCount).toBe(1)
+            expect(manager.totalMeasuredHeight).toBe(50)
+            expect(manager.averageHeight).toBe(50)
+        })
+
+        it('setMeasuredHeight should increment count once and update on replacement', () => {
+            const manager = new ReactiveListManager({ itemLength: 100, itemHeight: 40 })
+            manager.setMeasuredHeight(5, 70)
+            expect(manager.measuredCount).toBe(1)
+            expect(manager.totalMeasuredHeight).toBe(70)
+
+            manager.setMeasuredHeight(5, 80)
+            expect(manager.measuredCount).toBe(1)
+            expect(manager.totalMeasuredHeight).toBe(80)
+
+            manager.setMeasuredHeight(-1, 50)
+            manager.setMeasuredHeight(1000, 90)
+            expect(manager.measuredCount).toBe(1)
+            expect(manager.totalMeasuredHeight).toBe(80)
+        })
+
+        it('decreasing item length recomputes totals without changing measured count (document behavior)', () => {
+            const manager = new ReactiveListManager({ itemLength: 5000, itemHeight: 40 })
+            const dirty: HeightChange[] = Array.from({ length: 100 }, (_, i) => ({
+                index: i,
+                oldHeight: undefined,
+                newHeight: 50
+            }))
+            manager.processDirtyHeights(dirty)
+            expect(manager.measuredCount).toBe(100)
+
+            manager.updateItemLength(2000)
+            expect(manager.itemLength).toBe(2000)
+
+            const expectedAverage = manager.averageHeight
+            const expectedTotal =
+                manager.totalMeasuredHeight + (2000 - manager.measuredCount) * expectedAverage
+            expect(manager.totalHeight).toBe(expectedTotal)
+        })
+
+        it('getHeightCache exposure does not affect totals when mutated externally', () => {
+            const manager = new ReactiveListManager({ itemLength: 100, itemHeight: 40 })
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 50 },
+                { index: 1, oldHeight: undefined, newHeight: 60 }
+            ])
+            const prevTotal = manager.totalHeight
+            const prevAvg = manager.averageHeight
+
+            const cache = manager.getHeightCache() as Record<number, number>
+            cache[0] = 999999
+
+            expect(manager.totalHeight).toBe(prevTotal)
+            expect(manager.averageHeight).toBe(prevAvg)
         })
     })
 })

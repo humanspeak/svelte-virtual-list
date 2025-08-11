@@ -659,38 +659,6 @@
         }
     })
 
-    // Special handling for bottom-to-top mode initialization
-    $effect(() => {
-        if (
-            BROWSER &&
-            mode === 'bottomToTop' &&
-            viewportElement &&
-            height > 0 &&
-            items.length &&
-            !heightManager.initialized
-        ) {
-            const targetScrollTop = Math.max(0, totalHeight() - height)
-
-            // Add delay to ensure layout is complete
-            tick().then(() => {
-                if (viewportElement) {
-                    // Start at the bottom for bottom-to-top mode
-                    viewportElement.scrollTop = targetScrollTop
-                    scrollTop = targetScrollTop
-
-                    // Double-check the scroll position after a frame
-                    requestAnimationFrame(() => {
-                        if (viewportElement && viewportElement.scrollTop !== targetScrollTop) {
-                            viewportElement.scrollTop = targetScrollTop
-                            scrollTop = targetScrollTop
-                        }
-                        heightManager.initialized = true
-                    })
-                }
-            })
-        }
-    })
-
     /**
      * Calculates the range of items that should be rendered based on current scroll position.
      *
