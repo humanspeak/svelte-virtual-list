@@ -169,6 +169,52 @@ describe('ReactiveListManager (alias)', () => {
         })
     })
 
+    describe('DOM References', () => {
+        it('should start not ready with null element refs', () => {
+            expect(manager.isReady).toBe(false)
+            expect(manager.containerElement).toBeNull()
+            expect(manager.viewportElement).toBeNull()
+        })
+
+        it('should throw when accessing non-null accessors before ready', () => {
+            expect(() => manager.container).toThrowError('container is not ready')
+            expect(() => manager.viewport).toThrowError('viewport is not ready')
+        })
+
+        it('should allow setting container then viewport and become ready', () => {
+            const container = document.createElement('div')
+            const viewport = document.createElement('div')
+
+            manager.containerElement = container
+            expect(manager.containerElement).toBe(container)
+            expect(manager.isReady).toBe(false)
+
+            manager.viewportElement = viewport
+            expect(manager.viewportElement).toBe(viewport)
+            expect(manager.isReady).toBe(true)
+
+            expect(manager.container).toBe(container)
+            expect(manager.viewport).toBe(viewport)
+        })
+
+        it('should allow setting viewport then container and become ready', () => {
+            const m = new ReactiveListManager({ itemLength: 1, itemHeight: 1 })
+            const container = document.createElement('div')
+            const viewport = document.createElement('div')
+
+            m.viewportElement = viewport
+            expect(m.viewportElement).toBe(viewport)
+            expect(m.isReady).toBe(false)
+
+            m.containerElement = container
+            expect(m.containerElement).toBe(container)
+            expect(m.isReady).toBe(true)
+
+            expect(m.container).toBe(container)
+            expect(m.viewport).toBe(viewport)
+        })
+    })
+
     describe('ScrollTop state', () => {
         it('should default to 0 and allow set/get', () => {
             expect(manager.scrollTop).toBe(0)

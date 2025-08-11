@@ -202,8 +202,6 @@
     /**
      * DOM References and Core State
      */
-    let containerElement: HTMLElement // Reference to the main container element
-    let viewportElement: HTMLElement // Reference to the scrollable viewport element
     const itemElements = $state<HTMLElement[]>([]) // Array of rendered item element references
 
     /**
@@ -255,15 +253,11 @@
     let suppressBottomAnchoringUntilMs = $state(0)
     function beginDynamicUpdate(): void {
         dynamicUpdateInProgress = true
-        if (viewportElement) {
-            viewportElement.style.setProperty('overflow-anchor', 'none')
-        }
+        heightManager.viewport.style.setProperty('overflow-anchor', 'none')
     }
     function endDynamicUpdate(): void {
         dynamicUpdateInProgress = false
-        if (viewportElement) {
-            viewportElement.style.setProperty('overflow-anchor', 'auto')
-        }
+        heightManager.viewport.style.setProperty('overflow-anchor', 'auto')
     }
 
     /**
@@ -282,7 +276,7 @@
     const handleHeightChangesScrollCorrection = (
         heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
     ) => {
-        if (!viewportElement || !heightManager.initialized || userHasScrolledAway) {
+        if (!heightManager.viewportElement || !heightManager.initialized || userHasScrolledAway) {
             return
         }
 
@@ -338,12 +332,14 @@
         ) {
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
-            viewportElement.scrollTop = approximateScrollTop
+            heightManager.viewport.scrollTop = approximateScrollTop
             heightManager.scrollTop = approximateScrollTop
 
             // Step 2: Use native scrollIntoView for precise bottom-edge positioning after DOM updates
             tick().then(() => {
-                const item0Element = viewportElement.querySelector('[data-original-index="0"]')
+                const item0Element = heightManager.viewport.querySelector(
+                    '[data-original-index="0"]'
+                )
                 if (item0Element) {
                     // Native browser API handles all positioning edge cases perfectly
                     item0Element.scrollIntoView({
@@ -353,14 +349,14 @@
                     })
 
                     // Sync our internal scroll state with actual DOM position
-                    heightManager.scrollTop = viewportElement.scrollTop
+                    heightManager.scrollTop = heightManager.viewport.scrollTop
                 }
             })
 
             return // Skip remaining scroll correction logic - we've handled bottomToTop case
         }
 
-        const currentScrollTop = viewportElement.scrollTop
+        const currentScrollTop = heightManager.viewport.scrollTop
         const maxScrollTop = Math.max(0, totalHeight() - height)
 
         // Calculate total height change impact above current visible area
@@ -381,7 +377,7 @@
                 Math.max(0, currentScrollTop + heightChangeAboveViewport)
             )
 
-            viewportElement.scrollTop = newScrollTop
+            heightManager.viewport.scrollTop = newScrollTop
             heightManager.scrollTop = newScrollTop
         }
     }
@@ -441,7 +437,7 @@
                 }
 
                 // TopToBottom: maintain bottom anchoring when total height changes
-                if (mode === 'topToBottom' && viewportElement && heightManager.initialized) {
+                if (mode === 'topToBottom' && heightManager.isReady && heightManager.initialized) {
                     const oldTotal = prevTotalHeightForScrollCorrection
                     const newTotal = heightManager.totalHeight
                     const deltaTotal = newTotal - oldTotal
@@ -449,7 +445,7 @@
                     if (Math.abs(deltaTotal) > 1) {
                         const maxScrollTop = Math.max(0, newTotal - (height || 0))
                         const tolerance = Math.max(heightManager.averageHeight, 10)
-                        const currentScrollTop = viewportElement.scrollTop
+                        const currentScrollTop = heightManager.viewport.scrollTop
                         const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) <= tolerance
                         if (isAtBottom) {
                             // Adjust scrollTop by total height delta to hold bottom anchor
@@ -457,7 +453,7 @@
                                 maxScrollTop,
                                 Math.max(0, currentScrollTop + deltaTotal)
                             )
-                            viewportElement.scrollTop = adjusted
+                            heightManager.viewport.scrollTop = adjusted
                             heightManager.scrollTop = adjusted
                         }
                     }
@@ -527,12 +523,12 @@
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
     function updateDebugTailDistance() {
-        if (!viewportElement) return
-        const last = viewportElement.querySelector(
+        if (!heightManager.viewportElement) return
+        const last = heightManager.viewport.querySelector(
             '[data-original-index="999"]'
         ) as HTMLElement | null
         if (!last) return
-        const v = viewportElement.getBoundingClientRect()
+        const v = heightManager.viewport.getBoundingClientRect()
         const r = last.getBoundingClientRect()
         lastBottomDistance = Math.round(Math.abs(r.bottom - v.bottom))
         if (INTERNAL_DEBUG) {
@@ -546,9 +542,14 @@
     // $inspect('scrollState: atBottom', atBottom)
 
     $effect(() => {
-        if (BROWSER && heightManager.initialized && mode === 'bottomToTop' && viewportElement) {
+        if (
+            BROWSER &&
+            heightManager.initialized &&
+            mode === 'bottomToTop' &&
+            heightManager.viewportElement
+        ) {
             const targetScrollTop = Math.max(0, totalHeight() - height)
-            const currentScrollTop = viewportElement.scrollTop
+            const currentScrollTop = heightManager.viewport.scrollTop
             const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
 
             // Only correct scroll if:
@@ -574,7 +575,7 @@
             if (shouldCorrect) {
                 // Round to avoid subpixel positioning issues in bottomToTop mode
                 const roundedTargetScrollTop = Math.round(targetScrollTop)
-                viewportElement.scrollTop = roundedTargetScrollTop
+                heightManager.viewport.scrollTop = roundedTargetScrollTop
                 heightManager.scrollTop = roundedTargetScrollTop
             }
 
@@ -596,14 +597,14 @@
             BROWSER &&
             heightManager.initialized &&
             mode === 'bottomToTop' &&
-            viewportElement &&
+            heightManager.isReady &&
             lastItemsLength > 0
         ) {
             const itemsAdded = currentItemsLength - lastItemsLength
 
             if (itemsAdded !== 0) {
                 // Capture all reactive values immediately to prevent re-triggering
-                const currentScrollTop = viewportElement.scrollTop
+                const currentScrollTop = heightManager.viewport.scrollTop
                 const currentCalculatedItemHeight = heightManager.averageHeight
                 const currentHeight = height
                 const currentTotalHeight = totalHeight()
@@ -624,7 +625,7 @@
                     // User was at bottom, keep them at bottom after new items are added
                     beginDynamicUpdate()
                     const newScrollTop = maxScrollTop
-                    viewportElement.scrollTop = newScrollTop
+                    heightManager.viewport.scrollTop = newScrollTop
                     heightManager.scrollTop = newScrollTop
 
                     // Reset the "scrolled away" flag since we're actively managing position
@@ -640,8 +641,8 @@
     // Update container height continuously to reflect layout changes that
     // may occur outside ResizeObserver timing (keeps buffers correct across engines)
     $effect(() => {
-        if (BROWSER && containerElement) {
-            const h = containerElement.getBoundingClientRect().height
+        if (BROWSER && heightManager.isReady) {
+            const h = heightManager.container.getBoundingClientRect().height
             if (Number.isFinite(h) && h > 0) height = h
         }
     })
@@ -651,8 +652,8 @@
     // Provide a one-time synchronous measurement only when height is still 0,
     // to avoid DOM reads inside render-time expressions.
     $effect(() => {
-        if (BROWSER && height === 0 && containerElement) {
-            const h = containerElement.getBoundingClientRect().height
+        if (BROWSER && height === 0 && heightManager.isReady) {
+            const h = heightManager.container.getBoundingClientRect().height
             if (Number.isFinite(h) && h > 0) measuredFallbackHeight = h
         }
     })
@@ -748,12 +749,12 @@
      * @returns {void}
      */
     const handleScroll = () => {
-        if (!BROWSER || !viewportElement) return
+        if (!BROWSER || !heightManager.viewportElement) return
 
         if (!isScrolling) {
             isScrolling = true
             rafSchedule(() => {
-                const current = viewportElement.scrollTop
+                const current = heightManager.viewport.scrollTop
                 if (mode === 'bottomToTop') {
                     const delta = lastScrollTopSnapshot - current
                     if (delta > 0.5) {
@@ -797,13 +798,14 @@
     const updateHeightAndScroll = (immediate = false) => {
         if (!heightManager.initialized && mode === 'bottomToTop') {
             tick().then(() => {
-                if (containerElement) {
-                    const initialHeight = containerElement.getBoundingClientRect().height
+                if (heightManager.isReady) {
+                    const initialHeight = heightManager.container.getBoundingClientRect().height
                     height = initialHeight
 
                     tick().then(() => {
-                        if (containerElement && viewportElement) {
-                            const finalHeight = containerElement.getBoundingClientRect().height
+                        if (heightManager.isReady) {
+                            const finalHeight =
+                                heightManager.container.getBoundingClientRect().height
                             height = finalHeight
 
                             const targetScrollTop = calculateScrollPosition(
@@ -812,20 +814,18 @@
                                 finalHeight
                             )
 
-                            void containerElement.offsetHeight
+                            void heightManager.container.offsetHeight
 
-                            viewportElement.scrollTop = targetScrollTop
+                            heightManager.viewport.scrollTop = targetScrollTop
                             heightManager.scrollTop = targetScrollTop
 
                             requestAnimationFrame(() => {
-                                if (viewportElement) {
-                                    const currentScroll = viewportElement.scrollTop
-                                    if (currentScroll !== heightManager.scrollTop) {
-                                        viewportElement.scrollTop = targetScrollTop
-                                        heightManager.scrollTop = targetScrollTop
-                                    }
-                                    heightManager.initialized = true
+                                const currentScroll = heightManager.viewport.scrollTop
+                                if (currentScroll !== heightManager.scrollTop) {
+                                    heightManager.viewport.scrollTop = targetScrollTop
+                                    heightManager.scrollTop = targetScrollTop
                                 }
+                                heightManager.initialized = true
                             })
                         }
                     })
@@ -838,8 +838,8 @@
             {
                 initialized: heightManager.initialized,
                 mode,
-                containerElement,
-                viewportElement,
+                containerElement: heightManager.containerElement,
+                viewportElement: heightManager.viewportElement,
                 calculatedItemHeight: heightManager.averageHeight,
                 height,
                 scrollTop: heightManager.scrollTop
@@ -910,8 +910,8 @@
                 updateHeightAndScroll(true)
             })
 
-            if (containerElement) {
-                resizeObserver.observe(containerElement)
+            if (heightManager.isReady) {
+                resizeObserver.observe(heightManager.container)
             }
 
             // Cleanup on component destruction
@@ -1012,9 +1012,9 @@
         }
 
         if (!items.length) return
-        if (!viewportElement) {
+        if (!heightManager.viewportElement) {
             tick().then(() => {
-                if (!viewportElement) return
+                if (!heightManager.viewportElement) return
                 scroll({ index, smoothScroll, shouldThrowOnBounds, align })
             })
             return
@@ -1056,8 +1056,11 @@
         // Prevent bottom-anchoring logic from interfering with programmatic scroll
         programmaticScrollInProgress = true
 
-        if (INTERNAL_DEBUG && viewportElement) {
-            const domMax = Math.max(0, viewportElement.scrollHeight - viewportElement.clientHeight)
+        if (INTERNAL_DEBUG && heightManager.viewportElement) {
+            const domMax = Math.max(
+                0,
+                heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+            )
             console.log('[SVL] scroll-intent', {
                 targetIndex,
                 align: align || 'auto',
@@ -1076,7 +1079,7 @@
         // This approach works universally and maintains the user's expected smooth scroll experience.
         if (mode === 'bottomToTop' && smoothScroll) {
             // Find the element with the highest original-index in the current viewport
-            const visibleElements = viewportElement.querySelectorAll('[data-original-index]')
+            const visibleElements = heightManager.viewport.querySelectorAll('[data-original-index]')
             let maxIndex = -1
             let maxElement: HTMLElement | null = null
             for (const el of visibleElements) {
@@ -1095,7 +1098,7 @@
             await tick()
         }
 
-        viewportElement.scrollTo({
+        heightManager.viewport.scrollTo({
             top: scrollTarget,
             behavior: smoothScroll ? 'smooth' : 'auto'
         })
@@ -1103,10 +1106,10 @@
         // Update scrollTop state in next frame to avoid synchronous re-renders
         requestAnimationFrame(() => {
             heightManager.scrollTop = scrollTarget
-            if (INTERNAL_DEBUG && viewportElement) {
+            if (INTERNAL_DEBUG && heightManager.viewportElement) {
                 const domMax = Math.max(
                     0,
-                    viewportElement.scrollHeight - viewportElement.clientHeight
+                    heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
                 )
                 console.log('[SVL] scroll-after-call', {
                     scrollTop: heightManager.scrollTop,
@@ -1159,14 +1162,14 @@
     id="virtual-list-container"
     {...testId ? { 'data-testid': `${testId}-container` } : {}}
     class={containerClass ?? 'virtual-list-container'}
-    bind:this={containerElement}
+    bind:this={heightManager.containerElement}
 >
     <!-- Viewport handles scrolling -->
     <div
         id="virtual-list-viewport"
         {...testId ? { 'data-testid': `${testId}-viewport` } : {}}
         class={viewportClass ?? 'virtual-list-viewport'}
-        bind:this={viewportElement}
+        bind:this={heightManager.viewportElement}
         onscroll={handleScroll}
     >
         <!-- Content provides full scrollable height -->

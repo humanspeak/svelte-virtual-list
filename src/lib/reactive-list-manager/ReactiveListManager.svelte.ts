@@ -34,7 +34,10 @@ export class ReactiveListManager {
     private _measuredFlags: Uint8Array | null = null
     private _initialized = $state(false)
     private _scrollTop = $state(0)
+    private _containerElement: HTMLElement | null = $state(null)
+    private _viewportElement: HTMLElement | null = $state(null)
     private _internalDebug = false
+    private _isReady = $state(false)
     // Internal cache of measured heights by index
     private _heightCache: Record<number, number> = {}
 
@@ -46,6 +49,10 @@ export class ReactiveListManager {
         this._averageHeight = average
         const unmeasuredCount = this._itemLength - this._measuredCount
         this._totalHeight = this._totalMeasuredHeight + unmeasuredCount * average
+    }
+
+    private recomputeIsReady(): void {
+        this._isReady = !!this._containerElement && !!this._viewportElement
     }
 
     /**
@@ -110,6 +117,60 @@ export class ReactiveListManager {
             this.#debugCheckScrollTopRepeat(value)
         }
         this._scrollTop = value
+    }
+
+    /**
+     * Container element reference (reactive, nullable)
+     *
+     * Why both `containerElement` and `container` exist:
+     * - `containerElement` is a nullable, reactive reference intended for Svelte `bind:this` wiring
+     *   from components. It may be temporarily null during mount/unmount and is safe to read as
+     *   a possibly-null value. Setting it more than once is prohibited to catch wiring bugs early.
+     * - `container` is the non-null accessor for internal consumers that require a definite
+     *   HTMLElement once the manager is wired. It throws until the manager is `isReady === true`
+     *   (i.e., both container and viewport are present). Use this when you want a guaranteed DOM node.
+     */
+    get containerElement(): HTMLElement | null {
+        return this._containerElement
+    }
+    get container(): HTMLElement {
+        if (!this._isReady) {
+            throw new Error('ReactiveListManager: container is not ready')
+        }
+        return this._containerElement!
+    }
+    set containerElement(el: HTMLElement | null) {
+        this._containerElement = el
+        this.recomputeIsReady()
+    }
+
+    /**
+     * Viewport element reference (reactive, nullable)
+     *
+     * Why both `viewportElement` and `viewport` exist:
+     * - `viewportElement` is a nullable, reactive reference intended for Svelte `bind:this` wiring
+     *   from components. It may be temporarily null during mount/unmount and is safe to read as
+     *   a possibly-null value. Setting it more than once is prohibited to catch wiring bugs early.
+     * - `viewport` is the non-null accessor for internal consumers that require a definite
+     *   HTMLElement once the manager is wired. It throws until the manager is `isReady === true`
+     *   (i.e., both container and viewport are present). Use this when you want a guaranteed DOM node.
+     */
+    get viewportElement(): HTMLElement | null {
+        return this._viewportElement
+    }
+    get viewport(): HTMLElement {
+        if (!this._isReady) {
+            throw new Error('ReactiveListManager: viewport is not ready')
+        }
+        return this._viewportElement!
+    }
+    set viewportElement(el: HTMLElement | null) {
+        this._viewportElement = el
+        this.recomputeIsReady()
+    }
+
+    get isReady(): boolean {
+        return this._isReady
     }
 
     // --- Internal debug helpers (non-exported) ---
