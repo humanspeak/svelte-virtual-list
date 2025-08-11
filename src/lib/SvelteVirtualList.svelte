@@ -209,7 +209,6 @@
     /**
      * Scroll and Height Management
      */
-    let scrollTop = $state(0) // Current scroll position
     let height = $state(0) // Container height
 
     /**
@@ -239,8 +238,6 @@
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
     let prevTotalHeightForScrollCorrection = $state<number>(0)
-    let tailMeasureInProgress = $state(false)
-    let lastTailMeasureKey = $state('')
     let lastBottomDistance = $state<number | null>(null)
 
     /**
@@ -249,7 +246,8 @@
      */
     let heightManager = new ReactiveListManager({
         itemLength: items.length,
-        itemHeight: defaultEstimatedItemHeight
+        itemHeight: defaultEstimatedItemHeight,
+        internalDebug: INTERNAL_DEBUG
     })
 
     // Dynamic update coordination to avoid UA scroll anchoring interference
@@ -341,7 +339,7 @@
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
             viewportElement.scrollTop = approximateScrollTop
-            scrollTop = approximateScrollTop
+            heightManager.scrollTop = approximateScrollTop
 
             // Step 2: Use native scrollIntoView for precise bottom-edge positioning after DOM updates
             tick().then(() => {
@@ -355,7 +353,7 @@
                     })
 
                     // Sync our internal scroll state with actual DOM position
-                    scrollTop = viewportElement.scrollTop
+                    heightManager.scrollTop = viewportElement.scrollTop
                 }
             })
 
@@ -384,7 +382,7 @@
             )
 
             viewportElement.scrollTop = newScrollTop
-            scrollTop = newScrollTop
+            heightManager.scrollTop = newScrollTop
         }
     }
 
@@ -460,7 +458,7 @@
                                 Math.max(0, currentScrollTop + deltaTotal)
                             )
                             viewportElement.scrollTop = adjusted
-                            scrollTop = adjusted
+                            heightManager.scrollTop = adjusted
                         }
                     }
                 }
@@ -524,7 +522,7 @@
      */
     let totalHeight = $derived(() => heightManager.totalHeight)
 
-    let atBottom = $derived(scrollTop >= totalHeight() - height - 1)
+    let atBottom = $derived(heightManager.scrollTop >= totalHeight() - height - 1)
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
@@ -577,7 +575,7 @@
                 // Round to avoid subpixel positioning issues in bottomToTop mode
                 const roundedTargetScrollTop = Math.round(targetScrollTop)
                 viewportElement.scrollTop = roundedTargetScrollTop
-                scrollTop = roundedTargetScrollTop
+                heightManager.scrollTop = roundedTargetScrollTop
             }
 
             // Track if user has scrolled significantly away from bottom
@@ -627,7 +625,7 @@
                     beginDynamicUpdate()
                     const newScrollTop = maxScrollTop
                     viewportElement.scrollTop = newScrollTop
-                    scrollTop = newScrollTop
+                    heightManager.scrollTop = newScrollTop
 
                     // Reset the "scrolled away" flag since we're actively managing position
                     userHasScrolledAway = false
@@ -687,7 +685,7 @@
         if (
             mode === 'bottomToTop' &&
             !heightManager.initialized &&
-            scrollTop === 0 &&
+            heightManager.scrollTop === 0 &&
             viewportHeight > 0
         ) {
             // Calculate what the correct scroll position should be
@@ -712,7 +710,7 @@
         }
 
         lastVisibleRange = calculateVisibleRange(
-            scrollTop,
+            heightManager.scrollTop,
             viewportHeight,
             heightManager.averageHeight,
             items.length,
@@ -764,13 +762,13 @@
                     }
                 }
                 lastScrollTopSnapshot = current
-                scrollTop = current
+                heightManager.scrollTop = current
                 updateDebugTailDistance()
                 if (INTERNAL_DEBUG) {
                     const vr = visibleItems()
                     console.log('[SVL] onscroll', {
                         mode,
-                        scrollTop,
+                        scrollTop: heightManager.scrollTop,
                         height,
                         totalHeight: totalHeight(),
                         averageItemHeight: heightManager.averageHeight,
@@ -817,14 +815,14 @@
                             void containerElement.offsetHeight
 
                             viewportElement.scrollTop = targetScrollTop
-                            scrollTop = targetScrollTop
+                            heightManager.scrollTop = targetScrollTop
 
                             requestAnimationFrame(() => {
                                 if (viewportElement) {
                                     const currentScroll = viewportElement.scrollTop
-                                    if (currentScroll !== scrollTop) {
+                                    if (currentScroll !== heightManager.scrollTop) {
                                         viewportElement.scrollTop = targetScrollTop
-                                        scrollTop = targetScrollTop
+                                        heightManager.scrollTop = targetScrollTop
                                     }
                                     heightManager.initialized = true
                                 }
@@ -844,11 +842,11 @@
                 viewportElement,
                 calculatedItemHeight: heightManager.averageHeight,
                 height,
-                scrollTop
+                scrollTop: heightManager.scrollTop
             },
             {
                 setHeight: (h) => (height = h),
-                setScrollTop: (st) => (scrollTop = st),
+                setScrollTop: (st) => (heightManager.scrollTop = st),
                 setInitialized: (i) => (heightManager.initialized = i)
             },
             immediate
@@ -1044,7 +1042,7 @@
             itemsLength: items.length,
             calculatedItemHeight: heightManager.averageHeight, // Use dynamic average from ReactiveListManager
             height,
-            scrollTop,
+            scrollTop: heightManager.scrollTop,
             firstVisibleIndex,
             lastVisibleIndex,
             heightCache: heightManager.getHeightCache()
@@ -1065,7 +1063,7 @@
                 align: align || 'auto',
                 firstVisibleIndex,
                 lastVisibleIndex,
-                currentScrollTop: scrollTop,
+                currentScrollTop: heightManager.scrollTop,
                 scrollTarget,
                 domMaxScrollTop: domMax
             })
@@ -1104,14 +1102,14 @@
 
         // Update scrollTop state in next frame to avoid synchronous re-renders
         requestAnimationFrame(() => {
-            scrollTop = scrollTarget
+            heightManager.scrollTop = scrollTarget
             if (INTERNAL_DEBUG && viewportElement) {
                 const domMax = Math.max(
                     0,
                     viewportElement.scrollHeight - viewportElement.clientHeight
                 )
                 console.log('[SVL] scroll-after-call', {
-                    scrollTop,
+                    scrollTop: heightManager.scrollTop,
                     domMaxScrollTop: domMax
                 })
             }
@@ -1232,7 +1230,7 @@
                             items.length,
                             Object.keys(heightManager.getHeightCache()).length,
                             heightManager.averageHeight,
-                            scrollTop,
+                            heightManager.scrollTop,
                             height || 0,
                             totalHeight()
                         )}

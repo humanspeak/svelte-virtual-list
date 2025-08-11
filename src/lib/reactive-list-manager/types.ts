@@ -20,6 +20,8 @@ export interface ListManagerConfig {
     itemLength: number
     /** Height to use for unmeasured items */
     itemHeight: number
+    /** Whether to enable internal debug logging */
+    internalDebug?: boolean
 }
 
 /**

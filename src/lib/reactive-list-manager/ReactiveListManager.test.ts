@@ -169,6 +169,46 @@ describe('ReactiveListManager (alias)', () => {
         })
     })
 
+    describe('ScrollTop state', () => {
+        it('should default to 0 and allow set/get', () => {
+            expect(manager.scrollTop).toBe(0)
+            manager.scrollTop = 123
+            expect(manager.scrollTop).toBe(123)
+        })
+
+        it('changing scrollTop should not affect height math', () => {
+            const before = {
+                totalMeasuredHeight: manager.totalMeasuredHeight,
+                measuredCount: manager.measuredCount,
+                averageHeight: manager.averageHeight,
+                totalHeight: manager.totalHeight
+            }
+
+            manager.scrollTop = 500
+
+            expect(manager.totalMeasuredHeight).toBe(before.totalMeasuredHeight)
+            expect(manager.measuredCount).toBe(before.measuredCount)
+            expect(manager.averageHeight).toBe(before.averageHeight)
+            expect(manager.totalHeight).toBe(before.totalHeight)
+        })
+
+        it('reset and updateItemLength should not change scrollTop', () => {
+            manager.scrollTop = 777
+            manager.updateItemLength(12345)
+            expect(manager.scrollTop).toBe(777)
+            manager.reset()
+            expect(manager.scrollTop).toBe(777)
+        })
+
+        it('can set scrollTop before and after initialized', () => {
+            manager.scrollTop = 42
+            expect(manager.scrollTop).toBe(42)
+            manager.initialized = true
+            manager.scrollTop = 88
+            expect(manager.scrollTop).toBe(88)
+        })
+    })
+
     describe('Utility Methods', () => {
         it('should calculate coverage percentage correctly', () => {
             expect(manager.getMeasurementCoverage()).toBe(0)

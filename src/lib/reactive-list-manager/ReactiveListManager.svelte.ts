@@ -33,6 +33,8 @@ export class ReactiveListManager {
     private _totalHeight = $state(0)
     private _measuredFlags: Uint8Array | null = null
     private _initialized = $state(false)
+    private _scrollTop = $state(0)
+    private _internalDebug = false
     // Internal cache of measured heights by index
     private _heightCache: Record<number, number> = {}
 
@@ -96,6 +98,58 @@ export class ReactiveListManager {
     }
 
     /**
+     * Get/Set current scrollTop (reactive)
+     */
+    get scrollTop(): number {
+        return this._scrollTop
+    }
+
+    set scrollTop(value: number) {
+        // Debug: warn if the same value is set excessively within a short window
+        if (this._internalDebug) {
+            this.#debugCheckScrollTopRepeat(value)
+        }
+        this._scrollTop = value
+    }
+
+    // --- Internal debug helpers (non-exported) ---
+    #debugLastScrollValue: number | null = null
+    #debugWindowStartMs = 0
+    #debugRepeatCount = 0
+    #debugWarnedThisWindow = false
+    #debugCheckScrollTopRepeat(value: number): void {
+        const now =
+            typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()
+
+        if (this.#debugLastScrollValue === value) {
+            if (now - this.#debugWindowStartMs <= 1000) {
+                this.#debugRepeatCount += 1
+                if (this.#debugRepeatCount > 10 && !this.#debugWarnedThisWindow) {
+                    this.#debugWarnedThisWindow = true
+                    console.warn(
+                        '\n================ SvelteVirtualList DEBUG ================\n' +
+                            `scrollTop assigned same value ${value} > 10 times within 1s\n` +
+                            `count=${this.#debugRepeatCount}, windowStart=${Math.round(this.#debugWindowStartMs)}ms\n` +
+                            'This may indicate redundant updates or feedback loops.\n' +
+                            '========================================================\n'
+                    )
+                }
+            } else {
+                // New time window for the same value
+                this.#debugWindowStartMs = now
+                this.#debugRepeatCount = 1
+                this.#debugWarnedThisWindow = false
+            }
+        } else {
+            // Different value: reset tracking
+            this.#debugLastScrollValue = value
+            this.#debugWindowStartMs = now
+            this.#debugRepeatCount = 1
+            this.#debugWarnedThisWindow = false
+        }
+    }
+
+    /**
      * Get the calculated average height of measured items
      * Falls back to itemHeight if no items have been measured yet
      */
@@ -126,6 +180,7 @@ export class ReactiveListManager {
     constructor(config: ListManagerConfig) {
         this._itemLength = config.itemLength
         this._itemHeight = config.itemHeight
+        this._internalDebug = config.internalDebug ?? false
         this._measuredFlags = new Uint8Array(Math.max(0, this._itemLength))
         this.recomputeDerivedHeights()
     }
