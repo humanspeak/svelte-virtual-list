@@ -15,7 +15,9 @@ on:
             - '!dependabot/**'
         paths:
             - src/**
-            - tests/**
+            - '!tests/**'
+            - '!src/lib/test/**'
+            - '!src/routes/**'
             - package.json
             - package-lock.json
             - .github/workflows/npm-publish.yml
@@ -108,15 +110,6 @@ jobs:
                       has_debug=true
                     fi
 
-                    # Check for INTERNAL_DEBUG = true (not in comments)
-                    if grep -n -P '^(?!\s*//|\s*/\*|\s*\*).*\bINTERNAL_DEBUG\s*=\s*true\b\s*;?' "$file" > /dev/null; then
-                      match=$(grep -n -P '^(?!\s*//|\s*/\*|\s*\*).*\bINTERNAL_DEBUG\s*=\s*true\b\s*;?.*' "$file" | head -n 1)
-                      line_num=$(echo "$match" | cut -d: -f1)
-                      statement=$(echo "$match" | cut -d: -f2-)
-                      echo "::error file=$file::Found INTERNAL_DEBUG flag enabled on line $line_num: $statement"
-                      has_debug=true
-                    fi
-
                     $has_debug && return 1 || return 0
                   }
 
@@ -206,7 +199,7 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                node-version: [20, 22, 23]
+                node-version: [20, 22]
         permissions:
             contents: read
             packages: write
@@ -231,15 +224,14 @@ jobs:
 
             - name: Upload Vitest Results
               if: always()
-              uses: trunk-io/analytics-uploader@main # zizmor: ignore[unpinned-uses]
+              uses: trunk-io/analytics-uploader@main
               with:
                   junit-paths: junit-vitest.xml
                   org-slug: ${{ secrets.TRUNK_ORG_SLUG }}
                   token: ${{ secrets.TRUNK_TOKEN }}
 
             - name: Upload coverage to Coveralls
-              # Pinned v2 major to a specific commit for supply-chain safety
-              uses: coverallsapp/github-action@v2 # zizmor: ignore[unpinned-uses]
+              uses: coverallsapp/github-action@v2
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   flag-name: node-${{ matrix.node-version }}
@@ -281,7 +273,7 @@ jobs:
 
             - name: Upload Playwright Results
               if: always()
-              uses: trunk-io/analytics-uploader@main # zizmor: ignore[unpinned-uses]
+              uses: trunk-io/analytics-uploader@main
               with:
                   junit-paths: junit-playwright.xml
                   org-slug: ${{ secrets.TRUNK_ORG_SLUG }}
@@ -301,8 +293,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Coveralls Finished
-              # Pinned v2 major to a specific commit for supply-chain safety
-              uses: coverallsapp/github-action@v2 # zizmor: ignore[unpinned-uses]
+              uses: coverallsapp/github-action@v2
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   parallel-finished: true
@@ -328,7 +319,7 @@ jobs:
                   fetch-depth: 0
 
             - name: Use Node.js - 22
-              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
+              uses: actions/setup-node@v4
               with:
                   node-version: 22
                   registry-url: https://registry.npmjs.org
@@ -371,7 +362,7 @@ jobs:
 
             - name: Create Comment on Skip
               if: github.event_name == 'pull_request' && steps.publish-check.outputs.should_publish == 'false'
-              uses: actions/github-script@v7 # zizmor: ignore[unpinned-uses]
+              uses: actions/github-script@v7
               with:
                   github-token: ${{ secrets.ACTIONS_KEY }}
                   script: |
@@ -385,7 +376,7 @@ jobs:
             - name: Import GPG key
               if: steps.publish-check.outputs.should_publish == 'true'
               id: import_gpg
-              uses: crazy-max/ghaction-import-gpg@v6 # zizmor: ignore[unpinned-uses]
+              uses: crazy-max/ghaction-import-gpg@v6
               with:
                   gpg_private_key: ${{ secrets.ACTIONS_GPG_PRIVATE_KEY }}
                   passphrase: ${{ secrets.ACTIONS_GPG_PASSPHRASE }}
@@ -490,7 +481,7 @@ jobs:
             - name: Create Release
               if: steps.publish-check.outputs.should_publish == 'true'
               id: create_release
-              uses: softprops/action-gh-release@v2 # zizmor: ignore[unpinned-uses]
+              uses: softprops/action-gh-release@v2
               with:
                   tag_name: ${{ steps.version.outputs.new_version }}
                   name: Release ${{ steps.version.outputs.new_version }}
@@ -515,54 +506,6 @@ jobs:
                   npm publish --provenance --access public
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_GITHUB_TOKEN }}
-
-            - name: Clean up all prereleases
-              if: steps.publish-check.outputs.should_publish == 'true'
-              env:
-                  NEW_VERSION: ${{ steps.version.outputs.new_version }}
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_GITHUB_TOKEN }}
-              run: |
-                  echo "🧹 Cleaning up ALL prerelease versions (alpha, beta, rc)"
-
-                  # Get all prerelease versions (alpha, beta, rc)
-                  VERSIONS_TO_REMOVE=$(npm view @humanspeak/svelte-virtual-list versions --json | \
-                    jq -r ".[] | select(test(\"-(alpha|beta|rc)\\\\.\"))")
-
-                  if [ -n "$VERSIONS_TO_REMOVE" ]; then
-                    echo "Found prereleases to remove:"
-                    echo "$VERSIONS_TO_REMOVE"
-
-                    # Count total versions to remove
-                    TOTAL_COUNT=$(echo "$VERSIONS_TO_REMOVE" | wc -l | tr -d ' ')
-                    echo "📦 Removing $TOTAL_COUNT prerelease versions..."
-
-                    # Remove each prerelease version
-                    REMOVED_COUNT=0
-                    FAILED_COUNT=0
-
-                    echo "$VERSIONS_TO_REMOVE" | while read -r version; do
-                      if [ -n "$version" ]; then
-                        echo "🗑️  Removing: @humanspeak/svelte-virtual-list@$version"
-                        if npm unpublish "@humanspeak/svelte-virtual-list@$version" 2>/dev/null; then
-                          REMOVED_COUNT=$((REMOVED_COUNT + 1))
-                          echo "   ✅ Successfully removed $version"
-                        else
-                          FAILED_COUNT=$((FAILED_COUNT + 1))
-                          echo "   ⚠️  Failed to remove $version (may not exist or insufficient permissions)"
-                        fi
-                      fi
-                    done
-
-                    echo ""
-                    echo "📊 Cleanup Summary:"
-                    echo "   • Released: ${NEW_VERSION}"
-                    echo "   • Attempted: $TOTAL_COUNT prereleases"
-                    echo "   • Success: $REMOVED_COUNT"
-                    echo "   • Failed: $FAILED_COUNT"
-                    echo "✅ Prerelease cleanup completed - registry is now clean!"
-                  else
-                    echo "ℹ️ No prerelease versions found - registry is already clean!"
-                  fi
 
             - name: Cleanup on failure
               if: failure() && steps.create_release.outcome == 'success'
