@@ -346,7 +346,7 @@ export class ReactiveListManager {
             }
         }
 
-        if (heightDelta === 0 && countDelta === 0) return
+        if (countDelta === 0) return
         // Apply all changes at once - triggers reactivity only once
         this._totalMeasuredHeight += heightDelta
         this._measuredCount += countDelta

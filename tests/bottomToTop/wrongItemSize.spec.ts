@@ -48,7 +48,7 @@ test.describe('BottomToTop wrong item size alignment', () => {
                     const viewport = document.querySelector(
                         '[data-testid="wrong-item-size-list-viewport"]'
                     ) as HTMLElement | null
-                    if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
+                    if (viewport) viewport.scrollTo({ top: 0 })
                 })
 
                 // Wait for potential re-render and measurements
