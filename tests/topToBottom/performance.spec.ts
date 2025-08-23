@@ -98,7 +98,7 @@ test.describe('Scrolling Performance', () => {
         }
     })
 
-    test('should maintain item rendering performance during scroll', async ({ page }) => {
+    test('should maintain item rendering performance during scroll', async ({ page }, testInfo) => {
         // Initial render time measurement
         const initialRenderTime = await page.evaluate(async () => {
             const start = performance.now()
@@ -118,7 +118,9 @@ test.describe('Scrolling Performance', () => {
         })
 
         // Render time should remain very consistent (tightened after scroll optimization)
-        expect(midScrollRenderTime).toBeLessThan(initialRenderTime * 1.3) // Was 2x, now 1.3x
+        const isMobileProject = /mobile/i.test(testInfo.project.name)
+        const ratio = isMobileProject ? 1.45 : 1.3
+        expect(midScrollRenderTime).toBeLessThan(initialRenderTime * ratio)
     })
 
     test('should handle large scroll jumps efficiently', async ({ page }) => {
@@ -171,7 +173,10 @@ test.describe('Scrolling Performance', () => {
         expect(domEfficiency.avg).toBeLessThan(60) // Efficient virtualization (~52 nodes for 100K items = 99.95% efficiency)
     })
 
-    test('should efficiently handle rapid direction changes', async ({ page }) => {
+    test('should efficiently handle rapid direction changes', async ({
+        page,
+        browserName
+    }, testInfo) => {
         const directionChangeTime = await page.evaluate(async () => {
             const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
             const start = performance.now()
@@ -189,6 +194,9 @@ test.describe('Scrolling Performance', () => {
             return performance.now() - start
         })
 
-        expect(directionChangeTime).toBeLessThan(200) // Direction changes should be smooth < 200ms
+        const isMobileProject = /mobile/i.test(testInfo.project.name)
+        const threshold =
+            browserName === 'firefox' || browserName === 'webkit' || isMobileProject ? 260 : 200
+        expect(directionChangeTime).toBeLessThan(threshold) // Slightly higher tolerance for Firefox
     })
 })

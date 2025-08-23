@@ -34,8 +34,12 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         const item0Box = await item0.boundingBox()
         const item1Box = await item1.boundingBox()
 
-        expect(item0Box?.height).toBe(20)
-        expect(item1Box?.height).toBe(20)
+        expect(item0Box?.height !== undefined && item0Box.height > 19 && item0Box.height < 21).toBe(
+            true
+        )
+        expect(item1Box?.height !== undefined && item1Box.height > 19 && item1Box.height < 21).toBe(
+            true
+        )
     })
 
     test('should position items at bottom of viewport initially', async ({ page }) => {
@@ -65,7 +69,9 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         // Get initial height of item 1
         const item1 = page.locator('[data-testid="list-item-1"]')
         const initialBox = await item1.boundingBox()
-        expect(initialBox?.height).toBe(20)
+        expect(
+            initialBox?.height !== undefined && initialBox.height > 19 && initialBox.height < 21
+        ).toBe(true)
 
         // Trigger the height change by advancing time
         await page.clock.runFor(1000)

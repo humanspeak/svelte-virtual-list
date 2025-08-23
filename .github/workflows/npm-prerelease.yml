@@ -171,7 +171,7 @@ jobs:
                   CUSTOM_MESSAGE: ${{ github.event.inputs.custom_message }}
               run: |
                   # Commit version changes
-                  git add package.json package-lock.json
+                  git add package.json
 
                   # Only commit if there are actually changes to commit
                   if ! git diff --quiet --cached; then
@@ -212,9 +212,9 @@ jobs:
                       ## Installation for Testing
 
                       ```bash
-                      npm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.stripped_version }}
+                      pnpm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.stripped_version }}
                       # or
-                      npm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.prerelease_type }}
+                      pnpm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.prerelease_type }}
                       ```
 
                       ## ⚠️ Important Notes
@@ -235,10 +235,10 @@ jobs:
               run: |
                   # Configure NPM registry
                   rm -f ./.npmrc
-                  npm config set @humanspeak:registry https://registry.npmjs.org/
+                  pnpm config set @humanspeak:registry https://registry.npmjs.org/
 
                   # Publish with prerelease tag (not latest)
-                  npm publish --provenance --access public --tag "$PRERELEASE_TYPE"
+                  pnpm publish --provenance --access public --no-git-checks --tag "$PRERELEASE_TYPE"
 
                   echo "✅ Published prerelease with tag: $PRERELEASE_TYPE"
 

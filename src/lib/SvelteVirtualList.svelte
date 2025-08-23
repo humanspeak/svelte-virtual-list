@@ -61,7 +61,7 @@
     MIT License © Humanspeak, Inc.
 -->
 
-<script lang="ts" generics="TItem = any">
+<script lang="ts" generics="TItem = unknown">
     /**
      * SvelteVirtualList Implementation Journey
      *
@@ -213,7 +213,7 @@
      * State Flags and Control
      */
 
-    let isCalculatingHeight = $state(false) // Prevents concurrent height calculations
+    const isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isScrolling = $state(false) // Tracks active scrolling state
     let lastMeasuredIndex = $state(-1) // Index of last measured item
     let lastScrollTopSnapshot = $state(0) // Previous scroll position snapshot
@@ -228,7 +228,7 @@
     /**
      * Performance Optimization State
      */
-    let dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
+    const dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
     let dirtyItemsCount = $state(0) // Reactive count of dirty items
     // Fallback measurement used only when height has not been established yet
     let measuredFallbackHeight = $state(0)
@@ -242,23 +242,31 @@
      * Reactive Height Manager - O(1) height calculation system
      * Replaces O(n) totalHeight loop with incremental updates
      */
-    let heightManager = new ReactiveListManager({
+    const heightManager = new ReactiveListManager({
         itemLength: items.length,
         itemHeight: defaultEstimatedItemHeight,
         internalDebug: INTERNAL_DEBUG
     })
 
     // Dynamic update coordination to avoid UA scroll anchoring interference
-    let dynamicUpdateInProgress = $state(false)
     let suppressBottomAnchoringUntilMs = $state(0)
-    function beginDynamicUpdate(): void {
-        dynamicUpdateInProgress = true
-        heightManager.viewport.style.setProperty('overflow-anchor', 'none')
-    }
-    function endDynamicUpdate(): void {
-        dynamicUpdateInProgress = false
-        heightManager.viewport.style.setProperty('overflow-anchor', 'auto')
-    }
+
+    const displayItems = $derived(() => {
+        const visibleRange = visibleItems()
+        const slice =
+            mode === 'bottomToTop'
+                ? items.slice(visibleRange.start, visibleRange.end).reverse()
+                : items.slice(visibleRange.start, visibleRange.end)
+
+        return slice.map((item, sliceIndex) => ({
+            item,
+            originalIndex:
+                mode === 'bottomToTop'
+                    ? visibleRange.end - 1 - sliceIndex
+                    : visibleRange.start + sliceIndex,
+            sliceIndex
+        }))
+    })
 
     /**
      * Handles scroll position corrections when item heights change, ensuring proper positioning
@@ -328,7 +336,7 @@
             wasAtBottomBeforeHeightChange &&
             !programmaticScrollInProgress &&
             performance.now() >= suppressBottomAnchoringUntilMs &&
-            !dynamicUpdateInProgress
+            !heightManager.isDynamicUpdateInProgress
         ) {
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
@@ -389,7 +397,7 @@
             if (BROWSER && dirtyItemsCount > 0) {
                 // Capture bottom state before any height processing to prevent cascading corrections
                 wasAtBottomBeforeHeightChange = atBottom
-                beginDynamicUpdate()
+                heightManager.startDynamicUpdate()
                 updateHeight()
             }
         },
@@ -468,7 +476,7 @@
                     // Reset bottom state flag
                     wasAtBottomBeforeHeightChange = false
                 })
-                endDynamicUpdate()
+                heightManager.endDynamicUpdate()
             },
             100, // debounceTime
             dirtyItems, // Pass dirty items for processing
@@ -516,9 +524,9 @@
      * This getter is reactive and updates whenever heightManager's internal state changes.
      * Used by: atBottom calculation, scroll corrections, maxScrollTop calculations
      */
-    let totalHeight = $derived(() => heightManager.totalHeight)
+    const totalHeight = $derived(() => heightManager.totalHeight)
 
-    let atBottom = $derived(heightManager.scrollTop >= totalHeight() - height - 1)
+    const atBottom = $derived(heightManager.scrollTop >= totalHeight() - height - 1)
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
@@ -569,7 +577,7 @@
                 !isAtBottom && // Don't apply aggressive correction when at bottom
                 !programmaticScrollInProgress && // Don't interfere with programmatic scrolls
                 performance.now() >= suppressBottomAnchoringUntilMs &&
-                !dynamicUpdateInProgress &&
+                !heightManager.isDynamicUpdateInProgress &&
                 scrollDifference > heightManager.averageHeight * 3
 
             if (shouldCorrect) {
@@ -623,14 +631,14 @@
 
                 if (wasNearBottom || currentScrollTop === 0) {
                     // User was at bottom, keep them at bottom after new items are added
-                    beginDynamicUpdate()
-                    const newScrollTop = maxScrollTop
-                    heightManager.viewport.scrollTop = newScrollTop
-                    heightManager.scrollTop = newScrollTop
+                    void heightManager.runDynamicUpdate(() => {
+                        const newScrollTop = maxScrollTop
+                        heightManager.viewport.scrollTop = newScrollTop
+                        heightManager.scrollTop = newScrollTop
 
-                    // Reset the "scrolled away" flag since we're actively managing position
-                    userHasScrolledAway = false
-                    endDynamicUpdate()
+                        // Reset the "scrolled away" flag since we're actively managing position
+                        userHasScrolledAway = false
+                    })
                 }
             }
         }
@@ -859,7 +867,7 @@
         itemResizeObserver = new ResizeObserver((entries) => {
             tick().then(() => {
                 let shouldRecalculate = false
-                const visibleRange = visibleItems() // Cache once to avoid reactive loops
+                void visibleItems() // Cache once to avoid reactive loops
 
                 for (const entry of entries) {
                     const element = entry.target as HTMLElement
@@ -1190,42 +1198,27 @@
                     const visibleRange = visibleItems()
 
                     // Avoid synchronous DOM reads here; fall back once if height is 0
-                    let effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
+                    const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
 
                     // Use precise offset for topToBottom using measured heights when available
-                    let transform: number
-                    if (false) {
-                        transform = 0
-                    } else {
-                        transform = Math.round(
-                            calculateTransformY(
-                                mode,
-                                items.length,
-                                visibleRange.end,
-                                visibleRange.start,
-                                heightManager.averageHeight,
-                                effectiveHeight,
-                                totalHeight(),
-                                heightManager.getHeightCache(),
-                                measuredFallbackHeight
-                            )
+                    const transform = Math.round(
+                        calculateTransformY(
+                            mode,
+                            items.length,
+                            visibleRange.end,
+                            visibleRange.start,
+                            heightManager.averageHeight,
+                            effectiveHeight,
+                            totalHeight(),
+                            heightManager.getHeightCache(),
+                            measuredFallbackHeight
                         )
-                    }
+                    )
 
                     return transform
                 })()}px)"
             >
-                {#each (() => {
-                    const visibleRange = visibleItems()
-                    const slice = mode === 'bottomToTop' ? items
-                                  .slice(visibleRange.start, visibleRange.end)
-                                  .reverse() : items.slice(visibleRange.start, visibleRange.end)
-
-                    // Map each item with its original index for proper DOM element tracking
-                    const itemsWithOriginalIndex = slice.map( (item, sliceIndex) => ({ item, originalIndex: mode === 'bottomToTop' ? visibleRange.end - 1 - sliceIndex : visibleRange.start + sliceIndex, sliceIndex }) )
-
-                    return itemsWithOriginalIndex
-                })() as currentItemWithIndex, i (currentItemWithIndex.originalIndex)}
+                {#each displayItems() as currentItemWithIndex, i (currentItemWithIndex.originalIndex)}
                     <!-- Only debug when visible range or average height changes -->
                     {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, heightManager.averageHeight)}
                         {@const debugInfo = createDebugInfo(

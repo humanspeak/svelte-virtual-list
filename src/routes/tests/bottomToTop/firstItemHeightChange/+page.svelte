@@ -32,21 +32,22 @@
                 }
             }
         }
-    } catch (e) {
+    } catch {
         heightChanges = { 1: [100] } // Default fallback
     }
 
-    let items: { id: number; text: string; height: number }[] = $state([
+    const items: { id: number; text: string; height: number }[] = $state([
         ...Array.from({ length: 10000 }, (_, i) => ({
             id: i,
             text: `Item ${i}`,
             height: 20
         }))
     ])
-    let virtualList: SvelteVirtualList | null = $state(null)
+    let virtualList: SvelteVirtualList<{ id: number; text: string; height: number }> | null =
+        $state(null)
 
     let timeoutIndex = 0
-    let interval = setInterval(() => {
+    const interval = setInterval(() => {
         let shouldContinue = false
 
         // Apply height changes for current timeoutIndex

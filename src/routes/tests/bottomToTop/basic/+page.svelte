@@ -3,7 +3,7 @@
 
     const items = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
-        text: `Item ${i}` // eslint-disable-line svelte/no-at-html-tags
+        text: `Item ${i}`
     }))
 </script>
 

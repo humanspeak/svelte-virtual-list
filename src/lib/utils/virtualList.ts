@@ -86,7 +86,7 @@ export const calculateVisibleRange = (
         const totalHeight = totalContentHeight ?? totalItems * itemHeight
         const maxScrollTop = Math.max(0, totalHeight - viewportHeight)
         // Use strict tolerance to avoid premature bottom anchoring that leaves a visible gap
-        const tolerance = 1 // pixels
+        const tolerance = Math.max(1, Math.floor(itemHeight * 0.25)) // pixels, adaptive for wrong initial sizes
         const isAtBottom = Math.abs(scrollTop - maxScrollTop) <= tolerance
 
         if (isAtBottom) {

@@ -46,7 +46,6 @@
         defaultEstimatedItemHeight={itemHeight}
         {items}
         testId="wrong-item-size-list"
-        debug={true}
         bind:this={virtualList}
     >
         {#snippet renderItem(item)}

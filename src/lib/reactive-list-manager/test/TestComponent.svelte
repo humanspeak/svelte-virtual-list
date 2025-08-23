@@ -1,25 +1,25 @@
 <script lang="ts">
-    import { untrack } from 'svelte'
+    // untrack not used in this test component
     import { ReactiveListManager } from '$lib/index.js'
     import type { HeightChange, ListManagerConfig } from '../types.js'
 
     interface Props {
         config: ListManagerConfig
-        onReactiveUpdate?: (data: {
+        onReactiveUpdate?: (_data: {
             totalHeight: number
             measuredCount: number
             effectRuns: number
         }) => void
     }
 
-    let { config, onReactiveUpdate }: Props = $props()
+    const { config, onReactiveUpdate }: Props = $props()
 
     // Create the manager
     const manager = new ReactiveListManager(config)
 
     // Derived reactive values (clean, no side effects)
-    let currentTotalHeight = $derived(manager.totalHeight)
-    let currentMeasuredCount = $derived(manager.measuredCount)
+    const currentTotalHeight = $derived(manager.totalHeight)
+    const currentMeasuredCount = $derived(manager.measuredCount)
 
     // Effect run counter (non-reactive - just for tracking)
     let effectRunCount = 0

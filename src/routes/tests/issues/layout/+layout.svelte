@@ -3,7 +3,7 @@
     import SvelteVirtualList from '$lib/SvelteVirtualList.svelte'
     import { faker } from '@faker-js/faker'
 
-    let { children }: { children: Snippet } = $props()
+    const { children }: { children: Snippet } = $props()
 
     const items: {
         id: string

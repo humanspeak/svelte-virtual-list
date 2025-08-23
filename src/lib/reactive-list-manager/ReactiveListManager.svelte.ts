@@ -38,6 +38,8 @@ export class ReactiveListManager {
     private _viewportElement: HTMLElement | null = $state(null)
     private _internalDebug = false
     private _isReady = $state(false)
+    private _dynamicUpdateInProgress = $state(false)
+    private _dynamicUpdateDepth = $state(0)
     // Internal cache of measured heights by index
     private _heightCache: Record<number, number> = {}
 
@@ -171,6 +173,62 @@ export class ReactiveListManager {
 
     get isReady(): boolean {
         return this._isReady
+    }
+
+    /**
+     * Whether a dynamic update is currently running.
+     * Set to true while `runDynamicUpdate` is executing.
+     */
+    get isDynamicUpdateInProgress(): boolean {
+        return this._dynamicUpdateDepth > 0
+    }
+
+    /**
+     * Begin a dynamic update. Handles nested calls: the first call disables UA scroll anchoring,
+     * subsequent calls just increment depth. Safe to call when not wired; styles are only toggled
+     * when both container and viewport are ready.
+     */
+    startDynamicUpdate(): void {
+        const isOuter = this._dynamicUpdateDepth === 0
+        this._dynamicUpdateDepth += 1
+        if (isOuter) {
+            this._dynamicUpdateInProgress = true
+            if (this._isReady && this._viewportElement) {
+                this._viewportElement.style.setProperty('overflow-anchor', 'none')
+            }
+        }
+    }
+
+    /**
+     * End a dynamic update started by `startDynamicUpdate`. Handles nesting: only the final
+     * corresponding end call re-enables UA scroll anchoring. Guards against underflow.
+     */
+    endDynamicUpdate(): void {
+        if (this._dynamicUpdateDepth <= 0) {
+            return
+        }
+        this._dynamicUpdateDepth -= 1
+        if (this._dynamicUpdateDepth === 0) {
+            if (this._isReady && this._viewportElement) {
+                this._viewportElement.style.setProperty('overflow-anchor', 'auto')
+            }
+            this._dynamicUpdateInProgress = false
+        }
+    }
+
+    /**
+     * Run a dynamic update with UA scroll anchoring disabled, then restore it.
+     * Accepts a sync or async function and ensures `overflow-anchor` is toggled
+     * around the operation. If the manager isn't ready yet, it simply executes `fn`.
+     */
+    async runDynamicUpdate<T>(fn: () => T | Promise<T>): Promise<T> {
+        this.startDynamicUpdate()
+        try {
+            const result = fn()
+            return (result instanceof Promise ? await result : result) as T
+        } finally {
+            this.endDynamicUpdate()
+        }
     }
 
     // --- Internal debug helpers (non-exported) ---

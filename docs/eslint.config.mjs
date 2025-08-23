@@ -14,7 +14,6 @@ export default [
             '**/.DS_Store',
             '**/node_modules',
             'postcss.config.cjs',
-            'coverage',
             '**/build',
             '.svelte-kit',
             'package',
@@ -24,9 +23,8 @@ export default [
             '**/pnpm-lock.yaml',
             '**/package-lock.json',
             '**/yarn.lock',
-            'src/routes/poc',
             '**/dist',
-            '**/*.test.ts'
+            'vite.config.ts.*'
         ]
     },
     js.configs.recommended,
@@ -41,9 +39,9 @@ export default [
                 ...globals.node
             }
         },
+
         rules: {
             semi: ['warn', 'never'],
-            quotes: ['error', 'single'],
             'dot-location': ['warn', 'property'],
             'guard-for-in': ['warn'],
             'no-multi-spaces': ['warn'],
@@ -64,15 +62,6 @@ export default [
             'no-var': ['error'],
             'prefer-const': ['error'],
 
-            '@typescript-eslint/no-unused-expressions': [
-                'error',
-                {
-                    allowShortCircuit: true,
-                    allowTernary: true,
-                    allowTaggedTemplates: true
-                }
-            ],
-
             'no-unused-vars': [
                 'warn',
                 {
@@ -80,12 +69,12 @@ export default [
                     ignoreRestSiblings: true
                 }
             ],
-
-            '@typescript-eslint/no-unused-vars': [
-                'warn',
+            '@typescript-eslint/no-unused-expressions': [
+                'error',
                 {
-                    argsIgnorePattern: '^_',
-                    ignoreRestSiblings: true
+                    allowShortCircuit: true,
+                    allowTernary: true,
+                    allowTaggedTemplates: true
                 }
             ]
         }
@@ -96,6 +85,26 @@ export default [
             parserOptions: {
                 parser: ts.parser
             }
+        }
+    },
+    {
+        /* location of your components where you would like to apply these rules  */
+        files: ['**/shadcn/components/ui/**/*.svelte', '**/shadcn/components/ui/**/*.ts'],
+        languageOptions: {
+            parserOptions: {
+                parser: ts.parser
+            }
+        },
+        rules: {
+            '@typescript-eslint/no-unused-vars': [
+                'warn',
+                {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^\\$\\$(Props|Events|Slots|Generic)$'
+                }
+            ],
+            'prefer-const': ['off'],
+            'no-unused-vars': ['off']
         }
     }
 ]

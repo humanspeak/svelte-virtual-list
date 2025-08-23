@@ -47,7 +47,6 @@
         {items}
         testId="wrong-item-size-list"
         mode="bottomToTop"
-        debug={false}
         bind:this={virtualList}
     >
         {#snippet renderItem(item)}

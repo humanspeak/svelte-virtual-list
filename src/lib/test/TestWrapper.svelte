@@ -2,9 +2,9 @@
     import type { SvelteVirtualListProps } from '$lib/types.js'
     import SvelteVirtualList from '$lib/SvelteVirtualList.svelte'
 
-    interface Props extends Omit<SvelteVirtualListProps, 'renderItem'> {}
+    type Props = Omit<SvelteVirtualListProps, 'renderItem'>
 
-    let {
+    const {
         items,
         testId,
         mode = 'topToBottom',

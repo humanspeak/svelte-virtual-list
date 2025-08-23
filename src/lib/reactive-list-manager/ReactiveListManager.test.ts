@@ -215,6 +215,115 @@ describe('ReactiveListManager (alias)', () => {
         })
     })
 
+    describe('runDynamicUpdate', () => {
+        it('should disable/enable overflow-anchor around sync updates', async () => {
+            const container = document.createElement('div')
+            const viewport = document.createElement('div')
+            manager.containerElement = container
+            manager.viewportElement = viewport
+
+            expect(manager.isDynamicUpdateInProgress).toBe(false)
+            const before = viewport.style.getPropertyValue('overflow-anchor')
+
+            await manager.runDynamicUpdate(() => {
+                expect(manager.isDynamicUpdateInProgress).toBe(true)
+                expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('none')
+            })
+
+            expect(manager.isDynamicUpdateInProgress).toBe(false)
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('auto')
+            expect(before === '' || before === 'auto').toBe(true)
+        })
+
+        it('should work when not ready (no elements set)', async () => {
+            const m = new ReactiveListManager({ itemLength: 1, itemHeight: 1 })
+            let ran = false
+            await m.runDynamicUpdate(() => {
+                ran = true
+            })
+            expect(ran).toBe(true)
+            expect(m.isDynamicUpdateInProgress).toBe(false)
+        })
+
+        it('should re-enable overflow-anchor after async function resolves', async () => {
+            const container = document.createElement('div')
+            const viewport = document.createElement('div')
+            manager.containerElement = container
+            manager.viewportElement = viewport
+
+            await manager.runDynamicUpdate(async () => {
+                expect(manager.isDynamicUpdateInProgress).toBe(true)
+                await Promise.resolve()
+                expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('none')
+            })
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('auto')
+            expect(manager.isDynamicUpdateInProgress).toBe(false)
+        })
+    })
+
+    describe('startDynamicUpdate / endDynamicUpdate', () => {
+        it('should toggle overflow-anchor with manual start/end when ready (no nesting)', () => {
+            const container = document.createElement('div')
+            const viewport = document.createElement('div')
+            manager.containerElement = container
+            manager.viewportElement = viewport
+
+            expect(manager.isDynamicUpdateInProgress).toBe(false)
+            const before = viewport.style.getPropertyValue('overflow-anchor')
+            expect(before === '' || before === 'auto').toBe(true)
+
+            manager.startDynamicUpdate()
+            expect(manager.isDynamicUpdateInProgress).toBe(true)
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('none')
+
+            manager.endDynamicUpdate()
+            expect(manager.isDynamicUpdateInProgress).toBe(false)
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('auto')
+        })
+
+        it('should handle nested start/end correctly and only re-enable on final end', () => {
+            const container = document.createElement('div')
+            const viewport = document.createElement('div')
+            manager.containerElement = container
+            manager.viewportElement = viewport
+
+            manager.startDynamicUpdate() // depth 1
+            expect(manager.isDynamicUpdateInProgress).toBe(true)
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('none')
+
+            manager.startDynamicUpdate() // depth 2
+            expect(manager.isDynamicUpdateInProgress).toBe(true)
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('none')
+
+            manager.endDynamicUpdate() // depth 1
+            expect(manager.isDynamicUpdateInProgress).toBe(true)
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('none')
+
+            manager.endDynamicUpdate() // depth 0
+            expect(manager.isDynamicUpdateInProgress).toBe(false)
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('auto')
+
+            // extra end should be a no-op (underflow guard)
+            manager.endDynamicUpdate()
+            expect(manager.isDynamicUpdateInProgress).toBe(false)
+            expect(viewport.style.getPropertyValue('overflow-anchor')).toBe('auto')
+        })
+
+        it('should work without elements set: flips inProgress but does not touch styles', () => {
+            const m = new ReactiveListManager({ itemLength: 1, itemHeight: 1 })
+            const dummy = document.createElement('div')
+            expect(m.isReady).toBe(false)
+
+            m.startDynamicUpdate()
+            expect(m.isDynamicUpdateInProgress).toBe(true)
+            expect(dummy.style.getPropertyValue('overflow-anchor')).toBe('')
+
+            m.endDynamicUpdate()
+            expect(m.isDynamicUpdateInProgress).toBe(false)
+            expect(dummy.style.getPropertyValue('overflow-anchor')).toBe('')
+        })
+    })
+
     describe('ScrollTop state', () => {
         it('should default to 0 and allow set/get', () => {
             expect(manager.scrollTop).toBe(0)
