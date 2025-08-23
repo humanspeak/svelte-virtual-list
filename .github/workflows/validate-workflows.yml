@@ -126,13 +126,13 @@ jobs:
                       # Try different git diff approaches for PR context
                       if git rev-parse "origin/${BASE_REF}" >/dev/null 2>&1; then
                           echo "Using origin/${BASE_REF} for comparison"
-                          changed_files=$(git diff --name-only "origin/${BASE_REF}" | grep -E '^\.github/workflows/[^/]+\.ya?ml$' || true)
+                          changed_files=$(git diff --diff-filter=AM --name-only "origin/${BASE_REF}" | grep -E '^\.github/workflows/[^/]+\.ya?ml$' || true)
                       elif git rev-parse "remotes/origin/${BASE_REF}" >/dev/null 2>&1; then
                           echo "Using remotes/origin/${BASE_REF} for comparison"
-                          changed_files=$(git diff --name-only "remotes/origin/${BASE_REF}" | grep -E '^\.github/workflows/[^/]+\.ya?ml$' || true)
+                          changed_files=$(git diff --diff-filter=AM --name-only "remotes/origin/${BASE_REF}" | grep -E '^\.github/workflows/[^/]+\.ya?ml$' || true)
                       elif git rev-parse "${BASE_REF}" >/dev/null 2>&1; then
                           echo "Using ${BASE_REF} for comparison"
-                          changed_files=$(git diff --name-only "${BASE_REF}" | grep -E '^\.github/workflows/[^/]+\.ya?ml$' || true)
+                          changed_files=$(git diff --diff-filter=AM --name-only "${BASE_REF}" | grep -E '^\.github/workflows/[^/]+\.ya?ml$' || true)
                       else
                           echo "::warning::Cannot find base ref ${BASE_REF} in any form"
                           echo "Falling back to validating all workflow files"
@@ -153,6 +153,12 @@ jobs:
 
                       # Safely handle filenames
                       filename=$(basename -- "$file")
+
+                      # Skip files that were deleted or do not exist in the checkout
+                      if [ ! -f "$filename" ]; then
+                          echo "Skipping $filename (not present in current checkout — likely deleted or renamed)"
+                          continue
+                      fi
 
                       # Skip non-yaml files
                       if [[ ! "$filename" =~ \.(ya?ml)$ ]]; then

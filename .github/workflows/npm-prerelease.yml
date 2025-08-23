@@ -56,8 +56,12 @@ jobs:
                   persist-credentials: false
                   fetch-depth: 0
 
+            - uses: pnpm/action-setup@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  version: 10
+
             - name: Use Node.js 22
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: 22
 
@@ -89,7 +93,11 @@ jobs:
                   token: ${{ secrets.ACTIONS_KEY }}
                   fetch-depth: 0
 
-            - name: Use Node.js 22
+            - uses: pnpm/action-setup@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  version: 10
+
+            - name: Use Node.js - 22
               uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: 22
