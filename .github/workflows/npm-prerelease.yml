@@ -1,0 +1,290 @@
+# Prerelease workflow for testing versions before full release
+name: Publish Prerelease to NPM
+
+permissions:
+    contents: read
+    packages: read
+    pull-requests: read
+
+# Trigger conditions for prereleases
+on:
+    # Manual trigger with prerelease options
+    workflow_dispatch:
+        inputs:
+            # trunk-ignore(checkov/CKV_GHA_7): We need manual version control for releases
+            prerelease_type:
+                description: Prerelease type (alpha/beta/rc)
+                required: true
+                type: choice
+                options:
+                    - alpha
+                    - beta
+                    - rc
+            custom_message:
+                description: Prerelease message
+                required: false
+                type: string
+            base_version_bump:
+                description: Base version bump before prerelease (patch/minor/major)
+                required: false
+                type: choice
+                default: minor
+                options:
+                    - patch
+                    - minor
+                    - major
+
+    # Auto-trigger on feature branches (optional)
+    push:
+        branches:
+            - feature/**
+            - prerelease/**
+            - feature-current-release
+        paths:
+            - src/**
+            - tests/**
+            - package.json
+
+jobs:
+    # Quick validation
+    validate:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  persist-credentials: false
+                  fetch-depth: 0
+
+            - uses: pnpm/action-setup@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  version: 10
+
+            - name: Use Node.js 22
+              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  node-version: 22
+
+            - name: Install dependencies
+              run: npm ci --prefer-offline --no-audit --ignore-scripts
+
+            - name: Run tests
+              run: npm test
+
+            - name: Run E2E tests
+              run: |
+                  npx playwright install --with-deps
+                  npm run test:e2e
+
+    # Prerelease publishing
+    publish-prerelease:
+        needs: validate
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            packages: write
+            id-token: write
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  persist-credentials: false
+                  token: ${{ secrets.ACTIONS_KEY }}
+                  fetch-depth: 0
+
+            - uses: pnpm/action-setup@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  version: 10
+
+            - name: Use Node.js - 22
+              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
+              with:
+                  node-version: 22
+                  registry-url: https://registry.npmjs.org
+                  scope: '@humanspeak'
+
+            - name: Install dependencies
+              run: npm ci --prefer-offline --no-audit --ignore-scripts
+
+            - name: Import GPG key
+              id: import_gpg
+              uses: crazy-max/ghaction-import-gpg@v6 # zizmor: ignore[unpinned-uses]
+              with:
+                  gpg_private_key: ${{ secrets.ACTIONS_GPG_PRIVATE_KEY }}
+                  passphrase: ${{ secrets.ACTIONS_GPG_PASSPHRASE }}
+                  git_user_signingkey: true
+                  git_commit_gpgsign: true
+                  git_tag_gpgsign: true
+                  git_config_global: true
+
+            - name: Configure Git
+              env:
+                  GPG_KEY_ID: ${{ steps.import_gpg.outputs.keyid }}
+                  GITHUB_TOKEN: ${{ secrets.ACTIONS_KEY }}
+              run: |
+                  git config --global user.name "GitHub Actions Bot"
+                  git config --global user.email "jason@humanspeak.com"
+                  git config --global commit.gpgsign true
+                  git config --global user.signingkey "$GPG_KEY_ID"
+                  git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+            - name: Create prerelease version
+              id: version
+              env:
+                  PRERELEASE_TYPE: ${{ github.event.inputs.prerelease_type || 'beta' }}
+                  BASE_BUMP: ${{ github.event.inputs.base_version_bump || 'minor' }}
+                  BRANCH_NAME: ${{ github.ref_name }}
+              run: |
+                  # For workflow_dispatch, use input; for push, auto-determine
+                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                      TYPE="$PRERELEASE_TYPE"
+                  else
+                      # Auto-determine based on branch name
+                      if [[ "$BRANCH_NAME" == feature/* ]]; then
+                          TYPE="alpha"
+                      elif [[ "$BRANCH_NAME" == prerelease/* ]]; then
+                          TYPE="beta"
+                      else
+                          TYPE="beta"
+                      fi
+                  fi
+
+                  echo "prerelease_type=$TYPE" >> $GITHUB_OUTPUT
+
+                  # Get current version and create prerelease
+                  CURRENT_VERSION=$(node -p "require('./package.json').version")
+                  echo "Current version: $CURRENT_VERSION"
+
+                  # Check if current version already has prerelease suffix
+                  if [[ "$CURRENT_VERSION" == *"-"* ]]; then
+                      # Increment existing prerelease
+                      NEW_VERSION=$(npm version prerelease --preid="$TYPE" --no-git-tag-version)
+                  else
+                      # Create new prerelease from bumped version
+                      npm version "$BASE_BUMP" --no-git-tag-version >/dev/null
+                      NEW_VERSION=$(npm version prerelease --preid="$TYPE" --no-git-tag-version)
+                  fi
+
+                  echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+                  # Create stripped version without 'v' prefix for npm install commands
+                  STRIPPED_VERSION=${NEW_VERSION#v}
+                  echo "stripped_version=$STRIPPED_VERSION" >> $GITHUB_OUTPUT
+                  echo "New prerelease version: $NEW_VERSION"
+
+            - name: Commit and tag prerelease
+              env:
+                  NEW_VERSION: ${{ steps.version.outputs.new_version }}
+                  PRERELEASE_TYPE: ${{ steps.version.outputs.prerelease_type }}
+                  CUSTOM_MESSAGE: ${{ github.event.inputs.custom_message }}
+              run: |
+                  # Commit version changes
+                  git add package.json
+
+                  # Only commit if there are actually changes to commit
+                  if ! git diff --quiet --cached; then
+                      git commit -m "Bump to prerelease ${NEW_VERSION} [skip ci]" --no-verify
+                      echo "✅ Committed version changes"
+                  else
+                      echo "ℹ️ No version changes to commit"
+                  fi
+
+                  # Create prerelease tag
+                  RELEASE_MESSAGE="Prerelease ${NEW_VERSION} (${PRERELEASE_TYPE})"
+                  if [ -n "$CUSTOM_MESSAGE" ]; then
+                      RELEASE_MESSAGE="${RELEASE_MESSAGE}
+
+                  ${CUSTOM_MESSAGE}"
+                  fi
+
+                  git tag -a "${NEW_VERSION}" -m "$RELEASE_MESSAGE"
+
+                  # Push changes and tags
+                  git push origin HEAD
+                  git push --tags
+
+            - name: Create GitHub prerelease
+              id: create_prerelease
+              uses: softprops/action-gh-release@v2 # zizmor: ignore[unpinned-uses]
+              with:
+                  tag_name: ${{ steps.version.outputs.new_version }}
+                  name: Prerelease ${{ steps.version.outputs.new_version }}
+                  body: |
+                      🚧 **This is a prerelease version for testing purposes**
+
+                      **Type**: `${{ steps.version.outputs.prerelease_type }}`
+                      **Branch**: `${{ github.ref_name }}`
+
+                      ${{ github.event.inputs.custom_message && format('**Message**: {0}', github.event.inputs.custom_message) || '' }}
+
+                      ## Installation for Testing
+
+                      ```bash
+                      pnpm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.stripped_version }}
+                      # or
+                      pnpm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.prerelease_type }}
+                      ```
+
+                      ## ⚠️ Important Notes
+                      - This version may contain breaking changes
+                      - Not recommended for production use
+                      - Feedback and testing reports are welcome!
+                  draft: false
+                  prerelease: true
+                  make_latest: false
+                  generate_release_notes: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Publish to NPM with prerelease tag
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_GITHUB_TOKEN }}
+                  PRERELEASE_TYPE: ${{ steps.version.outputs.prerelease_type }}
+              run: |
+                  # Configure NPM registry
+                  rm -f ./.npmrc
+                  pnpm config set @humanspeak:registry https://registry.npmjs.org/
+
+                  # Publish with prerelease tag (not latest)
+                  pnpm publish --provenance --access public --no-git-checks --tag "$PRERELEASE_TYPE"
+
+                  echo "✅ Published prerelease with tag: $PRERELEASE_TYPE"
+
+            - name: Create summary
+              env:
+                  NEW_VERSION: ${{ steps.version.outputs.new_version }}
+                  STRIPPED_VERSION: ${{ steps.version.outputs.stripped_version }}
+                  PRERELEASE_TYPE: ${{ steps.version.outputs.prerelease_type }}
+              run: |
+                  cat >> $GITHUB_STEP_SUMMARY << EOF
+                  # 🚀 Prerelease Published Successfully!
+
+                  **Version**: \`$NEW_VERSION\`
+                  **Type**: \`$PRERELEASE_TYPE\`
+                  **NPM Tag**: \`$PRERELEASE_TYPE\`
+
+                  ## 📦 Installation Commands
+
+                  \`\`\`bash
+                  # Install specific prerelease version
+                  npm install @humanspeak/svelte-virtual-list@$STRIPPED_VERSION
+
+                  # Install latest prerelease of this type
+                  npm install @humanspeak/svelte-virtual-list@$PRERELEASE_TYPE
+                  \`\`\`
+
+                  ## 🔗 Links
+                  - [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/$NEW_VERSION)
+                  - [NPM Package](https://www.npmjs.com/package/@humanspeak/svelte-virtual-list/v/$STRIPPED_VERSION)
+                  EOF
+
+            - name: Cleanup on failure
+              if: failure() && steps.create_prerelease.outcome == 'success'
+              env:
+                  RELEASE_VERSION: ${{ steps.version.outputs.new_version }}
+                  GITHUB_TOKEN: ${{ secrets.ACTIONS_KEY }}
+              run: |
+                  # Clean up GitHub release and git tag on failure
+                  gh release delete "$RELEASE_VERSION" --yes || true
+                  git tag -d "$RELEASE_VERSION" || true
+                  git push --delete origin "$RELEASE_VERSION" || true

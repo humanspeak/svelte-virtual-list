@@ -1,12 +1,30 @@
 {
-    "editor.formatOnSave": true,
+    "[javascript]": {
+        "editor.defaultFormatter": "trunk.io"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "trunk.io"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "trunk.io"
+    },
+    "[svelte]": {
+        "editor.defaultFormatter": "trunk.io"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "trunk.io"
+    },
     "editor.codeActionsOnSave": {
         "source.fixAll": "explicit",
         "source.fixAll.eslint": "explicit"
     },
     "editor.defaultFormatter": "trunk.io",
     "editor.formatOnPaste": true,
-    "[svelte]": {
-        "editor.defaultFormatter": "trunk.io"
-    },
+    "editor.formatOnSave": true,
+    "search.exclude": {
+        "**/.svelte-kit/**": true,
+        "**/build/**": true,
+        "**/dist/**": true,
+        "**/node_modules/**": true
+    }
 }

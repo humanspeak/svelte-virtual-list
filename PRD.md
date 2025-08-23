@@ -63,11 +63,43 @@
 - Optimized debug output
 - Status: **Completed**
 
-### Phase 9: Programmatic Scrolling
+### Phase 9: Programmatic Scrolling ✓
 
-- Added `scrollToIndex` method for programmatic scrolling to any item in the list
-- Enables chat apps, jump-to-item navigation, and more
+- Added `scroll`/`scrollToIndex` for programmatic scroll targeting
+- Supports `align: 'auto' | 'top' | 'bottom' | 'nearest'` and works in `bottomToTop`
 - Status: **Completed**
+
+### Phase 10: Infinite Scrolling (Next)
+
+- Goal: Seamless load-on-demand when the user approaches the start/end of the list
+- Target scenarios: chat history (prepend at top), feed/pagination (append at bottom), `bottomToTop` anchoring
+- Status: **Planned**
+
+Planned API (subject to refinement):
+
+- Props
+    - `nearEdgeThreshold?: number` (px) – default 200
+    - `onReachStart?: () => Promise<void> | void` – invoked when within threshold of the start
+    - `onReachEnd?: () => Promise<void> | void` – invoked when within threshold of the end
+- Events (alternative to props)
+    - `reached:start`, `reached:end`, `near:start`, `near:end`
+- Behavior
+    - Debounced invocation; no re-entrant calls while a previous load is in-flight
+    - Preserve scroll anchor on prepend/append; no visible jumps (esp. `bottomToTop`)
+    - Works with dynamic heights/reactive height manager
+
+Acceptance criteria:
+
+1. Appending at bottom triggers only once per threshold crossing; maintains position if user is not at the edge
+2. Prepending at top in `bottomToTop` keeps the last item anchored (no jump)
+3. Works across Chromium/Firefox/WebKit and mobile profiles
+4. E2E tests cover both directions, both modes, and loading while scrolling
+
+Test plan (E2E additions):
+
+- `tests/infinite/append.spec.ts`: triggers `onReachEnd` and verifies items rendered + no jump
+- `tests/infinite/prepend-bottomToTop.spec.ts`: triggers `onReachStart` with `mode='bottomToTop'` and validates anchor
+- Perf guardrails similar to existing performance tests
 
 ## Current Implementation
 
@@ -142,16 +174,19 @@
 
 ### Short Term
 
-1. **Performance Optimization**
-    - Horizontal scrolling support
-    - Variable-sized item caching
-    - Mobile performance enhancements
+1. **Feature: Infinite Scrolling (Phase 10)**
+    - Implement near-edge detection + load hooks/events (top/bottom)
+    - Preserve anchor on prepend/append (esp. `bottomToTop`)
+    - Add E2E coverage for both directions and mobile profiles
 
-2. **Feature Additions**
-    - Keyboard navigation
-    - Dynamic content updates
-    - Accessibility improvements
-    - **Enhancements to programmatic scrolling (scrollToIndex)**
+2. **Performance Optimization**
+    - Mobile performance enhancements
+    - Variable-sized item caching refinements
+    - Horizontal scrolling exploration
+
+3. **Developer Experience**
+    - Examples: infinite append/prepend demos in `src/routes/tests`
+    - README docs for infinite scrolling API and usage
 
 ### Medium Term
 

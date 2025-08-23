@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { VirtualListSetters, VirtualListState } from './types.js'
 import {
-    buildBlockSums,
     calculateAverageHeight,
     calculateScrollPosition,
     calculateTransformY,
@@ -48,7 +47,17 @@ describe('calculateScrollPosition', () => {
 
 describe('calculateVisibleRange', () => {
     it('should calculate correct range for top-to-bottom mode', () => {
-        const result = calculateVisibleRange(100, 300, 30, 100, 2, 'topToBottom')
+        const result = calculateVisibleRange(
+            100,
+            300,
+            30,
+            100,
+            2,
+            'topToBottom',
+            false,
+            false,
+            null
+        )
         expect(result).toEqual({
             start: 1, // (100/30 - 2) rounded down
             end: 16 // (floor(100/30) + ceil(300/30) + 1 + 2) = 3 + 10 + 1 + 2
@@ -56,15 +65,55 @@ describe('calculateVisibleRange', () => {
     })
 
     it('should calculate correct range for bottom-to-top mode', () => {
-        const result = calculateVisibleRange(100, 300, 30, 100, 2, 'bottomToTop')
+        // scrollTop = 100 in bottomToTop means 100px from content end
+        const result = calculateVisibleRange(
+            100,
+            300,
+            30,
+            100,
+            2,
+            'bottomToTop',
+            false,
+            false,
+            null
+        )
         expect(result).toEqual({
-            start: 84, // (100 - ceil(300/30) - ceil(100/30) - 2)
-            end: 99 // (100 - ceil(100/30) + 2)
+            start: 84, // Items near the end for bottomToTop when scrollTop = 100
+            end: 99
+        })
+    })
+
+    it('should show first items when scrollTop = 0 in bottomToTop mode', () => {
+        // When scrollTop = 0, bottomToTop should show first items (0, 1, 2...)
+        const result = calculateVisibleRange(0, 300, 30, 100, 2, 'bottomToTop', false, false, null)
+        expect(result).toEqual({
+            start: 88, // Near the end items when at scrollTop = 0
+            end: 100
+        })
+    })
+
+    it('should show last items when at maxScrollTop in bottomToTop mode', () => {
+        // When at maxScrollTop, bottomToTop should show last items
+        const maxScrollTop = 100 * 30 - 300 // totalHeight - viewportHeight = 2700
+        const result = calculateVisibleRange(
+            maxScrollTop,
+            300,
+            30,
+            100,
+            2,
+            'bottomToTop',
+            false,
+            false,
+            null
+        )
+        expect(result).toEqual({
+            start: 0, // First items when at max scroll
+            end: 13
         })
     })
 
     it('should handle edge cases with buffer exceeding bounds', () => {
-        const result = calculateVisibleRange(0, 300, 30, 10, 5, 'topToBottom')
+        const result = calculateVisibleRange(0, 300, 30, 10, 5, 'topToBottom', false, false, null)
         expect(result).toEqual({
             start: 0,
             end: 10
@@ -73,16 +122,42 @@ describe('calculateVisibleRange', () => {
 })
 
 describe('calculateTransformY', () => {
-    it('should calculate transform for top-to-bottom mode', () => {
-        expect(calculateTransformY('topToBottom', 100, 20, 5, 30)).toBe(150)
+    it('should calculate transform for top-to-bottom mode (estimated)', () => {
+        expect(calculateTransformY('topToBottom', 100, 20, 5, 30, 400)).toBe(150)
+    })
+
+    it('should calculate transform for top-to-bottom mode using heightCache when provided', () => {
+        const heightCache = { 0: 35, 1: 45, 2: 25, 3: 50, 4: 60 }
+        // visibleStart = 5 → offset = sum(0..4) = 35+45+25+50+60 = 215
+        expect(
+            calculateTransformY('topToBottom', 100, 20, 5, 30, 0, undefined, heightCache, 400)
+        ).toBe(215)
     })
 
     it('should calculate transform for bottom-to-top mode', () => {
-        expect(calculateTransformY('bottomToTop', 100, 20, 5, 30)).toBe(2400)
+        expect(calculateTransformY('bottomToTop', 100, 20, 5, 30, 400)).toBe(2400)
     })
 
     it('should handle edge case with zero visible items', () => {
-        expect(calculateTransformY('topToBottom', 100, 0, 0, 30)).toBe(0)
+        expect(calculateTransformY('topToBottom', 100, 0, 0, 30, 400)).toBe(0)
+    })
+
+    it('should position few items at bottom in bottomToTop mode', () => {
+        // 2 items, each 30px high = 60px total content
+        // Viewport is 400px high, so items should be pushed down by 340px
+        expect(calculateTransformY('bottomToTop', 2, 2, 0, 30, 400)).toBe(340)
+    })
+
+    it('should not add bottom offset when content fills viewport in bottomToTop mode', () => {
+        // 20 items, each 30px high = 600px total content
+        // Viewport is 400px high, so no bottom offset needed (content > viewport)
+        expect(calculateTransformY('bottomToTop', 20, 20, 0, 30, 400)).toBe(0)
+    })
+
+    it('should handle exact content height match in bottomToTop mode', () => {
+        // 10 items, each 40px high = 400px total content
+        // Viewport is 400px high, so no bottom offset needed (content = viewport)
+        expect(calculateTransformY('bottomToTop', 10, 10, 0, 40, 400)).toBe(0)
     })
 })
 
@@ -142,11 +217,12 @@ describe('updateHeightAndScroll', () => {
 
 describe('calculateAverageHeight', () => {
     it('should return current height when no elements are provided', () => {
-        const result = calculateAverageHeight([], { start: 0 }, {}, 40)
+        const result = calculateAverageHeight([], { start: 0, end: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40)
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(result.updatedHeightCache).toEqual({})
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should calculate average height from elements', () => {
@@ -155,11 +231,12 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: 50 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 2 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // (30 + 50) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(result.updatedHeightCache).toEqual({ 0: 30, 1: 50 })
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should use cached heights when available', () => {
@@ -167,9 +244,16 @@ describe('calculateAverageHeight', () => {
 
         const existingCache = { 0: 40 }
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, existingCache, 40)
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 1 },
+            existingCache,
+            40,
+            new Set()
+        )
 
         expect(result.updatedHeightCache).toEqual(existingCache)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should handle invalid height measurements', () => {
@@ -179,11 +263,12 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: Infinity }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 3 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // Should fallback to currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should calculate average excluding invalid heights', () => {
@@ -193,11 +278,12 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: 50 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 3 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // (30 + 50) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(2)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should handle all invalid measurements', () => {
@@ -206,11 +292,12 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: Infinity }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 2 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40) // Falls back to currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should handle mixed cached and new measurements', () => {
@@ -220,21 +307,36 @@ describe('calculateAverageHeight', () => {
         ] as HTMLElement[]
 
         const existingCache = { 1: 40 } // Cache for second element
+        // Initial running totals from existing cache: {1: 40} = totalHeight: 40, count: 1
+        const initialTotalHeight = 40
+        const initialCount = 1
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, existingCache, 40)
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 2 },
+            existingCache,
+            40,
+            new Set(),
+            initialTotalHeight,
+            initialCount
+        )
 
         expect(result.newHeight).toBe(35) // (30 + 40) / 2
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(result.updatedHeightCache).toEqual({ 0: 30, 1: 40 })
+        expect(result.clearedDirtyItems).toEqual(new Set())
+        expect(result.newTotalHeight).toBe(70) // 30 + 40
+        expect(result.newValidCount).toBe(2)
     })
 
     it('should handle empty height cache gracefully', () => {
         const mockElements = [] as HTMLElement[]
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 40)
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 0 }, {}, 40, new Set())
 
         expect(result.newHeight).toBe(40)
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should fallback to currentItemHeight when no valid heights exist', () => {
@@ -243,7 +345,7 @@ describe('calculateAverageHeight', () => {
             { getBoundingClientRect: () => ({ height: -1 }) }
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45)
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 1 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45) // Should use currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
@@ -253,11 +355,12 @@ describe('calculateAverageHeight', () => {
     it('should use currentItemHeight when no heights are collected', () => {
         const mockElements = [null] as unknown as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45)
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 0 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45)
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+        expect(result.clearedDirtyItems).toEqual(new Set())
     })
 
     it('should use currentItemHeight when getBoundingClientRect throws', () => {
@@ -269,11 +372,127 @@ describe('calculateAverageHeight', () => {
             } as unknown as HTMLElement
         ] as HTMLElement[]
 
-        const result = calculateAverageHeight(mockElements, { start: 0 }, {}, 45)
+        const result = calculateAverageHeight(mockElements, { start: 0, end: 0 }, {}, 45, new Set())
 
         expect(result.newHeight).toBe(45) // Should use currentItemHeight
         expect(result.newLastMeasuredIndex).toBe(0)
         expect(Object.keys(result.updatedHeightCache).length).toBe(0)
+    })
+
+    it('should process only dirty items when provided', () => {
+        const mockElements = [
+            { getBoundingClientRect: () => ({ height: 30 }) },
+            { getBoundingClientRect: () => ({ height: 50 }) },
+            { getBoundingClientRect: () => ({ height: 70 }) }
+        ] as HTMLElement[]
+
+        // Only item 1 is dirty
+        const dirtyItems = new Set([1])
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 3 },
+            {},
+            40,
+            dirtyItems
+        )
+
+        // Should only measure the dirty item (index 1 = 50px)
+        expect(result.updatedHeightCache).toEqual({ 1: 50 })
+        expect(result.clearedDirtyItems).toEqual(new Set([1]))
+        expect(result.newHeight).toBe(50) // Only one item measured
+    })
+
+    it('should process multiple dirty items', () => {
+        const mockElements = [
+            { getBoundingClientRect: () => ({ height: 30 }) },
+            { getBoundingClientRect: () => ({ height: 50 }) },
+            { getBoundingClientRect: () => ({ height: 70 }) }
+        ] as HTMLElement[]
+
+        // Items 0 and 2 are dirty
+        const dirtyItems = new Set([0, 2])
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 3 },
+            {},
+            40,
+            dirtyItems
+        )
+
+        // Should measure both dirty items
+        expect(result.updatedHeightCache).toEqual({ 0: 30, 2: 70 })
+        expect(result.clearedDirtyItems).toEqual(new Set([0, 2]))
+        expect(result.newHeight).toBe(50) // (30 + 70) / 2
+    })
+
+    it('should handle dirty items outside visible range', () => {
+        const mockElements = [
+            { getBoundingClientRect: () => ({ height: 30 }) },
+            { getBoundingClientRect: () => ({ height: 50 }) }
+        ] as HTMLElement[]
+
+        // Item 5 is dirty but not in visible range (start: 0, elements 0-1)
+        const dirtyItems = new Set([0, 5])
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 2 },
+            {},
+            40,
+            dirtyItems
+        )
+
+        // Should only measure item 0 (item 5 not visible)
+        expect(result.updatedHeightCache).toEqual({ 0: 30 })
+        expect(result.clearedDirtyItems).toEqual(new Set([0, 5])) // Both items cleared to prevent infinite loop
+        expect(result.newHeight).toBe(30) // Only item 0 measured
+    })
+
+    it('should handle empty elements array with dirty items', () => {
+        const mockElements = [] as HTMLElement[]
+
+        const dirtyItems = new Set([0, 1, 2])
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 0 },
+            {},
+            40,
+            dirtyItems
+        )
+
+        // Should not clear any dirty items when no elements exist
+        expect(result.clearedDirtyItems).toEqual(new Set())
+        expect(result.updatedHeightCache).toEqual({})
+        expect(result.newHeight).toBe(40) // Falls back to currentItemHeight
+    })
+
+    it('should use existing cache with dirty items update', () => {
+        const mockElements = [
+            { getBoundingClientRect: () => ({ height: 35 }) }, // New measurement
+            { getBoundingClientRect: () => ({ height: 55 }) }
+        ] as HTMLElement[]
+
+        const existingCache = { 0: 30, 1: 50, 2: 60 } // Item 0 will be updated
+        const dirtyItems = new Set([0]) // Only item 0 is dirty
+        // Initial running totals from existing cache: {0: 30, 1: 50, 2: 60} = totalHeight: 140, count: 3
+        const initialTotalHeight = 140 // 30 + 50 + 60
+        const initialCount = 3
+
+        const result = calculateAverageHeight(
+            mockElements,
+            { start: 0, end: 2 },
+            existingCache,
+            40,
+            dirtyItems,
+            initialTotalHeight,
+            initialCount
+        )
+
+        // Should update dirty item and keep existing cache
+        expect(result.updatedHeightCache).toEqual({ 0: 35, 1: 50, 2: 60 })
+        expect(result.clearedDirtyItems).toEqual(new Set([0]))
+        expect(result.newHeight).toBe(48.333333333333336) // (35 + 50 + 60) / 3
+        expect(result.newTotalHeight).toBe(145) // 35 + 50 + 60 (30 was replaced with 35)
+        expect(result.newValidCount).toBe(3)
     })
 })
 
@@ -372,99 +591,5 @@ describe('getScrollOffsetForIndex', () => {
         // Expected offset: 30 + 40 + 50 + 60 + 70 = 250
         const offset = getScrollOffsetForIndex(heightCache, calculatedItemHeight, idx)
         expect(offset).toBe(250)
-    })
-
-    describe('block sums', () => {
-        it('matches legacy logic for all estimated heights', () => {
-            const heightCache = {}
-            const calculatedItemHeight = 10
-            const totalItems = 100
-            const blockSums = buildBlockSums(heightCache, calculatedItemHeight, totalItems, 20)
-            for (let idx = 0; idx <= totalItems; idx += 10) {
-                const legacy = getScrollOffsetForIndex(heightCache, calculatedItemHeight, idx)
-                const block = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    idx,
-                    blockSums,
-                    20
-                )
-                expect(block).toBe(legacy)
-            }
-        })
-
-        it('matches legacy logic for partial measured heights', () => {
-            const heightCache = { 0: 5, 2: 15, 19: 100 }
-            const calculatedItemHeight = 10
-            const totalItems = 40
-            const blockSums = buildBlockSums(heightCache, calculatedItemHeight, totalItems, 10)
-            for (let idx = 0; idx <= totalItems; idx += 7) {
-                const legacy = getScrollOffsetForIndex(heightCache, calculatedItemHeight, idx)
-                const block = getScrollOffsetForIndex(
-                    heightCache,
-                    calculatedItemHeight,
-                    idx,
-                    blockSums,
-                    10
-                )
-                expect(block).toBe(legacy)
-            }
-        })
-
-        it('handles block boundary and tail correctly', () => {
-            const heightCache = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10 }
-            const calculatedItemHeight = 0
-            const totalItems = 10
-            const blockSums = buildBlockSums(heightCache, calculatedItemHeight, totalItems, 5)
-            // Block sums: [1+2+3+4+5=15], [6+7+8+9+10=40]
-            // idx=7: blockIdx=1, offset=15, tail=6+7=13, total=28
-            const offset = getScrollOffsetForIndex(
-                heightCache,
-                calculatedItemHeight,
-                7,
-                blockSums,
-                5
-            )
-            expect(offset).toBe(28)
-        })
-
-        it('returns 0 for idx <= 0', () => {
-            const blockSums = buildBlockSums({}, 10, 10, 5)
-            expect(getScrollOffsetForIndex({}, 10, 0, blockSums, 5)).toBe(0)
-            expect(getScrollOffsetForIndex({}, 10, -5, blockSums, 5)).toBe(0)
-        })
-    })
-})
-
-describe('buildBlockSums', () => {
-    it('returns empty array for zero items', () => {
-        const sums = buildBlockSums({}, 40, 0)
-        expect(sums).toEqual([])
-    })
-
-    it('returns one sum for fewer than blockSize items (all estimated)', () => {
-        const sums = buildBlockSums({}, 10, 5, 10)
-        expect(sums).toEqual([50])
-    })
-
-    it('returns correct sums for all measured heights', () => {
-        const heightCache = { 0: 10, 1: 20, 2: 30, 3: 40, 4: 50 }
-        const sums = buildBlockSums(heightCache, 99, 5, 2)
-        // Blocks: [0,1]=30, [2,3]=100, [4]=150 (cumulative sums)
-        expect(sums).toEqual([30, 100, 150])
-    })
-
-    it('returns correct sums for partial measured heights', () => {
-        const heightCache = { 1: 20, 3: 40 }
-        const sums = buildBlockSums(heightCache, 10, 5, 2)
-        // [0]=10, [1]=20, [2]=10, [3]=40, [4]=10
-        // Blocks: [0,1]=30, [2,3]=80, [4]=90 (cumulative sums)
-        expect(sums).toEqual([30, 80, 90])
-    })
-
-    it('handles blockSize exactly dividing totalItems', () => {
-        const sums = buildBlockSums({}, 5, 6, 3)
-        // 3+3=6 items, block size 3: [0,1,2]=15, [3,4,5]=15
-        expect(sums).toEqual([15, 30])
     })
 })
