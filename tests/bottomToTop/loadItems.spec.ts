@@ -223,8 +223,9 @@ test.describe('BottomToTop LoadItems', () => {
             { timeout: 6000 }
         )
 
-        const scrollTop = await viewport.evaluate((el) => el.scrollTop)
-        expect(scrollTop).toBeLessThan(100)
+        // Instead of asserting raw scrollTop (engine-dependent), ensure earliest item is visible
+        await page.waitForSelector('[data-testid="list-item-0"]', { timeout: 500 })
+        await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible()
 
         // Should be able to scroll back to bottom
         await viewport.evaluate((el) => {

@@ -14,6 +14,7 @@ describe('ReactiveListManager - Integration Tests', () => {
 
         // Wait for initial effect
         await tick()
+        vi.runAllTimers()
 
         // Should have called once for initial render
         expect(mockOnUpdate).toHaveBeenCalledWith({
@@ -26,6 +27,7 @@ describe('ReactiveListManager - Integration Tests', () => {
         component.processDirtyHeights([{ index: 0, oldHeight: undefined, newHeight: 100 }])
 
         await tick()
+        vi.runAllTimers()
 
         // Should have triggered another effect run
         expect(mockOnUpdate).toHaveBeenLastCalledWith({
@@ -44,12 +46,14 @@ describe('ReactiveListManager - Integration Tests', () => {
         })
 
         await tick()
+        vi.runAllTimers()
         mockOnUpdate.mockClear() // Clear initial calls
 
         // Change itemHeight - should trigger reactivity
         component.setItemHeight(50)
 
         await tick()
+        vi.runAllTimers()
 
         expect(mockOnUpdate).toHaveBeenLastCalledWith({
             totalHeight: 5000, // 100 * 50
@@ -67,6 +71,7 @@ describe('ReactiveListManager - Integration Tests', () => {
         })
 
         await tick()
+        vi.runAllTimers()
         mockOnUpdate.mockClear()
 
         // Change item length - should trigger reactivity

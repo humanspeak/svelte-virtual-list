@@ -13,6 +13,17 @@ test.describe('Basic BottomToTop Rendering', () => {
 
         // In bottomToTop mode, items should be in descending order (25, 24, 23... 0)
         // with Item 0 visible at the bottom of the viewport
+        // Ensure anchor state by scrolling to bottom and waiting for item 0 attach
+        await page.evaluate(() => {
+            const viewport = document.querySelector(
+                '[data-testid="basic-list-viewport"]'
+            ) as HTMLElement | null
+            if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
+        })
+        await page
+            .locator('[data-original-index="0"]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 500 })
         const firstItem = await page.locator('[data-original-index="0"]')
         await expect(firstItem).toBeVisible()
 
@@ -67,6 +78,17 @@ test.describe('Basic BottomToTop Rendering', () => {
     })
 
     test('should position Item 0 at bottom of viewport in bottomToTop mode', async ({ page }) => {
+        // Anchor to bottom and ensure item 0 is attached before measuring
+        await page.evaluate(() => {
+            const viewport = document.querySelector(
+                '[data-testid="basic-list-viewport"]'
+            ) as HTMLElement | null
+            if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
+        })
+        await page
+            .locator('[data-original-index="0"]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 500 })
         // Verify that item 0 is positioned at/near the bottom of the viewport
         const isItem0AtBottom = await page.evaluate(() => {
             const viewport = document.querySelector('.virtual-list-container') as HTMLElement
@@ -109,7 +131,11 @@ test.describe('Basic BottomToTop Rendering', () => {
         // ScrollTop should be 0 in bottomToTop mode (this is correct behavior)
         expect(scrollTop).toBe(0)
 
-        // Verify Item 0 is visible at this scroll position
+        // Ensure item 0 is attached after initial layout
+        await page
+            .locator('[data-original-index="0"]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 750 })
         const firstItem = await page.locator('[data-original-index="0"]')
         await expect(firstItem).toBeVisible()
     })

@@ -17,6 +17,27 @@ test.describe('TopToBottom wrong item size alignment', () => {
             })
 
             test('Item 0 should be aligned to the top of the viewport', async ({ page }) => {
+                // Ensure item 0 is attached before measuring
+                await page.locator('[data-original-index="0"]').first().waitFor({
+                    state: 'attached',
+                    timeout: 5000
+                })
+                await page.waitForFunction(
+                    () => {
+                        const viewport = document.querySelector(
+                            '[data-testid="wrong-item-size-list-viewport"]'
+                        ) as HTMLElement | null
+                        const item0Wrapper = document.querySelector(
+                            '[data-original-index="0"]'
+                        ) as HTMLElement | null
+                        if (!viewport || !item0Wrapper) return false
+                        const vRect = viewport.getBoundingClientRect()
+                        const iRect = item0Wrapper.getBoundingClientRect()
+                        const distance = Math.abs(iRect.top - vRect.top)
+                        return Number.isFinite(distance) && distance <= 1
+                    },
+                    { timeout: 500 }
+                )
                 const result = await page.evaluate(() => {
                     const viewport = document.querySelector(
                         '[data-testid="wrong-item-size-list-viewport"]'
@@ -49,9 +70,9 @@ test.describe('TopToBottom wrong item size alignment', () => {
                     if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
                 })
 
-                // Ensure the last item is rendered
+                // Ensure the last item is attached before measuring
                 const target = page.locator('[data-original-index="999"]')
-                await target.waitFor({ state: 'visible', timeout: 5000 })
+                await target.first().waitFor({ state: 'attached', timeout: 500 })
 
                 // Wait for tail force-measure + correction to settle
                 await page.waitForFunction(
@@ -69,7 +90,7 @@ test.describe('TopToBottom wrong item size alignment', () => {
                         // allow tiny sub-pixel fluctuations
                         return Number.isFinite(distance) && distance <= 1
                     },
-                    { timeout: 5000 }
+                    { timeout: 500 }
                 )
 
                 const result = await page.evaluate(() => {

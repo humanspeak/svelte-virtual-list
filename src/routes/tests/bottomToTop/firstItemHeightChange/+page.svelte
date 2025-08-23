@@ -77,7 +77,6 @@
         {items}
         testId="basic-list"
         mode="bottomToTop"
-        debug={true}
     >
         {#snippet renderItem(item)}
             <div
