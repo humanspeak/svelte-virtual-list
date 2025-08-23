@@ -39,7 +39,6 @@ on:
         branches:
             - feature/**
             - prerelease/**
-            - feature-current-release
         paths:
             - src/**
             - tests/**
