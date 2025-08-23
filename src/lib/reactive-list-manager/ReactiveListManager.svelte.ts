@@ -346,6 +346,8 @@ export class ReactiveListManager {
             }
         }
 
+        // IDK... no one can explain it to me,.. but its here like this... it cannot be:
+        //  if (heightDelta === 0 && countDelta === 0) return
         if (countDelta === 0) return
         // Apply all changes at once - triggers reactivity only once
         this._totalMeasuredHeight += heightDelta
