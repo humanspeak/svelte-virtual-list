@@ -680,7 +680,7 @@
      * @example
      * ```typescript
      * const range = visibleItems()
-     * console.log(`Rendering items from ${range.start} to ${range.end}`)
+     * console.info(`Rendering items from ${range.start} to ${range.end}`)
      * ```
      *
      * @returns {SvelteVirtualListPreviousVisibleRange} Object containing start and end indices of visible items
@@ -775,7 +775,7 @@
                 updateDebugTailDistance()
                 if (INTERNAL_DEBUG) {
                     const vr = visibleItems()
-                    console.log('[SVL] onscroll', {
+                    console.info('[SVL] onscroll', {
                         mode,
                         scrollTop: heightManager.scrollTop,
                         height,
@@ -1073,7 +1073,7 @@
                 0,
                 heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
             )
-            console.log('[SVL] scroll-intent', {
+            console.info('[SVL] scroll-intent', {
                 targetIndex,
                 align: align || 'auto',
                 firstVisibleIndex,
@@ -1123,7 +1123,7 @@
                     0,
                     heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
                 )
-                console.log('[SVL] scroll-after-call', {
+                console.info('[SVL] scroll-after-call', {
                     scrollTop: heightManager.scrollTop,
                     domMaxScrollTop: domMax
                 })
