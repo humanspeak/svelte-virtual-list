@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { rafWait } from '../utils/rafWait.js'
 
 test.describe('Bidirectional Scrolling', () => {
     test.beforeEach(async ({ page }) => {
@@ -6,8 +7,10 @@ test.describe('Bidirectional Scrolling', () => {
         // Wait for both lists to render
         await page.waitForSelector('[data-testid="top-to-bottom-viewport"]')
         await page.waitForSelector('[data-testid="bottom-to-top-viewport"]')
-        // Give ResizeObserver and initial two-RAF measurement time to settle
-        await page.waitForTimeout(64)
+        // Wait for two RAFs so initial measurement completes deterministically
+
+        await rafWait(page)
+        await rafWait(page)
     })
 
     test('should render user content correctly in both directions', async ({ page }) => {
@@ -17,8 +20,7 @@ test.describe('Bidirectional Scrolling', () => {
         await expect(page.locator('[data-testid="ttb-item-2"]')).toBeVisible()
 
         // Verify bottom-to-top list shows correct user items (item 0 should be at bottom)
-        // Allow a brief settle due to bottomToTop initial measurement scheduling
-        await page.waitForTimeout(64)
+        // Deterministically anchor BTT viewport to bottom
         await page.evaluate(() => {
             const vp = document.querySelector(
                 '[data-testid="bottom-to-top-viewport"]'
@@ -28,7 +30,7 @@ test.describe('Bidirectional Scrolling', () => {
         await page
             .locator('[data-testid="btt-item-0"]')
             .first()
-            .waitFor({ state: 'attached', timeout: 1000 })
+            .waitFor({ state: 'visible', timeout: 1000 })
         await expect(page.locator('[data-testid="btt-item-0"]')).toBeVisible()
         await expect(page.locator('[data-testid="btt-item-1"]')).toBeVisible()
         await expect(page.locator('[data-testid="btt-item-2"]')).toBeVisible()

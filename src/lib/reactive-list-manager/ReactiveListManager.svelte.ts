@@ -227,6 +227,11 @@ export class ReactiveListManager {
             }
         }
         this._itemsWrapperElement = el
+        if (!el) {
+            this._gridDetected = false
+            this._gridColumns = 1
+            return
+        }
         // Attach new observer and detect immediately
         this.#attachGridObserver()
         this.#attachMutationObserver()

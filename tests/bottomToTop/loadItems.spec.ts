@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { rafWait } from '../utils/rafWait.js'
 
 /**
  * Comprehensive test suite for bottomToTop mode with dynamic item loading.
@@ -179,18 +180,8 @@ test.describe('BottomToTop LoadItems', () => {
         // Advance timers to trigger setTimeout and then allow two frames to settle
         await page.clock.fastForward(1000)
         await page.waitForSelector('[data-testid="list-item-2"]')
-        await page.evaluate(
-            () =>
-                new Promise<void>((resolve) =>
-                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-                )
-        )
-        await page.evaluate(
-            () =>
-                new Promise<void>((resolve) =>
-                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-                )
-        )
+
+        await rafWait()
 
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { rafWait } from '../utils/rafWait.js'
 
 test.describe('Scrolling Performance', () => {
     test.beforeEach(async ({ page }) => {
@@ -176,10 +177,7 @@ test.describe('Scrolling Performance', () => {
     test('should efficiently handle rapid direction changes', async ({ page }) => {
         const stepDurations = await page.evaluate(async () => {
             const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
-            const twoRaf = () =>
-                new Promise<void>((resolve) =>
-                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-                )
+
             const durations: number[] = []
 
             // Rapid direction changes (common user behavior - scroll down, then back up)
@@ -187,12 +185,12 @@ test.describe('Scrolling Performance', () => {
                 if (viewport) {
                     const startDown = performance.now()
                     viewport.scrollTop += 2000 // Down
-                    await twoRaf()
+                    await rafWait()
                     durations.push(performance.now() - startDown)
 
                     const startUp = performance.now()
                     viewport.scrollTop -= 1000 // Up
-                    await twoRaf()
+                    await rafWait()
                     durations.push(performance.now() - startUp)
                 }
             }

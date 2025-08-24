@@ -1,20 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import ResizeObserverMock from '../../../tests/utils/resizeObserverMock.js'
 import { ReactiveListManager } from './index.js'
-
-// Mocks that let us trigger observer callbacks
-class ResizeObserverMock {
-    private callback: ResizeObserverCallback
-    constructor(callback: ResizeObserverCallback) {
-        this.callback = callback
-        ;(globalThis as any).__lastRO = this
-    }
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-    emit(entries: ResizeObserverEntry[] = []): void {
-        this.callback(entries, this)
-    }
-}
 
 class MutationObserverMock {
     private callback: MutationCallback

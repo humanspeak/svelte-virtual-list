@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { rafWait } from '../utils/rafWait.js'
 
 test.describe('BottomToTop Performance', () => {
     test.beforeEach(async ({ page }) => {
@@ -204,22 +205,19 @@ test.describe('BottomToTop Performance', () => {
     test('should efficiently handle rapid direction changes (bottomToTop)', async ({ page }) => {
         const maxStep = await page.evaluate(async () => {
             const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
-            const twoRaf = () =>
-                new Promise<void>((resolve) =>
-                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-                )
+
             const steps: number[] = []
 
             for (let i = 0; i < 5; i++) {
                 if (viewport) {
                     const startUp = performance.now()
                     viewport.scrollTop -= 2000
-                    await twoRaf()
+                    await rafWait()
                     steps.push(performance.now() - startUp)
 
                     const startDown = performance.now()
                     viewport.scrollTop += 1000
-                    await twoRaf()
+                    await rafWait()
                     steps.push(performance.now() - startDown)
                 }
             }

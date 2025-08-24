@@ -1,20 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import ResizeObserverMock from '../../../tests/utils/resizeObserverMock.js'
 import { ReactiveListManager } from './index.js'
-
-// Simple ResizeObserver mock for jsdom
-class ResizeObserverMock {
-    private callback: ResizeObserverCallback
-    constructor(callback: ResizeObserverCallback) {
-        this.callback = callback
-    }
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-    // helper to trigger
-    emit(entries: ResizeObserverEntry[] = []): void {
-        this.callback(entries, this)
-    }
-}
 
 // Helpers
 function mockComputedStyle(display: string, template: string) {
