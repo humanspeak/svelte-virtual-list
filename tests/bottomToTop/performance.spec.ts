@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { injectRafWait } from '../utils/rafWait.js'
 
 test.describe('BottomToTop Performance', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/bottomToTop/performance')
+        await page.goto('/tests/list/bottomToTop/performance')
+        await injectRafWait(page)
         // Wait for initial render
         await page.waitForSelector('[data-testid="performance-list-viewport"]')
         // Allow extra time for bottomToTop initialization (more complex positioning)
@@ -202,24 +204,30 @@ test.describe('BottomToTop Performance', () => {
     })
 
     test('should efficiently handle rapid direction changes (bottomToTop)', async ({ page }) => {
-        const directionChangeTime = await page.evaluate(async () => {
+        const maxStep = await page.evaluate(async () => {
             const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
-            const start = performance.now()
 
-            // Rapid direction changes (bottomToTop pattern: up then down)
+            const steps: number[] = []
+
             for (let i = 0; i < 5; i++) {
                 if (viewport) {
-                    viewport.scrollTop -= 2000 // Up (to higher indices in bottomToTop)
-                    await new Promise((resolve) => setTimeout(resolve, 10))
-                    viewport.scrollTop += 1000 // Down (to lower indices in bottomToTop)
-                    await new Promise((resolve) => setTimeout(resolve, 10))
+                    const startUp = performance.now()
+                    viewport.scrollTop -= 2000
+                    // @ts-expect-error injected helper
+                    await window.__rafWait?.()
+                    steps.push(performance.now() - startUp)
+
+                    const startDown = performance.now()
+                    viewport.scrollTop += 1000
+                    // @ts-expect-error injected helper
+                    await window.__rafWait?.()
+                    steps.push(performance.now() - startDown)
                 }
             }
 
-            return performance.now() - start
+            return Math.max(...steps)
         })
 
-        // BottomToTop direction changes expected to be slightly slower
-        expect(directionChangeTime).toBeLessThan(250) // vs 200ms for regular (25% more lenient)
+        expect(maxStep).toBeLessThan(140) // browser-agnostic per-step cap; user-like rapid motion
     })
 })

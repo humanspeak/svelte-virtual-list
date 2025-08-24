@@ -1,12 +1,12 @@
 <script lang="ts">
     import SvelteVirtualList, { type SvelteVirtualListScrollAlign } from '$lib/index.js'
 
-    let virtualList: SvelteVirtualList<Item>
-
     type Item = {
         id: number
         text: string
     }
+
+    let virtualList: SvelteVirtualList<Item>
 
     const items: Item[] = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
@@ -15,7 +15,7 @@
 
     let index = $state(5000)
     let smoothScroll = $state(true)
-    let shouldThrowOnBounds = $state(false)
+    let shouldThrowOnBounds = $state(true)
     let align = $state('auto' as SvelteVirtualListScrollAlign)
 </script>
 
@@ -41,6 +41,7 @@
         </label>
     </div>
     <button
+        class="btn"
         onclick={() => {
             console.log('scroll to', index, items[index])
             virtualList.scroll({ index, smoothScroll, shouldThrowOnBounds, align })
@@ -58,7 +59,7 @@
         defaultEstimatedItemHeight={22}
         {items}
         testId="basic-list"
-        mode="topToBottom"
+        mode="bottomToTop"
         bind:this={virtualList}
         debug={false}
     >

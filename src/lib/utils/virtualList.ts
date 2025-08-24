@@ -303,7 +303,6 @@ export const calculateAverageHeight = (
                     void element.offsetHeight
                     const height = element.getBoundingClientRect().height
                     const oldHeight = newHeightCache[itemIndex]
-
                     if (Number.isFinite(height) && height > 0) {
                         // Only update if height actually changed (use smaller tolerance for precision)
                         if (!oldHeight || Math.abs(oldHeight - height) >= 0.1) {
@@ -342,7 +341,13 @@ export const calculateAverageHeight = (
     } else {
         // Original behavior: process all visible items
         validElements.forEach((el, i) => {
-            const itemIndex = visibleRange.start + i
+            const itemIndex =
+                mode === 'bottomToTop'
+                    ? Math.max(
+                          0,
+                          (visibleRange.end ?? visibleRange.start + validElements.length) - 1 - i
+                      )
+                    : visibleRange.start + i
             if (!newHeightCache[itemIndex]) {
                 try {
                     const height = el.getBoundingClientRect().height

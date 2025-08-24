@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 test.describe('topToBottom scroll', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/topToBottom/scroll', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/topToBottom/scroll', { waitUntil: 'networkidle' })
     })
 
     async function setAlign(page: Page, value: string) {

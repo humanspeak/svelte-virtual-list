@@ -1,9 +1,9 @@
 import { sveltekit } from '@sveltejs/kit/vite'
+import tailwindcss from '@tailwindcss/vite'
 import { svelteTesting } from '@testing-library/svelte/vite'
 import { configDefaults, defineConfig } from 'vitest/config'
-
 export default defineConfig({
-    plugins: [sveltekit(), svelteTesting()],
+    plugins: [tailwindcss(), sveltekit(), svelteTesting()],
     resolve: process.env.VITEST
         ? {
               conditions: ['browser']

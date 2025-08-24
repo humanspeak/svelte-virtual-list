@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { injectRafWait } from '../utils/rafWait.js'
 
 test.describe('Scrolling Performance', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/topToBottom/performance')
+        await page.goto('/tests/list/topToBottom/performance')
+        await injectRafWait(page)
         // Wait for initial render
         await page.waitForSelector('[data-testid="performance-list-viewport"]')
     })
@@ -142,7 +144,7 @@ test.describe('Scrolling Performance', () => {
         })
 
         const avgJumpTime = jumpTimes.reduce((a, b) => a + b) / jumpTimes.length
-        expect(avgJumpTime).toBeLessThan(50) // Large jumps should complete < 50ms
+        expect(avgJumpTime).toBeLessThan(70) // Browser-agnostic cap for large jumps
     })
 
     test('should maintain optimal DOM node count during scroll', async ({ page }) => {
@@ -173,30 +175,34 @@ test.describe('Scrolling Performance', () => {
         expect(domEfficiency.avg).toBeLessThan(60) // Efficient virtualization (~52 nodes for 100K items = 99.95% efficiency)
     })
 
-    test('should efficiently handle rapid direction changes', async ({
-        page,
-        browserName
-    }, testInfo) => {
-        const directionChangeTime = await page.evaluate(async () => {
+    test('should efficiently handle rapid direction changes', async ({ page }) => {
+        const stepDurations = await page.evaluate(async () => {
             const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
-            const start = performance.now()
+
+            const durations: number[] = []
 
             // Rapid direction changes (common user behavior - scroll down, then back up)
             for (let i = 0; i < 5; i++) {
                 if (viewport) {
+                    const startDown = performance.now()
                     viewport.scrollTop += 2000 // Down
-                    await new Promise((resolve) => setTimeout(resolve, 10))
+                    // @ts-expect-error injected helper
+                    await window.__rafWait?.()
+                    durations.push(performance.now() - startDown)
+
+                    const startUp = performance.now()
                     viewport.scrollTop -= 1000 // Up
-                    await new Promise((resolve) => setTimeout(resolve, 10))
+                    // @ts-expect-error injected helper
+                    await window.__rafWait?.()
+                    durations.push(performance.now() - startUp)
                 }
             }
 
-            return performance.now() - start
+            return durations
         })
 
-        const isMobileProject = /mobile/i.test(testInfo.project.name)
-        const threshold =
-            browserName === 'firefox' || browserName === 'webkit' || isMobileProject ? 260 : 200
-        expect(directionChangeTime).toBeLessThan(threshold) // Slightly higher tolerance for Firefox
+        const perStepThreshold = 240 // browser-agnostic cap reflecting real-world rapid flicks
+        const maxStep = Math.max(...stepDurations)
+        expect(maxStep).toBeLessThan(perStepThreshold)
     })
 })

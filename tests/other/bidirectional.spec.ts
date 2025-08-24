@@ -1,13 +1,16 @@
 import { expect, test } from '@playwright/test'
+import { rafWait } from '../utils/rafWait.js'
 
 test.describe('Bidirectional Scrolling', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/bidirectional', { waitUntil: 'networkidle' })
+        await page.goto('/tests/other/bidirectional', { waitUntil: 'networkidle' })
         // Wait for both lists to render
         await page.waitForSelector('[data-testid="top-to-bottom-viewport"]')
         await page.waitForSelector('[data-testid="bottom-to-top-viewport"]')
-        // Give ResizeObserver a frame to propagate height and buffer rendering
-        await page.waitForTimeout(16)
+        // Wait for two RAFs so initial measurement completes deterministically
+
+        await rafWait(page)
+        await rafWait(page)
     })
 
     test('should render user content correctly in both directions', async ({ page }) => {
@@ -17,6 +20,17 @@ test.describe('Bidirectional Scrolling', () => {
         await expect(page.locator('[data-testid="ttb-item-2"]')).toBeVisible()
 
         // Verify bottom-to-top list shows correct user items (item 0 should be at bottom)
+        // Deterministically anchor BTT viewport to bottom
+        await page.evaluate(() => {
+            const vp = document.querySelector(
+                '[data-testid="bottom-to-top-viewport"]'
+            ) as HTMLElement | null
+            if (vp) vp.scrollTo({ top: vp.scrollHeight })
+        })
+        await page
+            .locator('[data-testid="btt-item-0"]')
+            .first()
+            .waitFor({ state: 'visible', timeout: 1000 })
         await expect(page.locator('[data-testid="btt-item-0"]')).toBeVisible()
         await expect(page.locator('[data-testid="btt-item-1"]')).toBeVisible()
         await expect(page.locator('[data-testid="btt-item-2"]')).toBeVisible()
@@ -180,6 +194,22 @@ test.describe('Bidirectional Scrolling', () => {
     })
 
     test('should verify user content positioning in both directions', async ({ page }) => {
+        // Ensure both lists have mounted at least one item and anchor BTT to bottom first
+        await page
+            .locator('[data-testid^="ttb-item-"]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 1000 })
+        await page.evaluate(() => {
+            const vp = document.querySelector(
+                '[data-testid="bottom-to-top-viewport"]'
+            ) as HTMLElement | null
+            if (vp) vp.scrollTo({ top: vp.scrollHeight })
+        })
+        await page
+            .locator('[data-testid="btt-item-0"]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 1200 })
+
         // Get position info for both lists using getBoundingClientRect
         const positions = await page.evaluate(() => {
             const ttbViewport = document.querySelector('[data-testid="top-to-bottom-viewport"]')

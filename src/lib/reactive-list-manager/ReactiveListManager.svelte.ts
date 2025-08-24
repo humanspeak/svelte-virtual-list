@@ -41,6 +41,12 @@ export class ReactiveListManager {
     private _isReady = $state(false)
     private _dynamicUpdateInProgress = $state(false)
     private _dynamicUpdateDepth = $state(0)
+    // Grid detection (CSS-first)
+    private _itemsWrapperElement: HTMLElement | null = $state(null)
+    private _gridDetected = $state(false)
+    private _gridColumns = $state(1)
+    private _gridObserver: ResizeObserver | null = null
+    private _mutationObserver: MutationObserver | null = null
     // Internal cache of measured heights by index
     private _heightCache: Record<number, number> = {}
     // Recompute scheduling
@@ -189,6 +195,56 @@ export class ReactiveListManager {
     set viewportElement(el: HTMLElement | null) {
         this._viewportElement = el
         this.recomputeIsReady()
+    }
+
+    /**
+     * Items wrapper element reference (reactive, nullable)
+     *
+     * Used for CSS-based grid detection. When set, the manager will auto-detect
+     * whether the items container is a grid and how many columns it defines.
+     */
+    get itemsWrapperElement(): HTMLElement | null {
+        return this._itemsWrapperElement
+    }
+    set itemsWrapperElement(el: HTMLElement | null) {
+        // Detach previous observer if element changed
+        if (this._itemsWrapperElement !== el) {
+            if (this._gridObserver) {
+                try {
+                    this._gridObserver.disconnect()
+                } catch {
+                    // no-op
+                }
+                this._gridObserver = null
+            }
+            if (this._mutationObserver) {
+                try {
+                    this._mutationObserver.disconnect()
+                } catch {
+                    // no-op
+                }
+                this._mutationObserver = null
+            }
+        }
+        this._itemsWrapperElement = el
+        if (!el) {
+            this._gridDetected = false
+            this._gridColumns = 1
+            return
+        }
+        // Attach new observer and detect immediately
+        this.#attachGridObserver()
+        this.#attachMutationObserver()
+        this.#detectGridColumns()
+    }
+
+    /** Whether a CSS grid was detected on the items wrapper */
+    get gridDetected(): boolean {
+        return this._gridDetected
+    }
+    /** Number of columns when a grid is detected; 1 when not a grid */
+    get gridColumns(): number {
+        return this._gridColumns
     }
 
     get isReady(): boolean {
@@ -452,7 +508,7 @@ export class ReactiveListManager {
      * @returns Debug information object
      */
     getDebugInfo(): ListManagerDebugInfo {
-        return {
+        const info: ListManagerDebugInfo = {
             totalMeasuredHeight: this._totalMeasuredHeight,
             measuredCount: this._measuredCount,
             itemLength: this._itemLength,
@@ -460,8 +516,11 @@ export class ReactiveListManager {
                 this._itemLength > 0 ? (this._measuredCount / this._itemLength) * 100 : 0,
             itemHeight: this._itemHeight,
             averageHeight: this.averageHeight,
-            totalHeight: this.totalHeight
+            totalHeight: this.totalHeight,
+            gridDetected: this._gridDetected,
+            gridColumns: this._gridColumns
         }
+        return info
     }
 
     /**
@@ -481,5 +540,135 @@ export class ReactiveListManager {
      */
     hasSufficientMeasurements(threshold: number = 10): boolean {
         return this.getMeasurementCoverage() >= threshold
+    }
+
+    /** Public: Re-run CSS grid detection immediately */
+    recomputeGridDetection(): void {
+        this.#detectGridColumns()
+    }
+
+    // --- Grid detection helpers ---
+    #attachGridObserver(): void {
+        const el = this._itemsWrapperElement
+        if (typeof window === 'undefined' || !el) return
+        // Observe size changes to recompute column count responsively
+        try {
+            this._gridObserver = new ResizeObserver(() => {
+                this.#detectGridColumns()
+            })
+            this._gridObserver.observe(el)
+        } catch {
+            // Ignore observer failures in non-browser environments
+            this._gridObserver = null
+        }
+    }
+
+    #attachMutationObserver(): void {
+        const el = this._itemsWrapperElement
+        if (typeof window === 'undefined' || !el) return
+        try {
+            this._mutationObserver = new MutationObserver((records) => {
+                for (const rec of records) {
+                    if (
+                        rec.type === 'attributes' &&
+                        (rec.attributeName === 'class' || rec.attributeName === 'style')
+                    ) {
+                        this.#detectGridColumns()
+                        break
+                    }
+                }
+            })
+            this._mutationObserver.observe(el, {
+                attributes: true,
+                attributeFilter: ['class', 'style']
+            })
+        } catch {
+            this._mutationObserver = null
+        }
+    }
+
+    #detectGridColumns(): void {
+        const el = this._itemsWrapperElement
+        if (!el) {
+            this._gridDetected = false
+            this._gridColumns = 1
+            return
+        }
+
+        // getComputedStyle based detection
+        let detected = false
+        let columns = 1
+        try {
+            const style = getComputedStyle(el)
+            if (style.display === 'grid') {
+                const template = style.gridTemplateColumns
+                const repeatMatch = /repeat\(\s*(\d+)\s*,/i.exec(template)
+                if (repeatMatch && repeatMatch[1]) {
+                    columns = Math.max(1, parseInt(repeatMatch[1], 10))
+                    detected = true
+                } else if (template && template !== 'none') {
+                    const count = this.#countTracksFromTemplate(template)
+                    if (Number.isFinite(count) && count > 0) {
+                        columns = count
+                        detected = true
+                    }
+                }
+            }
+        } catch {
+            // Ignore and fall back to geometry detection
+        }
+
+        // Fallback: infer from first row geometry if style approach failed
+        if (!detected) {
+            const children = el.children
+            if (children && children.length > 0) {
+                const firstTop = (children[0] as HTMLElement).getBoundingClientRect().top
+                let countSameRow = 0
+                for (let i = 0; i < children.length; i += 1) {
+                    const top = (children[i] as HTMLElement).getBoundingClientRect().top
+                    if (Math.abs(top - firstTop) <= 1) {
+                        countSameRow += 1
+                    } else {
+                        break
+                    }
+                }
+                if (countSameRow > 0) {
+                    columns = countSameRow
+                    detected = countSameRow > 1
+                }
+            }
+        }
+        // Assign reactive state
+        this._gridDetected = detected
+        this._gridColumns = Math.max(1, columns)
+
+        if (this._internalDebug) {
+            console.info('[ReactiveListManager] grid detection:', {
+                detected: this._gridDetected,
+                columns: this._gridColumns
+            })
+        }
+    }
+
+    #countTracksFromTemplate(template: string): number {
+        // Count top-level tokens in grid-template-columns
+        let depth = 0
+        let tokens = 0
+        let inToken = false
+        for (let i = 0; i < template.length; i += 1) {
+            const ch = template[i]
+            if (ch === '(') depth += 1
+            else if (ch === ')') depth = Math.max(0, depth - 1)
+            if (depth === 0 && /\s/.test(ch)) {
+                if (inToken) {
+                    tokens += 1
+                    inToken = false
+                }
+            } else if (ch !== ' ') {
+                inToken = true
+            }
+        }
+        if (inToken) tokens += 1
+        return tokens
     }
 }

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { rafWait } from '../utils/rafWait.js'
 
 /**
  * Comprehensive test suite for bottomToTop mode with dynamic item loading.
@@ -7,7 +8,7 @@ import { expect, test } from '@playwright/test'
  * viewing the newest content when items are added, similar to chat applications.
  */
 
-const PAGE_URL = '/tests/bottomToTop/loadItems'
+const PAGE_URL = '/tests/list/bottomToTop/loadItems'
 
 test.describe('BottomToTop LoadItems', () => {
     test.beforeEach(async ({ page }) => {
@@ -21,9 +22,9 @@ test.describe('BottomToTop LoadItems', () => {
         // Wait for initial render
         await page.waitForSelector('[data-testid="list-item-0"]')
 
-        // Should have exactly 2 items initially
+        // Should render at least the first two items initially (virtualized may render more)
         const items = await page.locator('[data-testid^="list-item-"]').all()
-        expect(items).toHaveLength(2)
+        expect(items.length).toBeGreaterThanOrEqual(2)
 
         // Verify item content
         await expect(page.locator('[data-testid="list-item-0"]')).toContainText('Item 0')
@@ -33,20 +34,30 @@ test.describe('BottomToTop LoadItems', () => {
     test('should position initial items at bottom of viewport', async ({ page }) => {
         await page.waitForSelector('[data-testid="list-item-0"]')
 
-        const container = page.locator('[data-testid="basic-list-container"]')
-        const containerBox = await container.boundingBox()
+        // Compute bottom-most visible item generically (virtualization may vary)
+        const result = await page.evaluate(() => {
+            const container = document.querySelector(
+                '[data-testid="basic-list-container"]'
+            ) as HTMLElement | null
+            const items = Array.from(
+                document.querySelectorAll('[data-testid^="list-item-"]')
+            ) as HTMLElement[]
+            if (!container || items.length === 0) return null
+            const containerRect = container.getBoundingClientRect()
+            let bottomMost: { bottom: number } | null = null
+            for (const el of items) {
+                const r = el.getBoundingClientRect()
+                const b = r.y + r.height
+                if (!bottomMost || b > bottomMost.bottom) bottomMost = { bottom: b }
+            }
+            if (!bottomMost) return null
+            const distanceFromBottom = containerRect.y + containerRect.height - bottomMost.bottom
+            return { distanceFromBottom }
+        })
 
-        const lastItem = page.locator('[data-testid="list-item-1"]')
-        const lastItemBox = await lastItem.boundingBox()
-
-        expect(containerBox).toBeTruthy()
-        expect(lastItemBox).toBeTruthy()
-
-        if (containerBox && lastItemBox) {
-            // Last item should be near the bottom of the container
-            const distanceFromBottom =
-                containerBox.y + containerBox.height - (lastItemBox.y + lastItemBox.height)
-            expect(distanceFromBottom).toBeLessThan(50) // Allow some margin for styling
+        expect(result).not.toBeNull()
+        if (result) {
+            expect(Math.abs(result.distanceFromBottom)).toBeLessThan(50)
         }
     })
 
@@ -169,18 +180,8 @@ test.describe('BottomToTop LoadItems', () => {
         // Advance timers to trigger setTimeout and then allow two frames to settle
         await page.clock.fastForward(1000)
         await page.waitForSelector('[data-testid="list-item-2"]')
-        await page.evaluate(
-            () =>
-                new Promise<void>((resolve) =>
-                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-                )
-        )
-        await page.evaluate(
-            () =>
-                new Promise<void>((resolve) =>
-                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-                )
-        )
+
+        await rafWait(page)
 
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 

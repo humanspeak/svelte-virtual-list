@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+.btn {
+    @apply bg-blue-500 text-white px-2 py-2 rounded-md;
+}
