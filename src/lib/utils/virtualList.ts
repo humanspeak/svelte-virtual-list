@@ -303,7 +303,6 @@ export const calculateAverageHeight = (
                     void element.offsetHeight
                     const height = element.getBoundingClientRect().height
                     const oldHeight = newHeightCache[itemIndex]
-
                     if (Number.isFinite(height) && height > 0) {
                         // Only update if height actually changed (use smaller tolerance for precision)
                         if (!oldHeight || Math.abs(oldHeight - height) >= 0.1) {

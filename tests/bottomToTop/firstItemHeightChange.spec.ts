@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test'
  * content loading, image rendering, or user interactions.
  */
 
-const PAGE_URL = '/tests/bottomToTop/firstItemHeightChange'
+const PAGE_URL = '/tests/list/bottomToTop/firstItemHeightChange'
 
 test.describe('BottomToTop FirstItemHeightChange', () => {
     test.beforeEach(async ({ page }) => {

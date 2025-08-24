@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Basic BottomToTop Rendering', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/bottomToTop/basic', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/bottomToTop/basic', { waitUntil: 'networkidle' })
         // Allow brief settling time for height measurements to complete
         await page.waitForTimeout(150)
     })

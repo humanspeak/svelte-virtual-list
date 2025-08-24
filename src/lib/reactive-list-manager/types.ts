@@ -42,4 +42,8 @@ export interface ListManagerDebugInfo {
     averageHeight: number
     /** Current total height (measured + estimated) */
     totalHeight: number
+    /** Whether CSS grid detected on items wrapper */
+    gridDetected: boolean
+    /** Number of columns when grid detected */
+    gridColumns: number
 }

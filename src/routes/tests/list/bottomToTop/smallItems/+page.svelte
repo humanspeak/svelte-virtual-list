@@ -1,30 +1,33 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
+    import type { Item } from '$lib/test/types/item.js'
 
-    const items: { id: number; text: string; height: number }[] = $state([
+    type LocalItem = Item & { height: number }
+
+    const items: LocalItem[] = $state([
         ...Array.from({ length: 2 }, (_, i) => ({
             id: i,
             text: `Item ${i}`,
             height: 20
         }))
     ])
-    let virtualList: SvelteVirtualList | null = $state(null)
+    let virtualList = $state<SvelteVirtualList<LocalItem> | null>(null)
 
-    setTimeout(() => {
-        items.push(
-            ...Array.from({ length: 9998 }, (_, i) => ({
-                id: i + 2,
-                text: `Item ${i + 2}`,
-                height: 20
-            }))
-        )
+    // setTimeout(() => {
+    //     items.push(
+    //         ...Array.from({ length: 9998 }, (_, i) => ({
+    //             id: i + 2,
+    //             text: `Item ${i + 2}`,
+    //             height: 20
+    //         }))
+    //     )
 
-        // setTimeout(() => {
-        //     virtualList?.scroll({
-        //         index: 0
-        //     })
-        // }, 50)
-    }, 1000)
+    //     // setTimeout(() => {
+    //     //     virtualList?.scroll({
+    //     //         index: 0
+    //     //     })
+    //     // }, 50)
+    // }, 1000)
 </script>
 
 <div class="test-container" style="height: 500px;">

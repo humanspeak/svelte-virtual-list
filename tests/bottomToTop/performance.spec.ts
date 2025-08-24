@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('BottomToTop Performance', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/bottomToTop/performance')
+        await page.goto('/tests/list/bottomToTop/performance')
         // Wait for initial render
         await page.waitForSelector('[data-testid="performance-list-viewport"]')
         // Allow extra time for bottomToTop initialization (more complex positioning)

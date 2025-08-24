@@ -35,8 +35,10 @@
 </script>
 
 <div class="controls">
-    <button data-testid="scroll-top" onclick={smoothScrollToTop}> Scroll to Top (smooth) </button>
-    <button data-testid="scroll-bottom" onclick={smoothScrollToBottom}>
+    <button class="btn" data-testid="scroll-top" onclick={smoothScrollToTop}>
+        Scroll to Top (smooth)
+    </button>
+    <button class="btn" data-testid="scroll-bottom" onclick={smoothScrollToBottom}>
         Scroll to Bottom (smooth)
     </button>
 </div>
@@ -46,6 +48,7 @@
         defaultEstimatedItemHeight={itemHeight}
         {items}
         testId="wrong-item-size-list"
+        mode="bottomToTop"
         bind:this={virtualList}
     >
         {#snippet renderItem(item)}

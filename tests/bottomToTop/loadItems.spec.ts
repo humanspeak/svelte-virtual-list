@@ -7,7 +7,7 @@ import { expect, test } from '@playwright/test'
  * viewing the newest content when items are added, similar to chat applications.
  */
 
-const PAGE_URL = '/tests/bottomToTop/loadItems'
+const PAGE_URL = '/tests/list/bottomToTop/loadItems'
 
 test.describe('BottomToTop LoadItems', () => {
     test.beforeEach(async ({ page }) => {

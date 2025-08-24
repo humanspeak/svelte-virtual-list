@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Bidirectional Scrolling', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/bidirectional', { waitUntil: 'networkidle' })
+        await page.goto('/tests/other/bidirectional', { waitUntil: 'networkidle' })
         // Wait for both lists to render
         await page.waitForSelector('[data-testid="top-to-bottom-viewport"]')
         await page.waitForSelector('[data-testid="bottom-to-top-viewport"]')

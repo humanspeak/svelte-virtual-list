@@ -17,7 +17,7 @@ export interface ContainerResizeConfig {
     debug?: boolean
     /** Callback when container is resized */
     /* trunk-ignore(eslint/no-unused-vars) */
-    onResize?: (entry: ResizeObserverEntry) => void
+    onResize?: (entries: ResizeObserverEntry[]) => void
 }
 
 /**
@@ -47,16 +47,10 @@ export interface ContainerResizeConfig {
 export const createContainerResizeObserver = (
     config: ContainerResizeConfig = {}
 ): ResizeObserver => {
-    const { debug = false, onResize } = config
+    const { onResize } = config
 
     return new ResizeObserver((entries) => {
-        for (const entry of entries) {
-            if (debug) {
-                console.log('Container resized:', entry.contentRect)
-            }
-
-            onResize?.(entry)
-        }
+        onResize?.(entries)
     })
 }
 
