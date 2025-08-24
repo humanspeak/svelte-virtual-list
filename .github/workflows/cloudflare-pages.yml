@@ -37,9 +37,6 @@ jobs:
             - name: Install Root Dependencies
               run: pnpm install --frozen-lockfile
 
-            - name: Build Package
-              run: pnpm run build
-
             - name: Deploy Docs
               working-directory: docs
               env:

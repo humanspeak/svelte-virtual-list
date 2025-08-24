@@ -540,7 +540,7 @@
         const r = last.getBoundingClientRect()
         lastBottomDistance = Math.round(Math.abs(r.bottom - v.bottom))
         if (INTERNAL_DEBUG) {
-            console.log('[SVL] bottomDistance(px):', lastBottomDistance)
+            console.info('[SVL] bottomDistance(px):', lastBottomDistance)
         }
     }
 
