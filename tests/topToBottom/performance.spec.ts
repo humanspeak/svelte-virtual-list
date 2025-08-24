@@ -177,26 +177,36 @@ test.describe('Scrolling Performance', () => {
         page,
         browserName
     }, testInfo) => {
-        const directionChangeTime = await page.evaluate(async () => {
+        const stepDurations = await page.evaluate(async () => {
             const viewport = document.querySelector('[data-testid="performance-list-viewport"]')
-            const start = performance.now()
+            const twoRaf = () =>
+                new Promise<void>((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+                )
+            const durations: number[] = []
 
             // Rapid direction changes (common user behavior - scroll down, then back up)
             for (let i = 0; i < 5; i++) {
                 if (viewport) {
+                    const startDown = performance.now()
                     viewport.scrollTop += 2000 // Down
-                    await new Promise((resolve) => setTimeout(resolve, 10))
+                    await twoRaf()
+                    durations.push(performance.now() - startDown)
+
+                    const startUp = performance.now()
                     viewport.scrollTop -= 1000 // Up
-                    await new Promise((resolve) => setTimeout(resolve, 10))
+                    await twoRaf()
+                    durations.push(performance.now() - startUp)
                 }
             }
 
-            return performance.now() - start
+            return durations
         })
 
         const isMobileProject = /mobile/i.test(testInfo.project.name)
-        const threshold =
-            browserName === 'firefox' || browserName === 'webkit' || isMobileProject ? 260 : 200
-        expect(directionChangeTime).toBeLessThan(threshold) // Slightly higher tolerance for Firefox
+        const perStepThreshold =
+            browserName === 'firefox' || browserName === 'webkit' || isMobileProject ? 70 : 50
+        const maxStep = Math.max(...stepDurations)
+        expect(maxStep).toBeLessThan(perStepThreshold)
     })
 })

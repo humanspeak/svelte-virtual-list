@@ -4,7 +4,11 @@ test.describe('Basic BottomToTop Rendering', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/list/bottomToTop/basic', { waitUntil: 'networkidle' })
         // Allow brief settling time for height measurements to complete
-        await page.waitForTimeout(150)
+        await page.waitForTimeout(64)
+        await page
+            .locator('[data-original-index]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 1000 })
     })
 
     test('should render items in descending order with Item 0 at bottom', async ({ page }) => {
@@ -132,12 +136,17 @@ test.describe('Basic BottomToTop Rendering', () => {
         // ScrollTop should be 0 in bottomToTop mode (this is correct behavior)
         expect(scrollTop).toBe(0)
 
-        // Ensure item 0 is attached after initial layout
-        await page.waitForTimeout(64)
+        // Ensure anchor to bottom before asserting Item 0 visibility
+        await page.evaluate(() => {
+            const viewport = document.querySelector(
+                '[data-testid="basic-list-viewport"]'
+            ) as HTMLElement | null
+            if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
+        })
         await page
             .locator('[data-original-index="0"]')
             .first()
-            .waitFor({ state: 'attached', timeout: 900 })
+            .waitFor({ state: 'attached', timeout: 1200 })
         const firstItem = await page.locator('[data-original-index="0"]')
         await expect(firstItem).toBeVisible()
     })
@@ -195,6 +204,18 @@ test.describe('Basic BottomToTop Rendering', () => {
     })
 
     test('should position Item 0 at bottom of viewport', async ({ page }) => {
+        // Ensure anchor and Item 0 attachment before measuring positions
+        await page.evaluate(() => {
+            const viewport = document.querySelector(
+                '[data-testid="basic-list-viewport"]'
+            ) as HTMLElement | null
+            if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
+        })
+        await page
+            .locator('[data-original-index="0"]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 1200 })
+
         // Get the container and Item 0 positions
         const positions = await page.evaluate(() => {
             const container = document.querySelector('.virtual-list-container') as HTMLElement

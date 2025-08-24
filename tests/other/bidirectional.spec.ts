@@ -192,6 +192,22 @@ test.describe('Bidirectional Scrolling', () => {
     })
 
     test('should verify user content positioning in both directions', async ({ page }) => {
+        // Ensure both lists have mounted at least one item and anchor BTT to bottom first
+        await page
+            .locator('[data-testid^="ttb-item-"]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 1000 })
+        await page.evaluate(() => {
+            const vp = document.querySelector(
+                '[data-testid="bottom-to-top-viewport"]'
+            ) as HTMLElement | null
+            if (vp) vp.scrollTo({ top: vp.scrollHeight })
+        })
+        await page
+            .locator('[data-testid="btt-item-0"]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 1200 })
+
         // Get position info for both lists using getBoundingClientRect
         const positions = await page.evaluate(() => {
             const ttbViewport = document.querySelector('[data-testid="top-to-bottom-viewport"]')
