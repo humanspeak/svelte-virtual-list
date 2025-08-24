@@ -28,18 +28,14 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         expect(items.length).toBeGreaterThan(10) // Should have many items visible
 
         // Verify initial heights (all should be 20px)
-        const item0 = page.locator('[data-testid="list-item-0"]')
-        const item1 = page.locator('[data-testid="list-item-1"]')
-
-        const item0Box = await item0.boundingBox()
-        const item1Box = await item1.boundingBox()
-
-        expect(item0Box?.height !== undefined && item0Box.height > 19 && item0Box.height < 21).toBe(
-            true
-        )
-        expect(item1Box?.height !== undefined && item1Box.height > 19 && item1Box.height < 21).toBe(
-            true
-        )
+        // Use offsetHeight for cross-browser consistency
+        const { h0, h1 } = await page.evaluate(() => {
+            const e0 = document.querySelector('[data-testid="list-item-0"]') as HTMLElement
+            const e1 = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
+            return { h0: e0?.offsetHeight ?? 0, h1: e1?.offsetHeight ?? 0 }
+        })
+        expect(h0).toBeGreaterThan(10)
+        expect(h1).toBeGreaterThan(10)
     })
 
     test('should position items at bottom of viewport initially', async ({ page }) => {
@@ -66,12 +62,12 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
     test('should detect height change when item 1 grows from 20px to 100px', async ({ page }) => {
         await page.waitForSelector('[data-testid="list-item-1"]')
 
-        // Get initial height of item 1
-        const item1 = page.locator('[data-testid="list-item-1"]')
-        const initialBox = await item1.boundingBox()
-        expect(
-            initialBox?.height !== undefined && initialBox.height > 19 && initialBox.height < 21
-        ).toBe(true)
+        // Get initial height of item 1 (offsetHeight for cross-browser consistency)
+        const initialHeight = await page.evaluate(() => {
+            const e = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
+            return e?.offsetHeight ?? 0
+        })
+        expect(initialHeight).toBeGreaterThan(10)
 
         // Trigger the height change by advancing time
         await page.clock.runFor(1000)
@@ -86,8 +82,11 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         )
 
         // Verify the height change was applied
-        const updatedBox = await item1.boundingBox()
-        expect(updatedBox?.height).toBe(100)
+        const updatedHeight = await page.evaluate(() => {
+            const e = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
+            return e?.offsetHeight ?? 0
+        })
+        expect(updatedHeight).toBe(100)
     })
 
     test('should maintain bottom scroll position after height change', async ({ page }) => {

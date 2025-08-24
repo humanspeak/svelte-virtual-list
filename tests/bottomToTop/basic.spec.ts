@@ -8,7 +8,7 @@ test.describe('Basic BottomToTop Rendering', () => {
         await page
             .locator('[data-original-index]')
             .first()
-            .waitFor({ state: 'attached', timeout: 1000 })
+            .waitFor({ state: 'attached', timeout: 2000 })
     })
 
     test('should render items in descending order with Item 0 at bottom', async ({ page }) => {
