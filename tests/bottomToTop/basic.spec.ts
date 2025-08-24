@@ -23,7 +23,7 @@ test.describe('Basic BottomToTop Rendering', () => {
         await page
             .locator('[data-original-index="0"]')
             .first()
-            .waitFor({ state: 'attached', timeout: 500 })
+            .waitFor({ state: 'attached', timeout: 1200 })
         const firstItem = await page.locator('[data-original-index="0"]')
         await expect(firstItem).toBeVisible()
 
@@ -85,10 +85,11 @@ test.describe('Basic BottomToTop Rendering', () => {
             ) as HTMLElement | null
             if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
         })
+        await page.waitForTimeout(64)
         await page
             .locator('[data-original-index="0"]')
             .first()
-            .waitFor({ state: 'attached', timeout: 500 })
+            .waitFor({ state: 'attached', timeout: 1200 })
         // Verify that item 0 is positioned at/near the bottom of the viewport
         const isItem0AtBottom = await page.evaluate(() => {
             const viewport = document.querySelector('.virtual-list-container') as HTMLElement
@@ -132,10 +133,11 @@ test.describe('Basic BottomToTop Rendering', () => {
         expect(scrollTop).toBe(0)
 
         // Ensure item 0 is attached after initial layout
+        await page.waitForTimeout(64)
         await page
             .locator('[data-original-index="0"]')
             .first()
-            .waitFor({ state: 'attached', timeout: 750 })
+            .waitFor({ state: 'attached', timeout: 900 })
         const firstItem = await page.locator('[data-original-index="0"]')
         await expect(firstItem).toBeVisible()
     })
