@@ -478,7 +478,7 @@
                 })
                 heightManager.endDynamicUpdate()
             },
-            100, // debounceTime
+            lastMeasuredIndex < 0 ? 0 : 100, // debounceTime (no debounce on first pass)
             dirtyItems, // Pass dirty items for processing
             0, // Don't pass ReactiveListManager state - let each system manage its own totals
             0, // Don't pass ReactiveListManager state - let each system manage its own totals
@@ -912,6 +912,10 @@
         if (BROWSER) {
             // Initial setup of heights and scroll position
             updateHeightAndScroll()
+            // Ensure one initial measurement pass even if no ResizeObserver fires
+            tick().then(() =>
+                requestAnimationFrame(() => requestAnimationFrame(() => updateHeight()))
+            )
 
             // Watch for container size changes
             resizeObserver = new ResizeObserver(() => {

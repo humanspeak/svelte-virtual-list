@@ -341,7 +341,13 @@ export const calculateAverageHeight = (
     } else {
         // Original behavior: process all visible items
         validElements.forEach((el, i) => {
-            const itemIndex = visibleRange.start + i
+            const itemIndex =
+                mode === 'bottomToTop'
+                    ? Math.max(
+                          0,
+                          (visibleRange.end ?? visibleRange.start + validElements.length) - 1 - i
+                      )
+                    : visibleRange.start + i
             if (!newHeightCache[itemIndex]) {
                 try {
                     const height = el.getBoundingClientRect().height
