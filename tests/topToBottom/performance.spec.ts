@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { rafWait } from '../utils/rafWait.js'
+import { injectRafWait } from '../utils/rafWait.js'
 
 test.describe('Scrolling Performance', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/list/topToBottom/performance')
+        await injectRafWait(page)
         // Wait for initial render
         await page.waitForSelector('[data-testid="performance-list-viewport"]')
     })
@@ -185,12 +186,14 @@ test.describe('Scrolling Performance', () => {
                 if (viewport) {
                     const startDown = performance.now()
                     viewport.scrollTop += 2000 // Down
-                    await rafWait(page)
+                    // @ts-expect-error injected helper
+                    await window.__rafWait?.()
                     durations.push(performance.now() - startDown)
 
                     const startUp = performance.now()
                     viewport.scrollTop -= 1000 // Up
-                    await rafWait(page)
+                    // @ts-expect-error injected helper
+                    await window.__rafWait?.()
                     durations.push(performance.now() - startUp)
                 }
             }

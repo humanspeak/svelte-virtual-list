@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { rafWait } from '../utils/rafWait.js'
+import { injectRafWait } from '../utils/rafWait.js'
 
 test.describe('BottomToTop Performance', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/list/bottomToTop/performance')
+        await injectRafWait(page)
         // Wait for initial render
         await page.waitForSelector('[data-testid="performance-list-viewport"]')
         // Allow extra time for bottomToTop initialization (more complex positioning)
@@ -212,12 +213,14 @@ test.describe('BottomToTop Performance', () => {
                 if (viewport) {
                     const startUp = performance.now()
                     viewport.scrollTop -= 2000
-                    await rafWait(page)
+                    // @ts-expect-error injected helper
+                    await window.__rafWait?.()
                     steps.push(performance.now() - startUp)
 
                     const startDown = performance.now()
                     viewport.scrollTop += 1000
-                    await rafWait(page)
+                    // @ts-expect-error injected helper
+                    await window.__rafWait?.()
                     steps.push(performance.now() - startDown)
                 }
             }
