@@ -5,7 +5,7 @@ test.describe('Basic BottomToTop Rendering', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/list/bottomToTop/basic', { waitUntil: 'networkidle' })
         // Allow brief settling time for height measurements to complete
-        await rafWait()
+        await rafWait(page)
         await page
             .locator('[data-original-index]')
             .first()
@@ -90,7 +90,7 @@ test.describe('Basic BottomToTop Rendering', () => {
             ) as HTMLElement | null
             if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
         })
-        await rafWait()
+        await rafWait(page)
         await page
             .locator('[data-original-index="0"]')
             .first()

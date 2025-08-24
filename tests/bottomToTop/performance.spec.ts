@@ -212,12 +212,12 @@ test.describe('BottomToTop Performance', () => {
                 if (viewport) {
                     const startUp = performance.now()
                     viewport.scrollTop -= 2000
-                    await rafWait()
+                    await rafWait(page)
                     steps.push(performance.now() - startUp)
 
                     const startDown = performance.now()
                     viewport.scrollTop += 1000
-                    await rafWait()
+                    await rafWait(page)
                     steps.push(performance.now() - startDown)
                 }
             }

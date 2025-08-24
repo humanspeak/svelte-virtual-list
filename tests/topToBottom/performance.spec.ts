@@ -185,12 +185,12 @@ test.describe('Scrolling Performance', () => {
                 if (viewport) {
                     const startDown = performance.now()
                     viewport.scrollTop += 2000 // Down
-                    await rafWait()
+                    await rafWait(page)
                     durations.push(performance.now() - startDown)
 
                     const startUp = performance.now()
                     viewport.scrollTop -= 1000 // Up
-                    await rafWait()
+                    await rafWait(page)
                     durations.push(performance.now() - startUp)
                 }
             }

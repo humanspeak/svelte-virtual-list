@@ -181,7 +181,7 @@ test.describe('BottomToTop LoadItems', () => {
         await page.clock.fastForward(1000)
         await page.waitForSelector('[data-testid="list-item-2"]')
 
-        await rafWait()
+        await rafWait(page)
 
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
