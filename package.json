@@ -106,7 +106,7 @@
         "prettier-plugin-svelte": "^3.4.0",
         "prettier-plugin-tailwindcss": "^0.6.14",
         "publint": "^0.3.12",
-        "svelte": "^5.38.2",
+        "svelte": "^5.38.3",
         "svelte-check": "^4.3.1",
         "tailwindcss": "^4.1.12",
         "tw-animate-css": "^1.3.7",
