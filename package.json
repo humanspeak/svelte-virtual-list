@@ -1,6 +1,6 @@
 {
     "name": "@humanspeak/svelte-virtual-list",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "description": "A lightweight, high-performance virtual list component for Svelte 5 that renders large datasets with minimal memory usage. Features include dynamic height support, smooth scrolling, TypeScript support, and efficient DOM recycling. Ideal for infinite scrolling lists, data tables, chat interfaces, and any application requiring the rendering of thousands of items without compromising performance. Zero dependencies and fully customizable.",
     "keywords": [
         "svelte",
