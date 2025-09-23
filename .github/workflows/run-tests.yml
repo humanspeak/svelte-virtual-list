@@ -69,7 +69,9 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Run unit tests
-              run: pnpm test
+              run: |
+                  pnpm build
+                  pnpm test
 
             - name: Upload unit test results
               if: always()
@@ -89,7 +91,11 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                shard: [1/2, 2/2]
+                include:
+                    - shard: 1/2
+                      shard_name: 1-2
+                    - shard: 2/2
+                      shard_name: 2-2
         steps:
             - name: Checkout
               uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
@@ -126,13 +132,13 @@ jobs:
             - name: Run e2e tests (sharded)
               env:
                   CI: true
-              run: pnpm exec playwright test tests --config=playwright.config.ts --shard=${{ matrix.shard }} --reporter=line
+              run: pnpm exec playwright test --config=playwright.config.ts --shard=${{ matrix.shard }} --reporter=line
 
             - name: Upload Playwright artifacts
               if: always()
               uses: actions/upload-artifact@v4 # zizmor: ignore[unpinned-uses]
               with:
-                  name: playwright-artifacts-${{ matrix.shard }}
+                  name: playwright-artifacts-${{ matrix.shard_name }}
                   path: |
                       playwright-report/**
                       test-results/**

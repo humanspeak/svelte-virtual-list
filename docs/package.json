@@ -12,9 +12,10 @@
         "format": "prettier --write .",
         "generate-social": "tsx scripts/generate-social-images.ts",
         "lint": "prettier --check . && eslint .",
-        "lint:fix": "npm run format && eslint . --fix",
+        "lint:fix": "pnpm run format && eslint . --fix",
         "preview": "vite preview",
-        "test": "npm run test:unit -- --run && npm run test:e2e",
+        "sitemap:manifest": "node ./scripts/generate-sitemap-manifest.mjs",
+        "test": "pnpm run test:unit -- --run && pnpm run test:e2e",
         "test:e2e": "playwright test",
         "test:unit": "vitest"
     },

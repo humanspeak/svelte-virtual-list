@@ -3,9 +3,9 @@ import { expect, test } from '@playwright/test'
 test.describe('External docs site smoke', () => {
     test('loads homepage and shows demo sections', async ({ page }) => {
         try {
-            await page.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded' })
+            await page.goto('http://localhost:5177/', { waitUntil: 'domcontentloaded' })
         } catch {
-            test.skip(true, 'Docs dev server not running on http://localhost:5173/')
+            test.skip(true, 'Docs dev server not running on http://localhost:5177/')
         }
 
         await expect(page.getByText('Top to bottom').first()).toBeVisible()
@@ -16,34 +16,8 @@ test.describe('External docs site smoke', () => {
 
         // Verify both lists have the element with data-original-index="0" in view,
         // left aligned to the top edge and right aligned to the bottom edge of its container.
-        // Tag the two scroll containers that host the lists so we can target them reliably
-        await page.evaluate(() => {
-            function findScrollParent(element: HTMLElement): HTMLElement {
-                let parent = element.parentElement as HTMLElement | null
-                while (parent) {
-                    const style = getComputedStyle(parent)
-                    const overflowY = style.overflowY
-                    const canScrollY =
-                        (overflowY === 'auto' || overflowY === 'scroll') &&
-                        parent.scrollHeight > parent.clientHeight
-                    if (canScrollY) return parent
-                    parent = parent.parentElement
-                }
-                return document.scrollingElement as HTMLElement
-            }
-
-            const anyItems = Array.from(
-                document.querySelectorAll('[data-original-index]')
-            ) as HTMLElement[]
-            const containers = Array.from(new Set(anyItems.map((el) => findScrollParent(el)))).sort(
-                (a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left
-            )
-            if (containers[0]) containers[0].setAttribute('data-test-container', 'left')
-            if (containers[1]) containers[1].setAttribute('data-test-container', 'right')
-        })
-
-        const leftContainer = page.locator('[data-test-container="left"]')
-        const rightContainer = page.locator('[data-test-container="right"]')
+        const leftContainer = page.locator('[data-testid="top-to-bottom-viewport"]')
+        const rightContainer = page.locator('[data-testid="bottom-to-top-viewport"]')
 
         // Ensure they exist
         await expect(leftContainer).toHaveCount(1)

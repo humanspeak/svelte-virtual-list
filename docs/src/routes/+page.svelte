@@ -39,6 +39,7 @@
                                 {items}
                                 debug
                                 debugFunction={topToBottomDebug}
+                                testId="top-to-bottom"
                             >
                                 {#snippet renderItem(item: Item, _index: number)}
                                     <div>
@@ -64,6 +65,7 @@
                                 mode="bottomToTop"
                                 debug
                                 debugFunction={bottomToTopDebug}
+                                testId="bottom-to-top"
                             >
                                 {#snippet renderItem(item: Item, _index: number)}
                                     <div>
