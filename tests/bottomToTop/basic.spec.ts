@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { rafWait } from '../utils/rafWait.js'
+import { rafWait } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Basic BottomToTop Rendering', () => {
     test.beforeEach(async ({ page }) => {

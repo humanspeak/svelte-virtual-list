@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { injectRafWait } from '../utils/rafWait.js'
+import { injectRafWait } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('BottomToTop Performance', () => {
     test.beforeEach(async ({ page }) => {
