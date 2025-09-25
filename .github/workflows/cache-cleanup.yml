@@ -1,12 +1,12 @@
 name: Cache Cleanup
 
 permissions:
-    actions: write
+    actions: read
 
 on:
     schedule:
         - cron: 0 0 1 * * # Monthly cleanup
-    workflow_dispatch: # Manual trigger
+    workflow_dispatch: # Allows manual triggering for testing
 
 jobs:
     cleanup:

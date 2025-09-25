@@ -15,6 +15,12 @@ export default defineConfig({
         sveltekit()
     ],
 
+    server: {
+        watch: {
+            ignored: ['**/coverage/**']
+        }
+    },
+
     test: {
         include: ['src/**/*.{test,spec}.{js,ts}']
     }

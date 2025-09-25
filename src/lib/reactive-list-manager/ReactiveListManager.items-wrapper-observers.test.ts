@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import ResizeObserverMock from '../../../tests/utils/resizeObserverMock.js'
+import ResizeObserverMock from '../test/utils/resizeObserverMock.js'
 import { ReactiveListManager } from './index.js'
 
 class MutationObserverMock {

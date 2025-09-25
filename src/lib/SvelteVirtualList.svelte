@@ -162,6 +162,7 @@
     import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
     import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
+    import { env } from '$env/dynamic/public'
     import {
         calculateScrollPosition,
         calculateTransformY,
@@ -177,9 +178,8 @@
 
     const rafSchedule = createRafScheduler()
     // Package-specific debug flag - safe for library distribution
-    // Enable with: NODE_ENV=development SVELTE_VIRTUAL_LIST_DEBUG=true
-    const INTERNAL_DEBUG =
-        import.meta.env.DEV && import.meta.env.VITE_SVELTE_VIRTUAL_LIST_DEBUG === 'true'
+    // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true
+    const INTERNAL_DEBUG = Boolean(env?.PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG === 'true')
     /**
      * Core configuration props with default values
      * @type {SvelteVirtualListProps<TItem>}

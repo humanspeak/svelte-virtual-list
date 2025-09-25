@@ -37,8 +37,12 @@ jobs:
             - name: Install Root Dependencies
               run: pnpm install --frozen-lockfile
 
-            - name: Build Package Virtual List
+            - name: Build Package
               run: pnpm run build
+
+            - name: Generate sitemap manifest
+              working-directory: docs
+              run: pnpm run sitemap:manifest
 
             - name: Deploy Docs
               working-directory: docs
@@ -50,7 +54,6 @@ jobs:
                   # WRANGLER_LOG_LEVEL: debug
               run: |
                   set -euxo pipefail
-                  pnpm install --frozen-lockfile
                   # Ensure log dir exists (wrangler writes here by default)
                   mkdir -p "${HOME}/.config/.wrangler/logs"
                   # Run deploy and capture exit code while letting us continue to upload logs

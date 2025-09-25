@@ -39,3 +39,4 @@ junit-playwright.xml
 
 # Development Notes
 .notes/
+docs/src/lib/sitemap-manifest.json

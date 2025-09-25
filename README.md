@@ -79,7 +79,14 @@ You can now programmatically scroll to any item in the list using the `scroll` m
 ## Installation
 
 ```bash
+# Using npm
 npm install @humanspeak/svelte-virtual-list
+
+# Using pnpm (recommended)
+pnpm add @humanspeak/svelte-virtual-list
+
+# Using yarn
+yarn add @humanspeak/svelte-virtual-list
 ```
 
 ## Basic Usage
@@ -170,10 +177,50 @@ Use `mode="bottomToTop"` for chat-like lists anchored to the bottom. Programmati
 
 ## Testing
 
-- Unit tests (Vitest): `npm test`
-- E2E tests (Playwright):
-    - One-time: `npx playwright install`
-    - Run: `npm run test:e2e`
+### Unit Tests (Vitest)
+
+```bash
+# Run unit tests with coverage
+pnpm test
+
+# Run specific test files
+pnpm vitest src/lib/utils/throttle.test.ts
+```
+
+### E2E Tests (Playwright)
+
+```bash
+# Install Playwright browsers (one-time setup)
+npx playwright install
+
+# Run all e2e tests
+pnpm run test:e2e
+
+# Run specific e2e test
+npx playwright test tests/docs-visit.spec.ts --project=chromium
+
+# Debug mode
+npx playwright test --debug
+```
+
+### Development Commands
+
+```bash
+# Start development server
+pnpm dev
+
+# Start both package and docs
+pnpm run dev:all
+
+# Check TypeScript/Svelte
+pnpm run check
+
+# Build package
+pnpm run build
+
+# Format and lint code
+pnpm run lint:fix
+```
 
 ## Performance Considerations
 
@@ -182,6 +229,29 @@ Use `mode="bottomToTop"` for chat-like lists anchored to the bottom. Programmati
 - Dynamic height calculations happen automatically
 - Resize observers handle container/content changes
 - Virtual DOM updates are batched for efficiency
+
+## Project Structure
+
+This is a **PNPM workspace** with two packages:
+
+1. **`./`** - Main Svelte Virtual List component package
+2. **`./docs`** - Documentation site with live demos and examples
+
+### Development Workflow
+
+```bash
+# Install dependencies for both packages
+pnpm install
+
+# Run development servers simultaneously
+pnpm run dev:all
+
+# Build both packages
+pnpm run build
+
+# Run tests across the workspace
+pnpm test:all
+```
 
 ## License
 
