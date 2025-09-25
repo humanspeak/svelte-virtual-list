@@ -162,7 +162,6 @@
     import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
     import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
-    import { env } from '$env/dynamic/public'
     import {
         calculateScrollPosition,
         calculateTransformY,
@@ -178,8 +177,13 @@
 
     const rafSchedule = createRafScheduler()
     // Package-specific debug flag - safe for library distribution
-    // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true
-    const INTERNAL_DEBUG = Boolean(env?.PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG === 'true')
+    // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
+    // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
+    const INTERNAL_DEBUG = Boolean(
+        typeof process !== 'undefined' &&
+            (process?.env?.PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG === 'true' ||
+                process?.env?.SVELTE_VIRTUAL_LIST_DEBUG === 'true')
+    )
     /**
      * Core configuration props with default values
      * @type {SvelteVirtualListProps<TItem>}
@@ -533,7 +537,7 @@
     function updateDebugTailDistance() {
         if (!heightManager.viewportElement) return
         const last = heightManager.viewport.querySelector(
-            '[data-original-index="999"]'
+            `[data-original-index="${items.length - 1}"]`
         ) as HTMLElement | null
         if (!last) return
         const v = heightManager.viewport.getBoundingClientRect()
