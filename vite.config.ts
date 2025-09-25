@@ -4,6 +4,11 @@ import { svelteTesting } from '@testing-library/svelte/vite'
 import { configDefaults, defineConfig } from 'vitest/config'
 export default defineConfig({
     plugins: [tailwindcss(), sveltekit(), svelteTesting()],
+    server: {
+        watch: {
+            ignored: ['**/coverage/**']
+        }
+    },
     resolve: process.env.VITEST
         ? {
               conditions: ['browser']
