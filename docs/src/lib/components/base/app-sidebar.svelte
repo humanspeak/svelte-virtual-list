@@ -58,6 +58,11 @@
                                         </a>
                                     </Sidebar.MenuButton>
                                     <Sidebar.MenuButton>
+                                        <a href="https://motion.svelte.page">
+                                            <span>/motion</span>
+                                        </a>
+                                    </Sidebar.MenuButton>
+                                    <Sidebar.MenuButton>
                                         <a href="https://table.svelte.page">
                                             <span>/table</span>
                                         </a>
