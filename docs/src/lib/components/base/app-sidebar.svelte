@@ -88,7 +88,7 @@
                         <Collapsible.Trigger>
                             {#snippet child({ props }: { props: Record<string, unknown> })}
                                 <Sidebar.MenuButton {...props}>
-                                    Love & Respect{' '}
+                                    Love & Respect
                                     <span in:fade={{ duration: 500 }} class="ml-auto">
                                         {#if props['data-state'] === 'open'}
                                             <i class="fa-solid fa-plus fa-fw"></i>

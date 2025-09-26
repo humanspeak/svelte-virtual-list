@@ -25,6 +25,7 @@
         }
     },
     "dependencies": {
+        "@humanspeak/svelte-motion": "^0.1.5",
         "@sentry/cloudflare": "^10.15.0",
         "@sentry/sveltekit": "^10.15.0"
     },
