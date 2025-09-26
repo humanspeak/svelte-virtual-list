@@ -31,7 +31,7 @@
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20250924.0",
         "@eslint/compat": "^1.4.0",
-        "@humanspeak/svelte-virtual-list": "file:..",
+        "@humanspeak/svelte-virtual-list": "workspace:*",
         "@internationalized/date": "^3.9.0",
         "@lucide/svelte": "^0.544.0",
         "@playwright/test": "^1.55.1",
