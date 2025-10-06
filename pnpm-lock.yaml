@@ -133,8 +133,8 @@ importers:
   docs:
     dependencies:
       '@humanspeak/svelte-motion':
-        specifier: ^0.1.5
-        version: 0.1.5(svelte@5.39.6)
+        specifier: ^0.1.10
+        version: 0.1.10(svelte@5.39.6)
       '@sentry/cloudflare':
         specifier: ^10.15.0
         version: 10.15.0(@cloudflare/workers-types@4.20250926.0)
@@ -896,8 +896,8 @@ packages:
     resolution: {integrity: sha512-/zUx+yOsIrG4Y43Eh2peDeKCxlRt/gET6aHfaKpuq267qXdYDFViVHfMaLyygZOnl0kGWxFIgsBy8QFuTLUXEQ==}
     engines: {node: '>=18.18.0'}
 
-  '@humanspeak/svelte-motion@0.1.5':
-    resolution: {integrity: sha512-3897jbwyqMNqFJEFxlJzVAFE8aas/S/aoVzF/Aq7/Gp/lOFBf64CE6+uk/6OgCcdAsBkKZCFHrbTHonSSNmFfQ==}
+  '@humanspeak/svelte-motion@0.1.10':
+    resolution: {integrity: sha512-IcC6Wd+/yem52lAONGzTjU967Qx6DigZ1CID2kbO2iTfTxNy8j9w7QJRwaxYT94JtesnzqVaS5Pbt1nQokkI4w==}
     peerDependencies:
       svelte: ^5.0.0
 
@@ -5219,7 +5219,7 @@ snapshots:
       '@humanfs/core': 0.19.1
       '@humanwhocodes/retry': 0.4.3
 
-  '@humanspeak/svelte-motion@0.1.5(svelte@5.39.6)':
+  '@humanspeak/svelte-motion@0.1.10(svelte@5.39.6)':
     dependencies:
       motion: 12.23.22
       svelte: 5.39.6
