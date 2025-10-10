@@ -106,8 +106,9 @@
                                                         {...props}
                                                     >
                                                         <span>
-                                                            {component.slug ||
-                                                                getSlugFromUrl(component.url)}
+                                                            {component.slug
+                                                                ? `/${component.slug}`
+                                                                : getSlugFromUrl(component.url)}
                                                         </span>
                                                     </a>
                                                 {/snippet}
