@@ -68,6 +68,7 @@
         "test:all": "pnpm run test && pnpm run test:e2e",
         "test:e2e": "playwright test",
         "test:e2e:debug": "playwright test --debug",
+        "test:e2e:ff": "playwright test --project=firefox",
         "test:e2e:report": "playwright show-report",
         "test:e2e:ui": "playwright test --ui",
         "test:only": "vitest run --",

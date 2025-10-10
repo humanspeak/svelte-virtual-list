@@ -1,5 +1,11 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// Support passing --project via package runner that injects a standalone "--"
+// Example: pnpm run test:e2e -- --project=firefox
+const argProjects = process.argv
+    .filter((arg) => arg.startsWith('--project='))
+    .flatMap((arg) => arg.slice('--project='.length).split(','))
+
 export default defineConfig({
     testDir: './tests',
     // Produce artifacts that are easy to collect in CI
@@ -45,5 +51,5 @@ export default defineConfig({
             name: 'mobile-safari',
             use: { ...devices['iPhone 12'] }
         }
-    ]
+    ].filter((p) => (argProjects.length ? argProjects.includes(p.name) : true))
 })
