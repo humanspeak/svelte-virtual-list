@@ -26,13 +26,14 @@
         }
     },
     "dependencies": {
+        "@humanspeak/svelte-motion": "^0.1.12",
+        "@humanspeak/svelte-virtual-list": "workspace:*",
         "@sentry/cloudflare": "^10.19.0",
         "@sentry/sveltekit": "^10.19.0"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20251008.0",
         "@eslint/compat": "^1.4.0",
-        "@humanspeak/svelte-virtual-list": "file:..",
         "@internationalized/date": "^3.10.0",
         "@lucide/svelte": "^0.545.0",
         "@playwright/test": "^1.56.0",
