@@ -353,15 +353,25 @@
                     '[data-original-index="0"]'
                 )
                 if (item0Element) {
-                    // Native browser API handles all positioning edge cases perfectly
-                    item0Element.scrollIntoView({
-                        block: 'end', // Align Item 0 to bottom edge of viewport
-                        behavior: 'smooth', // Smooth animation for better UX
-                        inline: 'nearest' // Minimal horizontal adjustment
-                    })
-
+                    // Verify alignment via rects; if off, perform one-time scrollIntoView
+                    const contRect = heightManager.viewport.getBoundingClientRect()
+                    const itemRect = (item0Element as HTMLElement).getBoundingClientRect()
+                    const tol = 4
+                    const aligned =
+                        Math.abs(contRect.y + contRect.height - (itemRect.y + itemRect.height)) <=
+                        tol
+                    if (!aligned) {
+                        // Native browser API handles all positioning edge cases perfectly
+                        item0Element.scrollIntoView({
+                            block: 'end', // Align Item 0 to bottom edge of viewport
+                            behavior: 'smooth', // Smooth animation for better UX
+                            inline: 'nearest' // Minimal horizontal adjustment
+                        })
+                    }
                     // Sync our internal scroll state with actual DOM position
                     heightManager.scrollTop = heightManager.viewport.scrollTop
+                    // After peer correction, delay further corrections briefly
+                    suppressBottomAnchoringUntilMs = performance.now() + 200
                 }
             })
 
@@ -770,7 +780,8 @@
                 if (mode === 'bottomToTop') {
                     const delta = lastScrollTopSnapshot - current
                     if (delta > 0.5) {
-                        suppressBottomAnchoringUntilMs = performance.now() + 300
+                        // Widen suppression to avoid fighting peer instance corrections
+                        suppressBottomAnchoringUntilMs = performance.now() + 450
                         userHasScrolledAway = true
                     }
                 }
@@ -809,39 +820,32 @@
      */
     const updateHeightAndScroll = (immediate = false) => {
         if (!heightManager.initialized && mode === 'bottomToTop') {
+            // Deterministic init order: double RAF + microtask, then apply bottom anchoring
             tick().then(() => {
-                if (heightManager.isReady) {
-                    const initialHeight = heightManager.container.getBoundingClientRect().height
-                    height = initialHeight
-
-                    tick().then(() => {
-                        if (heightManager.isReady) {
-                            const finalHeight =
-                                heightManager.container.getBoundingClientRect().height
-                            height = finalHeight
-
-                            const targetScrollTop = calculateScrollPosition(
-                                items.length,
-                                heightManager.averageHeight,
-                                finalHeight
-                            )
-
-                            void heightManager.container.offsetHeight
-
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (!heightManager.isReady) return
+                        const measuredHeight =
+                            heightManager.container.getBoundingClientRect().height
+                        height = measuredHeight
+                        const targetScrollTop = calculateScrollPosition(
+                            items.length,
+                            heightManager.averageHeight,
+                            measuredHeight
+                        )
+                        // Instance jitter to avoid same-frame collisions when two lists init together
+                        const jitterMs = heightManager.container?.dataset?.svlInstanceId
+                            ? heightManager.container!.dataset!.svlInstanceId!.charCodeAt(0) % 3
+                            : 0
+                        setTimeout(() => {
                             heightManager.viewport.scrollTop = targetScrollTop
                             heightManager.scrollTop = targetScrollTop
-
                             requestAnimationFrame(() => {
-                                const currentScroll = heightManager.viewport.scrollTop
-                                if (currentScroll !== heightManager.scrollTop) {
-                                    heightManager.viewport.scrollTop = targetScrollTop
-                                    heightManager.scrollTop = targetScrollTop
-                                }
                                 heightManager.initialized = true
                             })
-                        }
+                        }, jitterMs)
                     })
-                }
+                })
             })
             return
         }
@@ -869,7 +873,8 @@
     if (BROWSER) {
         // Watch for individual item size changes
         itemResizeObserver = new ResizeObserver((entries) => {
-            tick().then(() => {
+            // Batch via RAF to avoid thrash across instances
+            rafSchedule(() => {
                 let shouldRecalculate = false
                 void visibleItems() // Cache once to avoid reactive loops
 
@@ -903,9 +908,7 @@
                 }
 
                 if (shouldRecalculate) {
-                    rafSchedule(() => {
-                        updateHeight()
-                    })
+                    updateHeight()
                 }
             })
         })

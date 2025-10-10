@@ -4,6 +4,7 @@ export class RecomputeScheduler {
     private isPending: boolean = false
     private blockDepth: number = 0
     private timeoutId: ReturnType<typeof setTimeout> | null = null
+    private rafId: number | null = null
 
     constructor(onRecompute: () => void) {
         this.onRecompute = onRecompute
@@ -16,15 +17,28 @@ export class RecomputeScheduler {
         }
         if (this.isScheduled) return
         this.isScheduled = true
-        if (this.timeoutId) {
-            clearTimeout(this.timeoutId)
-            this.timeoutId = null
+        // In jsdom or non-browser, fall back to immediate execution for determinism
+        const isBrowser =
+            typeof window !== 'undefined' && typeof requestAnimationFrame === 'function'
+        if (!isBrowser) {
+            if (this.timeoutId) {
+                clearTimeout(this.timeoutId)
+                this.timeoutId = null
+            }
+            this.timeoutId = setTimeout(() => {
+                this.timeoutId = null
+                this.isScheduled = false
+                this.onRecompute()
+            }, 0)
+            return
         }
-        this.timeoutId = setTimeout(() => {
-            this.timeoutId = null
+        // Browser path: coalesce with RAF for visual stability across instances
+        if (this.rafId !== null) cancelAnimationFrame(this.rafId)
+        this.rafId = requestAnimationFrame(() => {
+            this.rafId = null
             this.isScheduled = false
             this.onRecompute()
-        }, 0)
+        })
     }
 
     block = (): void => {
@@ -32,6 +46,12 @@ export class RecomputeScheduler {
         if (this.timeoutId) {
             clearTimeout(this.timeoutId)
             this.timeoutId = null
+            this.isScheduled = false
+            this.isPending = true
+        }
+        if (this.rafId !== null) {
+            cancelAnimationFrame(this.rafId)
+            this.rafId = null
             this.isScheduled = false
             this.isPending = true
         }
@@ -50,6 +70,10 @@ export class RecomputeScheduler {
         if (this.timeoutId) {
             clearTimeout(this.timeoutId)
             this.timeoutId = null
+        }
+        if (this.rafId !== null) {
+            cancelAnimationFrame(this.rafId)
+            this.rafId = null
         }
         this.isScheduled = false
         this.isPending = false
