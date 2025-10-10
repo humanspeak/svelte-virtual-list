@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test'
 
+const baseUrl = 'http://localhost:5175/'
+
 test.describe('External docs site smoke', () => {
     test('loads homepage and shows demo sections', async ({ page }) => {
         try {
-            await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' })
+            await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
         } catch {
-            test.skip(true, 'Docs dev server not running on http://localhost:5174/')
+            test.skip(true, 'Docs dev server not running on ' + baseUrl)
         }
 
         await expect(page.getByText('Top to bottom').first()).toBeVisible()
