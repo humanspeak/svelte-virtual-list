@@ -3,11 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 const baseUrl = 'http://localhost:5175/'
 
 test.describe('External docs site smoke', () => {
-    test.skip(
-        !!process.env.CI,
-        'Skipped on CI: external docs dev server is non-deterministic in CI'
-    )
-    test.beforeEach(async ({ page }) => {
+    test('t2b aligns item 0 to top edge', async ({ page }: { page: Page }) => {
         try {
             await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
         } catch {
@@ -48,6 +44,11 @@ test.describe('External docs site smoke', () => {
     })
 
     test('b2t aligns item 0 to bottom edge', async ({ page }: { page: Page }) => {
+        try {
+            await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+        } catch {
+            test.skip(true, 'Docs dev server not running on ' + baseUrl)
+        }
         await expect(page.getByText('Bottom to top').first()).toBeVisible()
 
         const rightContainer = page.locator('[data-testid="bottom-to-top-viewport"]')
@@ -61,23 +62,36 @@ test.describe('External docs site smoke', () => {
                 )
         )
 
+        // Wait for item 0 to be present within the container (virtualization may delay DOM)
+        await expect
+            .poll(async () =>
+                rightContainer.evaluate(
+                    (el: HTMLElement) => !!el.querySelector('[data-original-index="0"]')
+                )
+            )
+            .toBe(true)
         const rightItem0 = rightContainer.locator('[data-original-index="0"]').first()
-        await expect(rightItem0).toBeVisible({ timeout: 5000 })
-
-        const [rItemRect, rContRect] = await Promise.all([
-            rightItem0.evaluate((el: HTMLElement) => {
-                const r = el.getBoundingClientRect()
-                return { y: r.y, height: r.height }
-            }),
-            rightContainer.evaluate((el: HTMLElement) => {
-                const r = el.getBoundingClientRect()
-                return { y: r.y, height: r.height }
-            })
-        ])
 
         const tol = 4
-        expect(
-            Math.abs(rContRect.y + rContRect.height - (rItemRect.y + rItemRect.height))
-        ).toBeLessThanOrEqual(tol)
+        await expect
+            .poll(
+                async () => {
+                    const [rItemRect, rContRect] = await Promise.all([
+                        rightItem0.evaluate((el: HTMLElement) => {
+                            const r = el.getBoundingClientRect()
+                            return { y: r.y, height: r.height }
+                        }),
+                        rightContainer.evaluate((el: HTMLElement) => {
+                            const r = el.getBoundingClientRect()
+                            return { y: r.y, height: r.height }
+                        })
+                    ])
+                    return Math.abs(
+                        rContRect.y + rContRect.height - (rItemRect.y + rItemRect.height)
+                    )
+                },
+                { timeout: 2000, intervals: [50, 100, 200] }
+            )
+            .toBeLessThanOrEqual(tol)
     })
 })
