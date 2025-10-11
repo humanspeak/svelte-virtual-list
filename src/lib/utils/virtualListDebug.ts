@@ -29,12 +29,12 @@ import type { SvelteVirtualListDebugInfo } from '$lib/types.js'
  *   120
  * );
  */
-export function shouldShowDebugInfo(
+export const shouldShowDebugInfo = (
     prevRange: { start: number; end: number } | null,
     currentRange: { start: number; end: number },
     prevHeight: number,
     currentHeight: number
-): boolean {
+): boolean => {
     if (!prevRange) return true
 
     return (
@@ -80,7 +80,7 @@ export function shouldShowDebugInfo(
  *
  * @throws {Error} Will throw if end index is less than start index in visibleRange
  */
-export function createDebugInfo(
+export const createDebugInfo = (
     visibleRange: { start: number; end: number },
     totalItems: number,
     processedItems: number,
@@ -88,7 +88,7 @@ export function createDebugInfo(
     scrollTop: number,
     viewportHeight: number,
     totalHeight: number
-): SvelteVirtualListDebugInfo {
+): SvelteVirtualListDebugInfo => {
     const atTop = scrollTop <= 1 // Small tolerance for floating point precision
     const atBottom = scrollTop >= totalHeight - viewportHeight - 1 // Small tolerance
 

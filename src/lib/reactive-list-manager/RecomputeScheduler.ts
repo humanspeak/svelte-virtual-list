@@ -1,3 +1,8 @@
+// RecomputeScheduler
+// -------------------
+// Coalesces recompute requests to the next animation frame in the browser.
+// Falls back to setTimeout(0) in non-browser/jsdom to preserve deterministic tests.
+// Supports temporary blocking to delay recomputation during critical sections.
 export class RecomputeScheduler {
     private onRecompute: () => void
     private isScheduled: boolean = false
@@ -10,6 +15,7 @@ export class RecomputeScheduler {
         this.onRecompute = onRecompute
     }
 
+    // Request a recompute. If blocked, mark as pending; otherwise schedule for next frame.
     schedule = (): void => {
         if (this.blockDepth > 0) {
             this.isPending = true
@@ -41,6 +47,7 @@ export class RecomputeScheduler {
         })
     }
 
+    // Temporarily block recomputes; any in-flight timers are canceled and a recompute is marked pending.
     block = (): void => {
         this.blockDepth += 1
         if (this.timeoutId) {
@@ -57,6 +64,7 @@ export class RecomputeScheduler {
         }
     }
 
+    // Unblock and run recompute immediately if one was pending.
     unblock = (): void => {
         if (this.blockDepth === 0) return
         this.blockDepth -= 1
@@ -66,6 +74,7 @@ export class RecomputeScheduler {
         }
     }
 
+    // Cancel any scheduled recompute and clear pending state.
     cancel = (): void => {
         if (this.timeoutId) {
             clearTimeout(this.timeoutId)

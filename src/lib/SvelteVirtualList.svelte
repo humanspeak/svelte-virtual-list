@@ -176,6 +176,8 @@
     import { onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
+    // Global correction guard to avoid same-frame cross-instance tug-of-war
+    let lastGlobalCorrectionMs = 0
     // Package-specific debug flag - safe for library distribution
     // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
     // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
@@ -251,6 +253,18 @@
         itemHeight: defaultEstimatedItemHeight,
         internalDebug: INTERNAL_DEBUG
     })
+    const instanceId = Math.random().toString(36).slice(2, 7)
+
+    // Centralized debug logger gated by flags
+    const log = (tag: string, payload?: unknown) => {
+        if (!debug && !INTERNAL_DEBUG) return
+        try {
+            const ts = new Date().toISOString().split('T')[1]?.replace('Z', '')
+            console.info(`[SVL][${instanceId}] ${ts} ${tag}`, payload ?? '')
+        } catch {
+            // no-op
+        }
+    }
 
     // Dynamic update coordination to avoid UA scroll anchoring interference
     let suppressBottomAnchoringUntilMs = $state(0)
@@ -339,11 +353,19 @@
             mode === 'bottomToTop' &&
             wasAtBottomBeforeHeightChange &&
             !programmaticScrollInProgress &&
-            performance.now() >= suppressBottomAnchoringUntilMs &&
-            !heightManager.isDynamicUpdateInProgress
+            performance.now() >= suppressBottomAnchoringUntilMs
         ) {
+            // Prevent same-frame cross-instance corrections; defer if a peer just corrected
+            const now = performance.now()
+            if (now - lastGlobalCorrectionMs < 16) {
+                suppressBottomAnchoringUntilMs = now + 50
+                return
+            }
+            lastGlobalCorrectionMs = now
+
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
+            log('b2t-correction-approx', { approximateScrollTop })
             heightManager.viewport.scrollTop = approximateScrollTop
             heightManager.scrollTop = approximateScrollTop
 
@@ -366,6 +388,10 @@
                             block: 'end', // Align Item 0 to bottom edge of viewport
                             behavior: 'smooth', // Smooth animation for better UX
                             inline: 'nearest' // Minimal horizontal adjustment
+                        })
+                        log('b2t-correction-native', {
+                            containerBottom: contRect.y + contRect.height,
+                            itemBottom: itemRect.y + itemRect.height
                         })
                     }
                     // Sync our internal scroll state with actual DOM position
@@ -455,7 +481,9 @@
 
                 // Handle height changes for scroll correction (manager totals already updated)
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
-                    handleHeightChangesScrollCorrection(result.heightChanges)
+                    // Run correction after dynamic update finishes to avoid blocking conditions
+                    const changes = result.heightChanges
+                    queueMicrotask(() => handleHeightChangesScrollCorrection(changes))
                 }
 
                 // TopToBottom: maintain bottom anchoring when total height changes
@@ -790,7 +818,7 @@
                 updateDebugTailDistance()
                 if (INTERNAL_DEBUG) {
                     const vr = visibleItems()
-                    console.info('[SVL] onscroll', {
+                    log('scroll', {
                         mode,
                         scrollTop: heightManager.scrollTop,
                         height,
@@ -819,6 +847,11 @@
      * @param immediate - Whether to skip the delay (used for resize events)
      */
     const updateHeightAndScroll = (immediate = false) => {
+        log('updateHeightAndScroll-enter', {
+            immediate,
+            initialized: heightManager.initialized,
+            mode
+        })
         if (!heightManager.initialized && mode === 'bottomToTop') {
             // Deterministic init order: double RAF + microtask, then apply bottom anchoring
             tick().then(() => {
@@ -834,14 +867,34 @@
                             measuredHeight
                         )
                         // Instance jitter to avoid same-frame collisions when two lists init together
-                        const jitterMs = heightManager.container?.dataset?.svlInstanceId
-                            ? heightManager.container!.dataset!.svlInstanceId!.charCodeAt(0) % 3
-                            : 0
+                        const jitterMs = instanceId.charCodeAt(0) % 3
+                        log('b2t-init', { measuredHeight, targetScrollTop, jitterMs })
                         setTimeout(() => {
                             heightManager.viewport.scrollTop = targetScrollTop
                             heightManager.scrollTop = targetScrollTop
                             requestAnimationFrame(() => {
-                                heightManager.initialized = true
+                                // Guard: only transition false -> true to avoid invariant error
+                                if (!heightManager.initialized) heightManager.initialized = true
+                                // Post-init verification: ensure item 0 bottom aligns; fallback to native
+                                tick().then(() => {
+                                    const el = heightManager.viewport.querySelector(
+                                        '[data-original-index="0"]'
+                                    ) as HTMLElement | null
+                                    if (!el) return
+                                    const cont = heightManager.viewport.getBoundingClientRect()
+                                    const r = el.getBoundingClientRect()
+                                    const tol = 4
+                                    const aligned =
+                                        Math.abs(cont.y + cont.height - (r.y + r.height)) <= tol
+                                    if (!aligned) {
+                                        el.scrollIntoView({ block: 'end', inline: 'nearest' })
+                                        heightManager.scrollTop = heightManager.viewport.scrollTop
+                                        log('b2t-init-native-fallback', {
+                                            containerBottom: cont.y + cont.height,
+                                            itemBottom: r.y + r.height
+                                        })
+                                    }
+                                })
                             })
                         }, jitterMs)
                     })
@@ -863,10 +916,15 @@
             {
                 setHeight: (h) => (height = h),
                 setScrollTop: (st) => (heightManager.scrollTop = st),
-                setInitialized: (i) => (heightManager.initialized = i)
+                // Guard: respect invariant in ReactiveListManager; avoid re-setting true
+                setInitialized: (i) => {
+                    if (i && heightManager.initialized) return
+                    heightManager.initialized = i
+                }
             },
             immediate
         )
+        log('updateHeightAndScroll-exit', { immediate })
     }
 
     // Create itemResizeObserver immediately when in browser
@@ -875,6 +933,7 @@
         itemResizeObserver = new ResizeObserver((entries) => {
             // Batch via RAF to avoid thrash across instances
             rafSchedule(() => {
+                log('item-resize-observer', { entries: entries.length })
                 let shouldRecalculate = false
                 void visibleItems() // Cache once to avoid reactive loops
 
@@ -908,6 +967,7 @@
                 }
 
                 if (shouldRecalculate) {
+                    log('item-resize-recalc')
                     updateHeight()
                 }
             })
@@ -918,14 +978,25 @@
     onMount(() => {
         if (BROWSER) {
             // Initial setup of heights and scroll position
+            log('onMount-enter', { mode, items: items.length })
             updateHeightAndScroll()
             // Ensure one initial measurement pass even if no ResizeObserver fires
             tick().then(() =>
-                requestAnimationFrame(() => requestAnimationFrame(() => updateHeight()))
+                requestAnimationFrame(() =>
+                    requestAnimationFrame(() => {
+                        log('post-hydration-measure')
+                        updateHeight()
+                    })
+                )
             )
 
             // Watch for container size changes
             resizeObserver = new ResizeObserver(() => {
+                if (!heightManager.initialized) {
+                    log('container-resize-ignored', 'not-initialized')
+                    return
+                }
+                log('container-resize')
                 updateHeightAndScroll(true)
             })
 

@@ -29,12 +29,12 @@
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
  */
-export function createRafScheduler() {
+export const createRafScheduler = (): ((fn: () => void) => void) => {
     let scheduled = false
     let callback: (() => void) | null = null
 
-    return (fn: () => void): void => {
-        callback = fn
+    return (_fn: () => void): void => {
+        callback = _fn
         if (!scheduled) {
             scheduled = true
             requestAnimationFrame(() => {

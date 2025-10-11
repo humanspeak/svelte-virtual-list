@@ -34,7 +34,7 @@
                             </Card.Description>
                         </Card.Header>
                         <Card.Content class="flex min-h-0 flex-1 flex-col">
-                            <!-- <SvelteVirtualList
+                            <SvelteVirtualList
                                 defaultEstimatedItemHeight={22}
                                 {items}
                                 debug
@@ -46,7 +46,7 @@
                                         {item.text}
                                     </div>
                                 {/snippet}
-                            </SvelteVirtualList> -->
+                            </SvelteVirtualList>
                         </Card.Content>
                     </Card.Root>
                 </div>
