@@ -9,9 +9,7 @@ test.describe('External docs site smoke', () => {
         } catch {
             test.skip(true, 'Docs dev server not running on ' + baseUrl)
         }
-    })
 
-    test('t2b aligns item 0 to top edge', async ({ page }: { page: Page }) => {
         await expect(page.getByText('Top to bottom').first()).toBeVisible()
 
         const leftContainer = page.locator('[data-testid="top-to-bottom-viewport"]')
