@@ -133,7 +133,7 @@ importers:
   docs:
     dependencies:
       '@humanspeak/svelte-motion':
-        specifier: ^0.1.10
+        specifier: ^0.1.12
         version: 0.1.12(svelte@5.39.11)
       '@humanspeak/svelte-virtual-list':
         specifier: workspace:*
