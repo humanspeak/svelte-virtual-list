@@ -176,8 +176,9 @@
     import { onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-    // Global correction guard to avoid same-frame cross-instance tug-of-war
-    let lastGlobalCorrectionMs = 0
+    // Per-instance correction guard to avoid same-frame tug-of-war per viewport
+    const GLOBAL_CORRECTION_COOLDOWN = 16
+    const lastCorrectionTimestampByViewport = new WeakMap<HTMLElement, number>()
     // Package-specific debug flag - safe for library distribution
     // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
     // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
@@ -355,13 +356,15 @@
             !programmaticScrollInProgress &&
             performance.now() >= suppressBottomAnchoringUntilMs
         ) {
-            // Prevent same-frame cross-instance corrections; defer if a peer just corrected
+            // Prevent same-frame corrections; defer if this viewport just corrected
             const now = performance.now()
-            if (now - lastGlobalCorrectionMs < 16) {
+            const viewportEl = heightManager.viewport
+            const lastCorrectionMs = lastCorrectionTimestampByViewport.get(viewportEl) ?? 0
+            if (now - lastCorrectionMs < GLOBAL_CORRECTION_COOLDOWN) {
                 suppressBottomAnchoringUntilMs = now + 50
                 return
             }
-            lastGlobalCorrectionMs = now
+            lastCorrectionTimestampByViewport.set(viewportEl, now)
 
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
@@ -867,7 +870,14 @@
                             measuredHeight
                         )
                         // Instance jitter to avoid same-frame collisions when two lists init together
-                        const jitterMs = instanceId.charCodeAt(0) % 3
+                        const cleanedId = String(instanceId)
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, '')
+                        const suffix = cleanedId.slice(-4)
+                        const parsed = parseInt(suffix, 36)
+                        const jitterMs = Number.isNaN(parsed)
+                            ? Math.floor(Math.random() * 3)
+                            : parsed % 3
                         log('b2t-init', { measuredHeight, targetScrollTop, jitterMs })
                         setTimeout(() => {
                             heightManager.viewport.scrollTop = targetScrollTop
