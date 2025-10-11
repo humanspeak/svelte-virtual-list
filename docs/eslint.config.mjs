@@ -85,6 +85,10 @@ export default [
             parserOptions: {
                 parser: ts.parser
             }
+        },
+        rules: {
+            'prefer-const': ['off'],
+            'svelte/no-navigation-without-resolve': ['off'] // Allow external links
         }
     },
     {

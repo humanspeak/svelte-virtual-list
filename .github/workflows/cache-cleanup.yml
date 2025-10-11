@@ -6,11 +6,10 @@ permissions:
 on:
     schedule:
         - cron: 0 0 1 * * # Monthly cleanup
-    workflow_dispatch: # Allows manual triggering for testing
 
 jobs:
     cleanup:
-        runs-on: ubuntu-latest
+        runs-on: blacksmith-2vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
         steps:
             - name: Cleanup
               env:

@@ -1,32 +1,21 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+const baseUrl = 'http://localhost:5175/'
 
 test.describe('External docs site smoke', () => {
-    test('loads homepage and shows demo sections', async ({ page }) => {
+    test('t2b aligns item 0 to top edge', async ({ page }: { page: Page }) => {
         try {
-            await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' })
+            await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
         } catch {
-            test.skip(true, 'Docs dev server not running on http://localhost:5174/')
+            test.skip(true, 'Docs dev server not running on ' + baseUrl)
         }
 
         await expect(page.getByText('Top to bottom').first()).toBeVisible()
-        await expect(page.getByText('Bottom to top').first()).toBeVisible()
 
-        // Ensure list items render
-        await expect(page.getByText('Item 0').first()).toBeVisible()
-
-        // Verify both lists have the element with data-original-index="0" in view,
-        // left aligned to the top edge and right aligned to the bottom edge of its container.
         const leftContainer = page.locator('[data-testid="top-to-bottom-viewport"]')
-        const rightContainer = page.locator('[data-testid="bottom-to-top-viewport"]')
-
-        // Ensure they exist
         await expect(leftContainer).toHaveCount(1)
-        await expect(rightContainer).toHaveCount(1)
 
-        // Align left to top and right to bottom, then assert item 0 visibility and alignment
         await leftContainer.evaluate((el: HTMLElement) => (el.scrollTop = 0))
-        await rightContainer.evaluate((el: HTMLElement) => (el.scrollTop = el.scrollHeight))
-        // Let layout settle across engines (double RAF tends to be more reliable than a small timeout)
         await page.evaluate(
             () =>
                 new Promise<void>((resolve) =>
@@ -35,13 +24,9 @@ test.describe('External docs site smoke', () => {
         )
 
         const leftItem0 = leftContainer.locator('[data-original-index="0"]').first()
-        const rightItem0 = rightContainer.locator('[data-original-index="0"]').first()
-
         await expect(leftItem0).toBeVisible({ timeout: 5000 })
-        await expect(rightItem0).toBeVisible({ timeout: 5000 })
 
-        // Use getBoundingClientRect via evaluate to avoid occasional null boundingBox in Firefox
-        const [lItemRect, lContRect, rItemRect, rContRect] = await Promise.all([
+        const [lItemRect, lContRect] = await Promise.all([
             leftItem0.evaluate((el: HTMLElement) => {
                 const r = el.getBoundingClientRect()
                 return { y: r.y, height: r.height }
@@ -49,21 +34,62 @@ test.describe('External docs site smoke', () => {
             leftContainer.evaluate((el: HTMLElement) => {
                 const r = el.getBoundingClientRect()
                 return { y: r.y, height: r.height }
-            }),
-            rightItem0.evaluate((el: HTMLElement) => {
-                const r = el.getBoundingClientRect()
-                return { y: r.y, height: r.height }
-            }),
-            rightContainer.evaluate((el: HTMLElement) => {
-                const r = el.getBoundingClientRect()
-                return { y: r.y, height: r.height }
             })
         ])
 
         const tol = 4
         expect(Math.abs(lItemRect.y - lContRect.y)).toBeLessThanOrEqual(tol)
-        expect(
-            Math.abs(rContRect.y + rContRect.height - (rItemRect.y + rItemRect.height))
-        ).toBeLessThanOrEqual(tol)
+    })
+
+    test('b2t aligns item 0 to bottom edge', async ({ page }: { page: Page }) => {
+        try {
+            await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+        } catch {
+            test.skip(true, 'Docs dev server not running on ' + baseUrl)
+        }
+        await expect(page.getByText('Bottom to top').first()).toBeVisible()
+
+        const rightContainer = page.locator('[data-testid="bottom-to-top-viewport"]')
+        await expect(rightContainer).toHaveCount(1)
+
+        await rightContainer.evaluate((el: HTMLElement) => (el.scrollTop = el.scrollHeight))
+        await page.evaluate(
+            () =>
+                new Promise<void>((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+                )
+        )
+
+        // Wait for item 0 to be present within the container (virtualization may delay DOM)
+        await expect
+            .poll(async () =>
+                rightContainer.evaluate(
+                    (el: HTMLElement) => !!el.querySelector('[data-original-index="0"]')
+                )
+            )
+            .toBe(true)
+        const rightItem0 = rightContainer.locator('[data-original-index="0"]').first()
+
+        const tol = 4
+        await expect
+            .poll(
+                async () => {
+                    const [rItemRect, rContRect] = await Promise.all([
+                        rightItem0.evaluate((el: HTMLElement) => {
+                            const r = el.getBoundingClientRect()
+                            return { y: r.y, height: r.height }
+                        }),
+                        rightContainer.evaluate((el: HTMLElement) => {
+                            const r = el.getBoundingClientRect()
+                            return { y: r.y, height: r.height }
+                        })
+                    ])
+                    return Math.abs(
+                        rContRect.y + rContRect.height - (rItemRect.y + rItemRect.height)
+                    )
+                },
+                { timeout: 2000, intervals: [50, 100, 200] }
+            )
+            .toBeLessThanOrEqual(tol)
     })
 })
