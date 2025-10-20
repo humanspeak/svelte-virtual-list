@@ -86,7 +86,7 @@
         "@eslint/compat": "^1.4.0",
         "@eslint/js": "^9.37.0",
         "@faker-js/faker": "^10.0.0",
-        "@playwright/test": "^1.56.0",
+        "@playwright/test": "^1.56.1",
         "@sveltejs/adapter-auto": "^6.1.1",
         "@sveltejs/kit": "^2.46.4",
         "@sveltejs/package": "^2.5.4",

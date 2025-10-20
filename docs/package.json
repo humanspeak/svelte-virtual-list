@@ -36,7 +36,7 @@
         "@eslint/compat": "^1.4.0",
         "@internationalized/date": "^3.10.0",
         "@lucide/svelte": "^0.545.0",
-        "@playwright/test": "^1.56.0",
+        "@playwright/test": "^1.56.1",
         "@sveltejs/adapter-auto": "^6.1.1",
         "@sveltejs/adapter-cloudflare": "^7.2.4",
         "@sveltejs/kit": "^2.46.4",
