@@ -683,76 +683,69 @@
                     averageItemHeight: currentCalculatedItemHeight
                 })
 
-                // Check if user was at/near the bottom before items were added
-                const wasNearBottom =
-                    Math.abs(currentScrollTop - prevMaxScrollTop) < currentCalculatedItemHeight * 2
-
-                if (wasNearBottom || currentScrollTop === 0) {
-                    // User was at bottom; maintain visual position:
-                    // increase scrollTop by the same delta as maxScrollTop increased
-                    programmaticScrollInProgress = true
-                    void heightManager.runDynamicUpdate(() => {
-                        const newScrollTop = Math.max(0, currentScrollTop + deltaMax)
-                        heightManager.viewport.scrollTop = newScrollTop
-                        heightManager.scrollTop = newScrollTop
-                        log('[SVL] items-length-change:applied', {
-                            instanceId,
-                            previousScrollTop: currentScrollTop,
-                            appliedScrollTop: newScrollTop,
-                            prevMaxScrollTop,
-                            nextMaxScrollTop,
-                            deltaMax
-                        })
-
-                        // Reset the "scrolled away" flag since we're actively managing position
-                        userHasScrolledAway = false
-
-                        // Schedule a reconciliation pass on next frame in case measurements adjust totals
-                        requestAnimationFrame(() => {
-                            const beforeReconcileScrollTop = heightManager.viewport.scrollTop
-                            const reconciledNextMax = Math.max(0, totalHeight() - height)
-                            const reconciledDeltaMaxChange = reconciledNextMax - nextMaxScrollTop
-                            const diffToDesiredMax =
-                                reconciledNextMax - heightManager.viewport.scrollTop
-                            if (
-                                Math.abs(reconciledDeltaMaxChange) > 0.5 ||
-                                Math.abs(diffToDesiredMax) > 0.5
-                            ) {
-                                const adjusted = Math.max(
-                                    0,
-                                    heightManager.viewport.scrollTop + diffToDesiredMax
-                                )
-                                heightManager.viewport.scrollTop = adjusted
-                                heightManager.scrollTop = adjusted
-                                log('[SVL] items-length-change:reconciled', {
-                                    instanceId,
-                                    beforeReconcileScrollTop,
-                                    adjustedScrollTop: adjusted,
-                                    reconciledNextMax,
-                                    reconciledDeltaMaxChange,
-                                    diffToDesiredMax
-                                })
-                            } else {
-                                log('[SVL] items-length-change:reconciled-skip', {
-                                    instanceId,
-                                    beforeReconcileScrollTop,
-                                    reconciledNextMax,
-                                    reconciledDeltaMaxChange,
-                                    diffToDesiredMax
-                                })
-                            }
-                            programmaticScrollInProgress = false
-                        })
-                    })
-                } else {
-                    log('[SVL] items-length-change:skip-anchor', {
+                // Maintain visual position for ALL cases by advancing scrollTop by deltaMax.
+                // If near the bottom, this naturally pins to the new max; otherwise it preserves the current content.
+                programmaticScrollInProgress = true
+                void heightManager.runDynamicUpdate(() => {
+                    const unclamped = currentScrollTop + deltaMax
+                    const newScrollTop = Math.max(0, Math.min(nextMaxScrollTop, unclamped))
+                    heightManager.viewport.scrollTop = newScrollTop
+                    heightManager.scrollTop = newScrollTop
+                    log('[SVL] items-length-change:applied', {
                         instanceId,
-                        reason: 'not-near-bottom',
-                        currentScrollTop,
+                        previousScrollTop: currentScrollTop,
+                        appliedScrollTop: newScrollTop,
                         prevMaxScrollTop,
-                        threshold: currentCalculatedItemHeight * 2
+                        nextMaxScrollTop,
+                        deltaMax
                     })
-                }
+
+                    // We are explicitly managing position; consider this a programmatic action.
+                    // Do not flip userHasScrolledAway here; it should reflect user intent only.
+
+                    // Reconcile on next frame in case measured heights adjust totals
+                    requestAnimationFrame(() => {
+                        const beforeReconcileScrollTop = heightManager.viewport.scrollTop
+                        const reconciledNextMax = Math.max(0, totalHeight() - height)
+                        const reconciledDeltaMaxChange = reconciledNextMax - nextMaxScrollTop
+                        // Desired position is to maintain distance-from-end; equivalently keep (max - scrollTop) constant.
+                        const desiredScrollTop = Math.max(
+                            0,
+                            Math.min(reconciledNextMax, newScrollTop + reconciledDeltaMaxChange)
+                        )
+                        const diffToDesired = desiredScrollTop - heightManager.viewport.scrollTop
+                        if (Math.abs(diffToDesired) > 0.5) {
+                            const adjusted = Math.max(
+                                0,
+                                Math.min(
+                                    reconciledNextMax,
+                                    heightManager.viewport.scrollTop + diffToDesired
+                                )
+                            )
+                            heightManager.viewport.scrollTop = adjusted
+                            heightManager.scrollTop = adjusted
+                            log('[SVL] items-length-change:reconciled', {
+                                instanceId,
+                                beforeReconcileScrollTop,
+                                adjustedScrollTop: adjusted,
+                                reconciledNextMax,
+                                reconciledDeltaMaxChange,
+                                desiredScrollTop,
+                                diffToDesired
+                            })
+                        } else {
+                            log('[SVL] items-length-change:reconciled-skip', {
+                                instanceId,
+                                beforeReconcileScrollTop,
+                                reconciledNextMax,
+                                reconciledDeltaMaxChange,
+                                desiredScrollTop,
+                                diffToDesired
+                            })
+                        }
+                        programmaticScrollInProgress = false
+                    })
+                })
             }
         }
 

@@ -96,4 +96,48 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
         ).toBeLessThanOrEqual(2)
         await expect(page.locator('[data-original-index="0"]').first()).toBeVisible()
     })
+
+    test('adding while not at bottom preserves position (no snap to 0 or bottom)', async ({
+        page
+    }) => {
+        await page.goto('/tests/issues/issue-298', { waitUntil: 'networkidle' })
+        await rafWait(page)
+
+        // Scroll to roughly the middle
+        await page.evaluate(() => {
+            const viewport = document.querySelector('#virtual-list-viewport') as HTMLElement | null
+            if (viewport) viewport.scrollTop = Math.floor(viewport.scrollHeight / 2)
+        })
+        await rafWait(page)
+
+        const metrics = async () =>
+            page.evaluate(() => {
+                const viewport = document.querySelector('#virtual-list-viewport') as HTMLElement
+                return {
+                    scrollTop: viewport.scrollTop,
+                    scrollHeight: viewport.scrollHeight,
+                    clientHeight: viewport.clientHeight
+                }
+            })
+
+        const before = await metrics()
+        // Sanity: ensure we're not near top or bottom
+        expect(before.scrollTop).toBeGreaterThan(50)
+        expect(before.scrollTop).toBeLessThan(before.scrollHeight - before.clientHeight - 50)
+
+        // Add one message
+        await page.getByTestId('add-message-button').click()
+        await rafWait(page)
+
+        const after = await metrics()
+
+        // Should not snap to top or bottom
+        expect(after.scrollTop).toBeGreaterThan(50)
+        expect(after.scrollTop).toBeLessThan(after.scrollHeight - after.clientHeight - 50)
+
+        // ScrollTop should advance by approximately the growth in scrollHeight (deltaMax)
+        const deltaHeight = after.scrollHeight - before.scrollHeight
+        const deltaScroll = after.scrollTop - before.scrollTop
+        expect(Math.abs(deltaScroll - deltaHeight)).toBeLessThanOrEqual(4)
+    })
 })
