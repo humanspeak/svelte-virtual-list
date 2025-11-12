@@ -713,14 +713,13 @@
                             0,
                             Math.min(reconciledNextMax, newScrollTop + reconciledDeltaMaxChange)
                         )
-                        const diffToDesired = desiredScrollTop - heightManager.viewport.scrollTop
-                        if (Math.abs(diffToDesired) > 0.5) {
+                        // Snap to integer pixels to prevent oscillation due to subpixel rounding
+                        const desiredRounded = Math.round(desiredScrollTop)
+                        const diffToDesired = desiredRounded - heightManager.viewport.scrollTop
+                        if (Math.abs(diffToDesired) >= 1) {
                             const adjusted = Math.max(
                                 0,
-                                Math.min(
-                                    reconciledNextMax,
-                                    heightManager.viewport.scrollTop + diffToDesired
-                                )
+                                Math.min(reconciledNextMax, desiredRounded)
                             )
                             heightManager.viewport.scrollTop = adjusted
                             heightManager.scrollTop = adjusted
@@ -731,6 +730,7 @@
                                 reconciledNextMax,
                                 reconciledDeltaMaxChange,
                                 desiredScrollTop,
+                                desiredRounded,
                                 diffToDesired
                             })
                         } else {
@@ -740,6 +740,7 @@
                                 reconciledNextMax,
                                 reconciledDeltaMaxChange,
                                 desiredScrollTop,
+                                desiredRounded,
                                 diffToDesired
                             })
                         }
