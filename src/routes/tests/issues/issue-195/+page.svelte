@@ -37,4 +37,6 @@
     </SvelteVirtualList>
 </div>
 
-<button class="btn" onclick={() => addMessage()}>Add message</button>
+<button class="btn" onclick={() => addMessage()} data-testid="add-message-button"
+    >Add message</button
+>
