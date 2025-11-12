@@ -537,6 +537,8 @@
     let programmaticScrollInProgress = $state(false) // Prevent bottom-anchoring during programmatic scrolls
     let lastCalculatedHeight = $state(0)
     let lastItemsLength = $state(0)
+    // Track last observed total height to compute precise deltas on item count changes
+    let lastTotalHeightObserved = $state(0)
 
     /**
      * CRITICAL: O(1) Reactive Total Height Calculation
@@ -661,34 +663,102 @@
                 const currentCalculatedItemHeight = heightManager.averageHeight
                 const currentHeight = height
                 const currentTotalHeight = totalHeight()
-                const maxScrollTop = Math.max(0, currentTotalHeight - currentHeight)
+                const prevTotalHeight =
+                    lastTotalHeightObserved ||
+                    currentTotalHeight - itemsAdded * currentCalculatedItemHeight
+                const prevMaxScrollTop = Math.max(0, prevTotalHeight - currentHeight)
+                const nextMaxScrollTop = Math.max(0, currentTotalHeight - currentHeight)
+                const deltaMax = nextMaxScrollTop - prevMaxScrollTop
+                log('[SVL] items-length-change:before', {
+                    instanceId,
+                    itemsAdded,
+                    lastItemsLength,
+                    currentItemsLength,
+                    currentScrollTop,
+                    prevTotalHeight,
+                    currentTotalHeight,
+                    prevMaxScrollTop,
+                    nextMaxScrollTop,
+                    deltaMax,
+                    averageItemHeight: currentCalculatedItemHeight
+                })
 
                 // Check if user was at/near the bottom before items were added
                 const wasNearBottom =
-                    Math.abs(
-                        currentScrollTop -
-                            Math.max(
-                                0,
-                                lastItemsLength * currentCalculatedItemHeight - currentHeight
-                            )
-                    ) <
-                    currentCalculatedItemHeight * 2
+                    Math.abs(currentScrollTop - prevMaxScrollTop) < currentCalculatedItemHeight * 2
 
                 if (wasNearBottom || currentScrollTop === 0) {
-                    // User was at bottom, keep them at bottom after new items are added
+                    // User was at bottom; maintain visual position:
+                    // increase scrollTop by the same delta as maxScrollTop increased
+                    programmaticScrollInProgress = true
                     void heightManager.runDynamicUpdate(() => {
-                        const newScrollTop = maxScrollTop
+                        const newScrollTop = Math.max(0, currentScrollTop + deltaMax)
                         heightManager.viewport.scrollTop = newScrollTop
                         heightManager.scrollTop = newScrollTop
+                        log('[SVL] items-length-change:applied', {
+                            instanceId,
+                            previousScrollTop: currentScrollTop,
+                            appliedScrollTop: newScrollTop,
+                            prevMaxScrollTop,
+                            nextMaxScrollTop,
+                            deltaMax
+                        })
 
                         // Reset the "scrolled away" flag since we're actively managing position
                         userHasScrolledAway = false
+
+                        // Schedule a reconciliation pass on next frame in case measurements adjust totals
+                        requestAnimationFrame(() => {
+                            const beforeReconcileScrollTop = heightManager.viewport.scrollTop
+                            const reconciledNextMax = Math.max(0, totalHeight() - height)
+                            const reconciledDeltaMaxChange = reconciledNextMax - nextMaxScrollTop
+                            const diffToDesiredMax =
+                                reconciledNextMax - heightManager.viewport.scrollTop
+                            if (
+                                Math.abs(reconciledDeltaMaxChange) > 0.5 ||
+                                Math.abs(diffToDesiredMax) > 0.5
+                            ) {
+                                const adjusted = Math.max(
+                                    0,
+                                    heightManager.viewport.scrollTop + diffToDesiredMax
+                                )
+                                heightManager.viewport.scrollTop = adjusted
+                                heightManager.scrollTop = adjusted
+                                log('[SVL] items-length-change:reconciled', {
+                                    instanceId,
+                                    beforeReconcileScrollTop,
+                                    adjustedScrollTop: adjusted,
+                                    reconciledNextMax,
+                                    reconciledDeltaMaxChange,
+                                    diffToDesiredMax
+                                })
+                            } else {
+                                log('[SVL] items-length-change:reconciled-skip', {
+                                    instanceId,
+                                    beforeReconcileScrollTop,
+                                    reconciledNextMax,
+                                    reconciledDeltaMaxChange,
+                                    diffToDesiredMax
+                                })
+                            }
+                            programmaticScrollInProgress = false
+                        })
+                    })
+                } else {
+                    log('[SVL] items-length-change:skip-anchor', {
+                        instanceId,
+                        reason: 'not-near-bottom',
+                        currentScrollTop,
+                        prevMaxScrollTop,
+                        threshold: currentCalculatedItemHeight * 2
                     })
                 }
             }
         }
 
         lastItemsLength = currentItemsLength
+        // Update last observed total height at the end of the effect
+        lastTotalHeightObserved = totalHeight()
     })
 
     // Update container height continuously to reflect layout changes that

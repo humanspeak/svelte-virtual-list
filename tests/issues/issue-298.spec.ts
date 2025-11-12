@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { rafWait } from '../../src/lib/test/utils/rafWait.js'
 
-test.describe('Issue 195 - bottomToTop keeps anchor on add', () => {
+test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
     test('item 0 stays visible and at bottom after adding messages', async ({ page }) => {
-        await page.goto('/tests/issues/issue-195', { waitUntil: 'networkidle' })
+        await page.goto('/tests/issues/issue-298', { waitUntil: 'networkidle' })
         await rafWait(page)
 
         // Ensure list is anchored to bottom
@@ -61,9 +61,13 @@ test.describe('Issue 195 - bottomToTop keeps anchor on add', () => {
         const after1 = await isItem0AtBottom()
         expect(after1.ok).toBe(true)
         expect(after1.distanceFromBottom).toBeLessThan(40)
-        // Scroll height should increase but scrollTop should remain effectively the same
+        // Scroll height should increase and scrollTop should increase by same delta
         expect(after1.scrollHeight).toBeGreaterThan(before.scrollHeight)
-        expect(Math.abs(after1.scrollTop - before.scrollTop)).toBeLessThanOrEqual(1)
+        expect(
+            Math.abs(
+                after1.scrollTop - before.scrollTop - (after1.scrollHeight - before.scrollHeight)
+            )
+        ).toBeLessThanOrEqual(2)
         await expect(page.locator('[data-original-index="0"]').first()).toBeVisible()
 
         await addBtn.click()
@@ -72,7 +76,11 @@ test.describe('Issue 195 - bottomToTop keeps anchor on add', () => {
         expect(after2.ok).toBe(true)
         expect(after2.distanceFromBottom).toBeLessThan(40)
         expect(after2.scrollHeight).toBeGreaterThan(after1.scrollHeight)
-        expect(Math.abs(after2.scrollTop - before.scrollTop)).toBeLessThanOrEqual(1)
+        expect(
+            Math.abs(
+                after2.scrollTop - after1.scrollTop - (after2.scrollHeight - after1.scrollHeight)
+            )
+        ).toBeLessThanOrEqual(2)
         await expect(page.locator('[data-original-index="0"]').first()).toBeVisible()
 
         await addBtn.click()
@@ -81,7 +89,11 @@ test.describe('Issue 195 - bottomToTop keeps anchor on add', () => {
         expect(after3.ok).toBe(true)
         expect(after3.distanceFromBottom).toBeLessThan(40)
         expect(after3.scrollHeight).toBeGreaterThan(after2.scrollHeight)
-        expect(Math.abs(after3.scrollTop - before.scrollTop)).toBeLessThanOrEqual(1)
+        expect(
+            Math.abs(
+                after3.scrollTop - after2.scrollTop - (after3.scrollHeight - after2.scrollHeight)
+            )
+        ).toBeLessThanOrEqual(2)
         await expect(page.locator('[data-original-index="0"]').first()).toBeVisible()
     })
 })
