@@ -47,6 +47,7 @@
                 { href: resolve('/tests/issues/generics'), label: 'Generics' },
                 { href: resolve('/tests/issues/issue-215'), label: 'Issue 215' },
                 { href: resolve('/tests/issues/issue-263'), label: 'Issue 263' },
+                { href: resolve('/tests/issues/issue-298'), label: 'Issue 298' },
                 { href: resolve('/tests/issues/layout'), label: 'Layout' },
                 // Example dynamic route under layout
                 { href: resolve('/tests/issues/layout/123'), label: 'Layout (id = 123)' }
@@ -58,11 +59,11 @@
 <div class="mx-auto max-w-5xl px-4 py-8">
     <h1 class="mb-6 text-2xl font-semibold">@humanspeak/svelte-virtual-list — Demos</h1>
     <div class="grid grid-cols-1 gap-8 md:grid-cols-2">
-        {#each sections as section}
+        {#each sections as section (section.title)}
             <div>
                 <h2 class="mb-3 text-xl font-medium">{section.title}</h2>
                 <ul class="list-disc space-y-2 pl-5">
-                    {#each section.links as { href, label }}
+                    {#each section.links as { href, label } (href)}
                         <li>
                             <a class="text-blue-300 hover:underline" {href}>{label}</a>
                         </li>

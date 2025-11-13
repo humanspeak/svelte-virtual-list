@@ -24,13 +24,6 @@ export default defineConfig({
             exclude: ['docs/**', '.trunk/**', '.svelte-kit/**', 'tests/**', 'src/routes/**']
         },
         exclude: [...configDefaults.exclude, '**/docs/**/*'],
-        poolOptions: {
-            threads: {
-                singleThread: false,
-                maxThreads: 4,
-                minThreads: 1
-            }
-        },
         testTimeout: 10000,
         hookTimeout: 10000,
         reporters: ['verbose', ['junit', { outputFile: './junit-vitest.xml' }]]

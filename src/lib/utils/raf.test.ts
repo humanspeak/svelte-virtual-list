@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRafScheduler } from './raf.js'
 
 describe('createRafScheduler', () => {
     let rafSchedule: (fn: () => void) => void
 
     beforeEach(() => {
+        vi.useFakeTimers()
         rafSchedule = createRafScheduler()
 
         // Mock requestAnimationFrame
@@ -12,6 +13,12 @@ describe('createRafScheduler', () => {
             setTimeout(cb, 0)
             return 0
         })
+    })
+
+    afterEach(() => {
+        vi.clearAllTimers()
+        vi.useRealTimers()
+        vi.restoreAllMocks()
     })
 
     it('should execute the callback function', async () => {
