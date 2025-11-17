@@ -33,7 +33,7 @@
     },
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20251111.0",
-        "@eslint/compat": "^1.4.1",
+        "@eslint/compat": "^2.0.0",
         "@internationalized/date": "^3.10.0",
         "@lucide/svelte": "^0.553.0",
         "@playwright/test": "^1.56.1",
