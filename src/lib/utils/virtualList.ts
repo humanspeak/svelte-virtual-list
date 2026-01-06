@@ -157,14 +157,15 @@ export const calculateTransformY = (
         // When content is smaller than viewport, push to bottom
         const bottomOffset = Math.max(0, effectiveViewport - actualTotalHeight)
 
-        return basicTransform + bottomOffset
+        // Snap to integer pixels to avoid subpixel oscillation
+        return Math.round(basicTransform + bottomOffset)
     } else {
         // For topToBottom, prefer precise offset using measured heights when available
         if (heightCache) {
             const offset = getScrollOffsetForIndex(heightCache, itemHeight, visibleStart)
             return Math.max(0, Math.round(offset))
         }
-        return visibleStart * itemHeight
+        return Math.round(visibleStart * itemHeight)
     }
 }
 
@@ -484,4 +485,34 @@ export const getScrollOffsetForIndex = (
         offset += height
     }
     return offset
+}
+
+/**
+ * Builds block prefix sums for heightCache to accelerate offset queries.
+ *
+ * The array contains, for each completed block, the total height of all items
+ * up to and including that block. For example, for blockSize=1000, entry 0 is
+ * sum(0..999), entry 1 is sum(0..1999), etc.
+ */
+export const buildBlockSums = (
+    heightCache: Record<number, number>,
+    calculatedItemHeight: number,
+    totalItems: number,
+    blockSize = 1000
+): number[] => {
+    const blocks = Math.ceil(totalItems / blockSize)
+    const sums: number[] = new Array(Math.max(0, blocks - 1))
+    let running = 0
+    for (let b = 0; b < blocks - 1; b++) {
+        const start = b * blockSize
+        const end = start + blockSize
+        for (let i = start; i < end; i++) {
+            const raw = heightCache[i]
+            const h =
+                Number.isFinite(raw) && (raw as number) > 0 ? (raw as number) : calculatedItemHeight
+            running += h
+        }
+        sums[b] = running
+    }
+    return sums
 }

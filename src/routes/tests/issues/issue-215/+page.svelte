@@ -36,7 +36,7 @@
         bind:this={virtualList}
     >
         {#snippet renderItem(item)}
-            <div class="p-2 border-b-1 border-gray-200">
+            <div class="p-2 border-b border-gray-200">
                 {item.text}
             </div>
         {/snippet}
