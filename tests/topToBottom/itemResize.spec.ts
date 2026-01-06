@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Item Resize Functionality', () => {
     test.beforeEach(async ({ page }) => {
@@ -133,7 +134,7 @@ test.describe('Item Resize Functionality', () => {
         expect(newCount).toBeLessThan(100)
     })
 
-    test('should update scroll behavior after height changes', async ({ page }) => {
+    test('should update scroll behavior after height changes', async ({ page }, testInfo) => {
         const viewport = page.locator('[data-testid="item-resize-list-viewport"]')
 
         // Increase heights of first few items significantly
@@ -147,8 +148,8 @@ test.describe('Item Resize Functionality', () => {
 
         await page.waitForTimeout(300)
 
-        // Scroll down and verify different items are visible
-        await viewport.evaluate((el) => el.scrollTo(0, 500))
+        // Scroll down using scrollByWheel helper and verify different items are visible
+        await scrollByWheel(page, viewport, 0, 500, testInfo) // positive deltaY scrolls down
         await page.waitForTimeout(200)
 
         // Should see later items due to increased height of earlier items
@@ -266,11 +267,11 @@ test.describe('Item Resize Functionality', () => {
         }
     })
 
-    test('should handle scroll position during height changes', async ({ page }) => {
+    test('should handle scroll position during height changes', async ({ page }, testInfo) => {
         const viewport = page.locator('[data-testid="item-resize-list-viewport"]')
 
-        // Scroll to middle position
-        await viewport.evaluate((el) => el.scrollTo(0, 1000))
+        // Scroll to middle position using scrollByWheel helper
+        await scrollByWheel(page, viewport, 0, 1000, testInfo) // positive deltaY scrolls down
         await page.waitForTimeout(200)
 
         // Get initial scroll position for reference

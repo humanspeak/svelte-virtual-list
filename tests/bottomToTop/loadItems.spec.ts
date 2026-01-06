@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { rafWait } from '../../src/lib/test/utils/rafWait.js'
+import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 /**
  * Comprehensive test suite for bottomToTop mode with dynamic item loading.
@@ -126,7 +126,7 @@ test.describe('BottomToTop LoadItems', () => {
         await expect(firstItem).toHaveClass('test-item')
     })
 
-    test('should handle rapid item additions gracefully', async ({ page }) => {
+    test('should handle rapid item additions gracefully', async ({ page }, testInfo) => {
         await page.waitForSelector('[data-testid="list-item-0"]')
 
         // Record any error logs
@@ -144,9 +144,9 @@ test.describe('BottomToTop LoadItems', () => {
         // Should not have any errors during the rapid addition
         expect(errors).toHaveLength(0)
 
-        // Should still be functional - able to scroll
+        // Should still be functional - able to scroll using scrollByWheel helper
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
-        await viewport.evaluate((el) => el.scrollTo({ top: 1000 }))
+        await scrollByWheel(page, viewport, 0, 1000, testInfo) // positive deltaY scrolls down
 
         const scrollTop = await viewport.evaluate((el) => el.scrollTop)
         expect(scrollTop).toBeGreaterThan(500)

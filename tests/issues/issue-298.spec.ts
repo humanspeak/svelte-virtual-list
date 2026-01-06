@@ -103,7 +103,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
         await page.goto('/tests/issues/issue-298', { waitUntil: 'networkidle' })
         await rafWait(page)
 
-        // Scroll to roughly the middle
+        // Scroll to exactly the middle - requires precise positioning, use evaluate
         await page.evaluate(() => {
             const viewport = document.querySelector('#virtual-list-viewport') as HTMLElement | null
             if (viewport) viewport.scrollTop = Math.floor(viewport.scrollHeight / 2)
