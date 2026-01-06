@@ -224,9 +224,10 @@ test.describe('BottomToTop LoadItems', () => {
             { timeout: 6000 }
         )
 
-        // Instead of asserting raw scrollTop (engine-dependent), ensure earliest item is visible
-        await page.waitForSelector('[data-testid="list-item-0"]', { timeout: 500 })
-        await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible()
+        // In bottomToTop mode, scrollTop=0 shows the HIGHEST indexed items (top of content)
+        // Item 9999 should be visible after scrolling to top
+        await page.waitForSelector('[data-testid="list-item-9999"]', { timeout: 2000 })
+        await expect(page.locator('[data-testid="list-item-9999"]')).toBeVisible()
 
         // Should be able to scroll back to bottom
         await viewport.evaluate((el) => {
@@ -268,5 +269,9 @@ test.describe('BottomToTop LoadItems', () => {
 
         const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)
         expect(finalScrollTop).toBeGreaterThan(1000)
+
+        // In bottomToTop mode, scrolling to bottom (max scrollTop) shows item 0
+        await page.waitForSelector('[data-testid="list-item-0"]', { timeout: 2000 })
+        await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible()
     })
 })
