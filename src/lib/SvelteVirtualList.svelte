@@ -308,11 +308,25 @@
     }
 
     /**
-     * Run a batch of updates with corrections coalesced until exit.
-     * Usage example (pseudo):
-     *   list.runInBatch(() => { items.push(...newOnes) })
+     * Runs a batch of updates with scroll corrections coalesced until the batch completes.
+     *
+     * Use this method when making multiple changes to the items array to prevent
+     * intermediate scroll corrections. The scroll position reconciliation is deferred
+     * until the batch exits, ensuring smooth visual updates.
+     *
+     * @param {() => void} fn - The function containing batch updates to execute.
+     * @returns {void}
+     *
+     * @example
+     * ```typescript
+     * // Add multiple items without intermediate scroll corrections
+     * list.runInBatch(() => {
+     *     items.push(newItem1);
+     *     items.push(newItem2);
+     *     items.push(newItem3);
+     * });
+     * ```
      */
-    // Exported as arrow per project conventions
     export const runInBatch = (fn: () => void): void => {
         batchDepth += 1
         try {

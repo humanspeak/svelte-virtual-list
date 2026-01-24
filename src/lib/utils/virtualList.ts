@@ -490,9 +490,29 @@ export const getScrollOffsetForIndex = (
 /**
  * Builds block prefix sums for heightCache to accelerate offset queries.
  *
- * The array contains, for each completed block, the total height of all items
- * up to and including that block. For example, for blockSize=1000, entry 0 is
- * sum(0..999), entry 1 is sum(0..1999), etc.
+ * This function precomputes cumulative height sums for blocks of items, enabling
+ * O(blockSize) offset calculations instead of O(n). The returned array contains
+ * the total height of all items up to and including each completed block.
+ *
+ * For example, with blockSize=1000:
+ * - Entry 0: sum of heights for items 0-999
+ * - Entry 1: sum of heights for items 0-1999
+ * - Entry 2: sum of heights for items 0-2999
+ *
+ * @param {Record<number, number>} heightCache - Cache of measured item heights.
+ * @param {number} calculatedItemHeight - Estimated height for unmeasured items.
+ * @param {number} totalItems - Total number of items in the list.
+ * @param {number} [blockSize=1000] - Number of items per block for memoization.
+ * @returns {number[]} Array of cumulative height sums for each completed block.
+ *
+ * @example
+ * ```typescript
+ * const heightCache = { 0: 40, 1: 50, 2: 45 };
+ * const blockSums = buildBlockSums(heightCache, 40, 5000, 1000);
+ *
+ * // Use with getScrollOffsetForIndex for efficient lookups
+ * const offset = getScrollOffsetForIndex(heightCache, 40, 2500, blockSums);
+ * ```
  */
 export const buildBlockSums = (
     heightCache: Record<number, number>,

@@ -88,22 +88,41 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
 }
 
 /**
- * Parameters for bottom-to-top scroll calculation
+ * Parameters for bottom-to-top scroll calculation.
+ *
+ * @interface BottomToTopScrollParams
  */
 interface BottomToTopScrollParams {
+    /** Alignment mode for the target item. */
     align: SvelteVirtualListScrollAlign
+    /** Index of the item to scroll to. */
     targetIndex: number
+    /** Total number of items in the list. */
     itemsLength: number
+    /** Calculated average height of items in pixels. */
     calculatedItemHeight: number
+    /** Height of the viewport in pixels. */
     height: number
+    /** Current scroll position in pixels. */
     scrollTop: number
+    /** Index of the first visible item. */
     firstVisibleIndex: number
+    /** Index of the last visible item. */
     lastVisibleIndex: number
+    /** Cache of measured item heights. */
     heightCache: Record<number, number>
 }
 
 /**
- * Calculates scroll target for bottom-to-top mode
+ * Calculates the target scroll position for bottom-to-top mode.
+ *
+ * In bottom-to-top mode, items are rendered from the bottom of the viewport upward,
+ * which requires different scroll calculations than the standard top-to-bottom mode.
+ * This function handles the coordinate system translation and alignment logic.
+ *
+ * @param {BottomToTopScrollParams} params - Parameters for scroll calculation.
+ * @returns {number | null} The target scroll position in pixels, or null if no
+ *     scroll is needed (item already visible with 'nearest' alignment).
  */
 const calculateBottomToTopScrollTarget = (params: BottomToTopScrollParams): number | null => {
     const {
@@ -160,21 +179,39 @@ const calculateBottomToTopScrollTarget = (params: BottomToTopScrollParams): numb
 }
 
 /**
- * Parameters for top-to-bottom scroll calculation
+ * Parameters for top-to-bottom scroll calculation.
+ *
+ * @interface TopToBottomScrollParams
  */
 interface TopToBottomScrollParams {
+    /** Alignment mode for the target item. */
     align: SvelteVirtualListScrollAlign
+    /** Index of the item to scroll to. */
     targetIndex: number
+    /** Calculated average height of items in pixels. */
     calculatedItemHeight: number
+    /** Height of the viewport in pixels. */
     height: number
+    /** Current scroll position in pixels. */
     scrollTop: number
+    /** Index of the first visible item. */
     firstVisibleIndex: number
+    /** Index of the last visible item. */
     lastVisibleIndex: number
+    /** Cache of measured item heights. */
     heightCache: Record<number, number>
 }
 
 /**
- * Calculates scroll target for top-to-bottom mode
+ * Calculates the target scroll position for top-to-bottom mode.
+ *
+ * This is the standard scroll mode where items are rendered from the top of the
+ * viewport downward. The function calculates the optimal scroll position based
+ * on the alignment option and current viewport state.
+ *
+ * @param {TopToBottomScrollParams} params - Parameters for scroll calculation.
+ * @returns {number | null} The target scroll position in pixels, or null if no
+ *     scroll is needed (item already visible with 'nearest' alignment).
  */
 const calculateTopToBottomScrollTarget = (params: TopToBottomScrollParams): number | null => {
     const {
