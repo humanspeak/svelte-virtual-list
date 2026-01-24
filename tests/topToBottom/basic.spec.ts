@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { rafWait } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Basic Rendering', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/list/topToBottom/basic', { waitUntil: 'domcontentloaded' })
         // Give ResizeObserver a frame to propagate height and buffer rendering
-        await page.waitForTimeout(16)
+        await rafWait(page)
     })
 
     test('should render initial viewport items', async ({ page }) => {

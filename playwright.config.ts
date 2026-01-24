@@ -54,11 +54,11 @@ export default defineConfig({
         },
         {
             name: 'mobile-chrome',
-            use: { ...devices['Pixel 5'] }
+            use: { ...devices['Pixel 6'] }
         },
         {
             name: 'mobile-safari',
-            use: { ...devices['iPhone 12'] }
+            use: { ...devices['iPhone 15'] }
         }
     ].filter((p) => (argProjects.length ? argProjects.includes(p.name) : true))
 })
