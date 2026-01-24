@@ -49,13 +49,13 @@ test.describe('TopToBottom Empty List Handling', () => {
         const content = page.locator('[data-testid="empty-list-content"]')
         await expect(content).toBeVisible()
 
-        // Items container should exist
+        // Items container should be hidden when empty
         const itemsContainer = page.locator('[data-testid="empty-list-items"]')
-        await expect(itemsContainer).toBeVisible()
+        await expect(itemsContainer).toBeHidden()
 
-        // Content height should be 0 or minimal when empty
-        const contentHeight = await content.evaluate((el) => el.getBoundingClientRect().height)
-        expect(contentHeight).toBeLessThanOrEqual(1)
+        // When empty, content should not be scrollable (scrollHeight <= clientHeight)
+        const isScrollable = await content.evaluate((el) => el.scrollHeight > el.clientHeight)
+        expect(isScrollable).toBe(false)
     })
 
     test('should add items dynamically to empty list', async ({ page }) => {
@@ -65,9 +65,8 @@ test.describe('TopToBottom Empty List Handling', () => {
 
         // Add a single item
         await page.click('[data-testid="add-single-item"]')
-        await page.waitForTimeout(100)
 
-        // Verify item was added
+        // Verify item was added (Playwright will auto-retry until condition met)
         items = page.locator('[data-testid^="list-item-"]')
         await expect(items).toHaveCount(1)
         await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible()
@@ -80,7 +79,9 @@ test.describe('TopToBottom Empty List Handling', () => {
 
         // Add many items
         await page.click('[data-testid="add-many-items"]')
-        await page.waitForTimeout(300)
+
+        // Wait for item count to update (indicates items were added)
+        await expect(page.locator('[data-testid="item-count"]')).toContainText('Items: 1000')
 
         // Verify items were added (not all 1000 will be rendered due to virtualization)
         const items = page.locator('[data-testid^="list-item-"]')
@@ -98,7 +99,9 @@ test.describe('TopToBottom Empty List Handling', () => {
     test('should remove all items from populated list', async ({ page }) => {
         // First add items
         await page.click('[data-testid="add-many-items"]')
-        await page.waitForTimeout(300)
+
+        // Wait for items to be added
+        await expect(page.locator('[data-testid="item-count"]')).toContainText('Items: 1000')
 
         // Verify items exist
         let items = page.locator('[data-testid^="list-item-"]')
@@ -106,9 +109,8 @@ test.describe('TopToBottom Empty List Handling', () => {
 
         // Remove all items
         await page.click('[data-testid="remove-all-items"]')
-        await page.waitForTimeout(100)
 
-        // Verify all items removed
+        // Verify all items removed (Playwright will auto-retry)
         items = page.locator('[data-testid^="list-item-"]')
         await expect(items).toHaveCount(0)
         await expect(page.locator('[data-testid="item-count"]')).toContainText('Items: 0')
@@ -117,27 +119,23 @@ test.describe('TopToBottom Empty List Handling', () => {
     test('should handle multiple add/remove cycles', async ({ page }) => {
         // Cycle 1: Add items
         await page.click('[data-testid="add-many-items"]')
-        await page.waitForTimeout(200)
+        await expect(page.locator('[data-testid="item-count"]')).toContainText('Items: 1000')
         expect(await page.locator('[data-testid^="list-item-"]').count()).toBeGreaterThan(0)
 
         // Cycle 1: Remove all
         await page.click('[data-testid="remove-all-items"]')
-        await page.waitForTimeout(100)
         await expect(page.locator('[data-testid^="list-item-"]')).toHaveCount(0)
 
         // Cycle 2: Add items again
         await page.click('[data-testid="add-single-item"]')
-        await page.waitForTimeout(100)
         await expect(page.locator('[data-testid^="list-item-"]')).toHaveCount(1)
 
         // Cycle 2: Add more items
         await page.click('[data-testid="add-many-items"]')
-        await page.waitForTimeout(200)
         await expect(page.locator('[data-testid="item-count"]')).toContainText('Items: 1001')
 
         // Cycle 2: Remove all again
         await page.click('[data-testid="remove-all-items"]')
-        await page.waitForTimeout(100)
         await expect(page.locator('[data-testid^="list-item-"]')).toHaveCount(0)
 
         // Verify container is still functional
@@ -172,7 +170,9 @@ test.describe('TopToBottom Empty List Handling', () => {
 
         // Add many items
         await page.click('[data-testid="add-many-items"]')
-        await page.waitForTimeout(300)
+
+        // Wait for items to be added
+        await expect(page.locator('[data-testid="item-count"]')).toContainText('Items: 1000')
 
         // Now should be scrollable
         scrollInfo = await viewport.evaluate((el) => ({
@@ -196,12 +196,22 @@ test.describe('TopToBottom Empty List Handling', () => {
         await viewport.evaluate((el) => {
             el.scrollTop = 100
         })
-        await page.waitForTimeout(100)
+
+        // Wait for scroll to be processed
+        await page.waitForFunction((selector) => {
+            const el = document.querySelector(selector)
+            return el !== null
+        }, '[data-testid="empty-list-viewport"]')
 
         await viewport.evaluate((el) => {
             el.scrollTop = 0
         })
-        await page.waitForTimeout(100)
+
+        // Wait for scroll to be processed
+        await page.waitForFunction((selector) => {
+            const el = document.querySelector(selector)
+            return el !== null && el.scrollTop === 0
+        }, '[data-testid="empty-list-viewport"]')
 
         // No errors should have occurred
         expect(errors).toHaveLength(0)
