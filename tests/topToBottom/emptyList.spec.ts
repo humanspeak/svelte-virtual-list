@@ -7,6 +7,19 @@ test.describe('TopToBottom Empty List Handling', () => {
     })
 
     test('should render with empty items array without errors', async ({ page }) => {
+        // Register console listener before navigation to catch all errors
+        const errors: string[] = []
+        page.on('console', (msg) => {
+            if (msg.type() === 'error') {
+                errors.push(msg.text())
+            }
+        })
+
+        // Reload to catch errors during navigation/hydration
+        // (beforeEach already navigated, but listener wasn't attached yet)
+        await page.reload({ waitUntil: 'networkidle' })
+        await page.waitForSelector('[data-testid="empty-list-container"]')
+
         // Verify the container exists and is visible
         const container = page.locator('[data-testid="empty-list-container"]')
         await expect(container).toBeVisible()
@@ -23,16 +36,7 @@ test.describe('TopToBottom Empty List Handling', () => {
         const itemCount = page.locator('[data-testid="item-count"]')
         await expect(itemCount).toContainText('Items: 0')
 
-        // Check for console errors
-        const errors: string[] = []
-        page.on('console', (msg) => {
-            if (msg.type() === 'error') {
-                errors.push(msg.text())
-            }
-        })
-
-        // Wait a bit to catch any delayed errors
-        await page.waitForTimeout(200)
+        // No errors should have occurred during load or render
         expect(errors).toHaveLength(0)
     })
 
