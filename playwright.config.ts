@@ -33,8 +33,8 @@ export default defineConfig({
     },
     // Limit parallelism to reduce flakiness from resource contention
     // Virtual list tests are resource-intensive (DOM, ResizeObserver, scroll)
-    // CI uses 1 worker for maximum determinism
-    workers: process.env.CI ? 1 : 4,
+    // CI uses 1 worker for maximum determinism, local uses 2 for stability
+    workers: process.env.CI ? 1 : 2,
     // Don't run tests within the same file in parallel
     fullyParallel: false,
     // Make CI a bit more forgiving for transient issues
