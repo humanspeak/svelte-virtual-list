@@ -186,23 +186,22 @@
     // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
     const INTERNAL_DEBUG = Boolean(
         typeof process !== 'undefined' &&
-            (process?.env?.PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG === 'true' ||
-                process?.env?.SVELTE_VIRTUAL_LIST_DEBUG === 'true')
+        (process?.env?.PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG === 'true' ||
+            process?.env?.SVELTE_VIRTUAL_LIST_DEBUG === 'true')
     )
     // Feature flags - default off; enable via env for incremental rollout
     const anchorModeEnabled = Boolean(
         typeof process !== 'undefined' &&
-            (process?.env?.PUBLIC_SVL_ANCHOR_MODE === 'true' ||
-                process?.env?.SVL_ANCHOR_MODE === 'true')
+        (process?.env?.PUBLIC_SVL_ANCHOR_MODE === 'true' ||
+            process?.env?.SVL_ANCHOR_MODE === 'true')
     )
     const idleCorrectionsOnly = Boolean(
         typeof process !== 'undefined' &&
-            (process?.env?.PUBLIC_SVL_IDLE_ONLY === 'true' ||
-                process?.env?.SVL_IDLE_ONLY === 'true')
+        (process?.env?.PUBLIC_SVL_IDLE_ONLY === 'true' || process?.env?.SVL_IDLE_ONLY === 'true')
     )
     const batchUpdatesEnabled = Boolean(
         typeof process !== 'undefined' &&
-            (process?.env?.PUBLIC_SVL_BATCH === 'true' || process?.env?.SVL_BATCH === 'true')
+        (process?.env?.PUBLIC_SVL_BATCH === 'true' || process?.env?.SVL_BATCH === 'true')
     )
     /**
      * Core configuration props with default values
