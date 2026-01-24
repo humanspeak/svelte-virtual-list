@@ -32,8 +32,9 @@ export default defineConfig({
         timeout: 10000
     },
     // Limit parallelism to reduce flakiness from resource contention
-    // CI runners often have limited resources; fewer workers = more stability
-    workers: process.env.CI ? 2 : undefined,
+    // Virtual list tests are resource-intensive (DOM, ResizeObserver, scroll)
+    // CI uses 1 worker for maximum determinism
+    workers: process.env.CI ? 1 : 4,
     // Don't run tests within the same file in parallel
     fullyParallel: false,
     // Make CI a bit more forgiving for transient issues
