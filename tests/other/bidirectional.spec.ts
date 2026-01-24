@@ -1,16 +1,14 @@
 import { expect, test } from '@playwright/test'
-import { rafWait } from '../../src/lib/test/utils/rafWait.js'
+import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Bidirectional Scrolling', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/other/bidirectional', { waitUntil: 'networkidle' })
+        await page.goto('/tests/other/bidirectional', { waitUntil: 'domcontentloaded' })
         // Wait for both lists to render
         await page.waitForSelector('[data-testid="top-to-bottom-viewport"]')
         await page.waitForSelector('[data-testid="bottom-to-top-viewport"]')
-        // Wait for two RAFs so initial measurement completes deterministically
-
-        await rafWait(page)
-        await rafWait(page)
+        // Wait for two RAF cycles so initial measurement completes deterministically
+        await rafWait(page, 2)
     })
 
     test('should render user content correctly in both directions', async ({ page }) => {
@@ -42,7 +40,7 @@ test.describe('Bidirectional Scrolling', () => {
 
     test('should maintain independent scroll positions and show different user content', async ({
         page
-    }) => {
+    }, testInfo) => {
         // This test verifies that two virtual lists can maintain independent scroll positions
         // Content changes work perfectly in real browsers but may not render in test environments
 
@@ -67,26 +65,16 @@ test.describe('Bidirectional Scrolling', () => {
             }
         })
 
-        // Scroll first list (topToBottom) - realistic user behavior
-        await page.evaluate(() => {
-            const ttbList = document.querySelector('[data-testid="top-to-bottom-viewport"]')
-            if (ttbList) {
-                ttbList.scrollTop = 1000 // topToBottom: scroll down to see higher indices
-                ttbList.dispatchEvent(new Event('scroll', { bubbles: true }))
-            }
-        })
+        // Scroll first list (topToBottom) using scrollByWheel helper - realistic user behavior
+        const ttbViewport = page.locator('[data-testid="top-to-bottom-viewport"]')
+        await scrollByWheel(page, ttbViewport, 0, 1000, testInfo) // positive deltaY scrolls down
 
         // Wait for first scroll to complete - mimics user pause
         await page.waitForTimeout(300)
 
-        // Now scroll second list (bottomToTop) - after user delay
-        await page.evaluate(() => {
-            const bttList = document.querySelector('[data-testid="bottom-to-top-viewport"]')
-            if (bttList) {
-                bttList.scrollTop = bttList.scrollTop - 50000 // bottomToTop: much larger scroll amount
-                bttList.dispatchEvent(new Event('scroll', { bubbles: true }))
-            }
-        })
+        // Now scroll second list (bottomToTop) using scrollByWheel helper - after user delay
+        const bttViewport = page.locator('[data-testid="bottom-to-top-viewport"]')
+        await scrollByWheel(page, bttViewport, 0, -50000, testInfo) // negative deltaY scrolls up in bottomToTop mode
 
         // Wait for second scroll to complete
         await page.waitForTimeout(300)
@@ -158,16 +146,17 @@ test.describe('Bidirectional Scrolling', () => {
         expect(bttItemCount).toBeLessThan(200)
     })
 
-    test('should handle simultaneous operations without interference', async ({ page }) => {
-        // Trigger simultaneous scrolling in both lists
-        await page.evaluate(() => {
-            const ttbList = document.querySelector('[data-testid="top-to-bottom-viewport"]')
-            const bttList = document.querySelector('[data-testid="bottom-to-top-viewport"]')
+    test('should handle simultaneous operations without interference', async ({
+        page
+    }, testInfo) => {
+        // Trigger simultaneous scrolling in both lists using scrollByWheel helper
+        // First scroll the topToBottom list
+        const ttbViewport = page.locator('[data-testid="top-to-bottom-viewport"]')
+        await scrollByWheel(page, ttbViewport, 0, 2000, testInfo) // positive deltaY scrolls down
 
-            // Scroll both lists simultaneously
-            if (ttbList) ttbList.scrollTop = 2000
-            if (bttList) bttList.scrollTop = bttList.scrollTop - 8000 // bottomToTop: subtract to scroll up and see higher indices
-        })
+        // Immediately scroll the bottomToTop list (simulating simultaneous user action)
+        const bttViewport = page.locator('[data-testid="bottom-to-top-viewport"]')
+        await scrollByWheel(page, bttViewport, 0, -8000, testInfo) // negative deltaY scrolls up in bottomToTop
 
         // Allow both lists to process changes
         await page.waitForTimeout(200)
@@ -251,26 +240,20 @@ test.describe('Bidirectional Scrolling', () => {
         }
     })
 
-    test('should maintain performance isolation between lists', async ({ page }) => {
+    test('should maintain performance isolation between lists', async ({ page }, testInfo) => {
         // Measure performance by checking that operations in one list don't slow down the other
         const startTime = Date.now()
 
-        // Perform intensive operations on top-to-bottom list
-        await page.evaluate(() => {
-            const ttbList = document.querySelector('[data-testid="top-to-bottom-viewport"]')
-            if (ttbList) {
-                // Rapid scrolling to trigger multiple re-renders
-                for (let i = 0; i < 10; i++) {
-                    ttbList.scrollTop = i * 200
-                }
-            }
-        })
+        // Perform intensive operations on top-to-bottom list using scrollByWheel helper
+        const ttbViewport = page.locator('[data-testid="top-to-bottom-viewport"]')
+        // Rapid scrolling to trigger multiple re-renders
+        for (let i = 0; i < 10; i++) {
+            await scrollByWheel(page, ttbViewport, 0, 200, testInfo) // positive deltaY scrolls down
+        }
 
-        // Verify bottom-to-top list still responds quickly
-        await page.evaluate(() => {
-            const bttList = document.querySelector('[data-testid="bottom-to-top-viewport"]')
-            if (bttList) bttList.scrollTop = bttList.scrollTop - 3000 // bottomToTop: subtract to scroll up and see different items
-        })
+        // Verify bottom-to-top list still responds quickly using scrollByWheel helper
+        const bttViewport = page.locator('[data-testid="bottom-to-top-viewport"]')
+        await scrollByWheel(page, bttViewport, 0, -3000, testInfo) // negative deltaY scrolls up in bottomToTop
 
         await page.waitForTimeout(50)
 

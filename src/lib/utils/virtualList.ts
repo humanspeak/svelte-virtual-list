@@ -157,14 +157,15 @@ export const calculateTransformY = (
         // When content is smaller than viewport, push to bottom
         const bottomOffset = Math.max(0, effectiveViewport - actualTotalHeight)
 
-        return basicTransform + bottomOffset
+        // Snap to integer pixels to avoid subpixel oscillation
+        return Math.round(basicTransform + bottomOffset)
     } else {
         // For topToBottom, prefer precise offset using measured heights when available
         if (heightCache) {
             const offset = getScrollOffsetForIndex(heightCache, itemHeight, visibleStart)
             return Math.max(0, Math.round(offset))
         }
-        return visibleStart * itemHeight
+        return Math.round(visibleStart * itemHeight)
     }
 }
 
@@ -484,4 +485,54 @@ export const getScrollOffsetForIndex = (
         offset += height
     }
     return offset
+}
+
+/**
+ * Builds block prefix sums for heightCache to accelerate offset queries.
+ *
+ * This function precomputes cumulative height sums for blocks of items, enabling
+ * O(blockSize) offset calculations instead of O(n). The returned array contains
+ * the total height of all items up to and including each completed block.
+ *
+ * For example, with blockSize=1000:
+ * - Entry 0: sum of heights for items 0-999
+ * - Entry 1: sum of heights for items 0-1999
+ * - Entry 2: sum of heights for items 0-2999
+ *
+ * @param {Record<number, number>} heightCache - Cache of measured item heights.
+ * @param {number} calculatedItemHeight - Estimated height for unmeasured items.
+ * @param {number} totalItems - Total number of items in the list.
+ * @param {number} [blockSize=1000] - Number of items per block for memoization.
+ * @returns {number[]} Array of cumulative height sums for each completed block.
+ *
+ * @example
+ * ```typescript
+ * const heightCache = { 0: 40, 1: 50, 2: 45 };
+ * const blockSums = buildBlockSums(heightCache, 40, 5000, 1000);
+ *
+ * // Use with getScrollOffsetForIndex for efficient lookups
+ * const offset = getScrollOffsetForIndex(heightCache, 40, 2500, blockSums);
+ * ```
+ */
+export const buildBlockSums = (
+    heightCache: Record<number, number>,
+    calculatedItemHeight: number,
+    totalItems: number,
+    blockSize = 1000
+): number[] => {
+    const blocks = Math.ceil(totalItems / blockSize)
+    const sums: number[] = new Array(Math.max(0, blocks - 1))
+    let running = 0
+    for (let b = 0; b < blocks - 1; b++) {
+        const start = b * blockSize
+        const end = start + blockSize
+        for (let i = start; i < end; i++) {
+            const raw = heightCache[i]
+            const h =
+                Number.isFinite(raw) && (raw as number) > 0 ? (raw as number) : calculatedItemHeight
+            running += h
+        }
+        sums[b] = running
+    }
+    return sums
 }

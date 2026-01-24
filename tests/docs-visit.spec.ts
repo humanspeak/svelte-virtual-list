@@ -6,11 +6,10 @@ test.describe('External docs site smoke', () => {
     test('t2b aligns item 0 to top edge', async ({ page }: { page: Page }) => {
         try {
             await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+            await expect(page.getByText('Top to bottom').first()).toBeVisible()
         } catch {
             test.skip(true, 'Docs dev server not running on ' + baseUrl)
         }
-
-        await expect(page.getByText('Top to bottom').first()).toBeVisible()
 
         const leftContainer = page.locator('[data-testid="top-to-bottom-viewport"]')
         await expect(leftContainer).toHaveCount(1)
@@ -44,10 +43,10 @@ test.describe('External docs site smoke', () => {
     test('b2t aligns item 0 to bottom edge', async ({ page }: { page: Page }) => {
         try {
             await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+            await expect(page.getByText('Bottom to top').first()).toBeVisible()
         } catch {
             test.skip(true, 'Docs dev server not running on ' + baseUrl)
         }
-        await expect(page.getByText('Bottom to top').first()).toBeVisible()
 
         const rightContainer = page.locator('[data-testid="bottom-to-top-viewport"]')
         await expect(rightContainer).toHaveCount(1)

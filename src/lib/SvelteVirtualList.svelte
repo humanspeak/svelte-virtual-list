@@ -166,7 +166,9 @@
         calculateScrollPosition,
         calculateTransformY,
         calculateVisibleRange,
-        updateHeightAndScroll as utilsUpdateHeightAndScroll
+        updateHeightAndScroll as utilsUpdateHeightAndScroll,
+        getScrollOffsetForIndex,
+        buildBlockSums
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
@@ -184,8 +186,22 @@
     // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
     const INTERNAL_DEBUG = Boolean(
         typeof process !== 'undefined' &&
-            (process?.env?.PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG === 'true' ||
-                process?.env?.SVELTE_VIRTUAL_LIST_DEBUG === 'true')
+        (process?.env?.PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG === 'true' ||
+            process?.env?.SVELTE_VIRTUAL_LIST_DEBUG === 'true')
+    )
+    // Feature flags - default off; enable via env for incremental rollout
+    const anchorModeEnabled = Boolean(
+        typeof process !== 'undefined' &&
+        (process?.env?.PUBLIC_SVL_ANCHOR_MODE === 'true' ||
+            process?.env?.SVL_ANCHOR_MODE === 'true')
+    )
+    const idleCorrectionsOnly = Boolean(
+        typeof process !== 'undefined' &&
+        (process?.env?.PUBLIC_SVL_IDLE_ONLY === 'true' || process?.env?.SVL_IDLE_ONLY === 'true')
+    )
+    const batchUpdatesEnabled = Boolean(
+        typeof process !== 'undefined' &&
+        (process?.env?.PUBLIC_SVL_BATCH === 'true' || process?.env?.SVL_BATCH === 'true')
     )
     /**
      * Core configuration props with default values
@@ -222,6 +238,106 @@
 
     const isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isScrolling = $state(false) // Tracks active scrolling state
+    let scrollIdleTimer: number | null = null
+    // Anchor state (read-only capture; used when anchorModeEnabled)
+    let lastAnchorIndex = $state(0)
+    let lastAnchorOffset = $state(0) // offset within anchored item (px)
+    let pendingAnchorReconcile = $state(false)
+    let batchDepth = $state(0)
+
+    const captureAnchor = () => {
+        if (!heightManager.viewportElement) return
+        const vr = visibleItems()
+        const anchorIndex = Math.max(0, vr.start)
+        const cache = heightManager.getHeightCache()
+        const est = heightManager.averageHeight
+        const maxScrollTop = Math.max(0, totalHeight() - (height || 0))
+        // Offset from start to anchored item
+        const blockSums = buildBlockSums(cache, est, items.length)
+        const offsetToIndex = getScrollOffsetForIndex(cache, est, anchorIndex, blockSums)
+        const currentTop = heightManager.viewport.scrollTop
+        let offsetWithin = 0
+        if (mode === 'bottomToTop') {
+            // Convert distance-from-end to distance-from-start
+            const distanceFromStart = maxScrollTop - currentTop
+            offsetWithin = distanceFromStart - offsetToIndex
+        } else {
+            offsetWithin = currentTop - offsetToIndex
+        }
+        lastAnchorIndex = anchorIndex
+        lastAnchorOffset = Math.max(0, Math.round(offsetWithin))
+        // Expose for tests
+        ;(heightManager.viewport as unknown as Record<string, unknown>).__svlAnchor = {
+            index: lastAnchorIndex,
+            offset: lastAnchorOffset
+        }
+        pendingAnchorReconcile = true
+    }
+
+    const reconcileToAnchorIfEnabled = () => {
+        if (!anchorModeEnabled || !heightManager.viewportElement) return
+        if (!pendingAnchorReconcile) return
+        const cache = heightManager.getHeightCache()
+        const est = heightManager.averageHeight
+        const blockSums = buildBlockSums(cache, est, items.length)
+        const offsetToIndex = getScrollOffsetForIndex(
+            cache,
+            est,
+            Math.max(0, lastAnchorIndex),
+            blockSums
+        )
+        const maxScrollTop = Math.max(0, totalHeight() - (height || 0))
+        let targetTop: number
+        if (mode === 'bottomToTop') {
+            const distanceFromStart = Math.max(0, offsetToIndex + lastAnchorOffset)
+            targetTop = Math.max(
+                0,
+                Math.min(maxScrollTop, Math.round(maxScrollTop - distanceFromStart))
+            )
+        } else {
+            targetTop = Math.max(
+                0,
+                Math.min(maxScrollTop, Math.round(offsetToIndex + lastAnchorOffset))
+            )
+        }
+        if (Math.abs(heightManager.viewport.scrollTop - targetTop) >= 2) {
+            heightManager.viewport.scrollTop = targetTop
+            heightManager.scrollTop = targetTop
+        }
+        pendingAnchorReconcile = false
+    }
+
+    /**
+     * Runs a batch of updates with scroll corrections coalesced until the batch completes.
+     *
+     * Use this method when making multiple changes to the items array to prevent
+     * intermediate scroll corrections. The scroll position reconciliation is deferred
+     * until the batch exits, ensuring smooth visual updates.
+     *
+     * @param {() => void} fn - The function containing batch updates to execute.
+     * @returns {void}
+     *
+     * @example
+     * ```typescript
+     * // Add multiple items without intermediate scroll corrections
+     * list.runInBatch(() => {
+     *     items.push(newItem1);
+     *     items.push(newItem2);
+     *     items.push(newItem3);
+     * });
+     * ```
+     */
+    export const runInBatch = (fn: () => void): void => {
+        batchDepth += 1
+        try {
+            fn()
+        } finally {
+            batchDepth = Math.max(0, batchDepth - 1)
+            if (batchUpdatesEnabled && batchDepth === 0) {
+                reconcileToAnchorIfEnabled()
+            }
+        }
+    }
     let lastMeasuredIndex = $state(-1) // Index of last measured item
     let lastScrollTopSnapshot = $state(0) // Previous scroll position snapshot
 
@@ -306,6 +422,25 @@
         if (!heightManager.viewportElement || !heightManager.initialized || userHasScrolledAway) {
             return
         }
+        // Coalesce adjustments during active scroll; apply on idle
+        if (isScrolling) {
+            // Accumulate net change above viewport and defer application
+            let pending = 0
+            const currentVisibleRange = visibleItems()
+            for (const change of heightChanges) {
+                if (change.index < currentVisibleRange.start) pending += change.delta
+            }
+            if (pending !== 0) {
+                // Store on the viewport element to avoid extra module globals
+                const key = '__svl_pendingHeightAdj__' as unknown as keyof HTMLElement
+                const prev = (heightManager.viewport as unknown as Record<string, number>)[
+                    key as string
+                ] as number | undefined
+                ;(heightManager.viewport as unknown as Record<string, number>)[key as string] =
+                    (prev ?? 0) + pending
+            }
+            return
+        }
 
         /**
          * CRITICAL: BottomToTop Mode Height Change Fix
@@ -368,7 +503,7 @@
 
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
-            log('b2t-correction-approx', { approximateScrollTop })
+            log('[SVL] b2t-correction-approx', { approximateScrollTop })
             heightManager.viewport.scrollTop = approximateScrollTop
             heightManager.scrollTop = approximateScrollTop
 
@@ -392,7 +527,7 @@
                             behavior: 'smooth', // Smooth animation for better UX
                             inline: 'nearest' // Minimal horizontal adjustment
                         })
-                        log('b2t-correction-native', {
+                        log('[SVL] b2t-correction-native', {
                             containerBottom: contRect.y + contRect.height,
                             itemBottom: itemRect.y + itemRect.height
                         })
@@ -422,7 +557,17 @@
         }
 
         // If there are height changes above the viewport, adjust scroll to maintain position
-        if (Math.abs(heightChangeAboveViewport) > 1) {
+        // Include any pending coalesced delta (when scrolling)
+        {
+            const key = '__svl_pendingHeightAdj__' as unknown as keyof HTMLElement
+            const pending =
+                (heightManager.viewport as unknown as Record<string, number>)[key as string] ?? 0
+            if (pending) {
+                heightChangeAboveViewport += pending
+                ;(heightManager.viewport as unknown as Record<string, number>)[key as string] = 0
+            }
+        }
+        if (Math.abs(heightChangeAboveViewport) > 2) {
             const newScrollTop = Math.min(
                 maxScrollTop,
                 Math.max(0, currentScrollTop + heightChangeAboveViewport)
@@ -502,9 +647,8 @@
                         const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) <= tolerance
                         if (isAtBottom) {
                             // Adjust scrollTop by total height delta to hold bottom anchor
-                            const adjusted = Math.min(
-                                maxScrollTop,
-                                Math.max(0, currentScrollTop + deltaTotal)
+                            const adjusted = Math.round(
+                                Math.min(maxScrollTop, Math.max(0, currentScrollTop + deltaTotal))
                             )
                             heightManager.viewport.scrollTop = adjusted
                             heightManager.scrollTop = adjusted
@@ -622,6 +766,7 @@
                 heightChanged &&
                 !userHasScrolledAway &&
                 !isAtBottom && // Don't apply aggressive correction when at bottom
+                !isScrolling && // Skip aggressive corrections during active scroll
                 !programmaticScrollInProgress && // Don't interfere with programmatic scrolls
                 performance.now() >= suppressBottomAnchoringUntilMs &&
                 !heightManager.isDynamicUpdateInProgress &&
@@ -716,7 +861,7 @@
                         // Snap to integer pixels to prevent oscillation due to subpixel rounding
                         const desiredRounded = Math.round(desiredScrollTop)
                         const diffToDesired = desiredRounded - heightManager.viewport.scrollTop
-                        if (Math.abs(diffToDesired) >= 1) {
+                        if (Math.abs(diffToDesired) >= 2) {
                             const adjusted = Math.max(
                                 0,
                                 Math.min(reconciledNextMax, desiredRounded)
@@ -868,35 +1013,49 @@
     const handleScroll = () => {
         if (!BROWSER || !heightManager.viewportElement) return
 
-        if (!isScrolling) {
-            isScrolling = true
-            rafSchedule(() => {
-                const current = heightManager.viewport.scrollTop
-                if (mode === 'bottomToTop') {
-                    const delta = lastScrollTopSnapshot - current
-                    if (delta > 0.5) {
-                        // Widen suppression to avoid fighting peer instance corrections
-                        suppressBottomAnchoringUntilMs = performance.now() + 450
-                        userHasScrolledAway = true
-                    }
-                }
-                lastScrollTopSnapshot = current
-                heightManager.scrollTop = current
-                updateDebugTailDistance()
-                if (INTERNAL_DEBUG) {
-                    const vr = visibleItems()
-                    log('scroll', {
-                        mode,
-                        scrollTop: heightManager.scrollTop,
-                        height,
-                        totalHeight: totalHeight(),
-                        averageItemHeight: heightManager.averageHeight,
-                        visibleRange: vr
-                    })
-                }
-                isScrolling = false
-            })
+        // Mark active scrolling and debounce idle transition (~120ms)
+        isScrolling = true
+        if (scrollIdleTimer) {
+            clearTimeout(scrollIdleTimer)
+            scrollIdleTimer = null
         }
+        scrollIdleTimer = window.setTimeout(() => {
+            isScrolling = false
+            // Apply deferred anchor correction on idle
+            if (idleCorrectionsOnly || anchorModeEnabled) {
+                reconcileToAnchorIfEnabled()
+            }
+        }, 250)
+
+        rafSchedule(() => {
+            const current = heightManager.viewport.scrollTop
+            if (mode === 'bottomToTop') {
+                const delta = lastScrollTopSnapshot - current
+                if (delta > 0.5) {
+                    // Widen suppression to avoid fighting peer instance corrections
+                    suppressBottomAnchoringUntilMs = performance.now() + 450
+                    userHasScrolledAway = true
+                }
+            }
+            lastScrollTopSnapshot = current
+            heightManager.scrollTop = current
+            updateDebugTailDistance()
+            if (anchorModeEnabled) {
+                captureAnchor()
+            }
+            if (INTERNAL_DEBUG) {
+                const vr = visibleItems()
+                log('[SVL] scroll', {
+                    mode,
+                    scrollTop: heightManager.scrollTop,
+                    height,
+                    totalHeight: totalHeight(),
+                    averageItemHeight: heightManager.averageHeight,
+                    visibleRange: vr
+                })
+            }
+            // isScrolling cleared by idle timer
+        })
     }
 
     /**

@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { rafWait } from '../../src/lib/test/utils/rafWait.js'
+import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Basic BottomToTop Rendering', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/list/bottomToTop/basic', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/bottomToTop/basic', { waitUntil: 'domcontentloaded' })
         // Allow brief settling time for height measurements to complete
         await rafWait(page)
         await page
@@ -95,6 +95,8 @@ test.describe('Basic BottomToTop Rendering', () => {
             .locator('[data-original-index="0"]')
             .first()
             .waitFor({ state: 'attached', timeout: 1200 })
+        // Wait for layout to stabilize after item attachment
+        await rafWait(page)
         // Verify that item 0 is positioned at/near the bottom of the viewport
         const isItem0AtBottom = await page.evaluate(() => {
             const viewport = document.querySelector('.virtual-list-container') as HTMLElement
@@ -168,7 +170,7 @@ test.describe('Basic BottomToTop Rendering', () => {
         expect(itemsInContainer).toBeGreaterThan(0)
     })
 
-    test('should handle scroll events in bottomToTop mode', async ({ page }) => {
+    test('should handle scroll events in bottomToTop mode', async ({ page }, testInfo) => {
         // Get initial visible items (should include Item 0 at bottom and higher indices)
         const initialIndices = await page.evaluate(() => {
             return Array.from(document.querySelectorAll('[data-original-index]')).map((el) =>
@@ -176,16 +178,10 @@ test.describe('Basic BottomToTop Rendering', () => {
             )
         })
 
-        // Scroll down to reveal different items
-        await page.evaluate(() => {
-            const container = document.querySelector(
-                '[data-testid="basic-list-viewport"]'
-            ) as HTMLElement
-            if (container) {
-                // Scroll down significantly to see different items (much more than 1000px)
-                container.scrollTop -= 5000
-            }
-        })
+        // Scroll using scrollByWheel helper - negative deltaY scrolls up (decreases scrollTop)
+        // In bottomToTop mode, this reveals higher indices
+        const viewport = page.locator('[data-testid="basic-list-viewport"]')
+        await scrollByWheel(page, viewport, 0, -5000, testInfo)
 
         // Wait for scroll and rendering to settle
         await page.waitForTimeout(200)

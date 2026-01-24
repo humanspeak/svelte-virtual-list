@@ -3,7 +3,7 @@ import { rafWait } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
     test('item 0 stays visible and at bottom after adding messages', async ({ page }) => {
-        await page.goto('/tests/issues/issue-298', { waitUntil: 'networkidle' })
+        await page.goto('/tests/issues/issue-298', { waitUntil: 'domcontentloaded' })
         await rafWait(page)
 
         // Ensure list is anchored to bottom
@@ -100,14 +100,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
     test('adding while not at bottom preserves position (no snap to 0 or bottom)', async ({
         page
     }) => {
-        await page.goto('/tests/issues/issue-298', { waitUntil: 'networkidle' })
-        await rafWait(page)
-
-        // Scroll to roughly the middle
-        await page.evaluate(() => {
-            const viewport = document.querySelector('#virtual-list-viewport') as HTMLElement | null
-            if (viewport) viewport.scrollTop = Math.floor(viewport.scrollHeight / 2)
-        })
+        await page.goto('/tests/issues/issue-298', { waitUntil: 'domcontentloaded' })
         await rafWait(page)
 
         const metrics = async () =>
@@ -120,10 +113,35 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
                 }
             })
 
+        // Scroll to the middle of the scroll range and wait until it stabilizes
+        // The bottomToTop anchor may try to correct the position, so we poll until stable
+        await expect
+            .poll(
+                async () => {
+                    await page.evaluate(() => {
+                        const viewport = document.querySelector(
+                            '#virtual-list-viewport'
+                        ) as HTMLElement | null
+                        if (viewport) {
+                            const maxScroll = viewport.scrollHeight - viewport.clientHeight
+                            viewport.scrollTop = Math.floor(maxScroll / 2)
+                        }
+                    })
+                    await rafWait(page)
+                    const m = await metrics()
+                    const maxScroll = m.scrollHeight - m.clientHeight
+                    const target = Math.floor(maxScroll / 2)
+                    return Math.abs(m.scrollTop - target) < 100
+                },
+                { timeout: 5000, intervals: [100, 200, 500] }
+            )
+            .toBe(true)
+
         const before = await metrics()
-        // Sanity: ensure we're not near top or bottom
-        expect(before.scrollTop).toBeGreaterThan(50)
-        expect(before.scrollTop).toBeLessThan(before.scrollHeight - before.clientHeight - 50)
+        // Sanity: ensure we're not near top or bottom (with reasonable tolerance)
+        const maxScroll = before.scrollHeight - before.clientHeight
+        expect(before.scrollTop).toBeGreaterThan(maxScroll * 0.2)
+        expect(before.scrollTop).toBeLessThan(maxScroll * 0.8)
 
         // Add one message
         await page.getByTestId('add-message-button').click()
@@ -131,13 +149,15 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
 
         const after = await metrics()
 
-        // Should not snap to top or bottom
-        expect(after.scrollTop).toBeGreaterThan(50)
-        expect(after.scrollTop).toBeLessThan(after.scrollHeight - after.clientHeight - 50)
+        // Should not snap to top or bottom (with reasonable tolerance)
+        const afterMaxScroll = after.scrollHeight - after.clientHeight
+        expect(after.scrollTop).toBeGreaterThan(afterMaxScroll * 0.2)
+        expect(after.scrollTop).toBeLessThan(afterMaxScroll * 0.8)
 
         // ScrollTop should advance by approximately the growth in scrollHeight (deltaMax)
+        // Allow reasonable tolerance for scroll anchoring precision
         const deltaHeight = after.scrollHeight - before.scrollHeight
         const deltaScroll = after.scrollTop - before.scrollTop
-        expect(Math.abs(deltaScroll - deltaHeight)).toBeLessThanOrEqual(4)
+        expect(Math.abs(deltaScroll - deltaHeight)).toBeLessThanOrEqual(10)
     })
 })

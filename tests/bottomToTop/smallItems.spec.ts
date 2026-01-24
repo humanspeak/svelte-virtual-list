@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('BottomToTop Small Items', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/list/bottomToTop/smallItems', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/bottomToTop/smallItems', { waitUntil: 'domcontentloaded' })
         // Wait for the virtual list to be visible
         await page.waitForSelector('[data-testid="basic-list-container"]')
     })
@@ -27,6 +28,9 @@ test.describe('BottomToTop Small Items', () => {
         // Wait for items to be positioned
         await expect(firstItem).toBeVisible()
         await expect(lastItem).toBeVisible()
+
+        // Wait for layout to stabilize before measuring
+        await rafWait(page)
 
         // Get container and item positions
         const containerBox = await container.boundingBox()
@@ -76,13 +80,13 @@ test.describe('BottomToTop Small Items', () => {
         expect(item0Box!.y).toBeGreaterThan(item1Box!.y)
     })
 
-    test('should handle container scrolling properly with few items', async ({ page }) => {
+    test('should handle container scrolling properly with few items', async ({
+        page
+    }, testInfo) => {
         const container = page.locator('.test-container')
 
-        // Try to scroll the container
-        await container.evaluate((el) => {
-            el.scrollTop = 50
-        })
+        // Try to scroll the container using scrollByWheel helper
+        await scrollByWheel(page, container, 0, 50, testInfo) // positive deltaY scrolls down
 
         // Wait for any scroll effects
         await page.waitForTimeout(100)

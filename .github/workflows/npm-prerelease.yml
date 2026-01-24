@@ -47,10 +47,10 @@ on:
 jobs:
     # Quick validation
     validate:
-        runs-on: ubuntu-latest
+        runs-on: blacksmith-2vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
         steps:
             - name: Checkout
-              uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
+              uses: actions/checkout@v6 # zizmor: ignore[unpinned-uses]
               with:
                   persist-credentials: false
                   fetch-depth: 0
@@ -59,10 +59,11 @@ jobs:
               with:
                   version: 10
 
-            - name: Use Node.js 22
-              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
+            - name: Use Node.js 24
+              uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses,cache-poisoning]
               with:
-                  node-version: 22
+                  node-version: 24
+                  cache: ''
 
             - name: Install dependencies
               run: npm ci --prefer-offline --no-audit --ignore-scripts
@@ -78,7 +79,7 @@ jobs:
     # Prerelease publishing
     publish-prerelease:
         needs: validate
-        runs-on: ubuntu-latest
+        runs-on: blacksmith-2vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
         permissions:
             contents: write
             packages: write
@@ -86,7 +87,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v4 # zizmor: ignore[unpinned-uses]
+              uses: actions/checkout@v6 # zizmor: ignore[unpinned-uses]
               with:
                   persist-credentials: false
                   token: ${{ secrets.ACTIONS_KEY }}
@@ -96,12 +97,13 @@ jobs:
               with:
                   version: 10
 
-            - name: Use Node.js - 22
-              uses: actions/setup-node@v4 # zizmor: ignore[unpinned-uses]
+            - name: Use Node.js - 24
+              uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses,cache-poisoning]
               with:
-                  node-version: 22
+                  node-version: 24
                   registry-url: https://registry.npmjs.org
                   scope: '@humanspeak'
+                  cache: ''
 
             - name: Install dependencies
               run: npm ci --prefer-offline --no-audit --ignore-scripts

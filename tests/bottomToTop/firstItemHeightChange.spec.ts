@@ -16,7 +16,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         // Install fake timers for page.clock.runFor usage in tests
         await page.clock.install()
         // Navigate to the base page so selectors are present; tests may navigate again with params
-        await page.goto(PAGE_URL, { waitUntil: 'networkidle' })
+        await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="basic-list-container"]')
     })
     test('should render initial items with correct heights at bottom', async ({ page }) => {
@@ -137,7 +137,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         const initialItem0Y = (await item0.boundingBox())?.y
 
         // Trigger height change by navigating with URL parameter
-        await page.goto(`${PAGE_URL}?height1=100`, { waitUntil: 'networkidle' })
+        await page.goto(`${PAGE_URL}?height1=100`, { waitUntil: 'domcontentloaded' })
 
         // Wait for the page to load and height change to be applied
         await page.waitForSelector('[data-testid="basic-list-container"]')
@@ -180,7 +180,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
 
     test('should handle multiple sequential height changes smoothly', async ({ page }) => {
         // Navigate with sequence: 100px → 150px → 50px (every 1 second)
-        await page.goto(`${PAGE_URL}?height1=100,150,50`, { waitUntil: 'networkidle' })
+        await page.goto(`${PAGE_URL}?height1=100,150,50`, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="list-item-1"]')
 
         const item1 = page.locator('[data-testid="list-item-1"]')
@@ -223,7 +223,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
 
     test('should handle large height changes without breaking layout', async ({ page }) => {
         // Navigate with sequence: 100px → 500px (very large change)
-        await page.goto(`${PAGE_URL}?height1=100,500`, { waitUntil: 'networkidle' })
+        await page.goto(`${PAGE_URL}?height1=100,500`, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="list-item-1"]')
 
         const container = page.locator('[data-testid="basic-list-container"]')
@@ -263,7 +263,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
     test('should handle height changes on multiple items simultaneously', async ({ page }) => {
         // Navigate once with all height changes applied
         await page.goto(`${PAGE_URL}?height0=80&height1=100&height2=120&height3=60`, {
-            waitUntil: 'networkidle'
+            waitUntil: 'domcontentloaded'
         })
         await page.waitForSelector('[data-testid="basic-list-container"]')
 
@@ -324,7 +324,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         }
 
         // Trigger multiple height changes simultaneously via URL navigation
-        await page.goto(`${PAGE_URL}?height1=100&height3=150`, { waitUntil: 'networkidle' })
+        await page.goto(`${PAGE_URL}?height1=100&height3=150`, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="basic-list-container"]')
 
         // Wait for both height changes to be applied

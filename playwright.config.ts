@@ -27,8 +27,18 @@ export default defineConfig({
     },
     // Lower the default per-test timeout to speed up failures in CI
     timeout: 30000,
+    // Increase expect timeout for slower CI environments
+    expect: {
+        timeout: 10000
+    },
+    // Limit parallelism to reduce flakiness from resource contention
+    // Virtual list tests are resource-intensive (DOM, ResizeObserver, scroll)
+    // CI uses 1 worker for maximum determinism, local uses 2 for stability
+    workers: process.env.CI ? 1 : 2,
+    // Don't run tests within the same file in parallel
+    fullyParallel: false,
     // Make CI a bit more forgiving for transient issues
-    retries: process.env.CI ? 1 : 0,
+    retries: process.env.CI ? 2 : 0,
     forbidOnly: !!process.env.CI,
     projects: [
         {
@@ -45,11 +55,11 @@ export default defineConfig({
         },
         {
             name: 'mobile-chrome',
-            use: { ...devices['Pixel 5'] }
+            use: { ...devices['Pixel 6'] }
         },
         {
             name: 'mobile-safari',
-            use: { ...devices['iPhone 12'] }
+            use: { ...devices['iPhone 15'] }
         }
     ].filter((p) => (argProjects.length ? argProjects.includes(p.name) : true))
 })

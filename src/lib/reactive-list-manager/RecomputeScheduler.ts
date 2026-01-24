@@ -1,21 +1,67 @@
-// RecomputeScheduler
-// -------------------
-// Coalesces recompute requests to the next animation frame in the browser.
-// Falls back to setTimeout(0) in non-browser/jsdom to preserve deterministic tests.
-// Supports temporary blocking to delay recomputation during critical sections.
+/**
+ * Scheduler that coalesces recompute requests to the next animation frame.
+ *
+ * This class provides efficient batching of recompute operations by scheduling
+ * them to run on the next animation frame in browser environments. In non-browser
+ * or jsdom environments, it falls back to setTimeout(0) for deterministic testing.
+ *
+ * Key features:
+ * - Coalesces multiple schedule() calls into a single recompute
+ * - Supports temporary blocking during critical sections
+ * - Handles nested block/unblock calls with depth tracking
+ * - Environment-aware: uses RAF in browsers, setTimeout in tests
+ *
+ * @example
+ * ```typescript
+ * const scheduler = new RecomputeScheduler(() => {
+ *     console.log('Recomputing derived state');
+ * });
+ *
+ * // Multiple calls within the same frame are coalesced
+ * scheduler.schedule();
+ * scheduler.schedule();
+ * scheduler.schedule(); // Only one recompute will run
+ *
+ * // Block during critical sections
+ * scheduler.block();
+ * scheduler.schedule(); // Marked as pending, won't run yet
+ * scheduler.unblock();  // Runs immediately if pending
+ * ```
+ *
+ * @class
+ */
 export class RecomputeScheduler {
+    /** Callback function to execute on recompute. */
     private onRecompute: () => void
+    /** Whether a recompute is currently scheduled. */
     private isScheduled: boolean = false
+    /** Whether a recompute is pending due to blocking. */
     private isPending: boolean = false
+    /** Current nesting depth of block() calls. */
     private blockDepth: number = 0
+    /** ID of the pending setTimeout (non-browser fallback). */
     private timeoutId: ReturnType<typeof setTimeout> | null = null
+    /** ID of the pending requestAnimationFrame. */
     private rafId: number | null = null
 
+    /**
+     * Creates a new RecomputeScheduler instance.
+     *
+     * @param {() => void} onRecompute - Callback function to execute when recompute runs.
+     */
     constructor(onRecompute: () => void) {
         this.onRecompute = onRecompute
     }
 
-    // Request a recompute. If blocked, mark as pending; otherwise schedule for next frame.
+    /**
+     * Schedules a recompute for the next animation frame.
+     *
+     * If the scheduler is blocked, the request is marked as pending and will
+     * execute when unblocked. Multiple calls while a recompute is already
+     * scheduled are coalesced into a single execution.
+     *
+     * @returns {void}
+     */
     schedule = (): void => {
         if (this.blockDepth > 0) {
             this.isPending = true
@@ -47,7 +93,15 @@ export class RecomputeScheduler {
         })
     }
 
-    // Temporarily block recomputes; any in-flight timers are canceled and a recompute is marked pending.
+    /**
+     * Temporarily blocks recompute execution.
+     *
+     * Cancels any in-flight timers and marks any pending recompute request.
+     * Block calls can be nested; the scheduler remains blocked until all
+     * corresponding unblock() calls are made.
+     *
+     * @returns {void}
+     */
     block = (): void => {
         this.blockDepth += 1
         if (this.timeoutId) {
@@ -64,7 +118,15 @@ export class RecomputeScheduler {
         }
     }
 
-    // Unblock and run recompute immediately if one was pending.
+    /**
+     * Unblocks the scheduler and runs pending recompute if any.
+     *
+     * Decrements the block depth counter. When the depth reaches zero and
+     * a recompute was pending, it executes immediately (synchronously).
+     * Guards against underflow if unblock is called without matching block.
+     *
+     * @returns {void}
+     */
     unblock = (): void => {
         if (this.blockDepth === 0) return
         this.blockDepth -= 1
@@ -74,7 +136,14 @@ export class RecomputeScheduler {
         }
     }
 
-    // Cancel any scheduled recompute and clear pending state.
+    /**
+     * Cancels any scheduled or pending recompute.
+     *
+     * Clears all timers (setTimeout and RAF) and resets the scheduled
+     * and pending flags. Does not affect the block depth.
+     *
+     * @returns {void}
+     */
     cancel = (): void => {
         if (this.timeoutId) {
             clearTimeout(this.timeoutId)
