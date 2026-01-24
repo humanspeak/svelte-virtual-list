@@ -196,26 +196,14 @@ test.describe('TopToBottom Empty List Handling', () => {
 
         const viewport = page.locator('[data-testid="empty-list-viewport"]')
 
-        // Try to scroll the empty list
+        // Try to scroll the empty list (should have no effect since it's empty)
         await viewport.evaluate((el) => {
             el.scrollTop = 100
         })
 
-        // Wait for scroll to be processed
-        await page.waitForFunction((selector) => {
-            const el = document.querySelector(selector)
-            return el !== null
-        }, '[data-testid="empty-list-viewport"]')
-
-        await viewport.evaluate((el) => {
-            el.scrollTop = 0
-        })
-
-        // Wait for scroll to be processed
-        await page.waitForFunction((selector) => {
-            const el = document.querySelector(selector)
-            return el !== null && el.scrollTop === 0
-        }, '[data-testid="empty-list-viewport"]')
+        // Empty list can't scroll, so scrollTop should remain 0
+        const scrollTopAfterAttempt = await viewport.evaluate((el) => el.scrollTop)
+        expect(scrollTopAfterAttempt).toBe(0)
 
         // No errors should have occurred
         expect(errors).toHaveLength(0)
