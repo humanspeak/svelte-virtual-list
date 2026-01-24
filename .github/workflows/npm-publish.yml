@@ -328,12 +328,12 @@ jobs:
                   version: 10
 
             - name: Use Node.js - 24
-              uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses]
+              uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses,cache-poisoning]
               with:
                   node-version: 24
                   registry-url: https://registry.npmjs.org
                   scope: '@humanspeak'
-                  cache: '' # zizmor: ignore[cache-poisoning]
+                  cache: ''
 
             - name: Install
               run: pnpm install --prefer-offline --frozen-lockfile --ignore-scripts
