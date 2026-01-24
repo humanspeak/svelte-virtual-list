@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
+import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('BottomToTop Small Items', () => {
     test.beforeEach(async ({ page }) => {
@@ -28,6 +28,9 @@ test.describe('BottomToTop Small Items', () => {
         // Wait for items to be positioned
         await expect(firstItem).toBeVisible()
         await expect(lastItem).toBeVisible()
+
+        // Wait for layout to stabilize before measuring
+        await rafWait(page)
 
         // Get container and item positions
         const containerBox = await container.boundingBox()

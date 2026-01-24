@@ -95,6 +95,8 @@ test.describe('Basic BottomToTop Rendering', () => {
             .locator('[data-original-index="0"]')
             .first()
             .waitFor({ state: 'attached', timeout: 1200 })
+        // Wait for layout to stabilize after item attachment
+        await rafWait(page)
         // Verify that item 0 is positioned at/near the bottom of the viewport
         const isItem0AtBottom = await page.evaluate(() => {
             const viewport = document.querySelector('.virtual-list-container') as HTMLElement
