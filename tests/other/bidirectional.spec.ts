@@ -7,10 +7,8 @@ test.describe('Bidirectional Scrolling', () => {
         // Wait for both lists to render
         await page.waitForSelector('[data-testid="top-to-bottom-viewport"]')
         await page.waitForSelector('[data-testid="bottom-to-top-viewport"]')
-        // Wait for two RAFs so initial measurement completes deterministically
-
-        await rafWait(page)
-        await rafWait(page)
+        // Wait for two RAF cycles so initial measurement completes deterministically
+        await rafWait(page, 2)
     })
 
     test('should render user content correctly in both directions', async ({ page }) => {

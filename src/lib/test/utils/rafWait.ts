@@ -8,14 +8,16 @@
 import type { Locator, Page, TestInfo } from '@playwright/test'
 
 /**
- * Waits for two consecutive animation frames to complete.
+ * Waits for consecutive animation frame cycles to complete.
  *
  * This function is useful for ensuring that DOM measurements are stable after
  * changes, as browsers may require multiple frames to complete layout calculations.
- * Waiting for two frames provides a reliable synchronization point.
+ * Each cycle waits for two animation frames (the standard synchronization point).
  *
  * @param {Page} page - The Playwright page instance.
- * @returns {Promise<void>} Resolves after two animation frames have completed.
+ * @param {number} [cycles=1] - Number of double-frame cycles to wait. Use higher
+ *   values for slower browsers (webkit, mobile) that need more time for layout.
+ * @returns {Promise<void>} Resolves after the specified cycles have completed.
  *
  * @example
  * ```typescript
@@ -23,15 +25,21 @@ import type { Locator, Page, TestInfo } from '@playwright/test'
  * await page.click('[data-testid="add-item"]');
  * await rafWait(page);
  * const height = await page.locator('.item').boundingBox();
+ *
+ * // Wait longer for webkit/mobile browsers
+ * await rafWait(page, 3);
  * ```
  */
-export const rafWait = async (page: Page) =>
-    page.evaluate(
-        () =>
-            new Promise<void>((resolve) =>
-                requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-            )
-    )
+export const rafWait = async (page: Page, cycles: number = 1) => {
+    for (let i = 0; i < cycles; i++) {
+        await page.evaluate(
+            () =>
+                new Promise<void>((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+                )
+        )
+    }
+}
 
 /**
  * Injects a rafWait helper function into the page's global scope.

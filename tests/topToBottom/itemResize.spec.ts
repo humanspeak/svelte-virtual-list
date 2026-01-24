@@ -33,8 +33,8 @@ test.describe('Item Resize Functionality', () => {
         await heightInput.fill('80')
         await heightInput.dispatchEvent('change')
 
-        // Wait for DOM to update
-        await rafWait(page)
+        // Wait for DOM to update (extra cycles for webkit)
+        await rafWait(page, 2)
 
         // Verify the item height changed
         const newHeight = await firstItem.evaluate((el) => el.getBoundingClientRect().height)
@@ -51,7 +51,7 @@ test.describe('Item Resize Functionality', () => {
         // Test minimum bound
         await heightInput.fill('10') // Below minimum of 20
         await heightInput.dispatchEvent('change')
-        await rafWait(page)
+        await rafWait(page, 2) // Extra cycles for webkit/mobile
 
         const minHeight = await firstItem.evaluate((el) => el.getBoundingClientRect().height)
         expect(minHeight).toBe(20) // Should be clamped to minimum
@@ -59,7 +59,7 @@ test.describe('Item Resize Functionality', () => {
         // Test maximum bound
         await heightInput.fill('250') // Above maximum of 200
         await heightInput.dispatchEvent('change')
-        await rafWait(page)
+        await rafWait(page, 2) // Extra cycles for webkit/mobile
 
         const maxHeight = await firstItem.evaluate((el) => el.getBoundingClientRect().height)
         expect(maxHeight).toBe(200) // Should be clamped to maximum
@@ -125,10 +125,7 @@ test.describe('Item Resize Functionality', () => {
         }
 
         // Wait for height changes to propagate through the virtual list
-        // Extra waits for slower browsers (webkit, mobile safari)
-        await rafWait(page)
-        await rafWait(page)
-        await rafWait(page)
+        await rafWait(page, 3) // Extra cycles for webkit/mobile
 
         // Verify virtualization is still working (similar item count)
         // Height changes can cause significant fluctuation across browsers
@@ -151,14 +148,11 @@ test.describe('Item Resize Functionality', () => {
             await heightInput.dispatchEvent('change')
         }
 
-        await rafWait(page)
-        await rafWait(page)
+        await rafWait(page, 2)
 
         // Scroll down using scrollByWheel helper and verify different items are visible
         await scrollByWheel(page, viewport, 0, 500, testInfo) // positive deltaY scrolls down
-        // Extra wait for Firefox/mobile which use direct scrollTop manipulation
-        await rafWait(page)
-        await rafWait(page)
+        await rafWait(page, 2) // Extra cycles for Firefox/mobile
 
         // Get visible item indices directly from page to avoid stale element issues
         const visibleIndices = await page.evaluate(() => {
@@ -232,9 +226,7 @@ test.describe('Item Resize Functionality', () => {
         await heightInput.dispatchEvent('change')
 
         // Wait for debug to potentially fire
-        await rafWait(page)
-        await rafWait(page)
-        await rafWait(page)
+        await rafWait(page, 3)
 
         // Note: Debug may not always fire on every change due to debouncing
         // This test mainly verifies the debug setup is working without errors
@@ -254,8 +246,7 @@ test.describe('Item Resize Functionality', () => {
         }
 
         // Wait for height changes to propagate through the virtual list
-        await rafWait(page)
-        await rafWait(page)
+        await rafWait(page, 3) // Extra cycles for webkit/mobile
 
         // Verify each item has the correct height
         for (let i = 0; i < heights.length; i++) {
@@ -295,8 +286,7 @@ test.describe('Item Resize Functionality', () => {
 
         await heightInput.fill('200') // Significantly larger
         await heightInput.dispatchEvent('change')
-        await rafWait(page)
-        await rafWait(page)
+        await rafWait(page, 2)
 
         // Verify the height change actually took effect
         const newHeight = await firstItem.evaluate((el) => el.getBoundingClientRect().height)

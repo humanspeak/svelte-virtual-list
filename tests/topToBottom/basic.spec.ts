@@ -24,8 +24,7 @@ test.describe('Basic Rendering', () => {
 
     test('should only render items in viewport plus reasonable buffer', async ({ page }) => {
         // Wait for buffer to fully populate
-        await rafWait(page)
-        await rafWait(page)
+        await rafWait(page, 2)
 
         const renderedItems = await page.evaluate(() => {
             return document.querySelectorAll('[data-original-index]').length
