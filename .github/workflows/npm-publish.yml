@@ -218,6 +218,7 @@ jobs:
               uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: ${{ matrix.node-version }}
+                  cache: '' # zizmor: ignore[cache-poisoning]
 
             - name: Install
               run: |
@@ -264,6 +265,7 @@ jobs:
             - uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: 24
+                  cache: '' # zizmor: ignore[cache-poisoning]
 
             - name: Install dependencies
               run: pnpm install --prefer-offline --frozen-lockfile --ignore-scripts
