@@ -156,22 +156,24 @@ test.describe('Item Resize Functionality', () => {
 
         // Scroll down using scrollByWheel helper and verify different items are visible
         await scrollByWheel(page, viewport, 0, 500, testInfo) // positive deltaY scrolls down
+        // Extra wait for Firefox/mobile which use direct scrollTop manipulation
+        await rafWait(page)
         await rafWait(page)
 
-        // Should see later items due to increased height of earlier items
-        const visibleItems = await page.locator('.test-item[data-testid]').all()
-        const visibleIds = await Promise.all(
-            visibleItems.map((item) => item.getAttribute('data-testid'))
-        )
-
-        // With taller items, we should see fewer items but later indices
-        expect(visibleIds.length).toBeGreaterThan(0)
-
-        // At least one item should be from later in the list
-        const hasLaterItem = visibleIds.some((id) => {
-            const index = parseInt(id?.replace('list-item-', '') || '0')
-            return index > 2
+        // Get visible item indices directly from page to avoid stale element issues
+        const visibleIndices = await page.evaluate(() => {
+            const items = document.querySelectorAll('.test-item[data-testid]')
+            return Array.from(items).map((item) => {
+                const testId = item.getAttribute('data-testid') || ''
+                return parseInt(testId.replace('list-item-', '') || '0')
+            })
         })
+
+        // With taller items (150px each), scrolling 500px should show later indices
+        expect(visibleIndices.length).toBeGreaterThan(0)
+
+        // At least one item should be from later in the list (index > 2)
+        const hasLaterItem = visibleIndices.some((index) => index > 2)
         expect(hasLaterItem).toBe(true)
     })
 
