@@ -3,7 +3,7 @@ import { rafWait } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
     test('item 0 stays visible and at bottom after adding messages', async ({ page }) => {
-        await page.goto('/tests/issues/issue-298', { waitUntil: 'networkidle' })
+        await page.goto('/tests/issues/issue-298', { waitUntil: 'domcontentloaded' })
         await rafWait(page)
 
         // Ensure list is anchored to bottom
@@ -100,7 +100,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
     test('adding while not at bottom preserves position (no snap to 0 or bottom)', async ({
         page
     }) => {
-        await page.goto('/tests/issues/issue-298', { waitUntil: 'networkidle' })
+        await page.goto('/tests/issues/issue-298', { waitUntil: 'domcontentloaded' })
         await rafWait(page)
 
         // Scroll to exactly the middle - requires precise positioning, use evaluate

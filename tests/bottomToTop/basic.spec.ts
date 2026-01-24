@@ -3,7 +3,7 @@ import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Basic BottomToTop Rendering', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/list/bottomToTop/basic', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/bottomToTop/basic', { waitUntil: 'domcontentloaded' })
         // Allow brief settling time for height measurements to complete
         await rafWait(page)
         await page

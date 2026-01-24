@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Basic Rendering', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/list/topToBottom/basic', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/topToBottom/basic', { waitUntil: 'domcontentloaded' })
         // Give ResizeObserver a frame to propagate height and buffer rendering
         await page.waitForTimeout(16)
     })

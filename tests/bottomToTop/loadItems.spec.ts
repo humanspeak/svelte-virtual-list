@@ -14,7 +14,7 @@ test.describe('BottomToTop LoadItems', () => {
     test.beforeEach(async ({ page }) => {
         // Install fake timers before navigation to mock setTimeout in the component
         await page.clock.install()
-        await page.goto(PAGE_URL, { waitUntil: 'networkidle' })
+        await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="basic-list-container"]')
     })
 

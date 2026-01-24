@@ -7,7 +7,7 @@ test.describe('TopToBottom wrong item size alignment', () => {
         test.describe(`itemHeight=${itemHeight}`, () => {
             test.beforeEach(async ({ page }) => {
                 await page.goto(`/tests/list/topToBottom/wrongItemSize?itemHeight=${itemHeight}`, {
-                    waitUntil: 'networkidle'
+                    waitUntil: 'domcontentloaded'
                 })
                 // brief settle for measurements
                 await page.waitForTimeout(150)

@@ -3,7 +3,7 @@ import { scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Item Resize Functionality', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/list/topToBottom/itemResize', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/topToBottom/itemResize', { waitUntil: 'domcontentloaded' })
         // Wait for initial render
         await page.waitForSelector('[data-testid="item-resize-list-viewport"]')
     })

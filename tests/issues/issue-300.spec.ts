@@ -35,7 +35,7 @@ test.describe('Issue 300 - dynamic heights middle crossing should not oscillate'
     }
 
     test('repeated middle crossings remain stable (no 1px jumping)', async ({ page }) => {
-        await page.goto('/tests/issues/issue-300', { waitUntil: 'networkidle' })
+        await page.goto('/tests/issues/issue-300', { waitUntil: 'domcontentloaded' })
         await rafWait(page)
 
         const m = await metrics(page)

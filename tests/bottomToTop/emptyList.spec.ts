@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('BottomToTop Empty List Handling', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/list/bottomToTop/emptyList', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/bottomToTop/emptyList', { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="empty-list-container"]')
     })
 
@@ -17,7 +17,7 @@ test.describe('BottomToTop Empty List Handling', () => {
 
         // Reload to catch errors during navigation/hydration
         // (beforeEach already navigated, but listener wasn't attached yet)
-        await page.reload({ waitUntil: 'networkidle' })
+        await page.reload({ waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="empty-list-container"]')
 
         // Verify the container exists and is visible

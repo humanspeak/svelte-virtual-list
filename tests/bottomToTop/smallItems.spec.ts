@@ -3,7 +3,7 @@ import { scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('BottomToTop Small Items', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/tests/list/bottomToTop/smallItems', { waitUntil: 'networkidle' })
+        await page.goto('/tests/list/bottomToTop/smallItems', { waitUntil: 'domcontentloaded' })
         // Wait for the virtual list to be visible
         await page.waitForSelector('[data-testid="basic-list-container"]')
     })
