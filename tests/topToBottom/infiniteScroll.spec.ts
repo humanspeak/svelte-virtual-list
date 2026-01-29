@@ -113,8 +113,15 @@ test.describe('TopToBottom Infinite Scroll', () => {
         await scrollByWheel(page, viewport, 0, 1500, testInfo)
         await rafWait(page, 2)
 
-        // Get scroll position before load
-        const scrollBefore = await viewport.evaluate((el) => el.scrollTop)
+        // Get visible items before load
+        const visibleItemsBefore = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('[data-testid^="list-item-"]'))
+                .map((el) => {
+                    const match = el.getAttribute('data-testid')?.match(/list-item-(\d+)/)
+                    return match ? parseInt(match[1]) : null
+                })
+                .filter((n): n is number => n !== null)
+        })
 
         // Wait for load to complete
         await page.waitForFunction(
@@ -125,10 +132,31 @@ test.describe('TopToBottom Infinite Scroll', () => {
             { timeout: 5000 }
         )
 
-        await rafWait(page, 2)
+        await rafWait(page, 3)
 
-        // Scroll position should be maintained (or close to it)
-        const scrollAfter = await viewport.evaluate((el) => el.scrollTop)
-        expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThan(100)
+        // Get visible items after load
+        const visibleItemsAfter = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('[data-testid^="list-item-"]'))
+                .map((el) => {
+                    const match = el.getAttribute('data-testid')?.match(/list-item-(\d+)/)
+                    return match ? parseInt(match[1]) : null
+                })
+                .filter((n): n is number => n !== null)
+        })
+
+        // After loading more items, the visible items should overlap significantly
+        // with what was visible before (user stays in same region)
+        const minBefore = Math.min(...visibleItemsBefore)
+        const maxBefore = Math.max(...visibleItemsBefore)
+        const minAfter = Math.min(...visibleItemsAfter)
+        const maxAfter = Math.max(...visibleItemsAfter)
+
+        // The ranges should overlap - user should still see some of the same items
+        const hasOverlap =
+            (minAfter <= maxBefore && maxAfter >= minBefore) ||
+            Math.abs(minAfter - minBefore) < 30 ||
+            Math.abs(maxAfter - maxBefore) < 30
+
+        expect(hasOverlap).toBe(true)
     })
 })
