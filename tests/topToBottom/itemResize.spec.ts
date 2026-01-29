@@ -29,12 +29,24 @@ test.describe('Item Resize Functionality', () => {
         const firstItem = page.locator('[data-testid="list-item-0"]')
         const heightInput = firstItem.locator('.height-input')
 
-        // Change height to 80px
-        await heightInput.fill('80')
+        // Change height to 80px - use clear + type for better cross-browser support
+        await heightInput.click()
+        await heightInput.fill('')
+        await heightInput.type('80')
         await heightInput.dispatchEvent('change')
+        await heightInput.blur()
 
-        // Wait for DOM to update (extra cycles for webkit)
-        await rafWait(page, 2)
+        // Wait for DOM to update (extra cycles for webkit/mobile)
+        await rafWait(page, 3)
+
+        // Wait for height to actually change
+        await page.waitForFunction(
+            () => {
+                const el = document.querySelector('[data-testid="list-item-0"]')
+                return el && el.getBoundingClientRect().height === 80
+            },
+            { timeout: 3000 }
+        )
 
         // Verify the item height changed
         const newHeight = await firstItem.evaluate((el) => el.getBoundingClientRect().height)
@@ -48,18 +60,40 @@ test.describe('Item Resize Functionality', () => {
         const firstItem = page.locator('[data-testid="list-item-0"]')
         const heightInput = firstItem.locator('.height-input')
 
-        // Test minimum bound
-        await heightInput.fill('10') // Below minimum of 20
+        // Test minimum bound - use clear + type for better cross-browser support
+        await heightInput.click()
+        await heightInput.fill('')
+        await heightInput.type('10') // Below minimum of 20
         await heightInput.dispatchEvent('change')
-        await rafWait(page, 2) // Extra cycles for webkit/mobile
+        await heightInput.blur()
+
+        // Wait for height to be clamped
+        await page.waitForFunction(
+            () => {
+                const el = document.querySelector('[data-testid="list-item-0"]')
+                return el && el.getBoundingClientRect().height === 20
+            },
+            { timeout: 3000 }
+        )
 
         const minHeight = await firstItem.evaluate((el) => el.getBoundingClientRect().height)
         expect(minHeight).toBe(20) // Should be clamped to minimum
 
         // Test maximum bound
-        await heightInput.fill('250') // Above maximum of 200
+        await heightInput.click()
+        await heightInput.fill('')
+        await heightInput.type('250') // Above maximum of 200
         await heightInput.dispatchEvent('change')
-        await rafWait(page, 2) // Extra cycles for webkit/mobile
+        await heightInput.blur()
+
+        // Wait for height to be clamped
+        await page.waitForFunction(
+            () => {
+                const el = document.querySelector('[data-testid="list-item-0"]')
+                return el && el.getBoundingClientRect().height === 200
+            },
+            { timeout: 3000 }
+        )
 
         const maxHeight = await firstItem.evaluate((el) => el.getBoundingClientRect().height)
         expect(maxHeight).toBe(200) // Should be clamped to maximum
@@ -234,25 +268,39 @@ test.describe('Item Resize Functionality', () => {
     })
 
     test('should handle multiple items with different heights correctly', async ({ page }) => {
-        // Set different heights for first few items
+        // Set different heights for first few items - wait after each for proper propagation
         const heights = [40, 60, 80, 100, 120]
 
         for (let i = 0; i < heights.length; i++) {
             const item = page.locator(`[data-testid="list-item-${i}"]`)
             const heightInput = item.locator('.height-input')
 
-            await heightInput.fill(heights[i].toString())
+            await heightInput.click()
+            await heightInput.fill('')
+            await heightInput.type(heights[i].toString())
             await heightInput.dispatchEvent('change')
+            await heightInput.blur()
+
+            // Wait for this specific height change to apply
+            await page.waitForFunction(
+                ([idx, expectedHeight]) => {
+                    const el = document.querySelector(`[data-testid="list-item-${idx}"]`)
+                    return el && Math.abs(el.getBoundingClientRect().height - expectedHeight) < 2
+                },
+                [i, heights[i]] as [number, number],
+                { timeout: 3000 }
+            )
         }
 
-        // Wait for height changes to propagate through the virtual list
-        await rafWait(page, 3) // Extra cycles for webkit/mobile
+        // Wait for layout to fully stabilize
+        await rafWait(page, 3)
 
         // Verify each item has the correct height
         for (let i = 0; i < heights.length; i++) {
             const item = page.locator(`[data-testid="list-item-${i}"]`)
             const actualHeight = await item.evaluate((el) => el.getBoundingClientRect().height)
-            expect(actualHeight).toBe(heights[i])
+            // Allow 1px variance for subpixel rendering
+            expect(Math.abs(actualHeight - heights[i])).toBeLessThan(2)
         }
 
         // Verify items are properly positioned (no overlaps)

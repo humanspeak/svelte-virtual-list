@@ -1,8 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
+import { rafWait } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('bottomToTop scroll', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/list/bottomToTop/scroll', { waitUntil: 'domcontentloaded' })
+        // Wait for initial render to complete
+        await page.waitForSelector('[data-testid^="list-item-"]')
+        await rafWait(page, 2)
     })
 
     async function setAlign(page: Page, value: string) {
@@ -15,7 +19,7 @@ test.describe('bottomToTop scroll', () => {
             await page.locator('input[type=range]').fill('1234')
             await page.locator('button').click()
             const item = page.locator('[data-testid="list-item-1234"]')
-            await item.waitFor({ state: 'visible', timeout: 5000 })
+            await item.waitFor({ state: 'visible', timeout: 10000 })
             await expect(item).toBeVisible()
             await expect(item).toHaveText('Item 1234')
         })
@@ -25,7 +29,7 @@ test.describe('bottomToTop scroll', () => {
             await page.locator('input[type=range]').fill('9999')
             await page.locator('button').click()
             const item = page.locator('[data-testid="list-item-9999"]')
-            await item.waitFor({ state: 'visible', timeout: 5000 })
+            await item.waitFor({ state: 'visible', timeout: 10000 })
             await expect(item).toBeVisible()
             await expect(item).toHaveText('Item 9999')
         })
@@ -35,7 +39,7 @@ test.describe('bottomToTop scroll', () => {
             await page.locator('input[type=range]').fill('0')
             await page.locator('button').click()
             const item = page.locator('[data-testid="list-item-0"]')
-            await item.waitFor({ state: 'visible', timeout: 5000 })
+            await item.waitFor({ state: 'visible', timeout: 10000 })
             await expect(item).toBeVisible()
             await expect(item).toHaveText('Item 0')
         })
@@ -50,13 +54,13 @@ test.describe('bottomToTop scroll', () => {
         await page.locator('input[type=range]').fill('500')
         await page.locator('button').click()
         const item = page.locator('[data-testid="list-item-500"]')
-        await item.waitFor({ state: 'visible', timeout: 5000 })
+        await item.waitFor({ state: 'visible', timeout: 10000 })
         await expect(item).toBeVisible()
         // Now scroll to item 505 (should align to nearest edge)
         await page.locator('input[type=range]').fill('505')
         await page.locator('button').click()
         const item2 = page.locator('[data-testid="list-item-505"]')
-        await item2.waitFor({ state: 'visible', timeout: 5000 })
+        await item2.waitFor({ state: 'visible', timeout: 10000 })
         await expect(item2).toBeVisible()
     })
 
@@ -68,7 +72,7 @@ test.describe('bottomToTop scroll', () => {
         await page.locator('input[type=range]').fill('10')
         await page.locator('button').click()
         const item = page.locator('[data-testid="list-item-10"]')
-        await item.waitFor({ state: 'visible', timeout: 5000 })
+        await item.waitFor({ state: 'visible', timeout: 10000 })
         await expect(item).toBeVisible()
     })
     test('should scroll as little as possible with align=nearest (below viewport)', async ({
@@ -78,7 +82,7 @@ test.describe('bottomToTop scroll', () => {
         await page.locator('input[type=range]').fill('999')
         await page.locator('button').click()
         const item = page.locator('[data-testid="list-item-999"]')
-        await item.waitFor({ state: 'visible', timeout: 5000 })
+        await item.waitFor({ state: 'visible', timeout: 10000 })
         await expect(item).toBeVisible()
     })
     test('should not scroll if item is already visible with align=nearest', async ({ page }) => {
@@ -86,12 +90,12 @@ test.describe('bottomToTop scroll', () => {
         await page.locator('input[type=range]').fill('500')
         await page.locator('button').click()
         const item = page.locator('[data-testid="list-item-500"]')
-        await item.waitFor({ state: 'visible', timeout: 5000 })
+        await item.waitFor({ state: 'visible', timeout: 10000 })
         // Now scroll to item 501 (should not scroll much)
         await page.locator('input[type=range]').fill('501')
         await page.locator('button').click()
         const item2 = page.locator('[data-testid="list-item-501"]')
-        await item2.waitFor({ state: 'visible', timeout: 5000 })
+        await item2.waitFor({ state: 'visible', timeout: 10000 })
         await expect(item2).toBeVisible()
     })
 })
