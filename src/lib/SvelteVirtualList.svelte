@@ -219,7 +219,10 @@
         debugFunction, // Custom debug logging function
         mode = 'topToBottom', // Scroll direction mode
         bufferSize = 20, // Number of items to render outside visible area
-        testId // Base test ID for component elements (undefined = no data-testid attributes)
+        testId, // Base test ID for component elements (undefined = no data-testid attributes)
+        onLoadMore, // Callback when more data needed (supports sync and async)
+        loadMoreThreshold = 20, // Items from end to trigger load
+        hasMore = true // Set false when all data loaded
     }: SvelteVirtualListProps<TItem> = $props()
 
     /**
@@ -237,6 +240,7 @@
      */
 
     const isCalculatingHeight = $state(false) // Prevents concurrent height calculations
+    let isLoadingMore = $state(false) // Prevents concurrent onLoadMore calls
     let isScrolling = $state(false) // Tracks active scrolling state
     let scrollIdleTimer: number | null = null
     // Anchor state (read-only capture; used when anchorModeEnabled)
@@ -604,6 +608,22 @@
     // Keep height manager synchronized with items length
     $effect(() => {
         heightManager.updateItemLength(items.length)
+    })
+
+    // Infinite scroll: trigger onLoadMore when approaching end of list
+    $effect(() => {
+        if (!BROWSER || !onLoadMore || !hasMore || isLoadingMore) return
+
+        const range = visibleItems()
+        const atLoadingEdge = range.end >= items.length - loadMoreThreshold
+        const insufficientItems = items.length < loadMoreThreshold && heightManager.initialized
+
+        if (atLoadingEdge || insufficientItems) {
+            isLoadingMore = true
+            Promise.resolve(onLoadMore()).finally(() => {
+                isLoadingMore = false
+            })
+        }
     })
 
     const updateHeight = () => {

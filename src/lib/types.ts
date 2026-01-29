@@ -66,6 +66,21 @@ export type SvelteVirtualListProps<TItem = any> = {
      * CSS class to apply to the scrollable viewport element.
      */
     viewportClass?: string
+    /**
+     * Callback when more data is needed. Supports sync and async functions.
+     * Called when the user scrolls near the end of the list (based on loadMoreThreshold).
+     */
+    onLoadMore?: () => void | Promise<void>
+    /**
+     * Number of items from the end to trigger onLoadMore.
+     * @default 20
+     */
+    loadMoreThreshold?: number
+    /**
+     * Set to false when all data has been loaded to stop triggering onLoadMore.
+     * @default true
+     */
+    hasMore?: boolean
 }
 
 /**
