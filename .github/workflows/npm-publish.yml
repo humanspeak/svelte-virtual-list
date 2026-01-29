@@ -305,7 +305,7 @@ jobs:
     publish-github-packages:
         needs: [check-if-merged, build, playwright-tests, coverage-report]
         if: needs.check-if-merged.outputs.should_run == 'true'
-        runs-on: blacksmith-2vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
+        runs-on: ubuntu-latest
         permissions:
             contents: write
             packages: write
