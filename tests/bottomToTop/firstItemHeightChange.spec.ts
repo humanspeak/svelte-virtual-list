@@ -132,9 +132,18 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         // In bottomToTop mode, list-item-0 should be visible at bottom initially
         await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible()
 
-        // Record initial state
-        const item0 = page.locator('[data-testid="list-item-0"]')
-        const initialItem0Y = (await item0.boundingBox())?.y
+        // Record initial position of item 0 relative to the container bottom
+        const container = page.locator('[data-testid="basic-list-container"]')
+        const initialContainerBox = await container.boundingBox()
+        const initialItem0Box = await page.locator('[data-testid="list-item-0"]').boundingBox()
+
+        // Calculate initial distance from container bottom
+        const initialDistanceFromBottom =
+            initialContainerBox && initialItem0Box
+                ? initialContainerBox.y +
+                  initialContainerBox.height -
+                  (initialItem0Box.y + initialItem0Box.height)
+                : null
 
         // Trigger height change by navigating with URL parameter
         await page.goto(`${PAGE_URL}?height1=100`, { waitUntil: 'domcontentloaded' })
@@ -162,19 +171,25 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
 
         await page.waitForTimeout(100)
 
-        // Additional checks for scroll stability
-        // const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)
-        const finalItem0Y = (await item0.boundingBox())?.y
+        // Get fresh references after navigation
+        const finalContainerBox = await page
+            .locator('[data-testid="basic-list-container"]')
+            .boundingBox()
+        const finalItem0Box = await page.locator('[data-testid="list-item-0"]').boundingBox()
 
-        // In bottomToTop mode, large scroll changes are expected to maintain bottom anchor
-        // The important thing is that Item 0 remains visible and positioned correctly
-        // const scrollDifference = Math.abs(finalScrollTop - initialScrollTop)
-        // console.log(`Scroll adjusted by ${scrollDifference}px to maintain bottom anchor`)
+        // Calculate final distance from container bottom
+        const finalDistanceFromBottom =
+            finalContainerBox && finalItem0Box
+                ? finalContainerBox.y +
+                  finalContainerBox.height -
+                  (finalItem0Box.y + finalItem0Box.height)
+                : null
 
-        // Item 0 should remain roughly in the same vertical position relative to viewport
-        if (initialItem0Y && finalItem0Y) {
-            const verticalDifference = Math.abs(finalItem0Y - initialItem0Y)
-            expect(verticalDifference).toBeLessThan(200) // Allow some cross-browser variance
+        // In bottomToTop mode, item 0 should remain anchored near the bottom of the container
+        // Compare the distance from bottom rather than absolute Y position (which changes on navigation)
+        if (initialDistanceFromBottom !== null && finalDistanceFromBottom !== null) {
+            const distanceDifference = Math.abs(finalDistanceFromBottom - initialDistanceFromBottom)
+            expect(distanceDifference).toBeLessThan(200) // Allow some cross-browser variance
         }
     })
 

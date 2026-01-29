@@ -29,6 +29,7 @@ A high-performance virtual list component for Svelte 5 applications that efficie
 - 🧪 Comprehensive test coverage (vitest and playwright)
 - 🚀 Progressive initialization for large datasets
 - 🕹️ Programmatic scrolling with `scroll`
+- ♾️ Infinite scroll support with `onLoadMore`
 
 ## scroll: Programmatic Scrolling
 
@@ -75,6 +76,53 @@ You can now programmatically scroll to any item in the list using the `scroll` m
     Scroll to item 5000 (nearest)
 </button>
 ```
+
+## Infinite Scroll
+
+Load more data automatically as users scroll near the end of the list. Perfect for paginated APIs, infinite feeds, and chat applications.
+
+```svelte
+<script lang="ts">
+    import SvelteVirtualList from '@humanspeak/svelte-virtual-list'
+
+    let items = $state([...initialItems])
+    let hasMore = $state(true)
+
+    async function loadMore() {
+        const newItems = await fetchMoreItems()
+        items = [...items, ...newItems]
+        if (newItems.length === 0) {
+            hasMore = false
+        }
+    }
+</script>
+
+<SvelteVirtualList {items} onLoadMore={loadMore} loadMoreThreshold={20} {hasMore}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</SvelteVirtualList>
+```
+
+### Infinite Scroll Props
+
+| Prop                | Type                          | Default | Description                                          |
+| ------------------- | ----------------------------- | ------- | ---------------------------------------------------- |
+| `onLoadMore`        | `() => void \| Promise<void>` | -       | Callback when more data is needed (supports async)   |
+| `loadMoreThreshold` | `number`                      | `20`    | Number of items from the end to trigger `onLoadMore` |
+| `hasMore`           | `boolean`                     | `true`  | Set to `false` when all data has been loaded         |
+
+### Infinite Scroll Behavior
+
+- Triggers when scrolling near the end of the list
+- Automatically triggers on mount if initial items are below threshold
+- Prevents concurrent `onLoadMore` calls while loading
+- Works with both sync and async callbacks
+- Supports both `topToBottom` and `bottomToTop` modes
+
+### Integration Guides
+
+- [Infinite Scroll with Convex](documentation/CONVEX_INFINITE_SCROLL.md) - Real-time data + pagination with Convex backend
 
 ## Installation
 
@@ -174,6 +222,9 @@ Use `mode="bottomToTop"` for chat-like lists anchored to the bottom. Programmati
 | `contentClass`               | `string`                         | `''`            | Class for content wrapper                                                     |
 | `itemsClass`                 | `string`                         | `''`            | Class for items container                                                     |
 | `testId`                     | `string`                         | `''`            | Base test id used in internal test hooks (useful for E2E/tests and debugging) |
+| `onLoadMore`                 | `() => void \| Promise<void>`    | -               | Callback when more data is needed for infinite scroll                         |
+| `loadMoreThreshold`          | `number`                         | `20`            | Items from end to trigger `onLoadMore`                                        |
+| `hasMore`                    | `boolean`                        | `true`          | Set to `false` when all data has been loaded                                  |
 
 ## Testing
 

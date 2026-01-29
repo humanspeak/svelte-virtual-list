@@ -18,17 +18,38 @@ test.describe('Basic BottomToTop Rendering', () => {
 
         // In bottomToTop mode, items should be in descending order (25, 24, 23... 0)
         // with Item 0 visible at the bottom of the viewport
-        // Ensure anchor state by scrolling to bottom and waiting for item 0 attach
+        // Ensure anchor state by scrolling to max scroll position and waiting for scroll to stabilize
         await page.evaluate(() => {
             const viewport = document.querySelector(
                 '[data-testid="basic-list-viewport"]'
             ) as HTMLElement | null
-            if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
+            if (viewport) {
+                // In bottomToTop mode, max scrollTop shows Item 0 at bottom
+                const maxScroll = viewport.scrollHeight - viewport.clientHeight
+                viewport.scrollTo({ top: maxScroll, behavior: 'auto' })
+            }
         })
+
+        // Wait for scroll to stabilize at max position (where Item 0 is visible)
+        await page.waitForFunction(
+            () => {
+                const viewport = document.querySelector(
+                    '[data-testid="basic-list-viewport"]'
+                ) as HTMLElement | null
+                if (!viewport) return false
+                const maxScroll = viewport.scrollHeight - viewport.clientHeight
+                // Allow small variance for browser differences
+                return Math.abs(viewport.scrollTop - maxScroll) < 50
+            },
+            { timeout: 3000 }
+        )
+
+        await rafWait(page, 2)
+
         await page
             .locator('[data-original-index="0"]')
             .first()
-            .waitFor({ state: 'attached', timeout: 1200 })
+            .waitFor({ state: 'attached', timeout: 2000 })
         const firstItem = await page.locator('[data-original-index="0"]')
         await expect(firstItem).toBeVisible()
 

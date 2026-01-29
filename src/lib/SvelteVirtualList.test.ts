@@ -410,6 +410,64 @@ describe('SvelteVirtualList Component', () => {
         })
     })
 
+    describe('Infinite Scroll', () => {
+        // Note: Full infinite scroll behavior is tested in E2E tests (tests/topToBottom/infiniteScroll.spec.ts)
+        // because the reactive effects and scroll simulation don't work reliably with jsdom + fake timers.
+        // These unit tests verify the props are accepted without errors.
+
+        test('accepts infinite scroll props without errors', async () => {
+            const onLoadMore = vi.fn()
+            const items = createMockItems(10)
+
+            render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items,
+                    onLoadMore,
+                    loadMoreThreshold: 20,
+                    hasMore: true
+                }
+            })
+
+            // Just verify component renders without crashing
+            const viewport = screen.getByTestId('test-list-viewport')
+            expect(viewport).toBeInTheDocument()
+        })
+
+        test('accepts hasMore false without errors', async () => {
+            const onLoadMore = vi.fn()
+            const items = createMockItems(10)
+
+            render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items,
+                    onLoadMore,
+                    loadMoreThreshold: 20,
+                    hasMore: false
+                }
+            })
+
+            const viewport = screen.getByTestId('test-list-viewport')
+            expect(viewport).toBeInTheDocument()
+        })
+
+        test('works without onLoadMore callback', async () => {
+            const items = createMockItems(10)
+
+            render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items
+                    // No onLoadMore, loadMoreThreshold, or hasMore
+                }
+            })
+
+            const viewport = screen.getByTestId('test-list-viewport')
+            expect(viewport).toBeInTheDocument()
+        })
+    })
+
     describe('Accessibility', () => {
         test('maintains proper DOM structure', async () => {
             const items = createMockItems(10)
