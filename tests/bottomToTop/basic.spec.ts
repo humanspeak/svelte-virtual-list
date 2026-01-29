@@ -1,5 +1,34 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
+
+const VIEWPORT_SELECTOR = '[data-testid="basic-list-viewport"]'
+
+/**
+ * Scrolls to max scroll position and waits for stabilization.
+ * In bottomToTop mode, max scrollTop shows Item 0 at bottom.
+ */
+async function scrollToMaxAndWait(page: Page, tolerance = 100, timeout = 5000) {
+    await page.evaluate((selector) => {
+        const viewport = document.querySelector(selector) as HTMLElement | null
+        if (viewport) {
+            const maxScroll = viewport.scrollHeight - viewport.clientHeight
+            viewport.scrollTo({ top: maxScroll, behavior: 'auto' })
+        }
+    }, VIEWPORT_SELECTOR)
+
+    await page.waitForFunction(
+        ([selector, tol]) => {
+            const viewport = document.querySelector(selector) as HTMLElement | null
+            if (!viewport) return false
+            const maxScroll = viewport.scrollHeight - viewport.clientHeight
+            return Math.abs(viewport.scrollTop - maxScroll) < tol
+        },
+        [VIEWPORT_SELECTOR, tolerance] as const,
+        { timeout }
+    )
+
+    await rafWait(page, 2)
+}
 
 test.describe('Basic BottomToTop Rendering', () => {
     test.beforeEach(async ({ page }) => {
@@ -18,33 +47,7 @@ test.describe('Basic BottomToTop Rendering', () => {
 
         // In bottomToTop mode, items should be in descending order (25, 24, 23... 0)
         // with Item 0 visible at the bottom of the viewport
-        // Ensure anchor state by scrolling to max scroll position and waiting for scroll to stabilize
-        await page.evaluate(() => {
-            const viewport = document.querySelector(
-                '[data-testid="basic-list-viewport"]'
-            ) as HTMLElement | null
-            if (viewport) {
-                // In bottomToTop mode, max scrollTop shows Item 0 at bottom
-                const maxScroll = viewport.scrollHeight - viewport.clientHeight
-                viewport.scrollTo({ top: maxScroll, behavior: 'auto' })
-            }
-        })
-
-        // Wait for scroll to stabilize at max position (where Item 0 is visible)
-        await page.waitForFunction(
-            () => {
-                const viewport = document.querySelector(
-                    '[data-testid="basic-list-viewport"]'
-                ) as HTMLElement | null
-                if (!viewport) return false
-                const maxScroll = viewport.scrollHeight - viewport.clientHeight
-                // Allow small variance for browser differences
-                return Math.abs(viewport.scrollTop - maxScroll) < 50
-            },
-            { timeout: 3000 }
-        )
-
-        await rafWait(page, 2)
+        await scrollToMaxAndWait(page, 50, 3000)
 
         await page
             .locator('[data-original-index="0"]')
@@ -104,31 +107,7 @@ test.describe('Basic BottomToTop Rendering', () => {
     })
 
     test('should position Item 0 at bottom of viewport in bottomToTop mode', async ({ page }) => {
-        // In bottomToTop mode, max scrollTop shows Item 0 at bottom
-        await page.evaluate(() => {
-            const viewport = document.querySelector(
-                '[data-testid="basic-list-viewport"]'
-            ) as HTMLElement | null
-            if (viewport) {
-                const maxScroll = viewport.scrollHeight - viewport.clientHeight
-                viewport.scrollTo({ top: maxScroll, behavior: 'auto' })
-            }
-        })
-
-        // Wait for scroll to stabilize
-        await page.waitForFunction(
-            () => {
-                const viewport = document.querySelector(
-                    '[data-testid="basic-list-viewport"]'
-                ) as HTMLElement | null
-                if (!viewport) return false
-                const maxScroll = viewport.scrollHeight - viewport.clientHeight
-                return Math.abs(viewport.scrollTop - maxScroll) < 100
-            },
-            { timeout: 5000 }
-        )
-
-        await rafWait(page, 2)
+        await scrollToMaxAndWait(page)
 
         await page
             .locator('[data-original-index="0"]')
@@ -181,31 +160,7 @@ test.describe('Basic BottomToTop Rendering', () => {
         expect(scrollTop).toBe(0)
 
         // Ensure anchor to bottom before asserting Item 0 visibility
-        // In bottomToTop mode, max scrollTop shows Item 0 at bottom
-        await page.evaluate(() => {
-            const viewport = document.querySelector(
-                '[data-testid="basic-list-viewport"]'
-            ) as HTMLElement | null
-            if (viewport) {
-                const maxScroll = viewport.scrollHeight - viewport.clientHeight
-                viewport.scrollTo({ top: maxScroll, behavior: 'auto' })
-            }
-        })
-
-        // Wait for scroll to stabilize at max position
-        await page.waitForFunction(
-            () => {
-                const viewport = document.querySelector(
-                    '[data-testid="basic-list-viewport"]'
-                ) as HTMLElement | null
-                if (!viewport) return false
-                const maxScroll = viewport.scrollHeight - viewport.clientHeight
-                return Math.abs(viewport.scrollTop - maxScroll) < 100
-            },
-            { timeout: 5000 }
-        )
-
-        await rafWait(page, 2)
+        await scrollToMaxAndWait(page)
 
         await page
             .locator('[data-original-index="0"]')
@@ -263,31 +218,7 @@ test.describe('Basic BottomToTop Rendering', () => {
 
     test('should position Item 0 at bottom of viewport', async ({ page }) => {
         // Ensure anchor and Item 0 attachment before measuring positions
-        // In bottomToTop mode, max scrollTop shows Item 0 at bottom
-        await page.evaluate(() => {
-            const viewport = document.querySelector(
-                '[data-testid="basic-list-viewport"]'
-            ) as HTMLElement | null
-            if (viewport) {
-                const maxScroll = viewport.scrollHeight - viewport.clientHeight
-                viewport.scrollTo({ top: maxScroll, behavior: 'auto' })
-            }
-        })
-
-        // Wait for scroll to stabilize
-        await page.waitForFunction(
-            () => {
-                const viewport = document.querySelector(
-                    '[data-testid="basic-list-viewport"]'
-                ) as HTMLElement | null
-                if (!viewport) return false
-                const maxScroll = viewport.scrollHeight - viewport.clientHeight
-                return Math.abs(viewport.scrollTop - maxScroll) < 100
-            },
-            { timeout: 5000 }
-        )
-
-        await rafWait(page, 2)
+        await scrollToMaxAndWait(page)
 
         await page
             .locator('[data-original-index="0"]')
