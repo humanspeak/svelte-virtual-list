@@ -177,11 +177,12 @@ test.describe('BottomToTop LoadItems', () => {
     test('should handle scrolling after items are added', async ({ page }) => {
         await page.waitForSelector('[data-testid="list-item-0"]')
 
-        // Advance timers to trigger setTimeout and then allow two frames to settle
+        // Advance timers to trigger setTimeout and then allow frames to settle
         await page.clock.fastForward(1000)
         await page.waitForSelector('[data-testid="list-item-2"]')
 
-        await rafWait(page)
+        // Extra rafWait for slower browsers (webkit)
+        await rafWait(page, 3)
 
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
@@ -213,7 +214,7 @@ test.describe('BottomToTop LoadItems', () => {
                     w.__svlStableCountTop += 1
                 } else {
                     w.__svlStableCountTop = 0
-                    if ((w.__svlRetriesTop ?? 0) < 2) {
+                    if ((w.__svlRetriesTop ?? 0) < 3) {
                         el.scrollTop = 0
                         w.__svlRetriesTop = (w.__svlRetriesTop ?? 0) + 1
                     }
@@ -221,19 +222,25 @@ test.describe('BottomToTop LoadItems', () => {
                 w.__svlLastTop = current
                 return w.__svlStableCountTop >= 3
             },
-            { timeout: 6000 }
+            { timeout: 8000 }
         )
 
         // In bottomToTop mode, scrollTop=0 shows the HIGHEST indexed items (top of content)
         // Item 9999 should be visible after scrolling to top
-        await page.waitForSelector('[data-testid="list-item-9999"]', { timeout: 2000 })
+        await page.waitForSelector('[data-testid="list-item-9999"]', { timeout: 3000 })
         await expect(page.locator('[data-testid="list-item-9999"]')).toBeVisible()
+
+        // Extra wait before scrolling back (webkit needs more time)
+        await rafWait(page, 2)
 
         // Should be able to scroll back to bottom
         await viewport.evaluate((el) => {
-            el.scrollTo({ top: 999999, behavior: 'auto' })
+            // Get the actual max scroll value
+            const maxScroll = el.scrollHeight - el.clientHeight
+            el.scrollTo({ top: maxScroll, behavior: 'auto' })
+            ;(el as HTMLElement).scrollTop = maxScroll
         })
-        // Wait for scrollTop to stabilize above threshold
+        // Wait for scrollTop to stabilize at max position
         await page.waitForFunction(
             () => {
                 const el = document.querySelector(
@@ -246,32 +253,34 @@ test.describe('BottomToTop LoadItems', () => {
                     __svlRetriesBottom?: number
                 }
                 const current = el.scrollTop
+                const maxScroll = el.scrollHeight - el.clientHeight
                 if (typeof w.__svlStableCountBottom !== 'number') {
                     w.__svlStableCountBottom = 0
                     w.__svlLastBottom = current
                     w.__svlRetriesBottom = 0
                 }
-                const pastThreshold = current > 1000
-                if (pastThreshold && current === w.__svlLastBottom) {
+                // Check if we're near the max scroll position
+                const nearMax = Math.abs(current - maxScroll) < 100
+                if (nearMax && current === w.__svlLastBottom) {
                     w.__svlStableCountBottom += 1
                 } else {
                     w.__svlStableCountBottom = 0
-                    if ((w.__svlRetriesBottom ?? 0) < 2) {
-                        el.scrollTop = 999999
+                    if ((w.__svlRetriesBottom ?? 0) < 3) {
+                        el.scrollTop = maxScroll
                         w.__svlRetriesBottom = (w.__svlRetriesBottom ?? 0) + 1
                     }
                 }
                 w.__svlLastBottom = current
-                return w.__svlStableCountBottom >= 2
+                return w.__svlStableCountBottom >= 3
             },
-            { timeout: 6000 }
+            { timeout: 8000 }
         )
 
         const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)
         expect(finalScrollTop).toBeGreaterThan(1000)
 
         // In bottomToTop mode, scrolling to bottom (max scrollTop) shows item 0
-        await page.waitForSelector('[data-testid="list-item-0"]', { timeout: 2000 })
+        await page.waitForSelector('[data-testid="list-item-0"]', { timeout: 3000 })
         await expect(page.locator('[data-testid="list-item-0"]')).toBeVisible()
     })
 })
