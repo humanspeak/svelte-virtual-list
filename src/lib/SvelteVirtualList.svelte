@@ -163,7 +163,6 @@
     import { createRafScheduler } from '$lib/utils/raf.js'
     import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
     import {
-        calculateScrollPosition,
         calculateTransformY,
         calculateVisibleRange,
         updateHeightAndScroll as utilsUpdateHeightAndScroll,
@@ -613,6 +612,8 @@
     // Infinite scroll: trigger onLoadMore when approaching end of list
     $effect(() => {
         if (!BROWSER || !onLoadMore || !hasMore || isLoadingMore) return
+        // Skip loading during bottomToTop initialization (init path renders all items artificially)
+        if (mode === 'bottomToTop' && !bottomToTopScrollComplete) return
 
         const range = visibleItems()
         const atLoadingEdge = range.end >= items.length - loadMoreThreshold
@@ -703,6 +704,9 @@
     let lastItemsLength = $state(0)
     // Track last observed total height to compute precise deltas on item count changes
     let lastTotalHeightObserved = $state(0)
+    // For bottomToTop mode: keep init path active until scroll positioning is complete
+    // This ensures Item 0 stays in the DOM throughout initialization
+    let bottomToTopScrollComplete = $state(false)
 
     /**
      * CRITICAL: O(1) Reactive Total Height Calculation
@@ -963,31 +967,18 @@
         if (!items.length) return { start: 0, end: 0 } as SvelteVirtualListPreviousVisibleRange
         const viewportHeight = height || 0
 
-        // For bottomToTop mode, don't calculate visible range until properly initialized
-        // This prevents showing wrong items when scrollTop starts at 0
-        if (
-            mode === 'bottomToTop' &&
-            !heightManager.initialized &&
-            heightManager.scrollTop === 0 &&
-            viewportHeight > 0
-        ) {
-            // Calculate what the correct scroll position should be
-            const targetScrollTop = Math.max(0, totalHeight() - viewportHeight)
-
-            // Use the target scroll position for visible range calculation
-            lastVisibleRange = calculateVisibleRange(
-                targetScrollTop,
-                viewportHeight,
-                heightManager.averageHeight,
-                items.length,
-                bufferSize,
-                mode,
-                atBottom,
-                wasAtBottomBeforeHeightChange,
-                lastVisibleRange,
-                totalHeight(),
-                heightManager.getHeightCache()
-            )
+        // For bottomToTop mode, always render items starting from index 0 during initialization
+        // This ensures Item 0 is in the DOM so we can use scrollIntoView for precise positioning
+        // The scrollIntoView in updateHeightAndScroll will handle correct alignment after heights are measured
+        // Use bottomToTopScrollComplete (not just initialized) to keep init path active until scroll is done
+        if (mode === 'bottomToTop' && !bottomToTopScrollComplete) {
+            // Use a reasonable default if viewport height isn't measured yet
+            const effectiveViewport = viewportHeight || 400
+            const visibleCount = Math.ceil(effectiveViewport / heightManager.averageHeight) + 1
+            lastVisibleRange = {
+                start: 0,
+                end: Math.min(items.length, visibleCount + bufferSize * 2)
+            } as SvelteVirtualListPreviousVisibleRange
 
             return lastVisibleRange
         }
@@ -1099,7 +1090,8 @@
             mode
         })
         if (!heightManager.initialized && mode === 'bottomToTop') {
-            // Deterministic init order: double RAF + microtask, then apply bottom anchoring
+            // bottomToTop initialization: use scrollIntoView on Item 0 for precise positioning
+            // visibleItems() guarantees Item 0 is rendered during initialization
             tick().then(() => {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -1107,11 +1099,7 @@
                         const measuredHeight =
                             heightManager.container.getBoundingClientRect().height
                         height = measuredHeight
-                        const targetScrollTop = calculateScrollPosition(
-                            items.length,
-                            heightManager.averageHeight,
-                            measuredHeight
-                        )
+
                         // Instance jitter to avoid same-frame collisions when two lists init together
                         const cleanedId = String(instanceId)
                             .toLowerCase()
@@ -1121,33 +1109,52 @@
                         const jitterMs = Number.isNaN(parsed)
                             ? Math.floor(Math.random() * 3)
                             : parsed % 3
-                        log('b2t-init', { measuredHeight, targetScrollTop, jitterMs })
+
                         setTimeout(() => {
-                            heightManager.viewport.scrollTop = targetScrollTop
-                            heightManager.scrollTop = targetScrollTop
+                            // Step 1: Set initialized (for other purposes like scroll event handling)
+                            // The init path in visibleItems() stays active until bottomToTopScrollComplete
+                            if (!heightManager.initialized) {
+                                heightManager.initialized = true
+                            }
+
+                            // Step 2: Wait for height measurements to complete
                             requestAnimationFrame(() => {
-                                // Guard: only transition false -> true to avoid invariant error
-                                if (!heightManager.initialized) heightManager.initialized = true
-                                // Post-init verification: ensure item 0 bottom aligns; fallback to native
-                                tick().then(() => {
-                                    const el = heightManager.viewport.querySelector(
-                                        '[data-original-index="0"]'
-                                    ) as HTMLElement | null
-                                    if (!el) return
-                                    const cont = heightManager.viewport.getBoundingClientRect()
-                                    const r = el.getBoundingClientRect()
-                                    const tol = 4
-                                    const aligned =
-                                        Math.abs(cont.y + cont.height - (r.y + r.height)) <= tol
-                                    if (!aligned) {
-                                        el.scrollIntoView({ block: 'end', inline: 'nearest' })
-                                        heightManager.scrollTop = heightManager.viewport.scrollTop
-                                        log('b2t-init-native-fallback', {
-                                            containerBottom: cont.y + cont.height,
-                                            itemBottom: r.y + r.height
+                                setTimeout(() => {
+                                    requestAnimationFrame(() => {
+                                        // Step 3: Use scrollIntoView on Item 0 for precise positioning
+                                        // Item 0 is guaranteed to be in DOM due to init path
+                                        // Skip if user has already scrolled (scrollTop significantly != 0)
+                                        const currentScroll = heightManager.viewport.scrollTop
+                                        const userHasScrolled =
+                                            currentScroll > heightManager.averageHeight
+                                        const el = heightManager.viewport.querySelector(
+                                            '[data-original-index="0"]'
+                                        ) as HTMLElement | null
+
+                                        if (el && !userHasScrolled) {
+                                            el.scrollIntoView({
+                                                block: 'end',
+                                                inline: 'nearest'
+                                            })
+                                            heightManager.scrollTop =
+                                                heightManager.viewport.scrollTop
+                                        } else if (userHasScrolled) {
+                                            // Sync internal state with current scroll
+                                            heightManager.scrollTop = currentScroll
+                                        }
+
+                                        // Step 4: Mark scroll complete - switches visibleItems to normal mode
+                                        requestAnimationFrame(() => {
+                                            bottomToTopScrollComplete = true
+                                            // Reset bottom-anchoring flag to prevent stale state from init
+                                            // affecting later operations (e.g., adding items while scrolled away)
+                                            wasAtBottomBeforeHeightChange = false
+                                            // Suppress bottom-anchoring briefly to let heights stabilize
+                                            // after switching to normal mode
+                                            suppressBottomAnchoringUntilMs = performance.now() + 200
                                         })
-                                    }
-                                })
+                                    })
+                                }, 50)
                             })
                         }, jitterMs)
                     })
@@ -1527,7 +1534,6 @@
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
-                style:visibility={height === 0 && mode === 'bottomToTop' ? 'hidden' : 'visible'}
                 style:transform="translateY({(() => {
                     const viewportHeight = height || measuredFallbackHeight || 0
                     const visibleRange = visibleItems()
