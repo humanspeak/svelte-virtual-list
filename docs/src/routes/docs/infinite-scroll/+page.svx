@@ -1,0 +1,227 @@
+---
+title: "Infinite Scroll"
+description: "Load more data automatically as users scroll near the end of the list."
+---
+
+<svelte:head>
+  <title>Infinite Scroll | Docs | Svelte Virtual List</title>
+</svelte:head>
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import InfiniteScrollExample from '$lib/examples/InfiniteScrollExample.svelte'
+</script>
+
+# Infinite Scroll
+
+Load more data automatically as users scroll near the end of the list. Perfect for paginated APIs, infinite feeds, and chat applications.
+
+## Interactive Demo
+
+<Example isSmall>
+  <InfiniteScrollExample />
+</Example>
+
+## Basic Usage
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let items = $state([...initialItems])
+    let hasMore = $state(true)
+
+    async function loadMore() {
+        const newItems = await fetchMoreItems()
+        items = [...items, ...newItems]
+
+        if (newItems.length === 0) {
+            hasMore = false
+        }
+    }
+</script>
+
+<VirtualList
+    {items}
+    onLoadMore={loadMore}
+    loadMoreThreshold={20}
+    {hasMore}
+>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `onLoadMore` | `() => void \| Promise<void>` | - | Callback when more data is needed (supports async) |
+| `loadMoreThreshold` | `number` | `20` | Number of items from the end to trigger `onLoadMore` |
+| `hasMore` | `boolean` | `true` | Set to `false` when all data has been loaded |
+
+## Behavior
+
+- **Triggers when scrolling near the end** - The callback fires when the user scrolls within `loadMoreThreshold` items of the end.
+- **Automatic initial trigger** - If the initial items are below the threshold, `onLoadMore` is called automatically on mount.
+- **Prevents concurrent calls** - While `onLoadMore` is running (for async functions), additional calls are prevented.
+- **Works in both modes** - Supports both `topToBottom` and `bottomToTop` scroll modes.
+
+## Complete Example
+
+Here's a more complete example with loading states and error handling:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    type Item = { id: number; text: string }
+
+    let items = $state<Item[]>([])
+    let hasMore = $state(true)
+    let isLoading = $state(false)
+    let error = $state<string | null>(null)
+    let page = $state(1)
+
+    // Initial load
+    $effect(() => {
+        loadInitial()
+    })
+
+    async function loadInitial() {
+        isLoading = true
+        try {
+            const response = await fetch('/api/items?page=1')
+            const data = await response.json()
+            items = data.items
+            hasMore = data.hasMore
+            page = 1
+        } catch (e) {
+            error = 'Failed to load items'
+        } finally {
+            isLoading = false
+        }
+    }
+
+    async function loadMore() {
+        if (isLoading) return
+
+        isLoading = true
+        error = null
+
+        try {
+            const nextPage = page + 1
+            const response = await fetch(`/api/items?page=${nextPage}`)
+            const data = await response.json()
+
+            items = [...items, ...data.items]
+            hasMore = data.hasMore
+            page = nextPage
+        } catch (e) {
+            error = 'Failed to load more items'
+        } finally {
+            isLoading = false
+        }
+    }
+</script>
+
+{#if error}
+    <div class="error">
+        {error}
+        <button onclick={loadMore}>Retry</button>
+    </div>
+{/if}
+
+<VirtualList
+    {items}
+    onLoadMore={loadMore}
+    loadMoreThreshold={10}
+    {hasMore}
+>
+    {#snippet renderItem(item)}
+        <div class="item">{item.text}</div>
+    {/snippet}
+</VirtualList>
+
+{#if isLoading}
+    <div class="loading">Loading...</div>
+{/if}
+```
+
+## Cursor-Based Pagination
+
+For APIs that use cursor-based pagination:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let items = $state<Item[]>([])
+    let cursor = $state<string | null>(null)
+    let hasMore = $state(true)
+
+    async function loadMore() {
+        const params = new URLSearchParams({ limit: '50' })
+        if (cursor) {
+            params.set('cursor', cursor)
+        }
+
+        const response = await fetch(`/api/items?${params}`)
+        const data = await response.json()
+
+        items = [...items, ...data.items]
+        cursor = data.nextCursor
+        hasMore = data.hasMore
+    }
+</script>
+
+<VirtualList {items} onLoadMore={loadMore} {hasMore}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## Bottom-to-Top with Infinite Scroll
+
+For chat-style interfaces that load older messages:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let messages = $state<Message[]>([])
+    let hasMoreOlder = $state(true)
+
+    async function loadOlderMessages() {
+        const oldestId = messages[0]?.id
+        const older = await fetchMessagesBefore(oldestId)
+
+        // Prepend older messages
+        messages = [...older, ...messages]
+
+        if (older.length === 0) {
+            hasMoreOlder = false
+        }
+    }
+</script>
+
+<VirtualList
+    items={messages}
+    mode="bottomToTop"
+    onLoadMore={loadOlderMessages}
+    hasMore={hasMoreOlder}
+    loadMoreThreshold={15}
+>
+    {#snippet renderItem(message)}
+        <div class="message">{message.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## Integration Guides
+
+For real-world integrations with backend services:
+
+- [Infinite Scroll with Convex](/docs/convex) - Real-time data + pagination with Convex backend

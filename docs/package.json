@@ -29,7 +29,8 @@
         "@humanspeak/svelte-motion": "^0.1.14",
         "@humanspeak/svelte-virtual-list": "workspace:*",
         "@sentry/cloudflare": "^10.37.0",
-        "@sentry/sveltekit": "^10.37.0"
+        "@sentry/sveltekit": "^10.37.0",
+        "github-slugger": "^2.0.0"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20260128.0",

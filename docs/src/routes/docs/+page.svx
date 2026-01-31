@@ -1,0 +1,118 @@
+---
+title: "Get started with Svelte Virtual List"
+description: "A high-performance virtual list component for Svelte 5 that efficiently renders large datasets with minimal memory usage."
+---
+
+<svelte:head>
+  <title>Get Started | Docs | Svelte Virtual List</title>
+</svelte:head>
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import BasicList from '$lib/examples/BasicList.svelte'
+  import BottomToTopExample from '$lib/examples/BottomToTopExample.svelte'
+  import VariableHeightExample from '$lib/examples/VariableHeightExample.svelte'
+</script>
+
+# Get started with Svelte Virtual List
+
+**Svelte Virtual List** is a high-performance virtual list component for Svelte 5 applications that efficiently renders large datasets with minimal memory usage.
+
+## Features
+
+- **Dynamic item height handling** - no fixed height required
+- **Bi-directional scrolling** - support for top-to-bottom and bottom-to-top modes
+- **Automatic resize handling** for dynamic content
+- **TypeScript support** with full type safety
+- **SSR compatible** with hydration support
+- **Svelte 5 runes and snippets** support
+- **Programmatic scrolling** with the `scroll` method
+- **Infinite scroll** support with `onLoadMore`
+- **Memory-optimized** for 10k+ items
+
+## Installation
+
+```bash
+# Using npm
+npm install @humanspeak/svelte-virtual-list
+
+# Using pnpm (recommended)
+pnpm add @humanspeak/svelte-virtual-list
+
+# Using yarn
+yarn add @humanspeak/svelte-virtual-list
+```
+
+## Basic Usage
+
+The simplest way to use Svelte Virtual List is to pass an array of items and a render snippet:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    const items = Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        text: `Item ${i}`
+    }))
+</script>
+
+<VirtualList {items}>
+    {#snippet renderItem(item)}
+        <div class="item">{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+<Example isSmall>
+  <BasicList />
+</Example>
+
+The component only renders items that are visible in the viewport, plus a configurable buffer. This means you can render lists with thousands of items without performance issues.
+
+## Variable Heights
+
+One of the key features is automatic handling of variable item heights. Items are measured after rendering and the list automatically adjusts:
+
+<Example isSmall>
+  <VariableHeightExample />
+</Example>
+
+## Chat-Style Lists (Bottom to Top)
+
+For chat applications and similar interfaces, use `mode="bottomToTop"` to anchor the list at the bottom:
+
+```svelte
+<VirtualList items={messages} mode="bottomToTop">
+    {#snippet renderItem(message)}
+        <div class="message">{message.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+<Example isSmall>
+  <BottomToTopExample />
+</Example>
+
+## Props Reference
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `items` | `T[]` | Required | Array of items to render |
+| `defaultEstimatedItemHeight` | `number` | `40` | Initial height estimate used until items are measured |
+| `mode` | `'topToBottom' \| 'bottomToTop'` | `'topToBottom'` | Scroll direction and anchoring behavior |
+| `bufferSize` | `number` | `20` | Number of items rendered outside the viewport |
+| `debug` | `boolean` | `false` | Enable debug logging and visualizations |
+| `containerClass` | `string` | `''` | Class for outer container |
+| `viewportClass` | `string` | `''` | Class for scrollable viewport |
+| `contentClass` | `string` | `''` | Class for content wrapper |
+| `itemsClass` | `string` | `''` | Class for items container |
+| `onLoadMore` | `() => void \| Promise<void>` | - | Callback for infinite scroll |
+| `loadMoreThreshold` | `number` | `20` | Items from end to trigger `onLoadMore` |
+| `hasMore` | `boolean` | `true` | Set to `false` when all data has been loaded |
+
+## Learn More
+
+- [Scroll Methods](/docs/scroll-methods) - Programmatic scrolling API
+- [Infinite Scroll](/docs/infinite-scroll) - Loading data on demand
+- [Convex Integration](/docs/convex) - Real-time data with Convex

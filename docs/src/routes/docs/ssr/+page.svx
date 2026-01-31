@@ -1,0 +1,51 @@
+# SSR Support
+
+Svelte Virtual List is fully compatible with server-side rendering (SSR) and SvelteKit.
+
+## How It Works
+
+During SSR:
+- The component renders a minimal DOM structure
+- No scroll calculations occur (no viewport measurements on server)
+- Heights use the `defaultEstimatedItemHeight` estimate
+
+On hydration:
+- The component measures the actual viewport
+- Heights are recalculated based on real measurements
+- Scroll position is initialized correctly
+
+## SvelteKit Integration
+
+No special configuration needed. Just import and use:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    const { data } = $props()
+</script>
+
+<VirtualList items={data.items}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## Initial Data
+
+For optimal UX, provide data during SSR to avoid loading states:
+
+```typescript
+// +page.server.ts
+export async function load() {
+    const items = await fetchItems()
+    return { items }
+}
+```
+
+## Performance Tips
+
+1. **Provide realistic height estimates**: Set `defaultEstimatedItemHeight` close to actual item heights
+2. **Limit initial items**: Fetch a reasonable first page (50-100 items)
+3. **Use streaming**: For large datasets, consider SvelteKit's streaming features

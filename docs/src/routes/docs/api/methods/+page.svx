@@ -1,0 +1,87 @@
+# Methods
+
+Programmatic control methods available on the VirtualList component.
+
+## Getting a Reference
+
+Use Svelte's `bind:this` to get a component reference:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let listRef: VirtualList
+</script>
+
+<VirtualList bind:this={listRef} {items}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## scroll()
+
+Scroll to a specific item by index.
+
+### Signature
+
+```typescript
+scroll(options: SvelteVirtualListScrollOptions): void
+```
+
+### Options
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `index` | `number` | required | Target item index |
+| `smoothScroll` | `boolean` | `true` | Use smooth scroll animation |
+| `align` | `'auto' \| 'top' \| 'bottom' \| 'nearest'` | `'auto'` | Alignment of target item |
+| `shouldThrowOnBounds` | `boolean` | `true` | Throw error if index out of bounds |
+
+### Examples
+
+**Scroll to item 100:**
+```typescript
+listRef.scroll({ index: 100 })
+```
+
+**Scroll to top of list:**
+```typescript
+listRef.scroll({ index: 0, align: 'top' })
+```
+
+**Scroll to bottom:**
+```typescript
+listRef.scroll({ index: items.length - 1, align: 'bottom' })
+```
+
+**Instant scroll (no animation):**
+```typescript
+listRef.scroll({ index: 500, smoothScroll: false })
+```
+
+### Alignment Options
+
+| Value | Behavior |
+|-------|----------|
+| `'auto'` | Minimal scroll to make item visible |
+| `'top'` | Align item to top of viewport |
+| `'bottom'` | Align item to bottom of viewport |
+| `'nearest'` | Scroll to nearest edge if not visible |
+
+## scrollToTop()
+
+Convenience method to scroll to the beginning.
+
+```typescript
+listRef.scrollToTop()
+```
+
+## scrollToBottom()
+
+Convenience method to scroll to the end.
+
+```typescript
+listRef.scrollToBottom()
+```

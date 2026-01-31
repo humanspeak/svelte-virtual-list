@@ -67,6 +67,20 @@
     <Sidebar.Content class="flex flex-col">
         <Sidebar.Group>
             <Sidebar.Menu>
+                <Sidebar.MenuItem>
+                    <Sidebar.MenuButton>
+                        {#snippet child({ props }: { props: Record<string, unknown> })}
+                            <a href="/docs" {...props}>
+                                <i class="fa-solid fa-book fa-fw mr-2"></i>
+                                <span>Documentation</span>
+                            </a>
+                        {/snippet}
+                    </Sidebar.MenuButton>
+                </Sidebar.MenuItem>
+            </Sidebar.Menu>
+        </Sidebar.Group>
+        <Sidebar.Group>
+            <Sidebar.Menu>
                 <Collapsible.Root open class="group/collapsible">
                     <Sidebar.MenuItem>
                         <Collapsible.Trigger>

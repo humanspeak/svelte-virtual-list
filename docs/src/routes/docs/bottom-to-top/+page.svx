@@ -1,0 +1,40 @@
+# Bottom to Top Mode
+
+Perfect for chat interfaces and messaging apps where new content appears at the bottom.
+
+## Usage
+
+Set `mode="bottomToTop"` to enable chat-style scrolling:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    const messages = [
+        { id: 1, text: 'Hello!', sender: 'them' },
+        { id: 2, text: 'Hi there!', sender: 'me' },
+        { id: 3, text: 'How are you?', sender: 'them' }
+    ]
+</script>
+
+<VirtualList items={messages} mode="bottomToTop">
+    {#snippet renderItem(message)}
+        <div class="message {message.sender}">
+            {message.text}
+        </div>
+    {/snippet}
+</VirtualList>
+```
+
+## Behavior
+
+- List starts scrolled to the bottom (most recent content visible)
+- New items added to the end appear at the bottom
+- Scroll position is maintained when new items arrive
+- Works seamlessly with infinite scroll for loading older messages
+
+## Best Practices
+
+1. **Keep newest at the end**: Append new messages to the end of your array
+2. **Load older on scroll up**: Use `onLoadMore` to load historical messages
+3. **Maintain scroll position**: The component handles this automatically when items are added
