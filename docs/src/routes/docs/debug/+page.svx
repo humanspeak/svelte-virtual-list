@@ -1,0 +1,67 @@
+# Debug Mode
+
+Debug mode provides detailed information about the virtual list's internal state, useful for development and troubleshooting.
+
+## Enabling Debug Mode
+
+### Via Props
+
+```svelte
+<VirtualList {items} debug={true}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+### Via Environment Variable
+
+```bash
+PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true
+```
+
+## Debug Information
+
+When enabled, the component provides:
+
+| Property | Description |
+|----------|-------------|
+| `startIndex` | First rendered item index |
+| `endIndex` | Last rendered item index |
+| `totalItems` | Total items in the list |
+| `visibleItemsCount` | Number of items currently visible |
+| `processedItems` | Items with measured heights |
+| `averageItemHeight` | Calculated average height |
+| `atTop` | Whether scrolled to top |
+| `atBottom` | Whether scrolled to bottom |
+| `totalHeight` | Total calculated content height |
+
+## Custom Debug Handler
+
+Capture debug info programmatically:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+    import type { SvelteVirtualListDebugInfo } from '@humanspeak/svelte-virtual-list'
+
+    function handleDebug(info: SvelteVirtualListDebugInfo) {
+        console.log('Visible range:', info.startIndex, '-', info.endIndex)
+        console.log('Average height:', info.averageItemHeight)
+    }
+</script>
+
+<VirtualList
+    {items}
+    debug={true}
+    debugFunction={handleDebug}
+>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## Visual Overlay
+
+When `debug={true}`, a visual overlay displays real-time stats in the corner of the viewport.

@@ -2,6 +2,7 @@
     import '../app.css'
     import { ModeWatcher } from 'mode-watcher'
     import { page } from '$app/state'
+    import BreadcrumbContext from '$lib/components/contexts/Breadcrumb/BreadcrumbContext.svelte'
 
     const { children } = $props()
     const imageLocation = `${page.url.origin}/`
@@ -72,4 +73,6 @@
 </svelte:head>
 <ModeWatcher />
 
-{@render children?.()}
+<BreadcrumbContext>
+    {@render children?.()}
+</BreadcrumbContext>

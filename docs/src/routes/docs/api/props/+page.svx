@@ -1,0 +1,154 @@
+# Props
+
+All available props for the SvelteVirtualList component.
+
+## Required Props
+
+### items
+
+The array of items to render.
+
+```typescript
+items: TItem[]
+```
+
+### renderItem
+
+A Svelte snippet that defines how each item is rendered.
+
+```svelte
+{#snippet renderItem(item, index)}
+    <div>{item.text}</div>
+{/snippet}
+```
+
+## Optional Props
+
+### mode
+
+Scroll direction mode.
+
+| Value | Description |
+|-------|-------------|
+| `'topToBottom'` | Standard scrolling (default) |
+| `'bottomToTop'` | Chat-style, anchored at bottom |
+
+```typescript
+mode?: 'topToBottom' | 'bottomToTop'
+// Default: 'topToBottom'
+```
+
+### bufferSize
+
+Number of items to render outside the visible viewport for smooth scrolling.
+
+```typescript
+bufferSize?: number
+// Default: 20
+```
+
+### defaultEstimatedItemHeight
+
+Initial height estimate (in pixels) for items before measurement.
+
+```typescript
+defaultEstimatedItemHeight?: number
+// Default: 40
+```
+
+## Infinite Scroll Props
+
+### onLoadMore
+
+Callback triggered when scrolling near the end of the list.
+
+```typescript
+onLoadMore?: () => void | Promise<void>
+```
+
+### loadMoreThreshold
+
+Number of items from the end to trigger `onLoadMore`.
+
+```typescript
+loadMoreThreshold?: number
+// Default: 20
+```
+
+### hasMore
+
+Set to `false` when all data has been loaded.
+
+```typescript
+hasMore?: boolean
+// Default: true
+```
+
+## Styling Props
+
+### containerClass
+
+CSS class for the outer container element.
+
+```typescript
+containerClass?: string
+```
+
+### viewportClass
+
+CSS class for the scrollable viewport element.
+
+```typescript
+viewportClass?: string
+```
+
+### contentClass
+
+CSS class for the content wrapper element.
+
+```typescript
+contentClass?: string
+```
+
+### itemsClass
+
+CSS class for the items wrapper element.
+
+```typescript
+itemsClass?: string
+```
+
+## Debug Props
+
+### debug
+
+Enable debug mode with visual overlay.
+
+```typescript
+debug?: boolean
+// Default: false
+```
+
+### debugFunction
+
+Custom callback to receive debug information.
+
+```typescript
+debugFunction?: (info: SvelteVirtualListDebugInfo) => void
+```
+
+## Testing Props
+
+### testId
+
+Base test ID for component elements.
+
+```typescript
+testId?: string
+```
+
+When set, adds `data-testid` attributes:
+- `{testId}-container`
+- `{testId}-viewport`
+- `{testId}-content`
+- `{testId}-items`

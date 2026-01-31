@@ -1,0 +1,113 @@
+# Types
+
+TypeScript types exported by the package.
+
+## Importing Types
+
+```typescript
+import type {
+    SvelteVirtualListProps,
+    SvelteVirtualListMode,
+    SvelteVirtualListScrollOptions,
+    SvelteVirtualListScrollAlign,
+    SvelteVirtualListDebugInfo
+} from '@humanspeak/svelte-virtual-list'
+```
+
+## SvelteVirtualListProps
+
+Configuration props for the component.
+
+```typescript
+type SvelteVirtualListProps<TItem = any> = {
+    items: TItem[]
+    renderItem: Snippet<[item: TItem, index: number]>
+    mode?: SvelteVirtualListMode
+    bufferSize?: number
+    defaultEstimatedItemHeight?: number
+    debug?: boolean
+    debugFunction?: (info: SvelteVirtualListDebugInfo) => void
+    containerClass?: string
+    viewportClass?: string
+    contentClass?: string
+    itemsClass?: string
+    testId?: string
+    onLoadMore?: () => void | Promise<void>
+    loadMoreThreshold?: number
+    hasMore?: boolean
+}
+```
+
+## SvelteVirtualListMode
+
+Scroll direction mode.
+
+```typescript
+type SvelteVirtualListMode = 'topToBottom' | 'bottomToTop'
+```
+
+## SvelteVirtualListScrollOptions
+
+Options for the `scroll()` method.
+
+```typescript
+interface SvelteVirtualListScrollOptions {
+    index: number
+    smoothScroll?: boolean
+    shouldThrowOnBounds?: boolean
+    align?: SvelteVirtualListScrollAlign
+}
+```
+
+## SvelteVirtualListScrollAlign
+
+Alignment options for programmatic scrolling.
+
+```typescript
+type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest'
+```
+
+## SvelteVirtualListDebugInfo
+
+Debug information provided by the component.
+
+```typescript
+type SvelteVirtualListDebugInfo = {
+    startIndex: number
+    endIndex: number
+    totalItems: number
+    visibleItemsCount: number
+    processedItems: number
+    averageItemHeight: number
+    atTop: boolean
+    atBottom: boolean
+    totalHeight: number
+}
+```
+
+## Generic Type Parameter
+
+The component accepts a generic type for items:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    type User = {
+        id: number
+        name: string
+        email: string
+    }
+
+    const users: User[] = [] // populate with user data
+</script>
+
+<VirtualList items={users}>
+    {#snippet renderItem(user: User, index: number)}
+        <div>
+            <strong>{user.name}</strong>
+            <span>{user.email}</span>
+        </div>
+    {/snippet}
+</VirtualList>
+```

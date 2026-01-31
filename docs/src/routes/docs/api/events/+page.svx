@@ -1,0 +1,112 @@
+# Events & Callbacks
+
+Callbacks available for responding to virtual list events.
+
+## onLoadMore
+
+Triggered when the user scrolls near the end of the list. Used for implementing infinite scroll / pagination.
+
+### Signature
+
+```typescript
+onLoadMore?: () => void | Promise<void>
+```
+
+### Example
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let items = $state([...initialItems])
+    let hasMore = $state(true)
+    let isLoading = $state(false)
+
+    async function loadMore() {
+        if (isLoading) return
+        isLoading = true
+
+        try {
+            const newItems = await fetchMoreItems()
+            items = [...items, ...newItems]
+
+            if (newItems.length === 0) {
+                hasMore = false
+            }
+        } finally {
+            isLoading = false
+        }
+    }
+</script>
+
+<VirtualList
+    {items}
+    onLoadMore={loadMore}
+    {hasMore}
+    loadMoreThreshold={10}
+>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+### Related Props
+
+| Prop | Description |
+|------|-------------|
+| `hasMore` | Set to `false` to stop triggering `onLoadMore` |
+| `loadMoreThreshold` | Items from end to trigger (default: 20) |
+
+## debugFunction
+
+Receive real-time debug information about the list state.
+
+### Signature
+
+```typescript
+debugFunction?: (info: SvelteVirtualListDebugInfo) => void
+```
+
+### Example
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+    import type { SvelteVirtualListDebugInfo } from '@humanspeak/svelte-virtual-list'
+
+    function onDebug(info: SvelteVirtualListDebugInfo) {
+        // Track scroll position
+        if (info.atBottom) {
+            console.log('User reached the bottom')
+        }
+
+        // Monitor performance
+        console.log(`Rendering ${info.visibleItemsCount} of ${info.totalItems} items`)
+    }
+</script>
+
+<VirtualList
+    {items}
+    debug={true}
+    debugFunction={onDebug}
+>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+### Debug Info Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `startIndex` | `number` | First rendered item index |
+| `endIndex` | `number` | Last rendered item index |
+| `totalItems` | `number` | Total items in list |
+| `visibleItemsCount` | `number` | Currently visible items |
+| `processedItems` | `number` | Items with measured heights |
+| `averageItemHeight` | `number` | Calculated average height |
+| `atTop` | `boolean` | Scrolled to top |
+| `atBottom` | `boolean` | Scrolled to bottom |
+| `totalHeight` | `number` | Total content height |

@@ -1,0 +1,323 @@
+---
+title: "Convex Integration"
+description: "Use Svelte Virtual List with Convex for real-time data and infinite scroll pagination."
+---
+
+<svelte:head>
+  <title>Convex Integration | Docs | Svelte Virtual List</title>
+</svelte:head>
+
+# Infinite Scroll with Convex
+
+This guide explains how to use `@humanspeak/svelte-virtual-list` with [Convex](https://convex.dev) for real-time data and infinite scroll pagination.
+
+## Overview
+
+This pattern combines:
+
+1. **Real-time subscriptions** - First page updates live via Convex WebSocket
+2. **Infinite scroll pagination** - Older pages loaded on-demand via one-time queries
+3. **Virtualization** - Only visible items are rendered in the DOM
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    VirtualList                          │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  Live Data (useQuery - WebSocket subscription)    │  │
+│  │  - First page of items                            │  │
+│  │  - Updates in real-time when data changes         │  │
+│  └───────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  Paginated Data (client.query - one-time fetch)   │  │
+│  │  - Loaded when user scrolls near bottom           │  │
+│  │  - Uses cursor-based pagination                   │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Setup
+
+### 1. Install Dependencies
+
+```bash
+pnpm add convex convex-svelte @humanspeak/svelte-virtual-list
+```
+
+### 2. Environment Variables
+
+```env
+PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
+```
+
+### 3. Initialize Convex Client
+
+Create `src/lib/convex.ts`:
+
+```typescript
+import { env } from '$env/dynamic/public'
+import { setupConvex, useConvexClient } from 'convex-svelte'
+
+export const setup = () => {
+    if (env.PUBLIC_CONVEX_URL) {
+        setupConvex(env.PUBLIC_CONVEX_URL, {
+            unsavedChangesWarning: false
+        })
+    }
+}
+
+export const getConvexClient = () => useConvexClient()
+```
+
+Call `setup()` in your root layout:
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script lang="ts">
+    import { setup } from '$lib/convex'
+    setup()
+    let { children } = $props()
+</script>
+
+{@render children()}
+```
+
+## Convex Backend
+
+### Real-time Query (for live first page)
+
+```typescript
+// convex/items.ts
+import { query } from './_generated/server'
+import { v } from 'convex/values'
+
+export const listRecent = query({
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        const limit = args.limit ?? 50
+        return await ctx.db
+            .query('items')
+            .order('desc')
+            .take(limit)
+    }
+})
+```
+
+### Paginated Query (for infinite scroll)
+
+```typescript
+// convex/items.ts
+export const listPaginated = query({
+    args: {
+        cursor: v.optional(v.number()),
+        limit: v.optional(v.number())
+    },
+    handler: async (ctx, args) => {
+        const limit = args.limit ?? 50
+        const cursor = args.cursor
+
+        let queryBuilder = ctx.db.query('items')
+
+        if (cursor !== undefined) {
+            queryBuilder = queryBuilder.filter((q) =>
+                q.lt(q.field('_creationTime'), cursor)
+            )
+        }
+
+        const items = await queryBuilder
+            .order('desc')
+            .take(limit + 1)
+
+        const hasMore = items.length > limit
+        const pageItems = hasMore ? items.slice(0, limit) : items
+
+        return {
+            items: pageItems,
+            hasMore,
+            nextCursor: pageItems.length > 0
+                ? pageItems[pageItems.length - 1]._creationTime
+                : null
+        }
+    }
+})
+```
+
+## Frontend Implementation
+
+### Complete Example
+
+```svelte
+<script lang="ts">
+    import { useQuery, useConvexClient } from 'convex-svelte'
+    import { api } from '$lib/convex/api'
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    type Item = {
+        _id: string
+        _creationTime: number
+        name: string
+    }
+
+    // Props from server-side load function (for SSR)
+    let { data } = $props()
+
+    // Real-time subscription for first page
+    const liveQuery = useQuery(
+        api.items.listRecent,
+        { limit: 50 },
+        { initialData: data.items }
+    )
+
+    // Convex client for pagination queries
+    const client = useConvexClient()
+
+    // Pagination state
+    let olderItems = $state<Item[]>([])
+    let cursor = $state<number | null>(null)
+    let hasMore = $state(true)
+
+    // Combine live data with paginated data
+    const items = $derived.by(() => {
+        const live = (liveQuery.data ?? data.items) as Item[]
+        return [...live, ...olderItems]
+    })
+
+    // Update cursor when live data changes
+    $effect(() => {
+        const live = liveQuery.data as Item[] | undefined
+        if (live && live.length > 0) {
+            cursor = live[live.length - 1]._creationTime
+        }
+    })
+
+    // Load more function for infinite scroll
+    async function loadMore() {
+        if (!hasMore || !cursor || !client) return
+
+        const result = await client.query(
+            api.items.listPaginated,
+            { cursor, limit: 50 }
+        )
+
+        olderItems = [...olderItems, ...result.items]
+        cursor = result.nextCursor
+        hasMore = result.hasMore
+    }
+
+    // Live indicator
+    const isLive = $derived(
+        !liveQuery.isLoading && !liveQuery.error
+    )
+</script>
+
+{#if isLive}
+    <div class="live-indicator">
+        <span class="pulse"></span>
+        Live
+    </div>
+{/if}
+
+<VirtualList
+    {items}
+    defaultEstimatedItemHeight={60}
+    onLoadMore={loadMore}
+    {hasMore}
+>
+    {#snippet renderItem(item: Item)}
+        <div class="item">{item.name}</div>
+    {/snippet}
+</VirtualList>
+
+<style>
+    .live-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #16a34a;
+    }
+    .pulse {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+```
+
+### Server-Side Data Loading (SSR)
+
+For SSR, use `ConvexHttpClient` since `convex-svelte` only works on the client:
+
+```typescript
+// +page.server.ts
+import { env } from '$env/dynamic/public'
+import { api } from '$lib/convex/api'
+import { ConvexHttpClient } from 'convex/browser'
+import type { PageServerLoad } from './$types'
+
+export const load: PageServerLoad = async () => {
+    const client = new ConvexHttpClient(env.PUBLIC_CONVEX_URL!)
+    const items = await client.query(
+        api.items.listRecent,
+        { limit: 50 }
+    )
+    return { items }
+}
+```
+
+## Key Design Decisions
+
+### Why `_creationTime` for pagination?
+
+| Benefit | Explanation |
+|---------|-------------|
+| **Built-in** | Convex adds `_creationTime` to every document automatically |
+| **Auto-indexed** | Efficient queries without explicit index definitions |
+| **Monotonic** | Guaranteed unique and strictly ordered |
+| **Numeric** | No string parsing issues |
+
+### Why dual approach (subscription + one-time queries)?
+
+| Component | Method | Why |
+|-----------|--------|-----|
+| First page | `useQuery` | Real-time updates via WebSocket subscription |
+| Older pages | `client.query` | One-time fetch, no subscription needed for historical data |
+
+### Why merge live + paginated data?
+
+- **Live data**: Always shows the absolute latest items with real-time updates
+- **Paginated data**: Stable historical data loaded on demand
+- **Combined**: Seamless infinite list with real-time updates at the top
+
+## Troubleshooting
+
+### Live indicator not showing
+
+1. Ensure `setup()` is called in `+layout.svelte`
+2. Check that `PUBLIC_CONVEX_URL` is set
+3. Verify WebSocket connection in browser DevTools (Network > WS)
+
+### Pagination returning no results
+
+1. Verify cursor is set from the live data's last item
+2. Check that filter uses `q.lt()` for descending order
+3. Ensure the query is deployed (`npx convex deploy`)
+
+### Data not updating in real-time
+
+1. Confirm you're using `useQuery` (not `client.query`) for live data
+2. Check Convex dashboard for function errors
+3. Verify WebSocket connection is established
+
+## Related
+
+- [Convex Documentation](https://docs.convex.dev)
+- [convex-svelte](https://github.com/get-convex/convex-svelte)
+- [Infinite Scroll Guide](/docs/infinite-scroll)
+- [Get Started](/docs)

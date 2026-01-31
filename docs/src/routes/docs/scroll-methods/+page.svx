@@ -1,0 +1,186 @@
+---
+title: "Scroll Methods"
+description: "Programmatically scroll to any item in the virtual list with configurable alignment options."
+---
+
+<svelte:head>
+  <title>Scroll Methods | Docs | Svelte Virtual List</title>
+</svelte:head>
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import ScrollToItemExample from '$lib/examples/ScrollToItemExample.svelte'
+</script>
+
+# Scroll Methods
+
+You can programmatically scroll to any item in the list using the `scroll` method. This is useful for chat apps, jump-to-item navigation, search results, and more.
+
+## Interactive Demo
+
+<Example isSmall>
+  <ScrollToItemExample />
+</Example>
+
+## Basic Usage
+
+To use the scroll method, bind a reference to the VirtualList component:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let listRef
+
+    const items = Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        text: `Item ${i}`
+    }))
+
+    function goToItem5000() {
+        listRef.scroll({
+            index: 5000,
+            smoothScroll: true,
+            align: 'auto'
+        })
+    }
+</script>
+
+<button onclick={goToItem5000}>
+    Scroll to item 5000
+</button>
+
+<VirtualList {items} bind:this={listRef}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## API Reference
+
+### scroll(options)
+
+Scrolls the list to bring a specific item into view.
+
+```typescript
+scroll(options: {
+    index: number
+    smoothScroll?: boolean
+    shouldThrowOnBounds?: boolean
+    align?: 'auto' | 'top' | 'bottom' | 'nearest'
+})
+```
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `index` | `number` | Required | The item index to scroll to (0-based) |
+| `smoothScroll` | `boolean` | `true` | Use smooth scrolling animation |
+| `shouldThrowOnBounds` | `boolean` | `true` | Throw error if index is out of bounds |
+| `align` | `string` | `'auto'` | Where to align the item in the viewport |
+
+### Alignment Options
+
+- **`'auto'`** (default) - Only scroll if the item is not visible. Aligns to top or bottom as appropriate.
+- **`'top'`** - Always align the item to the top of the viewport.
+- **`'bottom'`** - Always align the item to the bottom of the viewport.
+- **`'nearest'`** - Scroll as little as possible to bring the item into view (like native `scrollIntoView({ block: 'nearest' })`).
+
+## Examples
+
+### Scroll to specific index
+
+```svelte
+<button onclick={() => listRef.scroll({ index: 500 })}>
+    Go to item 500
+</button>
+```
+
+### Scroll without animation
+
+```svelte
+<button onclick={() => listRef.scroll({ index: 500, smoothScroll: false })}>
+    Jump to item 500 (instant)
+</button>
+```
+
+### Always align to top
+
+```svelte
+<button onclick={() => listRef.scroll({ index: 500, align: 'top' })}>
+    Scroll to item 500 (top aligned)
+</button>
+```
+
+### Minimal scrolling
+
+```svelte
+<button onclick={() => listRef.scroll({ index: 500, align: 'nearest' })}>
+    Scroll to item 500 (nearest)
+</button>
+```
+
+## Bottom-to-Top Mode
+
+The scroll API works the same way in bottom-to-top mode:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let listRef
+    const messages = Array.from({ length: 2000 }, (_, i) => ({
+        id: i,
+        text: `Message ${i}`
+    }))
+</script>
+
+<VirtualList
+    items={messages}
+    mode="bottomToTop"
+    bind:this={listRef}
+>
+    {#snippet renderItem(message)}
+        <div>{message.text}</div>
+    {/snippet}
+</VirtualList>
+
+<button onclick={() => listRef.scroll({ index: 0, align: 'top' })}>
+    Jump to oldest
+</button>
+
+<button onclick={() => listRef.scroll({
+    index: messages.length - 1,
+    align: 'bottom'
+})}>
+    Jump to latest
+</button>
+```
+
+## TypeScript
+
+For full type safety, you can type the ref:
+
+```typescript
+type ListRef = {
+    scroll: (options: {
+        index: number
+        smoothScroll?: boolean
+        shouldThrowOnBounds?: boolean
+        align?: 'auto' | 'top' | 'bottom' | 'nearest'
+    }) => void
+}
+
+let listRef: ListRef | undefined = $state(undefined)
+```
+
+Or import the types from the package:
+
+```typescript
+import type {
+    SvelteVirtualListScrollOptions,
+    SvelteVirtualListScrollAlign
+} from '@humanspeak/svelte-virtual-list'
+```

@@ -1,0 +1,56 @@
+# Variable Heights
+
+Svelte Virtual List automatically handles items with different heights. No configuration needed - heights are measured after render and cached for optimal performance.
+
+## How It Works
+
+The component uses a smart height estimation system:
+
+1. **Initial Estimate**: Uses `defaultEstimatedItemHeight` (default: 40px) for unmeasured items
+2. **Measurement**: After items render, actual heights are measured via ResizeObserver
+3. **Caching**: Measured heights are cached to avoid re-measurement
+4. **Averaging**: A running average is calculated for better estimates of unmeasured items
+
+## Example
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    const items = [
+        { id: 1, title: 'Short item' },
+        { id: 2, title: 'Medium length item with more content' },
+        { id: 3, title: 'Long item', description: 'This item has additional content that makes it taller than the others' }
+    ]
+</script>
+
+<VirtualList {items}>
+    {#snippet renderItem(item)}
+        <div class="p-4 border-b">
+            <h3>{item.title}</h3>
+            {#if item.description}
+                <p>{item.description}</p>
+            {/if}
+        </div>
+    {/snippet}
+</VirtualList>
+```
+
+## Adjusting the Estimate
+
+If your items are typically larger or smaller than 40px, set a better initial estimate:
+
+```svelte
+<VirtualList
+    {items}
+    defaultEstimatedItemHeight={80}
+>
+    <!-- items -->
+</VirtualList>
+```
+
+A more accurate initial estimate improves scrollbar accuracy before items are measured.
+
+## Dynamic Content
+
+Items can change height at any time (e.g., expanding/collapsing). The component automatically detects height changes and adjusts scroll positions accordingly.
