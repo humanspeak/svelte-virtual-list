@@ -1,29 +1,32 @@
 language: en-US
-tone_instructions: Be concise and technical. Focus on performance, type safety, animation correctness, and accessibility. Prioritize security issues, ReDoS vulnerabilities, and proper error handling.
+tone_instructions: Be concise and technical. Focus on critical issues first (bugs, security, accessibility), then suggestions. Prioritize actionable feedback over observations.
 early_access: false
 enable_free_tier: true
 reviews:
     profile: assertive
     request_changes_workflow: false
-    high_level_summary: true
+    # Disable GitHub PR comments - we use Claude Code locally for reviews
+    high_level_summary: false
     high_level_summary_placeholder: '@coderabbitai summary'
     high_level_summary_in_walkthrough: false
+    # Disable auto-title - we craft conventional commits manually
     auto_title_placeholder: '@coderabbitai'
-    auto_title_instructions: Generate clear, descriptive PR titles that include the component/area affected and the type of change (fix, feat, refactor, docs, test, perf)
-    review_status: true
-    commit_status: true
+    auto_title_instructions: ''
+    # Disable status checks - we use trunk locally
+    review_status: false
+    commit_status: false
     fail_commit_status: false
-    collapse_walkthrough: false
-    changed_files_summary: true
-    sequence_diagrams: true
-    assess_linked_issues: true
-    related_issues: true
-    related_prs: true
-    suggested_labels: true
+    collapse_walkthrough: true
+    changed_files_summary: false
+    sequence_diagrams: false
+    assess_linked_issues: false
+    related_issues: false
+    related_prs: false
+    suggested_labels: false
     auto_apply_labels: false
-    suggested_reviewers: true
+    suggested_reviewers: false
     auto_assign_reviewers: false
-    poem: true
+    poem: false
     labeling_instructions:
         - label: bug
           instructions: Apply to any code that fixes incorrect behavior or errors
@@ -70,9 +73,9 @@ reviews:
         base_branches: []
     finishing_touches:
         docstrings:
-            enabled: true
+            enabled: false
         unit_tests:
-            enabled: true
+            enabled: false
     tools:
         ast-grep:
             rule_dirs: []
@@ -89,13 +92,7 @@ reviews:
             enabled: true
             timeout_ms: 90000
         languagetool:
-            enabled: true
-            enabled_rules: []
-            disabled_rules: []
-            enabled_categories: []
-            disabled_categories: []
-            enabled_only: false
-            level: default
+            enabled: false
         biome:
             enabled: true # Good for TypeScript/JavaScript
         hadolint:
@@ -142,39 +139,32 @@ reviews:
         shopifyThemeCheck:
             enabled: false # Shopify themes - not needed
 chat:
-    auto_reply: true
+    # Disable auto-reply - we interact via Claude Code, not GitHub comments
+    auto_reply: false
     integrations:
         jira:
-            usage: auto
+            usage: disabled
         linear:
-            usage: auto
+            usage: disabled
 knowledge_base:
     opt_out: false
     web_search:
-        enabled: true
+        enabled: false
     learnings:
-        scope: auto
+        scope: local
     issues:
-        scope: auto
+        scope: local
     jira:
-        usage: auto
+        usage: disabled
         project_keys: []
     linear:
-        usage: auto
+        usage: disabled
         team_keys: []
     pull_requests:
-        scope: auto
+        scope: local
+# Code generation disabled - we write docs and tests via Claude Code
 code_generation:
     docstrings:
-        language: en-US
-        path_instructions:
-            - path: src/lib/utils/**/*.ts
-              instructions: Generate JSDoc-style docstrings with clear descriptions, @param tags with types and descriptions, @returns tag with type and description, and practical @example blocks showing real usage. Focus on explaining the "why" and edge cases, not just restating the code.
-            - path: src/lib/components/**/*.svelte
-              instructions: Document props, events, and slots using TSDoc format. Include usage examples that demonstrate common patterns with Svelte 5 runes. Explain component behavior and any accessibility considerations.
+        enabled: false
     unit_tests:
-        path_instructions:
-            - path: src/lib/utils/**/*.ts
-              instructions: Generate comprehensive Vitest tests covering happy path, edge cases, error handling, and boundary conditions. Use descriptive test names. Mock external dependencies. Aim for >90% branch coverage. Test async behavior with proper awaits.
-            - path: src/lib/components/**/*.svelte
-              instructions: Generate component tests using Vitest and @testing-library/svelte. Test user interactions, prop changes, state updates, and accessibility. Verify cleanup of effects and event listeners.
+        enabled: false
