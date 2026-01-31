@@ -1117,44 +1117,41 @@
                                 heightManager.initialized = true
                             }
 
-                            // Step 2: Wait for height measurements to complete
+                            // Step 2: Use scrollIntoView on Item 0 for precise positioning
+                            // Use double RAF to ensure heights are measured and layout is stable
                             requestAnimationFrame(() => {
-                                setTimeout(() => {
-                                    requestAnimationFrame(() => {
-                                        // Step 3: Use scrollIntoView on Item 0 for precise positioning
-                                        // Item 0 is guaranteed to be in DOM due to init path
-                                        // Skip if user has already scrolled (scrollTop significantly != 0)
-                                        const currentScroll = heightManager.viewport.scrollTop
-                                        const userHasScrolled =
-                                            currentScroll > heightManager.averageHeight
-                                        const el = heightManager.viewport.querySelector(
-                                            '[data-original-index="0"]'
-                                        ) as HTMLElement | null
+                                requestAnimationFrame(() => {
+                                    // Item 0 is guaranteed to be in DOM due to init path
+                                    // Skip if user has already scrolled (scrollTop significantly != 0)
+                                    const currentScroll = heightManager.viewport.scrollTop
+                                    const userHasScrolled =
+                                        currentScroll > heightManager.averageHeight
+                                    const el = heightManager.viewport.querySelector(
+                                        '[data-original-index="0"]'
+                                    ) as HTMLElement | null
 
-                                        if (el && !userHasScrolled) {
-                                            el.scrollIntoView({
-                                                block: 'end',
-                                                inline: 'nearest'
-                                            })
-                                            heightManager.scrollTop =
-                                                heightManager.viewport.scrollTop
-                                        } else if (userHasScrolled) {
-                                            // Sync internal state with current scroll
-                                            heightManager.scrollTop = currentScroll
-                                        }
-
-                                        // Step 4: Mark scroll complete - switches visibleItems to normal mode
-                                        requestAnimationFrame(() => {
-                                            bottomToTopScrollComplete = true
-                                            // Reset bottom-anchoring flag to prevent stale state from init
-                                            // affecting later operations (e.g., adding items while scrolled away)
-                                            wasAtBottomBeforeHeightChange = false
-                                            // Suppress bottom-anchoring briefly to let heights stabilize
-                                            // after switching to normal mode
-                                            suppressBottomAnchoringUntilMs = performance.now() + 200
+                                    if (el && !userHasScrolled) {
+                                        el.scrollIntoView({
+                                            block: 'end',
+                                            inline: 'nearest'
                                         })
+                                        heightManager.scrollTop = heightManager.viewport.scrollTop
+                                    } else if (userHasScrolled) {
+                                        // Sync internal state with current scroll
+                                        heightManager.scrollTop = currentScroll
+                                    }
+
+                                    // Step 3: Mark scroll complete - switches visibleItems to normal mode
+                                    requestAnimationFrame(() => {
+                                        bottomToTopScrollComplete = true
+                                        // Reset bottom-anchoring flag to prevent stale state from init
+                                        // affecting later operations (e.g., adding items while scrolled away)
+                                        wasAtBottomBeforeHeightChange = false
+                                        // Suppress bottom-anchoring briefly to let heights stabilize
+                                        // after switching to normal mode
+                                        suppressBottomAnchoringUntilMs = performance.now() + 200
                                     })
-                                }, 50)
+                                })
                             })
                         }, jitterMs)
                     })
