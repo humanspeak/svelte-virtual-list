@@ -15,11 +15,12 @@ on:
             - '!dependabot/**'
         paths:
             - src/**
+            - '!docs/**'
             - '!tests/**'
             - '!src/lib/test/**'
             - '!src/routes/**'
             - package.json
-            - package-lock.json
+            - pnpm-lock.yaml
             - .github/workflows/npm-publish.yml
     workflow_dispatch:
         inputs:
