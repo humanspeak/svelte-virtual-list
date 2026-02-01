@@ -2,6 +2,46 @@ import type { SvelteVirtualListMode, SvelteVirtualListPreviousVisibleRange } fro
 import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
 
 /**
+ * Validates a height value and returns it if valid, otherwise returns the fallback.
+ *
+ * A height is considered valid if it is a finite number greater than 0.
+ * This utility consolidates the repeated pattern of height validation
+ * found throughout the virtual list codebase.
+ *
+ * @param {unknown} height - The height value to validate
+ * @param {number} fallback - The fallback value to use if height is invalid
+ * @returns {number} The validated height or the fallback value
+ *
+ * @example
+ * ```typescript
+ * const height = getValidHeight(heightCache[i], calculatedItemHeight)
+ * // Returns heightCache[i] if valid, otherwise calculatedItemHeight
+ * ```
+ */
+export const getValidHeight = (height: unknown, fallback: number): number =>
+    Number.isFinite(height) && (height as number) > 0 ? (height as number) : fallback
+
+/**
+ * Clamps a numeric value to be within a specified range.
+ *
+ * This utility consolidates the repeated `Math.max(min, Math.min(max, value))`
+ * pattern used throughout scroll calculations and positioning logic.
+ *
+ * @param {number} value - The value to clamp
+ * @param {number} min - The minimum allowed value
+ * @param {number} max - The maximum allowed value
+ * @returns {number} The clamped value
+ *
+ * @example
+ * ```typescript
+ * const scrollTop = clampValue(targetScrollTop, 0, maxScrollTop)
+ * // Ensures scrollTop is between 0 and maxScrollTop
+ * ```
+ */
+export const clampValue = (value: number, min: number, max: number): number =>
+    Math.max(min, Math.min(max, value))
+
+/**
  * Calculates the maximum scroll position for a virtual list.
  *
  * This function determines the maximum scrollable distance by computing the difference
@@ -94,10 +134,8 @@ export const calculateVisibleRange = (
             const adjustedEnd = totalItems
             let startCore = adjustedEnd
             let acc = 0
-            const getH = (i: number) => {
-                const v = heightCache ? heightCache[i] : undefined
-                return Number.isFinite(v) && (v as number) > 0 ? (v as number) : itemHeight
-            }
+            const getH = (i: number) =>
+                getValidHeight(heightCache ? heightCache[i] : undefined, itemHeight)
             while (startCore > 0 && acc < viewportHeight) {
                 const h = getH(startCore - 1)
                 acc += h
@@ -462,10 +500,7 @@ export const getScrollOffsetForIndex = (
         let offset = 0
 
         for (let i = 0; i < safeIdx; i++) {
-            const raw = heightCache[i]
-            const height =
-                Number.isFinite(raw) && (raw as number) > 0 ? (raw as number) : calculatedItemHeight
-            offset += height
+            offset += getValidHeight(heightCache[i], calculatedItemHeight)
         }
 
         return offset
@@ -479,10 +514,7 @@ export const getScrollOffsetForIndex = (
     let offset = offsetBase
     const start = blockIdx * blockSize
     for (let i = start; i < safeIdx; i++) {
-        const raw = heightCache[i]
-        const height =
-            Number.isFinite(raw) && (raw as number) > 0 ? (raw as number) : calculatedItemHeight
-        offset += height
+        offset += getValidHeight(heightCache[i], calculatedItemHeight)
     }
     return offset
 }
@@ -527,10 +559,7 @@ export const buildBlockSums = (
         const start = b * blockSize
         const end = start + blockSize
         for (let i = start; i < end; i++) {
-            const raw = heightCache[i]
-            const h =
-                Number.isFinite(raw) && (raw as number) > 0 ? (raw as number) : calculatedItemHeight
-            running += h
+            running += getValidHeight(heightCache[i], calculatedItemHeight)
         }
         sums[b] = running
     }
