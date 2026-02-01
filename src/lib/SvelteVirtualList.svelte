@@ -165,6 +165,7 @@
     import {
         calculateTransformY,
         calculateVisibleRange,
+        clampValue,
         updateHeightAndScroll as utilsUpdateHeightAndScroll,
         getScrollOffsetForIndex,
         buildBlockSums
@@ -289,23 +290,16 @@
             Math.max(0, lastAnchorIndex),
             blockSums
         )
-        const maxScrollTop = Math.max(0, totalHeight() - (height || 0))
+        const maxScrollTop = clampValue(totalHeight() - (height || 0), 0, Infinity)
         let targetTop: number
         if (mode === 'bottomToTop') {
-            const distanceFromStart = Math.max(0, offsetToIndex + lastAnchorOffset)
-            targetTop = Math.max(
-                0,
-                Math.min(maxScrollTop, Math.round(maxScrollTop - distanceFromStart))
-            )
+            const distanceFromStart = clampValue(offsetToIndex + lastAnchorOffset, 0, Infinity)
+            targetTop = clampValue(Math.round(maxScrollTop - distanceFromStart), 0, maxScrollTop)
         } else {
-            targetTop = Math.max(
-                0,
-                Math.min(maxScrollTop, Math.round(offsetToIndex + lastAnchorOffset))
-            )
+            targetTop = clampValue(Math.round(offsetToIndex + lastAnchorOffset), 0, maxScrollTop)
         }
         if (Math.abs(heightManager.viewport.scrollTop - targetTop) >= 2) {
-            heightManager.viewport.scrollTop = targetTop
-            heightManager.scrollTop = targetTop
+            syncScrollTop(targetTop)
         }
         pendingAnchorReconcile = false
     }
@@ -384,6 +378,23 @@
         } catch {
             // no-op
         }
+    }
+
+    /**
+     * Synchronizes the scroll position between the viewport element and internal state.
+     *
+     * This helper consolidates the repeated pattern of updating both
+     * heightManager.viewport.scrollTop and heightManager.scrollTop together,
+     * ensuring they stay in sync.
+     *
+     * @param {number} value - The scroll position to set
+     * @param {boolean} round - Whether to round the value to the nearest integer (default: false)
+     */
+    const syncScrollTop = (value: number, round = false) => {
+        if (!heightManager.viewportElement) return
+        const scrollValue = round ? Math.round(value) : value
+        heightManager.viewport.scrollTop = scrollValue
+        heightManager.scrollTop = scrollValue
     }
 
     // Dynamic update coordination to avoid UA scroll anchoring interference
@@ -507,8 +518,7 @@
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
             const approximateScrollTop = Math.max(0, totalHeight() - height)
             log('[SVL] b2t-correction-approx', { approximateScrollTop })
-            heightManager.viewport.scrollTop = approximateScrollTop
-            heightManager.scrollTop = approximateScrollTop
+            syncScrollTop(approximateScrollTop)
 
             // Step 2: Use native scrollIntoView for precise bottom-edge positioning after DOM updates
             tick().then(() => {
@@ -571,13 +581,12 @@
             }
         }
         if (Math.abs(heightChangeAboveViewport) > 2) {
-            const newScrollTop = Math.min(
-                maxScrollTop,
-                Math.max(0, currentScrollTop + heightChangeAboveViewport)
+            const newScrollTop = clampValue(
+                currentScrollTop + heightChangeAboveViewport,
+                0,
+                maxScrollTop
             )
-
-            heightManager.viewport.scrollTop = newScrollTop
-            heightManager.scrollTop = newScrollTop
+            syncScrollTop(newScrollTop)
         }
     }
 
@@ -668,11 +677,12 @@
                         const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) <= tolerance
                         if (isAtBottom) {
                             // Adjust scrollTop by total height delta to hold bottom anchor
-                            const adjusted = Math.round(
-                                Math.min(maxScrollTop, Math.max(0, currentScrollTop + deltaTotal))
+                            const adjusted = clampValue(
+                                currentScrollTop + deltaTotal,
+                                0,
+                                maxScrollTop
                             )
-                            heightManager.viewport.scrollTop = adjusted
-                            heightManager.scrollTop = adjusted
+                            syncScrollTop(adjusted, true)
                         }
                     }
                 }
@@ -798,9 +808,7 @@
 
             if (shouldCorrect) {
                 // Round to avoid subpixel positioning issues in bottomToTop mode
-                const roundedTargetScrollTop = Math.round(targetScrollTop)
-                heightManager.viewport.scrollTop = roundedTargetScrollTop
-                heightManager.scrollTop = roundedTargetScrollTop
+                syncScrollTop(targetScrollTop, true)
             }
 
             // Track if user has scrolled significantly away from bottom
@@ -856,10 +864,12 @@
                 // If near the bottom, this naturally pins to the new max; otherwise it preserves the current content.
                 programmaticScrollInProgress = true
                 void heightManager.runDynamicUpdate(() => {
-                    const unclamped = currentScrollTop + deltaMax
-                    const newScrollTop = Math.max(0, Math.min(nextMaxScrollTop, unclamped))
-                    heightManager.viewport.scrollTop = newScrollTop
-                    heightManager.scrollTop = newScrollTop
+                    const newScrollTop = clampValue(
+                        currentScrollTop + deltaMax,
+                        0,
+                        nextMaxScrollTop
+                    )
+                    syncScrollTop(newScrollTop)
                     log('[SVL] items-length-change:applied', {
                         instanceId,
                         previousScrollTop: currentScrollTop,
@@ -875,23 +885,20 @@
                     // Reconcile on next frame in case measured heights adjust totals
                     requestAnimationFrame(() => {
                         const beforeReconcileScrollTop = heightManager.viewport.scrollTop
-                        const reconciledNextMax = Math.max(0, totalHeight() - height)
+                        const reconciledNextMax = clampValue(totalHeight() - height, 0, Infinity)
                         const reconciledDeltaMaxChange = reconciledNextMax - nextMaxScrollTop
                         // Desired position is to maintain distance-from-end; equivalently keep (max - scrollTop) constant.
-                        const desiredScrollTop = Math.max(
+                        const desiredScrollTop = clampValue(
+                            newScrollTop + reconciledDeltaMaxChange,
                             0,
-                            Math.min(reconciledNextMax, newScrollTop + reconciledDeltaMaxChange)
+                            reconciledNextMax
                         )
                         // Snap to integer pixels to prevent oscillation due to subpixel rounding
                         const desiredRounded = Math.round(desiredScrollTop)
                         const diffToDesired = desiredRounded - heightManager.viewport.scrollTop
                         if (Math.abs(diffToDesired) >= 2) {
-                            const adjusted = Math.max(
-                                0,
-                                Math.min(reconciledNextMax, desiredRounded)
-                            )
-                            heightManager.viewport.scrollTop = adjusted
-                            heightManager.scrollTop = adjusted
+                            const adjusted = clampValue(desiredRounded, 0, reconciledNextMax)
+                            syncScrollTop(adjusted)
                             log('[SVL] items-length-change:reconciled', {
                                 instanceId,
                                 beforeReconcileScrollTop,
@@ -1375,7 +1382,7 @@
                     `scroll: index ${targetIndex} is out of bounds (0-${items.length - 1})`
                 )
             } else {
-                targetIndex = Math.max(0, Math.min(targetIndex, items.length - 1))
+                targetIndex = clampValue(targetIndex, 0, items.length - 1)
             }
         }
 

@@ -1,5 +1,86 @@
 import type { SvelteVirtualListMode, SvelteVirtualListScrollAlign } from '$lib/types.js'
-import { getScrollOffsetForIndex } from './virtualList.js'
+import { clampValue, getScrollOffsetForIndex } from './virtualList.js'
+
+/**
+ * Calculates the scroll target for aligning an item to a specific edge.
+ *
+ * This helper consolidates the shared alignment logic between bottomToTop
+ * and topToBottom scroll calculations, reducing code duplication.
+ *
+ * @param {number} itemTop - The top position of the item in pixels
+ * @param {number} itemBottom - The bottom position of the item in pixels
+ * @param {number} scrollTop - Current scroll position in pixels
+ * @param {number} viewportHeight - Height of the viewport in pixels
+ * @param {'top' | 'bottom' | 'nearest'} align - The alignment mode
+ * @returns {number | null} The scroll target position, or null if item is already visible (for 'nearest')
+ */
+export const alignToEdge = (
+    itemTop: number,
+    itemBottom: number,
+    scrollTop: number,
+    viewportHeight: number,
+    align: 'top' | 'bottom' | 'nearest'
+): number | null => {
+    if (align === 'top') {
+        return itemTop
+    }
+
+    if (align === 'bottom') {
+        return clampValue(itemBottom - viewportHeight, 0, Infinity)
+    }
+
+    // 'nearest' alignment
+    const viewportBottom = scrollTop + viewportHeight
+    const isVisible = itemTop < viewportBottom && itemBottom > scrollTop
+
+    if (isVisible) {
+        // Already visible, no scroll needed
+        return null
+    }
+
+    // Not visible - align to nearest edge
+    const distanceToTop = Math.abs(scrollTop - itemTop)
+    const distanceToBottom = Math.abs(viewportBottom - itemBottom)
+
+    return distanceToTop < distanceToBottom
+        ? itemTop
+        : clampValue(itemBottom - viewportHeight, 0, Infinity)
+}
+
+/**
+ * Calculates the scroll target for aligning a visible item to its nearest edge.
+ *
+ * Unlike alignToEdge with 'nearest', this always returns a scroll position
+ * even when the item is visible. Used for 'auto' alignment mode when item
+ * is within the visible range.
+ *
+ * @param {number} itemTop - The top position of the item in pixels
+ * @param {number} itemBottom - The bottom position of the item in pixels
+ * @param {number} scrollTop - Current scroll position in pixels
+ * @param {number} viewportHeight - Height of the viewport in pixels
+ * @returns {number} The scroll target position aligned to nearest edge
+ *
+ * @example
+ * ```typescript
+ * // For a visible item, align to whichever edge is closer
+ * const scrollTarget = alignVisibleToNearestEdge(400, 450, 200, 400)
+ * viewportElement.scrollTo({ top: scrollTarget })
+ * ```
+ */
+export const alignVisibleToNearestEdge = (
+    itemTop: number,
+    itemBottom: number,
+    scrollTop: number,
+    viewportHeight: number
+): number => {
+    const viewportBottom = scrollTop + viewportHeight
+    const distanceToTop = Math.abs(scrollTop - itemTop)
+    const distanceToBottom = Math.abs(viewportBottom - itemBottom)
+
+    return distanceToTop < distanceToBottom
+        ? itemTop
+        : clampValue(itemBottom - viewportHeight, 0, Infinity)
+}
 
 /**
  * Parameters for calculating scroll target position
@@ -142,37 +223,25 @@ const calculateBottomToTopScrollTarget = (params: BottomToTopScrollParams): numb
     const itemOffset = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex)
     const itemHeight = calculatedItemHeight
 
+    // Calculate item boundaries in bottomToTop coordinate space
+    const itemTop = totalHeight - (itemOffset + itemHeight)
+    const itemBottom = totalHeight - itemOffset
+
     if (align === 'auto') {
         // If item is above the viewport, align to top
         if (targetIndex < firstVisibleIndex) {
-            return Math.max(0, totalHeight - (itemOffset + itemHeight))
+            return alignToEdge(itemTop, itemBottom, scrollTop, height, 'top')
         } else if (targetIndex > lastVisibleIndex - 1) {
             // In bottomToTop, "below" means higher indices that need HIGHER scrollTop
-            return Math.max(0, totalHeight - itemOffset - height)
+            return alignToEdge(itemTop, itemBottom, scrollTop, height, 'bottom')
         } else {
-            const itemTop = totalHeight - (itemOffset + itemHeight)
-            const itemBottom = totalHeight - itemOffset
-            const distanceToTop = Math.abs(scrollTop - itemTop)
-            const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
-            return distanceToTop < distanceToBottom ? itemTop : Math.max(0, itemBottom - height)
+            // Item is visible - align to nearest edge (always returns a value)
+            return alignVisibleToNearestEdge(itemTop, itemBottom, scrollTop, height)
         }
-    } else if (align === 'top') {
-        return Math.max(0, totalHeight - (itemOffset + itemHeight))
-    } else if (align === 'bottom') {
-        return Math.max(0, totalHeight - itemOffset - height)
-    } else if (align === 'nearest') {
-        const itemTop = totalHeight - (itemOffset + itemHeight)
-        const itemBottom = totalHeight - itemOffset
+    }
 
-        if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
-            // Not visible, align to nearest edge
-            const distanceToTop = Math.abs(scrollTop - itemTop)
-            const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
-            return distanceToTop < distanceToBottom ? itemTop : Math.max(0, itemBottom - height)
-        } else {
-            // Already visible, do nothing
-            return null
-        }
+    if (align === 'top' || align === 'bottom' || align === 'nearest') {
+        return alignToEdge(itemTop, itemBottom, scrollTop, height, align)
     }
 
     return null
@@ -225,75 +294,26 @@ const calculateTopToBottomScrollTarget = (params: TopToBottomScrollParams): numb
         heightCache
     } = params
 
+    // Calculate item boundaries
+    const itemTop = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex)
+    const itemBottom = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex + 1)
+
     if (align === 'auto') {
         // If item is above the viewport, align to top
         if (targetIndex < firstVisibleIndex) {
-            const scrollTarget = getScrollOffsetForIndex(
-                heightCache,
-                calculatedItemHeight,
-                targetIndex
-            )
-            return scrollTarget
+            return alignToEdge(itemTop, itemBottom, scrollTop, height, 'top')
         }
         // If item is below the viewport, align to bottom
         else if (targetIndex > lastVisibleIndex - 1) {
-            const itemBottom = getScrollOffsetForIndex(
-                heightCache,
-                calculatedItemHeight,
-                targetIndex + 1
-            )
-            const scrollTarget = Math.max(0, itemBottom - height)
-
-            return scrollTarget
+            return alignToEdge(itemTop, itemBottom, scrollTop, height, 'bottom')
         } else {
-            // Item is visible but not aligned: align to nearest edge
-            const itemTop = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex)
-            const itemBottom = getScrollOffsetForIndex(
-                heightCache,
-                calculatedItemHeight,
-                targetIndex + 1
-            )
-            const distanceToTop = Math.abs(scrollTop - itemTop)
-            const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
-
-            if (distanceToTop < distanceToBottom) {
-                return itemTop
-            } else {
-                return Math.max(0, itemBottom - height)
-            }
+            // Item is visible - align to nearest edge (always returns a value)
+            return alignVisibleToNearestEdge(itemTop, itemBottom, scrollTop, height)
         }
-    } else if (align === 'top') {
-        const scrollTarget = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex)
-        return scrollTarget
-    } else if (align === 'bottom') {
-        const itemBottom = getScrollOffsetForIndex(
-            heightCache,
-            calculatedItemHeight,
-            targetIndex + 1
-        )
-        return Math.max(0, itemBottom - height)
-    } else if (align === 'nearest') {
-        const itemTop = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex)
-        const itemBottom = getScrollOffsetForIndex(
-            heightCache,
-            calculatedItemHeight,
-            targetIndex + 1
-        )
+    }
 
-        if (itemBottom <= scrollTop || itemTop >= scrollTop + height) {
-            // Not visible, align to nearest edge
-            const distanceToTop = Math.abs(scrollTop - itemTop)
-            const distanceToBottom = Math.abs(scrollTop + height - itemBottom)
-
-            if (distanceToTop < distanceToBottom) {
-                return itemTop
-            } else {
-                return Math.max(0, itemBottom - height)
-            }
-        } else {
-            // Already visible, do nothing
-            return null
-        }
+    if (align === 'top' || align === 'bottom' || align === 'nearest') {
+        return alignToEdge(itemTop, itemBottom, scrollTop, height, align)
     }
 
     return null
