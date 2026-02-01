@@ -1,6 +1,256 @@
 import { describe, expect, it } from 'vitest'
 import type { ScrollTargetParams } from './scrollCalculation.js'
-import { calculateScrollTarget } from './scrollCalculation.js'
+import {
+    alignToEdge,
+    alignVisibleToNearestEdge,
+    calculateScrollTarget
+} from './scrollCalculation.js'
+
+describe('alignToEdge', () => {
+    // Common test setup: item at position 400-450, viewport 400px tall
+    const itemTop = 400
+    const itemBottom = 450
+    const viewportHeight = 400
+
+    describe('top alignment', () => {
+        it('should return itemTop for top alignment', () => {
+            expect(alignToEdge(itemTop, itemBottom, 200, viewportHeight, 'top')).toBe(400)
+        })
+
+        it('should return itemTop regardless of current scroll position', () => {
+            expect(alignToEdge(itemTop, itemBottom, 0, viewportHeight, 'top')).toBe(400)
+            expect(alignToEdge(itemTop, itemBottom, 1000, viewportHeight, 'top')).toBe(400)
+        })
+
+        it('should handle negative itemTop', () => {
+            expect(alignToEdge(-100, 50, 0, viewportHeight, 'top')).toBe(-100)
+        })
+
+        it('should handle zero itemTop', () => {
+            expect(alignToEdge(0, 50, 200, viewportHeight, 'top')).toBe(0)
+        })
+    })
+
+    describe('bottom alignment', () => {
+        it('should align item bottom to viewport bottom', () => {
+            // itemBottom - viewportHeight = 450 - 400 = 50
+            expect(alignToEdge(itemTop, itemBottom, 200, viewportHeight, 'bottom')).toBe(50)
+        })
+
+        it('should clamp to 0 when result would be negative', () => {
+            // itemBottom (100) - viewportHeight (400) = -300, clamped to 0
+            expect(alignToEdge(0, 100, 200, 400, 'bottom')).toBe(0)
+        })
+
+        it('should handle item larger than viewport', () => {
+            // Item 1000px tall, viewport 400px
+            // itemBottom (1000) - viewportHeight (400) = 600
+            expect(alignToEdge(0, 1000, 200, 400, 'bottom')).toBe(600)
+        })
+
+        it('should handle very small viewport', () => {
+            // viewportHeight of 10
+            expect(alignToEdge(400, 450, 200, 10, 'bottom')).toBe(440)
+        })
+    })
+
+    describe('nearest alignment - item not visible', () => {
+        it('should align to top when item is above viewport', () => {
+            // Item at 100-150, scrollTop at 500 (viewport 500-900)
+            // Item is above viewport, closer to top
+            const result = alignToEdge(100, 150, 500, 400, 'nearest')
+            expect(result).toBe(100) // Aligns to top
+        })
+
+        it('should align to bottom when item is below viewport', () => {
+            // Item at 1000-1050, scrollTop at 100 (viewport 100-500)
+            // Item is below viewport
+            // distanceToTop = |100 - 1000| = 900
+            // distanceToBottom = |500 - 1050| = 550
+            // Closer to bottom, so itemBottom - viewportHeight = 1050 - 400 = 650
+            const result = alignToEdge(1000, 1050, 100, 400, 'nearest')
+            expect(result).toBe(650)
+        })
+
+        it('should prefer top when equidistant', () => {
+            // Equal distances - should prefer top (< is strict)
+            // Item at 0-100, scrollTop at 200 (viewport 200-600)
+            // distanceToTop = |200 - 0| = 200
+            // distanceToBottom = |600 - 100| = 500
+            const result = alignToEdge(0, 100, 200, 400, 'nearest')
+            expect(result).toBe(0)
+        })
+    })
+
+    describe('nearest alignment - item visible', () => {
+        it('should return null when item is fully visible', () => {
+            // Item at 250-300, scrollTop at 100 (viewport 100-500)
+            const result = alignToEdge(250, 300, 100, 400, 'nearest')
+            expect(result).toBeNull()
+        })
+
+        it('should return null when item fills entire viewport', () => {
+            // Item at 100-500, scrollTop at 100 (viewport 100-500)
+            const result = alignToEdge(100, 500, 100, 400, 'nearest')
+            expect(result).toBeNull()
+        })
+
+        it('should return null when item is partially visible at top', () => {
+            // Item at 50-150, scrollTop at 100 (viewport 100-500)
+            // itemTop (50) < viewportBottom (500) AND itemBottom (150) > scrollTop (100)
+            const result = alignToEdge(50, 150, 100, 400, 'nearest')
+            expect(result).toBeNull()
+        })
+
+        it('should return null when item is partially visible at bottom', () => {
+            // Item at 450-550, scrollTop at 100 (viewport 100-500)
+            // itemTop (450) < viewportBottom (500) AND itemBottom (550) > scrollTop (100)
+            const result = alignToEdge(450, 550, 100, 400, 'nearest')
+            expect(result).toBeNull()
+        })
+    })
+
+    describe('edge cases', () => {
+        it('should handle zero viewport height', () => {
+            const result = alignToEdge(400, 450, 200, 0, 'bottom')
+            expect(result).toBe(450) // itemBottom - 0 = 450
+        })
+
+        it('should handle item with zero height', () => {
+            // Point item at position 400
+            const result = alignToEdge(400, 400, 200, 400, 'top')
+            expect(result).toBe(400)
+        })
+
+        it('should handle very large scroll values', () => {
+            const largeScroll = 1000000
+            const result = alignToEdge(0, 50, largeScroll, 400, 'top')
+            expect(result).toBe(0)
+        })
+
+        it('should handle negative scroll values', () => {
+            // Shouldn't happen in practice but should handle gracefully
+            const result = alignToEdge(100, 150, -100, 400, 'nearest')
+            // Item is visible: itemTop (100) < viewportBottom (300) AND itemBottom (150) > scrollTop (-100)
+            expect(result).toBeNull()
+        })
+    })
+})
+
+describe('alignVisibleToNearestEdge', () => {
+    // This function always returns a value (used for auto alignment of visible items)
+    const itemTop = 400
+    const itemBottom = 450
+    const viewportHeight = 400
+
+    describe('positive cases - closer to top', () => {
+        it('should align to top when item is closer to top edge', () => {
+            // Item at 400-450, scrollTop at 350 (viewport 350-750)
+            // distanceToTop = |350 - 400| = 50
+            // distanceToBottom = |750 - 450| = 300
+            // Closer to top
+            const result = alignVisibleToNearestEdge(400, 450, 350, viewportHeight)
+            expect(result).toBe(400)
+        })
+
+        it('should return itemTop when distances are equal', () => {
+            // Create equal distances
+            // Item at 150-250, scrollTop at 0 (viewport 0-400)
+            // distanceToTop = |0 - 150| = 150
+            // distanceToBottom = |400 - 250| = 150
+            // Equal distances, distanceToTop < distanceToBottom is false, returns bottom
+            const result = alignVisibleToNearestEdge(150, 250, 0, 400)
+            expect(result).toBe(0) // 250 - 400 = -150, clamped to 0
+        })
+    })
+
+    describe('positive cases - closer to bottom', () => {
+        it('should align to bottom when item is closer to bottom edge', () => {
+            // Item at 400-450, scrollTop at 200 (viewport 200-600)
+            // distanceToTop = |200 - 400| = 200
+            // distanceToBottom = |600 - 450| = 150
+            // Closer to bottom
+            const result = alignVisibleToNearestEdge(400, 450, 200, viewportHeight)
+            expect(result).toBe(50) // 450 - 400 = 50
+        })
+
+        it('should align to bottom when item is at bottom of viewport', () => {
+            // Item at 350-400, scrollTop at 0 (viewport 0-400)
+            // distanceToTop = |0 - 350| = 350
+            // distanceToBottom = |400 - 400| = 0
+            const result = alignVisibleToNearestEdge(350, 400, 0, 400)
+            expect(result).toBe(0) // 400 - 400 = 0
+        })
+    })
+
+    describe('negative cases - clamping', () => {
+        it('should clamp to 0 when bottom alignment would be negative', () => {
+            // Item at 0-100, viewport 400px
+            // distanceToTop = |0 - 0| = 0 for scrollTop 0
+            // But let's test where bottom alignment wins and would be negative
+            // Item at 0-50, scrollTop at -100 (hypothetically)
+            // Actually: for clamping, item bottom - viewport = 50 - 400 = -350 → clamped to 0
+            const result = alignVisibleToNearestEdge(0, 50, 200, 400)
+            // distanceToTop = |200 - 0| = 200
+            // distanceToBottom = |600 - 50| = 550
+            // Closer to top, returns itemTop
+            expect(result).toBe(0)
+        })
+    })
+
+    describe('edge cases', () => {
+        it('should handle item exactly at viewport top', () => {
+            // Item starts exactly where viewport starts
+            const result = alignVisibleToNearestEdge(100, 150, 100, 400)
+            // distanceToTop = |100 - 100| = 0
+            // distanceToBottom = |500 - 150| = 350
+            expect(result).toBe(100) // Already at top
+        })
+
+        it('should handle item exactly at viewport bottom', () => {
+            // Item ends exactly where viewport ends
+            const result = alignVisibleToNearestEdge(450, 500, 100, 400)
+            // distanceToTop = |100 - 450| = 350
+            // distanceToBottom = |500 - 500| = 0
+            expect(result).toBe(100) // 500 - 400 = 100
+        })
+
+        it('should handle zero viewport height', () => {
+            const result = alignVisibleToNearestEdge(400, 450, 200, 0)
+            // distanceToTop = |200 - 400| = 200
+            // distanceToBottom = |200 - 450| = 250
+            // Closer to top
+            expect(result).toBe(400)
+        })
+
+        it('should handle item filling viewport', () => {
+            // Item exactly fills viewport
+            const result = alignVisibleToNearestEdge(100, 500, 100, 400)
+            // distanceToTop = |100 - 100| = 0
+            // distanceToBottom = |500 - 500| = 0
+            // Equal, returns itemTop
+            expect(result).toBe(100)
+        })
+
+        it('should handle item larger than viewport', () => {
+            // Item is 1000px, viewport is 400px
+            const result = alignVisibleToNearestEdge(100, 1100, 200, 400)
+            // distanceToTop = |200 - 100| = 100
+            // distanceToBottom = |600 - 1100| = 500
+            // Closer to top
+            expect(result).toBe(100)
+        })
+
+        it('should handle negative itemTop', () => {
+            // Unusual but possible in some coordinate systems
+            const result = alignVisibleToNearestEdge(-100, 50, 0, 400)
+            // distanceToTop = |0 - (-100)| = 100
+            // distanceToBottom = |400 - 50| = 350
+            // Closer to top
+            expect(result).toBe(-100)
+        })
+    })
+})
 
 describe('calculateScrollTarget', () => {
     const baseParams: ScrollTargetParams = {

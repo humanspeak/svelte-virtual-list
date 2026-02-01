@@ -5,10 +5,245 @@ import {
     calculateScrollPosition,
     calculateTransformY,
     calculateVisibleRange,
+    clampValue,
     getScrollOffsetForIndex,
+    getValidHeight,
     processChunked,
     updateHeightAndScroll
 } from './virtualList.js'
+
+describe('getValidHeight', () => {
+    describe('positive cases - valid heights', () => {
+        it('should return the height when it is a positive finite number', () => {
+            expect(getValidHeight(50, 40)).toBe(50)
+        })
+
+        it('should return the height for very small positive numbers', () => {
+            expect(getValidHeight(0.1, 40)).toBe(0.1)
+        })
+
+        it('should return the height for large numbers', () => {
+            expect(getValidHeight(10000, 40)).toBe(10000)
+        })
+
+        it('should return the height for fractional values', () => {
+            expect(getValidHeight(19.200002843683418, 40)).toBe(19.200002843683418)
+        })
+
+        it('should return the height when it equals the fallback', () => {
+            expect(getValidHeight(40, 40)).toBe(40)
+        })
+    })
+
+    describe('negative cases - invalid heights', () => {
+        it('should return fallback for zero', () => {
+            expect(getValidHeight(0, 40)).toBe(40)
+        })
+
+        it('should return fallback for negative numbers', () => {
+            expect(getValidHeight(-10, 40)).toBe(40)
+        })
+
+        it('should return fallback for NaN', () => {
+            expect(getValidHeight(NaN, 40)).toBe(40)
+        })
+
+        it('should return fallback for Infinity', () => {
+            expect(getValidHeight(Infinity, 40)).toBe(40)
+        })
+
+        it('should return fallback for negative Infinity', () => {
+            expect(getValidHeight(-Infinity, 40)).toBe(40)
+        })
+
+        it('should return fallback for null', () => {
+            expect(getValidHeight(null, 40)).toBe(40)
+        })
+
+        it('should return fallback for undefined', () => {
+            expect(getValidHeight(undefined, 40)).toBe(40)
+        })
+
+        it('should return fallback for string', () => {
+            expect(getValidHeight('50', 40)).toBe(40)
+        })
+
+        it('should return fallback for empty string', () => {
+            expect(getValidHeight('', 40)).toBe(40)
+        })
+
+        it('should return fallback for object', () => {
+            expect(getValidHeight({}, 40)).toBe(40)
+        })
+
+        it('should return fallback for array', () => {
+            expect(getValidHeight([50], 40)).toBe(40)
+        })
+
+        it('should return fallback for boolean true', () => {
+            expect(getValidHeight(true, 40)).toBe(40)
+        })
+
+        it('should return fallback for boolean false', () => {
+            expect(getValidHeight(false, 40)).toBe(40)
+        })
+    })
+
+    describe('edge cases', () => {
+        it('should handle Number.MIN_VALUE (smallest positive number)', () => {
+            expect(getValidHeight(Number.MIN_VALUE, 40)).toBe(Number.MIN_VALUE)
+        })
+
+        it('should handle Number.MAX_VALUE', () => {
+            expect(getValidHeight(Number.MAX_VALUE, 40)).toBe(Number.MAX_VALUE)
+        })
+
+        it('should handle Number.EPSILON', () => {
+            expect(getValidHeight(Number.EPSILON, 40)).toBe(Number.EPSILON)
+        })
+
+        it('should handle very small negative numbers', () => {
+            expect(getValidHeight(-Number.MIN_VALUE, 40)).toBe(40)
+        })
+
+        it('should handle fallback of 0', () => {
+            expect(getValidHeight(undefined, 0)).toBe(0)
+        })
+
+        it('should handle negative fallback', () => {
+            expect(getValidHeight(undefined, -10)).toBe(-10)
+        })
+    })
+})
+
+describe('clampValue', () => {
+    describe('positive cases - value within range', () => {
+        it('should return value when within range', () => {
+            expect(clampValue(50, 0, 100)).toBe(50)
+        })
+
+        it('should return value when equal to min', () => {
+            expect(clampValue(0, 0, 100)).toBe(0)
+        })
+
+        it('should return value when equal to max', () => {
+            expect(clampValue(100, 0, 100)).toBe(100)
+        })
+
+        it('should handle fractional values within range', () => {
+            expect(clampValue(50.5, 0, 100)).toBe(50.5)
+        })
+
+        it('should handle negative ranges', () => {
+            expect(clampValue(-50, -100, -10)).toBe(-50)
+        })
+
+        it('should handle range crossing zero', () => {
+            expect(clampValue(0, -50, 50)).toBe(0)
+        })
+    })
+
+    describe('negative cases - value outside range', () => {
+        it('should clamp to min when value is below', () => {
+            expect(clampValue(-10, 0, 100)).toBe(0)
+        })
+
+        it('should clamp to max when value is above', () => {
+            expect(clampValue(150, 0, 100)).toBe(100)
+        })
+
+        it('should clamp large negative values to min', () => {
+            expect(clampValue(-1000, 0, 100)).toBe(0)
+        })
+
+        it('should clamp large positive values to max', () => {
+            expect(clampValue(1000, 0, 100)).toBe(100)
+        })
+
+        it('should clamp to negative min', () => {
+            expect(clampValue(-200, -100, -10)).toBe(-100)
+        })
+
+        it('should clamp to negative max', () => {
+            expect(clampValue(0, -100, -10)).toBe(-10)
+        })
+    })
+
+    describe('edge cases', () => {
+        it('should handle min equal to max', () => {
+            expect(clampValue(50, 100, 100)).toBe(100)
+            expect(clampValue(150, 100, 100)).toBe(100)
+        })
+
+        it('should handle Infinity as max', () => {
+            expect(clampValue(1000000, 0, Infinity)).toBe(1000000)
+        })
+
+        it('should handle -Infinity as min', () => {
+            expect(clampValue(-1000000, -Infinity, 0)).toBe(-1000000)
+        })
+
+        it('should handle NaN value (returns NaN per Math behavior)', () => {
+            const result = clampValue(NaN, 0, 100)
+            expect(Number.isNaN(result)).toBe(true)
+        })
+
+        it('should handle very large numbers', () => {
+            expect(clampValue(Number.MAX_VALUE, 0, 100)).toBe(100)
+        })
+
+        it('should handle very small numbers', () => {
+            expect(clampValue(Number.MIN_VALUE, 0, 100)).toBe(Number.MIN_VALUE)
+        })
+
+        it('should handle zero range at zero', () => {
+            expect(clampValue(5, 0, 0)).toBe(0)
+        })
+
+        it('should handle inverted min/max (min > max)', () => {
+            // Math.max(100, Math.min(0, 50)) = Math.max(100, 0) = 100
+            expect(clampValue(50, 100, 0)).toBe(100)
+        })
+
+        it('should handle fractional min and max', () => {
+            expect(clampValue(0.5, 0.25, 0.75)).toBe(0.5)
+            expect(clampValue(0.1, 0.25, 0.75)).toBe(0.25)
+            expect(clampValue(0.9, 0.25, 0.75)).toBe(0.75)
+        })
+    })
+
+    describe('common scroll clamping scenarios', () => {
+        it('should clamp scroll position to valid range', () => {
+            const maxScrollTop = 5000
+            expect(clampValue(-50, 0, maxScrollTop)).toBe(0)
+            expect(clampValue(2500, 0, maxScrollTop)).toBe(2500)
+            expect(clampValue(6000, 0, maxScrollTop)).toBe(5000)
+        })
+
+        it('should handle scroll correction deltas', () => {
+            const currentScrollTop = 1000
+            const delta = -200
+            const maxScrollTop = 5000
+            const newScrollTop = clampValue(currentScrollTop + delta, 0, maxScrollTop)
+            expect(newScrollTop).toBe(800)
+        })
+
+        it('should handle scroll correction with negative result', () => {
+            const currentScrollTop = 100
+            const delta = -200
+            const maxScrollTop = 5000
+            const newScrollTop = clampValue(currentScrollTop + delta, 0, maxScrollTop)
+            expect(newScrollTop).toBe(0)
+        })
+
+        it('should handle index clamping for arrays', () => {
+            const itemsLength = 100
+            expect(clampValue(-5, 0, itemsLength - 1)).toBe(0)
+            expect(clampValue(50, 0, itemsLength - 1)).toBe(50)
+            expect(clampValue(150, 0, itemsLength - 1)).toBe(99)
+        })
+    })
+})
 
 describe('calculateScrollPosition', () => {
     it('should calculate correct scroll position for basic case', () => {
