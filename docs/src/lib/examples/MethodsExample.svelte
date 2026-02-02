@@ -8,8 +8,6 @@
             align?: 'auto' | 'top' | 'bottom' | 'nearest'
             shouldThrowOnBounds?: boolean
         }) => Promise<void>
-        scrollToTop: () => void
-        scrollToBottom: () => void
     }
 
     let listRef: ListRef | undefined = $state(undefined)
@@ -61,16 +59,16 @@
     </div>
     <div class="flex gap-2">
         <button
-            onclick={() => listRef?.scrollToTop()}
+            onclick={() => listRef?.scroll({ index: 0, smoothScroll: true })}
             class="border-border hover:bg-muted flex-1 rounded border px-3 py-2 text-sm"
         >
-            scrollToTop()
+            Scroll to Top
         </button>
         <button
-            onclick={() => listRef?.scrollToBottom()}
+            onclick={() => listRef?.scroll({ index: items.length - 1, smoothScroll: true })}
             class="border-border hover:bg-muted flex-1 rounded border px-3 py-2 text-sm"
         >
-            scrollToBottom()
+            Scroll to Bottom
         </button>
     </div>
     <div class="border-border h-[250px] rounded border">
@@ -89,5 +87,5 @@
 </div>
 
 <p class="text-muted-foreground mt-2 text-center text-sm">
-    Use the controls above to test the scroll methods.
+    Use the controls above to test the scroll() method.
 </p>
