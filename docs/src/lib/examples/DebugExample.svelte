@@ -1,6 +1,5 @@
 <script lang="ts">
-    import VirtualList from '@humanspeak/svelte-virtual-list'
-    import type { SvelteVirtualListDebugInfo } from '@humanspeak/svelte-virtual-list'
+    import VirtualList, { type SvelteVirtualListDebugInfo } from '@humanspeak/svelte-virtual-list'
 
     const items = Array.from({ length: 500 }, (_, i) => ({
         id: i,
