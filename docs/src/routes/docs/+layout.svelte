@@ -6,8 +6,26 @@
     import Footer from '$lib/components/general/Footer.svelte'
     import Sidebar from './Sidebar.svelte'
     import TableOfContents from './TableOfContents.svelte'
+    import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
+    import { getDocsTitleByPath } from '$lib/utils/docsNav'
 
     const { children } = $props()
+
+    // Set breadcrumb for docs section
+    const breadcrumbContext = getBreadcrumbContext()
+    $effect(() => {
+        if (breadcrumbContext) {
+            const pageTitle = getDocsTitleByPath(page.url.pathname)
+            if (pageTitle && page.url.pathname !== '/docs') {
+                breadcrumbContext.breadcrumbs = [
+                    { title: 'Docs', href: '/docs' },
+                    { title: pageTitle }
+                ]
+            } else {
+                breadcrumbContext.breadcrumbs = [{ title: 'Docs' }]
+            }
+        }
+    })
 
     let contentElement: HTMLElement | undefined = $state(undefined)
     let headings: { id: string; text: string; level: number; element: HTMLElement }[] = $state([])
