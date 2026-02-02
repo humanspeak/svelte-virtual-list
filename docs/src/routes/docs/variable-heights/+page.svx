@@ -1,6 +1,24 @@
+---
+title: "Variable Heights"
+description: "Automatic handling of variable item heights in Svelte Virtual List"
+---
+
+<svelte:head>
+  <title>Variable Heights | Docs | Svelte Virtual List</title>
+</svelte:head>
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import VariableHeightExample from '$lib/examples/VariableHeightExample.svelte'
+</script>
+
 # Variable Heights
 
 Svelte Virtual List automatically handles items with different heights. No configuration needed - heights are measured after render and cached for optimal performance.
+
+<Example isSmall>
+  <VariableHeightExample />
+</Example>
 
 ## How It Works
 

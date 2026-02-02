@@ -1,6 +1,24 @@
+---
+title: "Methods"
+description: "Programmatic control methods available on the VirtualList component"
+---
+
+<svelte:head>
+  <title>Methods | API | Svelte Virtual List</title>
+</svelte:head>
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import MethodsExample from '$lib/examples/MethodsExample.svelte'
+</script>
+
 # Methods
 
 Programmatic control methods available on the VirtualList component.
+
+<Example isSmall>
+  <MethodsExample />
+</Example>
 
 ## Getting a Reference
 

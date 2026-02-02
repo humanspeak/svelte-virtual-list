@@ -1,6 +1,24 @@
+---
+title: "Debug Mode"
+description: "Debug mode for development and troubleshooting Svelte Virtual List"
+---
+
+<svelte:head>
+  <title>Debug Mode | Docs | Svelte Virtual List</title>
+</svelte:head>
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import DebugExample from '$lib/examples/DebugExample.svelte'
+</script>
+
 # Debug Mode
 
 Debug mode provides detailed information about the virtual list's internal state, useful for development and troubleshooting.
+
+<Example isSmall>
+  <DebugExample />
+</Example>
 
 ## Enabling Debug Mode
 

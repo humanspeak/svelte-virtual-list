@@ -1,6 +1,24 @@
+---
+title: "Props"
+description: "All available props for the SvelteVirtualList component"
+---
+
+<svelte:head>
+  <title>Props | API | Svelte Virtual List</title>
+</svelte:head>
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import PropsExample from '$lib/examples/PropsExample.svelte'
+</script>
+
 # Props
 
 All available props for the SvelteVirtualList component.
+
+<Example isSmall>
+  <PropsExample />
+</Example>
 
 ## Required Props
 

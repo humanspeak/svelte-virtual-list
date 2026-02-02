@@ -1,6 +1,24 @@
+---
+title: "Bottom to Top Mode"
+description: "Chat-style bottom-to-top scrolling mode for messaging interfaces"
+---
+
+<svelte:head>
+  <title>Bottom to Top Mode | Docs | Svelte Virtual List</title>
+</svelte:head>
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import BottomToTopExample from '$lib/examples/BottomToTopExample.svelte'
+</script>
+
 # Bottom to Top Mode
 
 Perfect for chat interfaces and messaging apps where new content appears at the bottom.
+
+<Example isSmall>
+  <BottomToTopExample />
+</Example>
 
 ## Usage
 
