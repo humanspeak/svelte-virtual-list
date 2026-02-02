@@ -6,7 +6,8 @@
             index: number
             smoothScroll?: boolean
             align?: 'auto' | 'top' | 'bottom' | 'nearest'
-        }) => void
+            shouldThrowOnBounds?: boolean
+        }) => Promise<void>
         scrollToTop: () => void
         scrollToBottom: () => void
     }

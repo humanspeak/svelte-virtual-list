@@ -3,10 +3,11 @@
     import { browser } from '$app/environment'
 
     // Simulating data that would come from server load function
+    // Note: descriptions are set at initial render time and preserved through hydration
     const items = Array.from({ length: 100 }, (_, i) => ({
         id: i,
         text: `Item ${i}`,
-        description: `This item was loaded ${browser ? 'on the client' : 'during SSR'}`
+        description: `Initially rendered ${browser ? 'on client' : 'on server (SSR)'}`
     }))
 </script>
 
@@ -34,7 +35,3 @@
         </VirtualList>
     </div>
 </div>
-
-<p class="text-muted-foreground mt-2 text-center text-sm">
-    The list works seamlessly during SSR and hydration.
-</p>
