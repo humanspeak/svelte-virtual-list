@@ -70,7 +70,3 @@
         {/key}
     </div>
 </div>
-
-<p class="text-muted-foreground mt-2 text-center text-sm">
-    Adjust the props above to see how they affect the list behavior.
-</p>

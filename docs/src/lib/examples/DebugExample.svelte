@@ -76,7 +76,3 @@
         {/if}
     </div>
 </div>
-
-<p class="text-muted-foreground mt-2 text-center text-sm">
-    Scroll the list to see real-time debug information update.
-</p>

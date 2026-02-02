@@ -85,7 +85,3 @@
         </VirtualList>
     </div>
 </div>
-
-<p class="text-muted-foreground mt-2 text-center text-sm">
-    Use the controls above to test the scroll() method.
-</p>
