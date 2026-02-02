@@ -534,16 +534,13 @@
                         Math.abs(contRect.y + contRect.height - (itemRect.y + itemRect.height)) <=
                         tol
                     if (!aligned) {
-                        // Native browser API handles all positioning edge cases perfectly
-                        item0Element.scrollIntoView({
-                            block: 'end', // Align Item 0 to bottom edge of viewport
-                            behavior: 'smooth', // Smooth animation for better UX
-                            inline: 'nearest' // Minimal horizontal adjustment
-                        })
-                        log('[SVL] b2t-correction-native', {
-                            containerBottom: contRect.y + contRect.height,
-                            itemBottom: itemRect.y + itemRect.height
-                        })
+                        // Use manual scrollTop instead of scrollIntoView to prevent parent scroll
+                        // (scrollIntoView scrolls all ancestor containers, not just the viewport)
+                        // Note: `container: 'nearest'` option could replace this once browser support improves
+                        const currentScrollTop = heightManager.viewport.scrollTop
+                        const offset = itemRect.bottom - contRect.bottom
+                        heightManager.viewport.scrollTop = currentScrollTop + offset
+                        log('[SVL] b2t-correction-manual', { offset })
                     }
                     // Sync our internal scroll state with actual DOM position
                     heightManager.scrollTop = heightManager.viewport.scrollTop
@@ -1138,10 +1135,14 @@
                                     ) as HTMLElement | null
 
                                     if (el && !userHasScrolled) {
-                                        el.scrollIntoView({
-                                            block: 'end',
-                                            inline: 'nearest'
-                                        })
+                                        // Use manual scrollTop instead of scrollIntoView to prevent parent scroll
+                                        // (scrollIntoView scrolls all ancestor containers, not just the viewport)
+                                        // Note: `container: 'nearest'` option could replace this once browser support improves
+                                        const viewportRect =
+                                            heightManager.viewport.getBoundingClientRect()
+                                        const elRect = el.getBoundingClientRect()
+                                        const offset = elRect.bottom - viewportRect.bottom
+                                        heightManager.viewport.scrollTop += offset
                                         heightManager.scrollTop = heightManager.viewport.scrollTop
                                     } else if (userHasScrolled) {
                                         // Sync internal state with current scroll
