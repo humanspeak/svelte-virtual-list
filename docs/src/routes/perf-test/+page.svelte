@@ -33,6 +33,7 @@
     let currentFps = $state(0)
     let avgFps = $state(0)
     let memoryUsage = $state<{ used: string; total: string } | null>(null)
+    /* trunk-ignore(eslint/@typescript-eslint/no-unused-vars,eslint/no-unused-vars) */
     let renderTime = $state(0)
     let testResults = $state<Array<{ name: string; value: string }>>([])
 
@@ -220,7 +221,7 @@
                 disabled={isRunning}
                 class="bg-background border-border rounded border px-3 py-1.5 text-sm"
             >
-                {#each itemCounts as count}
+                {#each itemCounts as count (count)}
                     <option value={count}>{count.toLocaleString()}</option>
                 {/each}
             </select>
@@ -258,7 +259,7 @@
                 Test Results ({selectedCount.toLocaleString()} items)
             </h3>
             <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {#each testResults as result}
+                {#each testResults as result (result.name)}
                     <div class="bg-background rounded p-2">
                         <div class="text-muted-foreground text-xs">{result.name}</div>
                         <div class="font-mono text-sm font-medium">{result.value}</div>
