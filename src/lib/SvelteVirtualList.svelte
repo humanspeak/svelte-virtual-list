@@ -167,9 +167,9 @@
         calculateVisibleRange,
         clampValue,
         updateHeightAndScroll as utilsUpdateHeightAndScroll,
-        getScrollOffsetForIndex
+        getScrollOffsetForIndex,
+        buildBlockSums
     } from '$lib/utils/virtualList.js'
-    import { getCachedHeight } from '$lib/utils/domReadCache.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
     import { createAdvancedThrottledCallback } from '$lib/utils/throttle.js'
@@ -256,8 +256,8 @@
         const cache = heightManager.getHeightCache()
         const est = heightManager.averageHeight
         const maxScrollTop = Math.max(0, totalHeight() - (height || 0))
-        // Use cached block sums for efficient offset calculation
-        const blockSums = heightManager.getBlockSums()
+        // Offset from start to anchored item
+        const blockSums = buildBlockSums(cache, est, items.length)
         const offsetToIndex = getScrollOffsetForIndex(cache, est, anchorIndex, blockSums)
         const currentTop = heightManager.viewport.scrollTop
         let offsetWithin = 0
@@ -283,8 +283,7 @@
         if (!pendingAnchorReconcile) return
         const cache = heightManager.getHeightCache()
         const est = heightManager.averageHeight
-        // Use cached block sums for efficient offset calculation
-        const blockSums = heightManager.getBlockSums()
+        const blockSums = buildBlockSums(cache, est, items.length)
         const offsetToIndex = getScrollOffsetForIndex(
             cache,
             est,
@@ -612,7 +611,6 @@
     })
 
     // Keep height manager synchronized with items length
-    // Note: updateItemLength internally invalidates the visible range cache
     $effect(() => {
         heightManager.updateItemLength(items.length)
     })
@@ -934,8 +932,7 @@
     // may occur outside ResizeObserver timing (keeps buffers correct across engines)
     $effect(() => {
         if (BROWSER && heightManager.isReady) {
-            // Use cached read to avoid layout thrashing within same frame
-            const h = getCachedHeight(heightManager.container)
+            const h = heightManager.container.getBoundingClientRect().height
             if (Number.isFinite(h) && h > 0) height = h
         }
     })
@@ -946,8 +943,7 @@
     // to avoid DOM reads inside render-time expressions.
     $effect(() => {
         if (BROWSER && height === 0 && heightManager.isReady) {
-            // Use cached read to avoid layout thrashing within same frame
-            const h = getCachedHeight(heightManager.container)
+            const h = heightManager.container.getBoundingClientRect().height
             if (Number.isFinite(h) && h > 0) measuredFallbackHeight = h
         }
     })
@@ -1002,38 +998,10 @@
             wasAtBottomBeforeHeightChange,
             lastVisibleRange,
             totalHeight(),
-            heightManager.getHeightCache(),
-            heightManager.visibleRangeCacheHolder
+            heightManager.getHeightCache()
         )
 
         return lastVisibleRange
-    })
-
-    /**
-     * Derived transform Y value for positioning the items container.
-     * Calculated once per reactive cycle instead of in the template IIFE.
-     */
-    const transformY = $derived(() => {
-        const viewportHeight = height || measuredFallbackHeight || 0
-        const visibleRange = visibleItems()
-
-        // Avoid synchronous DOM reads here; fall back once if height is 0
-        const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
-
-        // Use precise offset for topToBottom using measured heights when available
-        return Math.round(
-            calculateTransformY(
-                mode,
-                items.length,
-                visibleRange.end,
-                visibleRange.start,
-                heightManager.averageHeight,
-                effectiveHeight,
-                totalHeight(),
-                heightManager.getHeightCache(),
-                measuredFallbackHeight
-            )
-        )
     })
 
     /**
@@ -1224,96 +1192,50 @@
         log('updateHeightAndScroll-exit', { immediate })
     }
 
-    // Pending resize entries for coalesced processing (plain Map since not reactive UI state)
-    /* trunk-ignore(eslint/svelte/prefer-svelte-reactivity) */
-    const pendingResizeEntries = new Map<HTMLElement, number>()
-    let resizeFlushScheduled = false
-    const RESIZE_CHUNK_SIZE = 50 // Process entries in chunks to avoid blocking
+    // Create itemResizeObserver immediately when in browser
+    if (BROWSER) {
+        // Watch for individual item size changes
+        itemResizeObserver = new ResizeObserver((entries) => {
+            // Batch via RAF to avoid thrash across instances
+            rafSchedule(() => {
+                log('item-resize-observer', { entries: entries.length })
+                let shouldRecalculate = false
+                void visibleItems() // Cache once to avoid reactive loops
 
-    /**
-     * Processes pending resize entries in chunks, yielding to the main thread
-     * between chunks to avoid blocking UI during rapid resize events.
-     */
-    const flushPendingResizes = () => {
-        if (pendingResizeEntries.size === 0) {
-            resizeFlushScheduled = false
-            return
-        }
+                for (const entry of entries) {
+                    const element = entry.target as HTMLElement
+                    const elementIndex = itemElements.indexOf(element)
+                    const actualIndex = parseInt(element.dataset.originalIndex || '-1', 10)
 
-        log('item-resize-flush', { entries: pendingResizeEntries.size })
-        let shouldRecalculate = false
-        // Access derived once to capture current range; prevents reactive re-triggers during iteration
-        void visibleItems()
+                    if (elementIndex !== -1) {
+                        if (actualIndex >= 0) {
+                            const currentHeight = element.getBoundingClientRect().height
+                            const isSignificant = isSignificantHeightChange(
+                                actualIndex,
+                                currentHeight,
+                                heightManager.getHeightCache()
+                            )
 
-        // Process entries (chunked processing for large batches)
-        const entries = Array.from(pendingResizeEntries.entries())
-        const processChunk = (startIdx: number) => {
-            const endIdx = Math.min(startIdx + RESIZE_CHUNK_SIZE, entries.length)
+                            // Only mark as dirty if height change is significant
+                            if (isSignificant) {
+                                // Capture bottom state when FIRST item gets marked dirty
+                                if (dirtyItemsCount === 0) {
+                                    wasAtBottomBeforeHeightChange = atBottom
+                                }
 
-            for (let i = startIdx; i < endIdx; i++) {
-                const [element, actualIndex] = entries[i]
-                const elementIndex = itemElements.indexOf(element)
-
-                if (elementIndex !== -1 && actualIndex >= 0) {
-                    // Use cached height read to avoid layout thrashing
-                    const currentHeight = getCachedHeight(element)
-                    const isSignificant = isSignificantHeightChange(
-                        actualIndex,
-                        currentHeight,
-                        heightManager.getHeightCache()
-                    )
-
-                    // Only mark as dirty if height change is significant
-                    if (isSignificant) {
-                        // Capture bottom state when FIRST item gets marked dirty
-                        if (dirtyItemsCount === 0) {
-                            wasAtBottomBeforeHeightChange = atBottom
+                                dirtyItems.add(actualIndex)
+                                dirtyItemsCount = dirtyItems.size
+                                shouldRecalculate = true
+                            }
                         }
-
-                        dirtyItems.add(actualIndex)
-                        dirtyItemsCount = dirtyItems.size
-                        shouldRecalculate = true
                     }
                 }
-            }
-
-            // If more entries to process, yield and continue
-            if (endIdx < entries.length) {
-                setTimeout(() => processChunk(endIdx), 0)
-            } else {
-                // All entries processed
-                pendingResizeEntries.clear()
-                resizeFlushScheduled = false
 
                 if (shouldRecalculate) {
                     log('item-resize-recalc')
                     updateHeight()
                 }
-            }
-        }
-
-        // Start processing
-        processChunk(0)
-    }
-
-    // Create itemResizeObserver immediately when in browser
-    if (BROWSER) {
-        // Watch for individual item size changes
-        itemResizeObserver = new ResizeObserver((entries) => {
-            // Coalesce entries into pending map
-            for (const entry of entries) {
-                const element = entry.target as HTMLElement
-                const actualIndex = parseInt(element.dataset.originalIndex || '-1', 10)
-                if (actualIndex >= 0) {
-                    pendingResizeEntries.set(element, actualIndex)
-                }
-            }
-
-            // Schedule flush via RAF (coalesces rapid resize events)
-            if (!resizeFlushScheduled) {
-                resizeFlushScheduled = true
-                rafSchedule(flushPendingResizes)
-            }
+            })
         })
     }
 
@@ -1355,9 +1277,6 @@
                 if (itemResizeObserver) {
                     itemResizeObserver.disconnect()
                 }
-                // Clear any pending resize entries to prevent stale callbacks
-                pendingResizeEntries.clear()
-                resizeFlushScheduled = false
             }
         }
     })
@@ -1620,7 +1539,30 @@
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
-                style:transform="translateY({transformY()}px)"
+                style:transform="translateY({(() => {
+                    const viewportHeight = height || measuredFallbackHeight || 0
+                    const visibleRange = visibleItems()
+
+                    // Avoid synchronous DOM reads here; fall back once if height is 0
+                    const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
+
+                    // Use precise offset for topToBottom using measured heights when available
+                    const transform = Math.round(
+                        calculateTransformY(
+                            mode,
+                            items.length,
+                            visibleRange.end,
+                            visibleRange.start,
+                            heightManager.averageHeight,
+                            effectiveHeight,
+                            totalHeight(),
+                            heightManager.getHeightCache(),
+                            measuredFallbackHeight
+                        )
+                    )
+
+                    return transform
+                })()}px)"
             >
                 {#each displayItems() as currentItemWithIndex, i (currentItemWithIndex.originalIndex)}
                     <!-- Only debug when visible range or average height changes -->

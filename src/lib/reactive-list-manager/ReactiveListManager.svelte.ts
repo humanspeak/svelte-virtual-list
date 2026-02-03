@@ -1,9 +1,3 @@
-import {
-    BlockSumCache,
-    createVisibleRangeCacheHolder,
-    invalidateVisibleRangeCache,
-    type VisibleRangeCacheHolder
-} from '../utils/virtualList.js'
 import { RecomputeScheduler } from './RecomputeScheduler.js'
 import type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './types.js'
 
@@ -57,10 +51,6 @@ export class ReactiveListManager {
     private _heightCache: Record<number, number> = {}
     // Recompute scheduling
     private _scheduler = new RecomputeScheduler(() => this.recomputeDerivedHeights())
-    // Block sum cache for incremental offset calculations
-    private _blockSumCache = new BlockSumCache(1000)
-    // Visible range cache for instance-scoped memoization
-    private _visibleRangeCacheHolder: VisibleRangeCacheHolder = createVisibleRangeCacheHolder()
 
     private recomputeDerivedHeights(): void {
         const average =
@@ -414,8 +404,6 @@ export class ReactiveListManager {
         // Batch calculate changes to trigger reactivity only once
         let heightDelta = 0
         let countDelta = 0
-        // Track minimum dirty index for batched block sum invalidation
-        let minDirtyIndex = Infinity
 
         for (const change of dirtyResults) {
             const { index, oldHeight, newHeight } = change
@@ -440,15 +428,6 @@ export class ReactiveListManager {
             if (this._measuredFlags && index >= 0 && index < this._measuredFlags.length) {
                 this._measuredFlags[index] = 1
             }
-
-            // Track minimum index for batched block sum invalidation
-            minDirtyIndex = Math.min(minDirtyIndex, index)
-        }
-
-        // Invalidate block sums once from the minimum dirty index
-        // (invalidateForIndex marks all subsequent blocks as dirty too)
-        if (minDirtyIndex !== Infinity) {
-            this._blockSumCache.invalidateForIndex(minDirtyIndex)
         }
 
         // IDK... no one can explain it to me,.. but its here like this... it cannot be:
@@ -470,38 +449,6 @@ export class ReactiveListManager {
     }
 
     /**
-     * Get block sums for efficient scroll offset calculations.
-     * Uses incremental caching - only recomputes dirty blocks.
-     *
-     * @returns Array of cumulative height sums per block
-     */
-    getBlockSums(): number[] {
-        return this._blockSumCache.getBlockSums(
-            this._heightCache,
-            this._itemHeight,
-            this._itemLength
-        )
-    }
-
-    /**
-     * Get the instance-scoped visible range cache holder.
-     * Pass this to calculateVisibleRange for per-instance cache isolation.
-     *
-     * @returns The cache holder for this instance
-     */
-    get visibleRangeCacheHolder(): VisibleRangeCacheHolder {
-        return this._visibleRangeCacheHolder
-    }
-
-    /**
-     * Invalidate the visible range cache.
-     * Call when items change or other state requires a fresh calculation.
-     */
-    invalidateVisibleRangeCache(): void {
-        invalidateVisibleRangeCache(this._visibleRangeCacheHolder)
-    }
-
-    /**
      * Update when items array length changes
      *
      * @param newLength - New total number of items
@@ -509,10 +456,6 @@ export class ReactiveListManager {
     updateItemLength(newLength: number): void {
         this._itemLength = newLength
         this._measuredFlags = new Uint8Array(Math.max(0, newLength))
-        // Invalidate all block sums since items changed
-        this._blockSumCache.invalidateAll()
-        // Invalidate visible range cache since items changed
-        invalidateVisibleRangeCache(this._visibleRangeCacheHolder)
         // Immediate recompute so new items become visible without delay
         this.recomputeDerivedHeights()
     }

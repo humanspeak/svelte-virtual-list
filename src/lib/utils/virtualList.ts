@@ -2,50 +2,6 @@ import type { SvelteVirtualListMode, SvelteVirtualListPreviousVisibleRange } fro
 import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
 
 /**
- * Visible range cache for memoization.
- * Stores the last computed range along with the inputs used to compute it.
- */
-interface VisibleRangeCache {
-    scrollTop: number
-    viewportHeight: number
-    itemHeight: number
-    totalItems: number
-    mode: SvelteVirtualListMode
-    result: SvelteVirtualListPreviousVisibleRange
-}
-
-/**
- * Cache holder for instance-scoped visible range caching.
- * Each virtual list instance should maintain its own cache holder to prevent
- * cross-instance cache pollution when multiple lists exist on the same page.
- *
- * @example
- * ```typescript
- * const cacheHolder: VisibleRangeCacheHolder = { current: null }
- * calculateVisibleRange(..., cacheHolder)
- * invalidateVisibleRangeCache(cacheHolder)
- * ```
- */
-export interface VisibleRangeCacheHolder {
-    current: VisibleRangeCache | null
-}
-
-/**
- * Creates a new visible range cache holder for instance-scoped caching.
- *
- * @returns A new cache holder with null initial state
- */
-export const createVisibleRangeCacheHolder = (): VisibleRangeCacheHolder => ({
-    current: null
-})
-
-/**
- * Threshold for scroll delta (in pixels) below which we skip recalculation.
- * Small scroll movements typically don't change the visible range.
- */
-const SCROLL_DELTA_THRESHOLD = 8
-
-/**
  * Validates a height value and returns it if valid, otherwise returns the fallback.
  *
  * A height is considered valid if it is a finite number greater than 0.
@@ -120,12 +76,6 @@ export const calculateScrollPosition = (
  * @param {number} totalItems - Total number of items in the list
  * @param {number} bufferSize - Number of items to render outside the visible area
  * @param {SvelteVirtualListMode} mode - Scroll direction mode
- * @param {boolean} atBottom - Whether currently at bottom of list
- * @param {boolean} wasAtBottomBeforeHeightChange - Whether was at bottom before height changed
- * @param {SvelteVirtualListPreviousVisibleRange | null} lastVisibleRange - Previous visible range
- * @param {number} totalContentHeight - Total content height (optional)
- * @param {Record<number, number>} heightCache - Cache of item heights (optional)
- * @param {VisibleRangeCacheHolder} cacheHolder - Instance-scoped cache holder (optional)
  * @returns {SvelteVirtualListPreviousVisibleRange} Range of indices to render
  */
 export const calculateVisibleRange = (
@@ -139,45 +89,8 @@ export const calculateVisibleRange = (
     wasAtBottomBeforeHeightChange: boolean,
     lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null,
     totalContentHeight?: number,
-    heightCache?: Record<number, number>,
-    cacheHolder?: VisibleRangeCacheHolder
+    heightCache?: Record<number, number>
 ): SvelteVirtualListPreviousVisibleRange => {
-    // Use instance-scoped cache if provided
-    const cache = cacheHolder?.current ?? null
-
-    // Early exit: if inputs haven't changed significantly, return cached result
-    if (cache && lastVisibleRange) {
-        const scrollDelta = Math.abs(scrollTop - cache.scrollTop)
-        const sameInputs =
-            cache.viewportHeight === viewportHeight &&
-            cache.totalItems === totalItems &&
-            cache.mode === mode &&
-            Math.abs(cache.itemHeight - itemHeight) < 1
-
-        // Skip recalculation for small scroll deltas when other inputs are unchanged
-        if (sameInputs && scrollDelta < SCROLL_DELTA_THRESHOLD) {
-            return cache.result
-        }
-    }
-
-    // Helper to cache and return result
-    const cacheAndReturn = (
-        result: SvelteVirtualListPreviousVisibleRange
-    ): SvelteVirtualListPreviousVisibleRange => {
-        const newCache: VisibleRangeCache = {
-            scrollTop,
-            viewportHeight,
-            itemHeight,
-            totalItems,
-            mode,
-            result
-        }
-        if (cacheHolder) {
-            cacheHolder.current = newCache
-        }
-        return result
-    }
-
     if (mode === 'bottomToTop') {
         const visibleCount = Math.ceil(viewportHeight / itemHeight) + 1
 
@@ -197,14 +110,14 @@ export const calculateVisibleRange = (
             const start = 0
             const end = Math.min(totalItems, visibleCount + bufferSize * 2)
 
-            return cacheAndReturn({ start, end } as SvelteVirtualListPreviousVisibleRange)
+            return { start, end } as SvelteVirtualListPreviousVisibleRange
         }
 
         // Add buffer to both ends
         const start = Math.max(0, startIndex - bufferSize)
         const end = Math.min(totalItems, startIndex + visibleCount + bufferSize)
 
-        return cacheAndReturn({ start, end } as SvelteVirtualListPreviousVisibleRange)
+        return { start, end } as SvelteVirtualListPreviousVisibleRange
     } else {
         const start = Math.floor(scrollTop / itemHeight)
         const end = Math.min(totalItems, start + Math.ceil(viewportHeight / itemHeight) + 1)
@@ -228,38 +141,21 @@ export const calculateVisibleRange = (
                 acc += h
                 startCore -= 1
             }
-            return cacheAndReturn({
+            return {
                 start: Math.max(0, startCore - bufferSize),
                 end: adjustedEnd
-            } as SvelteVirtualListPreviousVisibleRange)
+            } as SvelteVirtualListPreviousVisibleRange
         }
 
         // Add buffer to both ends
         const finalStart = Math.max(0, start - bufferSize)
         const finalEnd = Math.min(totalItems, end + bufferSize)
 
-        return cacheAndReturn({
+        return {
             start: finalStart,
             end: finalEnd
-        } as SvelteVirtualListPreviousVisibleRange)
+        } as SvelteVirtualListPreviousVisibleRange
     }
-}
-
-/**
- * Invalidates the visible range cache.
- * Call this when you know the cache needs to be cleared (e.g., items array changed).
- *
- * @param cacheHolder - The instance-scoped cache holder to invalidate
- *
- * @example
- * ```typescript
- * const cacheHolder = createVisibleRangeCacheHolder()
- * // ... use cache ...
- * invalidateVisibleRangeCache(cacheHolder)
- * ```
- */
-export const invalidateVisibleRangeCache = (cacheHolder: VisibleRangeCacheHolder): void => {
-    cacheHolder.current = null
 }
 
 /**
@@ -668,136 +564,4 @@ export const buildBlockSums = (
         sums[b] = running
     }
     return sums
-}
-
-/**
- * BlockSumCache - Incremental block sum management for efficient offset calculations.
- *
- * Instead of rebuilding all block sums on every height change, this class:
- * - Tracks which blocks have been invalidated by height changes
- * - Only recomputes affected blocks when needed (lazy evaluation)
- * - Supports incremental updates via delta application
- *
- * @example
- * ```typescript
- * const cache = new BlockSumCache(1000) // block size 1000
- * cache.invalidateForIndex(1500) // marks block 1 as dirty
- * const sums = cache.getBlockSums(heightCache, estimatedHeight, totalItems)
- * ```
- */
-export class BlockSumCache {
-    private _blockSize: number
-    private _sums: number[] = []
-    private _dirtyBlocks: Set<number> = new Set()
-    private _lastTotalItems = 0
-    private _lastEstimatedHeight = 0
-
-    constructor(blockSize = 1000) {
-        this._blockSize = blockSize
-    }
-
-    /**
-     * Mark the block containing the given index as dirty.
-     * Also marks all subsequent blocks as dirty since they depend on cumulative sums.
-     */
-    invalidateForIndex(index: number): void {
-        const blockIdx = Math.floor(index / this._blockSize)
-        // Mark this block and all following blocks as dirty
-        for (let b = blockIdx; b < this._sums.length; b++) {
-            this._dirtyBlocks.add(b)
-        }
-    }
-
-    /**
-     * Invalidate all cached block sums. Use when items array changes significantly.
-     */
-    invalidateAll(): void {
-        this._sums = []
-        this._dirtyBlocks.clear()
-        this._lastTotalItems = 0
-    }
-
-    /**
-     * Get block sums, recomputing only dirty blocks.
-     * Uses lazy evaluation - blocks are only recomputed when accessed.
-     */
-    getBlockSums(
-        heightCache: Record<number, number>,
-        calculatedItemHeight: number,
-        totalItems: number
-    ): number[] {
-        const blocks = Math.ceil(totalItems / this._blockSize)
-        const numSums = Math.max(0, blocks - 1)
-
-        // If configuration changed significantly, rebuild entirely
-        if (
-            totalItems !== this._lastTotalItems ||
-            Math.abs(calculatedItemHeight - this._lastEstimatedHeight) > 0.5
-        ) {
-            this._sums = []
-            this._dirtyBlocks.clear()
-            this._lastTotalItems = totalItems
-            this._lastEstimatedHeight = calculatedItemHeight
-        }
-
-        // Resize array if needed
-        if (this._sums.length !== numSums) {
-            const oldLength = this._sums.length
-            const newSums: number[] = new Array(numSums)
-            // Copy existing valid sums
-            for (let i = 0; i < Math.min(oldLength, numSums); i++) {
-                if (!this._dirtyBlocks.has(i)) {
-                    newSums[i] = this._sums[i]
-                } else {
-                    // Mark as dirty in new array context
-                    this._dirtyBlocks.add(i)
-                }
-            }
-            // Mark new blocks as dirty
-            for (let i = oldLength; i < numSums; i++) {
-                this._dirtyBlocks.add(i)
-            }
-            this._sums = newSums
-        }
-
-        // Recompute dirty blocks incrementally
-        if (this._dirtyBlocks.size > 0) {
-            // Find minimum dirty block index to start recomputation
-            let minDirty = Infinity
-            this._dirtyBlocks.forEach((b) => {
-                if (b < minDirty) minDirty = b
-            })
-
-            // Recompute from minDirty onward
-            let running = minDirty > 0 ? this._sums[minDirty - 1] || 0 : 0
-            for (let b = minDirty; b < numSums; b++) {
-                const start = b * this._blockSize
-                const end = Math.min(start + this._blockSize, totalItems)
-                // Compute this block's sum
-                let blockSum = 0
-                for (let i = start; i < end; i++) {
-                    blockSum += getValidHeight(heightCache[i], calculatedItemHeight)
-                }
-                running += blockSum
-                this._sums[b] = running
-            }
-            this._dirtyBlocks.clear()
-        }
-
-        return this._sums
-    }
-
-    /**
-     * Check if any blocks are dirty and need recomputation.
-     */
-    get hasDirtyBlocks(): boolean {
-        return this._dirtyBlocks.size > 0
-    }
-
-    /**
-     * Get the current block size.
-     */
-    get blockSize(): number {
-        return this._blockSize
-    }
 }
