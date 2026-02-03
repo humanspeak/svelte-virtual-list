@@ -89,7 +89,7 @@
         "@faker-js/faker": "^10.2.0",
         "@playwright/test": "^1.58.1",
         "@sveltejs/adapter-auto": "^7.0.0",
-        "@sveltejs/kit": "^2.50.1",
+        "@sveltejs/kit": "^2.50.2",
         "@sveltejs/package": "^2.5.7",
         "@sveltejs/vite-plugin-svelte": "^6.2.4",
         "@tailwindcss/vite": "^4.1.18",

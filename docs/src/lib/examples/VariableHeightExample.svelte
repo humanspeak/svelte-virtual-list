@@ -62,7 +62,3 @@
         {/snippet}
     </VirtualList>
 </div>
-
-<p class="text-muted-foreground mt-2 text-center text-sm">
-    Click items to expand/collapse. Heights update automatically.
-</p>

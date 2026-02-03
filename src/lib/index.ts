@@ -19,4 +19,20 @@ export type {
 export { ReactiveListManager } from '$lib/reactive-list-manager/index.js'
 export type { ListManagerConfig } from '$lib/reactive-list-manager/index.js'
 
+// Re-export performance metrics utilities
+export {
+    formatBytes,
+    getCurrentFps,
+    getMemoryUsage,
+    isPerfEnabled,
+    measureAsync,
+    measureSync,
+    perfMetrics,
+    recordDuration,
+    startFpsTracking,
+    startMeasure,
+    stopFpsTracking
+} from '$lib/utils/perfMetrics.js'
+export type { MetricEntry, MetricName, MetricStats, PerfMetrics } from '$lib/utils/perfMetrics.js'
+
 export default SvelteVirtualList

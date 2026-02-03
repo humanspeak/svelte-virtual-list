@@ -352,6 +352,8 @@
     let dirtyItemsCount = $state(0) // Reactive count of dirty items
     // Fallback measurement used only when height has not been established yet
     let measuredFallbackHeight = $state(0)
+    // Scroll delta threshold optimization - track last scroll position used for range calculation
+    let lastProcessedScrollTop = $state(0)
 
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
@@ -987,6 +989,21 @@
             return lastVisibleRange
         }
 
+        // Scroll delta threshold optimization: skip recalculation if scroll delta is less than
+        // half the average item height and we have a cached range. This reduces unnecessary
+        // calculations during smooth scrolling.
+        // Note: Only applied in topToBottom mode - bottomToTop has complex scroll correction
+        // logic that requires precise visible range calculations.
+        // Note: We use lastProcessedScrollTop read-only here; it's updated in the scroll handler
+        if (mode === 'topToBottom') {
+            const scrollDelta = Math.abs(heightManager.scrollTop - lastProcessedScrollTop)
+            const threshold = heightManager.averageHeight * 0.5
+            if (lastVisibleRange && scrollDelta < threshold && scrollDelta > 0) {
+                // Reuse cached range for small scroll movements
+                return lastVisibleRange
+            }
+        }
+
         lastVisibleRange = calculateVisibleRange(
             heightManager.scrollTop,
             viewportHeight,
@@ -1002,6 +1019,40 @@
         )
 
         return lastVisibleRange
+    })
+
+    /**
+     * Computed content height for the virtual list.
+     * Uses the maximum of container height and total content height to ensure
+     * proper scrolling behavior.
+     */
+    const contentHeight = $derived(() => Math.max(height, totalHeight()))
+
+    /**
+     * Computed transform Y value for positioning the visible items.
+     * Extracted from inline IIFE for better performance and readability.
+     */
+    const transformY = $derived(() => {
+        const viewportHeight = height || measuredFallbackHeight || 0
+        const visibleRange = visibleItems()
+
+        // Avoid synchronous DOM reads here; fall back once if height is 0
+        const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
+
+        // Use precise offset for topToBottom using measured heights when available
+        return Math.round(
+            calculateTransformY(
+                mode,
+                items.length,
+                visibleRange.end,
+                visibleRange.start,
+                heightManager.averageHeight,
+                effectiveHeight,
+                totalHeight(),
+                heightManager.getHeightCache(),
+                measuredFallbackHeight
+            )
+        )
     })
 
     /**
@@ -1054,6 +1105,13 @@
             }
             lastScrollTopSnapshot = current
             heightManager.scrollTop = current
+            // Update last processed scroll position for delta threshold optimization
+            // Only update when we actually process a scroll (i.e., recalculate visible range)
+            const scrollDelta = Math.abs(current - lastProcessedScrollTop)
+            const threshold = heightManager.averageHeight * 0.5
+            if (scrollDelta >= threshold || lastVisibleRange === null) {
+                lastProcessedScrollTop = current
+            }
             updateDebugTailDistance()
             if (anchorModeEnabled) {
                 captureAnchor()
@@ -1532,37 +1590,14 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            style:height="{(() => Math.max(height, totalHeight()))()}px"
+            style:height="{contentHeight()}px"
         >
             <!-- Items container is translated to show correct items -->
             <div
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
-                style:transform="translateY({(() => {
-                    const viewportHeight = height || measuredFallbackHeight || 0
-                    const visibleRange = visibleItems()
-
-                    // Avoid synchronous DOM reads here; fall back once if height is 0
-                    const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
-
-                    // Use precise offset for topToBottom using measured heights when available
-                    const transform = Math.round(
-                        calculateTransformY(
-                            mode,
-                            items.length,
-                            visibleRange.end,
-                            visibleRange.start,
-                            heightManager.averageHeight,
-                            effectiveHeight,
-                            totalHeight(),
-                            heightManager.getHeightCache(),
-                            measuredFallbackHeight
-                        )
-                    )
-
-                    return transform
-                })()}px)"
+                style:transform="translateY({transformY()}px)"
             >
                 {#each displayItems() as currentItemWithIndex, i (currentItemWithIndex.originalIndex)}
                     <!-- Only debug when visible range or average height changes -->

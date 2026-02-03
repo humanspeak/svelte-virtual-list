@@ -51,6 +51,10 @@ export class ReactiveListManager {
     private _heightCache: Record<number, number> = {}
     // Recompute scheduling
     private _scheduler = new RecomputeScheduler(() => this.recomputeDerivedHeights())
+    // Block sum caching for O(blockSize) offset calculations instead of O(n)
+    private _blockSums: number[] = []
+    private _blockSumsValid = false
+    private _blockSize = 1000
 
     private recomputeDerivedHeights(): void {
         const average =
@@ -376,6 +380,61 @@ export class ReactiveListManager {
     }
 
     /**
+     * Invalidate block sums from a given index onwards.
+     * Call this when item heights change to ensure block sums are recalculated.
+     *
+     * @param index - The index from which to invalidate block sums
+     */
+    invalidateBlockSumsFrom(index: number): void {
+        const blockIndex = Math.floor(index / this._blockSize)
+        // Truncate to remove invalidated blocks
+        if (blockIndex < this._blockSums.length) {
+            this._blockSums.length = blockIndex
+        }
+        this._blockSumsValid = false
+    }
+
+    /**
+     * Get the block sums array, rebuilding if necessary.
+     * Block sums enable O(blockSize) offset calculations instead of O(n).
+     *
+     * Each entry contains the cumulative height sum up to and including that block.
+     * For example, with blockSize=1000:
+     * - Entry 0: sum of heights for items 0-999
+     * - Entry 1: sum of heights for items 0-1999
+     *
+     * @returns Array of cumulative block sums
+     */
+    getBlockSums(): number[] {
+        if (!this._blockSumsValid || this._blockSums.length === 0) {
+            this._blockSums = this.buildBlockSums()
+            this._blockSumsValid = true
+        }
+        return this._blockSums
+    }
+
+    /**
+     * Build block prefix sums for efficient offset calculations.
+     * Uses the same algorithm as the utility function but leverages internal state.
+     */
+    private buildBlockSums(): number[] {
+        const blocks = Math.ceil(this._itemLength / this._blockSize)
+        const sums: number[] = new Array(Math.max(0, blocks - 1))
+        let running = 0
+
+        for (let b = 0; b < blocks - 1; b++) {
+            const start = b * this._blockSize
+            const end = start + this._blockSize
+            for (let i = start; i < end; i++) {
+                const height = this._heightCache[i]
+                running += Number.isFinite(height) && height > 0 ? height : this._averageHeight
+            }
+            sums[b] = running
+        }
+        return sums
+    }
+
+    /**
      * Create a new ReactiveListManager instance
      *
      * @param config - Configuration object containing itemLength and itemHeight
@@ -404,9 +463,15 @@ export class ReactiveListManager {
         // Batch calculate changes to trigger reactivity only once
         let heightDelta = 0
         let countDelta = 0
+        let minChangedIndex = Infinity
 
         for (const change of dirtyResults) {
             const { index, oldHeight, newHeight } = change
+
+            // Track minimum changed index for block sum invalidation
+            if (index < minChangedIndex) {
+                minChangedIndex = index
+            }
 
             // Remove old contribution if it existed
             if (oldHeight !== undefined) {
@@ -428,6 +493,11 @@ export class ReactiveListManager {
             if (this._measuredFlags && index >= 0 && index < this._measuredFlags.length) {
                 this._measuredFlags[index] = 1
             }
+        }
+
+        // Invalidate block sums from the minimum changed index
+        if (minChangedIndex < Infinity) {
+            this.invalidateBlockSumsFrom(minChangedIndex)
         }
 
         // IDK... no one can explain it to me,.. but its here like this... it cannot be:
@@ -456,6 +526,9 @@ export class ReactiveListManager {
     updateItemLength(newLength: number): void {
         this._itemLength = newLength
         this._measuredFlags = new Uint8Array(Math.max(0, newLength))
+        // Reset block sums since length changed
+        this._blockSums = []
+        this._blockSumsValid = false
         // Immediate recompute so new items become visible without delay
         this.recomputeDerivedHeights()
     }
@@ -485,6 +558,8 @@ export class ReactiveListManager {
         if (Number.isFinite(height) && height > 0) {
             this._heightCache[index] = height
             this._totalMeasuredHeight += height
+            // Invalidate block sums from this index
+            this.invalidateBlockSumsFrom(index)
             this.scheduleRecomputeDerivedHeights()
         }
     }
@@ -498,6 +573,9 @@ export class ReactiveListManager {
         this._totalMeasuredHeight = 0
         this._measuredCount = 0
         this._measuredFlags = this._itemLength > 0 ? new Uint8Array(this._itemLength) : null
+        // Reset block sums
+        this._blockSums = []
+        this._blockSumsValid = false
         // Note: Don't reset _itemLength, _itemHeight as they represent configuration, not measured state
         this.scheduleRecomputeDerivedHeights()
     }
