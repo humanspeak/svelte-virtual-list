@@ -5,8 +5,8 @@
 <footer
     class="border-border bg-background text-foreground flex items-center justify-center border-t py-6 text-sm"
 >
-    <div class="mx-auto flex max-w-7xl gap-2 px-4 text-center">
-        Made with
+    <div class="mx-auto flex max-w-7xl items-center gap-2 px-4 text-center">
+        <span>Made with</span>
         <motion.span
             aria-label="Love"
             animate={{
@@ -23,7 +23,7 @@
         >
             ❤️
         </motion.span>
-        by
+        <span>by</span>
         <a
             href="https://humanspeak.com"
             target="_blank"
