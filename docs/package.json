@@ -74,7 +74,7 @@
         "prettier-plugin-tailwindcss": "^0.7.2",
         "puppeteer": "^24.36.1",
         "shiki": "^3.22.0",
-        "svelte": "^5.49.1",
+        "svelte": "^5.50.0",
         "svelte-check": "^4.3.6",
         "svelte-sonner": "^1.0.7",
         "sveltekit-superforms": "^2.29.1",
