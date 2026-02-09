@@ -35,7 +35,7 @@
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20260203.0",
         "@eslint/compat": "^2.0.2",
-        "@internationalized/date": "^3.10.1",
+        "@internationalized/date": "^3.11.0",
         "@lucide/svelte": "^0.563.1",
         "@playwright/test": "^1.58.1",
         "@sveltejs/adapter-auto": "^7.0.0",
