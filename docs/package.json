@@ -33,7 +33,7 @@
         "github-slugger": "^2.0.0"
     },
     "devDependencies": {
-        "@cloudflare/workers-types": "^4.20260203.0",
+        "@cloudflare/workers-types": "^4.20260207.0",
         "@eslint/compat": "^2.0.2",
         "@internationalized/date": "^3.10.1",
         "@lucide/svelte": "^0.563.1",
