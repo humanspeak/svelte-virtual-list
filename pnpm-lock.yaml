@@ -19,8 +19,8 @@ importers:
         specifier: ^9.39.2
         version: 9.39.2
       '@faker-js/faker':
-        specifier: ^10.2.0
-        version: 10.2.0
+        specifier: ^10.3.0
+        version: 10.3.0
       '@playwright/test':
         specifier: ^1.58.1
         version: 1.58.1
@@ -888,8 +888,8 @@ packages:
   '@exodus/schemasafe@1.3.0':
     resolution: {integrity: sha512-5Aap/GaRupgNx/feGBwLLTVv8OQFfv3pq2lPRzPg9R+IOBnDgghTGW7l7EuVXOvg5cc/xSAlRW8rBrjIC3Nvqw==}
 
-  '@faker-js/faker@10.2.0':
-    resolution: {integrity: sha512-rTXwAsIxpCqzUnZvrxVh3L0QA0NzToqWBLAhV+zDV3MIIwiQhAZHMdPCIaj5n/yADu/tyk12wIPgL6YHGXJP+g==}
+  '@faker-js/faker@10.3.0':
+    resolution: {integrity: sha512-It0Sne6P3szg7JIi6CgKbvTZoMjxBZhcv91ZrqrNuaZQfB5WoqYYbzCUOq89YR+VY8juY9M1vDWmDDa2TzfXCw==}
     engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@floating-ui/core@1.7.4':
@@ -2892,6 +2892,7 @@ packages:
 
   glob@10.5.0:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   globals@14.0.0:
@@ -5190,7 +5191,7 @@ snapshots:
   '@exodus/schemasafe@1.3.0':
     optional: true
 
-  '@faker-js/faker@10.2.0': {}
+  '@faker-js/faker@10.3.0': {}
 
   '@floating-ui/core@1.7.4':
     dependencies:
