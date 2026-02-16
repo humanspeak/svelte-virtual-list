@@ -7,15 +7,25 @@
     import BasicList from '$lib/examples/BasicList.svelte'
     import { type BreadcrumbContext } from '$lib/components/contexts/Breadcrumb/type'
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
+    import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
     import { goto } from '$app/navigation'
 
     // mounted no longer needed for CSS enter
     let headingContainer: HTMLDivElement | null = $state(null)
     const breadcrumbContext = $state<BreadcrumbContext | undefined>(getBreadcrumbContext())
+    const seo = getSeoContext()
 
     $effect(() => {
         if (breadcrumbContext) {
             breadcrumbContext.breadcrumbs = []
+        }
+    })
+
+    $effect(() => {
+        if (seo) {
+            seo.title = 'Svelte Virtual List - High-performance virtual scrolling for Svelte 5'
+            seo.description =
+                'High-performance virtual list component for Svelte 5 that efficiently renders 10k+ items with minimal memory usage.'
         }
     })
 
@@ -70,14 +80,6 @@
             })
     })
 </script>
-
-<svelte:head>
-    <title>Svelte Virtual List - High-performance virtual scrolling for Svelte 5</title>
-    <meta
-        name="description"
-        content="High-performance virtual list component for Svelte 5 that efficiently renders 10k+ items with minimal memory usage."
-    />
-</svelte:head>
 
 <div class="flex min-h-svh flex-col">
     <!-- Header with links -->

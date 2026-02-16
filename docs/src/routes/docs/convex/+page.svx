@@ -3,9 +3,17 @@ title: "Convex Integration"
 description: "Use Svelte Virtual List with Convex for real-time data and infinite scroll pagination."
 ---
 
-<svelte:head>
-  <title>Convex Integration | Docs | Svelte Virtual List</title>
-</svelte:head>
+<script>
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  $effect(() => {
+    if (seo) {
+      seo.title = 'Convex Integration | Docs | Svelte Virtual List'
+      seo.description = 'Use Svelte Virtual List with Convex for real-time data and infinite scroll pagination.'
+    }
+  })
+</script>
 
 # Infinite Scroll with Convex
 

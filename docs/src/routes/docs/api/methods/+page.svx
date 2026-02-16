@@ -3,13 +3,18 @@ title: "Methods"
 description: "Programmatic control methods available on the VirtualList component"
 ---
 
-<svelte:head>
-  <title>Methods | API | Svelte Virtual List</title>
-</svelte:head>
-
 <script>
   import Example from '$lib/components/general/Example.svelte'
   import MethodsExample from '$lib/examples/MethodsExample.svelte'
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  $effect(() => {
+    if (seo) {
+      seo.title = 'Methods | API | Svelte Virtual List'
+      seo.description = 'Programmatic control methods available on the VirtualList component'
+    }
+  })
 </script>
 
 # Methods

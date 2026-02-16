@@ -1,3 +1,15 @@
+<script>
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  $effect(() => {
+    if (seo) {
+      seo.title = 'Events | API | Svelte Virtual List'
+      seo.description = 'Callbacks and event handlers for responding to virtual list scroll, load, and visibility events.'
+    }
+  })
+</script>
+
 # Events & Callbacks
 
 Callbacks available for responding to virtual list events.
