@@ -26,7 +26,7 @@
         }
     },
     "dependencies": {
-        "@humanspeak/svelte-motion": "^0.1.16",
+        "@humanspeak/svelte-motion": "^0.1.21",
         "@humanspeak/svelte-virtual-list": "workspace:*",
         "@sentry/cloudflare": "^10.38.0",
         "@sentry/sveltekit": "^10.38.0",
