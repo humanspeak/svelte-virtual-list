@@ -5,6 +5,7 @@ import { configDefaults, defineConfig } from 'vitest/config'
 export default defineConfig({
     plugins: [tailwindcss(), sveltekit(), svelteTesting()],
     server: {
+        port: 8024,
         watch: {
             ignored: ['**/coverage/**']
         }

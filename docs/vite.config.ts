@@ -16,6 +16,7 @@ export default defineConfig({
     ],
 
     server: {
+        port: 8067,
         watch: {
             ignored: ['**/coverage/**']
         }
