@@ -20,7 +20,7 @@ describe('calculateAverageHeightDebounced', () => {
         const result = calculateAverageHeightDebounced(
             false,
             null,
-            () => ({ start: 0, end: 10 }),
+            { start: 0, end: 10 },
             [],
             {},
             -1,
@@ -51,7 +51,7 @@ describe('calculateAverageHeightDebounced', () => {
         const timeoutId = calculateAverageHeightDebounced(
             false,
             null,
-            () => ({ start: 0, end: 10 }),
+            { start: 0, end: 10 },
             mockElements,
             {},
             -1,
@@ -91,7 +91,7 @@ describe('calculateAverageHeightDebounced', () => {
         calculateAverageHeightDebounced(
             false,
             null,
-            () => ({ start: 0, end: 10 }),
+            { start: 0, end: 10 },
             mockElements,
             {},
             -1,
@@ -121,7 +121,7 @@ describe('calculateAverageHeightDebounced', () => {
         calculateAverageHeightDebounced(
             false,
             null,
-            () => ({ start: 0, end: 10 }),
+            { start: 0, end: 10 },
             mockElements,
             {},
             -1,
@@ -151,7 +151,7 @@ describe('calculateAverageHeightDebounced', () => {
         const result = calculateAverageHeightDebounced(
             true, // isCalculatingHeight = true
             null,
-            () => ({ start: 0, end: 10 }),
+            { start: 0, end: 10 },
             [],
             {},
             -1,
@@ -170,7 +170,7 @@ describe('calculateAverageHeightDebounced', () => {
         const result = calculateAverageHeightDebounced(
             false,
             existingTimeout,
-            () => ({ start: 0, end: 10 }),
+            { start: 0, end: 10 },
             [],
             {},
             -1,
@@ -192,7 +192,7 @@ describe('calculateAverageHeightDebounced', () => {
         const result = calculateAverageHeightDebounced(
             false,
             null,
-            () => ({ start: 5, end: 10 }),
+            { start: 5, end: 10 },
             [],
             {},
             5, // matches start index
