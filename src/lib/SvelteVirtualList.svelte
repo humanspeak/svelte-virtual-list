@@ -697,7 +697,7 @@
                 })
                 heightManager.endDynamicUpdate()
             },
-            lastMeasuredIndex < 0 ? 0 : 100, // debounceTime (no debounce on first pass)
+            lastMeasuredIndex < 0 || dirtyItems.size > 0 ? 0 : 100, // debounceTime (no debounce on first pass or when dirty items exist)
             dirtyItems, // Pass dirty items for processing
             0, // Don't pass ReactiveListManager state - let each system manage its own totals
             0, // Don't pass ReactiveListManager state - let each system manage its own totals
