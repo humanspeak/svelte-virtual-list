@@ -647,8 +647,15 @@
             lastMeasuredIndex,
             heightManager.averageHeight,
             (result) => {
-                // Critical updates that must trigger reactive effects immediately
-                heightManager.itemHeight = result.newHeight
+                // Only update the estimated item height from statistically meaningful
+                // samples. With _measuredCount === 0 (browser path), the formula
+                // _totalHeight = _itemLength × _itemHeight means a single expanded
+                // accordion item (e.g., 117px) would balloon _totalHeight from
+                // 49,000 to 117,000px — a visible flash. Requiring ≥ 2 valid
+                // measurements prevents single-item outliers from swinging the estimate.
+                if (result.newValidCount !== 1) {
+                    heightManager.itemHeight = result.newHeight
+                }
                 lastMeasuredIndex = result.newLastMeasuredIndex
 
                 // Update manager totals/cache before any scroll correction logic relies on them
@@ -1616,6 +1623,7 @@
         class={viewportClass ?? 'virtual-list-viewport'}
         bind:this={heightManager.viewportElement}
         onscroll={handleScroll}
+        style:overflow-anchor="none"
     >
         <!-- Content provides full scrollable height -->
         <div

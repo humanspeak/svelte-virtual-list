@@ -264,9 +264,12 @@ export class ReactiveListManager {
     }
 
     /**
-     * Begin a dynamic update. Handles nested calls: the first call disables UA scroll anchoring,
-     * subsequent calls just increment depth. Safe to call when not wired; styles are only toggled
-     * when both container and viewport are ready.
+     * Begin a dynamic update. Handles nested calls: the first call ensures UA scroll anchoring
+     * is disabled, subsequent calls just increment depth. Safe to call when not wired; styles
+     * are only set when both container and viewport are ready.
+     *
+     * Note: overflow-anchor is kept permanently as 'none' to prevent browser scroll anchoring
+     * from interfering with the virtual list's own scroll correction logic.
      */
     startDynamicUpdate(): void {
         const isOuter = this._dynamicUpdateDepth === 0
@@ -281,7 +284,8 @@ export class ReactiveListManager {
 
     /**
      * End a dynamic update started by `startDynamicUpdate`. Handles nesting: only the final
-     * corresponding end call re-enables UA scroll anchoring. Guards against underflow.
+     * corresponding end call completes the update. overflow-anchor remains 'none' permanently.
+     * Guards against underflow.
      */
     endDynamicUpdate(): void {
         if (this._dynamicUpdateDepth <= 0) {
@@ -290,7 +294,7 @@ export class ReactiveListManager {
         this._dynamicUpdateDepth -= 1
         if (this._dynamicUpdateDepth === 0) {
             if (this._isReady && this._viewportElement) {
-                this._viewportElement.style.setProperty('overflow-anchor', 'auto')
+                this._viewportElement.style.setProperty('overflow-anchor', 'none')
             }
             this._dynamicUpdateInProgress = false
             this._scheduler.unblock()
@@ -298,9 +302,9 @@ export class ReactiveListManager {
     }
 
     /**
-     * Run a dynamic update with UA scroll anchoring disabled, then restore it.
-     * Accepts a sync or async function and ensures `overflow-anchor` is toggled
-     * around the operation. If the manager isn't ready yet, it simply executes `fn`.
+     * Run a dynamic update with UA scroll anchoring disabled.
+     * Accepts a sync or async function and ensures `overflow-anchor` stays 'none'
+     * throughout. If the manager isn't ready yet, it simply executes `fn`.
      */
     async runDynamicUpdate<T>(fn: () => T | Promise<T>): Promise<T> {
         this.startDynamicUpdate()
