@@ -1,5 +1,6 @@
 <script lang="ts">
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
+    import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
     import { motion } from '@humanspeak/svelte-motion'
     import { cn } from '$lib/shadcn/utils'
     import sitemapManifest from '$lib/sitemap-manifest.json'
@@ -16,9 +17,17 @@
     const { data }: { data: PageData } = $props()
 
     const breadcrumbs = $derived(getBreadcrumbContext())
+    const seo = getSeoContext()
     $effect(() => {
         if (breadcrumbs) {
             breadcrumbs.breadcrumbs = [{ title: 'Examples' }]
+        }
+    })
+    $effect(() => {
+        if (seo) {
+            seo.title = 'Examples | Svelte Virtual List'
+            seo.description =
+                'Explore interactive examples showcasing virtual list features including basic lists, infinite scroll, variable heights, and more.'
         }
     })
 
@@ -76,10 +85,6 @@
         visible: { opacity: 1, y: 0 }
     }
 </script>
-
-<svelte:head>
-    <title>Examples | Svelte Virtual List</title>
-</svelte:head>
 
 <div class="container mx-auto px-4 py-12">
     <!-- Hero Section -->

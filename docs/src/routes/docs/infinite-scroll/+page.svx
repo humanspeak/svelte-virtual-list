@@ -3,13 +3,18 @@ title: "Infinite Scroll"
 description: "Load more data automatically as users scroll near the end of the list."
 ---
 
-<svelte:head>
-  <title>Infinite Scroll | Docs | Svelte Virtual List</title>
-</svelte:head>
-
 <script>
   import Example from '$lib/components/general/Example.svelte'
   import InfiniteScrollExample from '$lib/examples/InfiniteScrollExample.svelte'
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  $effect(() => {
+    if (seo) {
+      seo.title = 'Infinite Scroll | Docs | Svelte Virtual List'
+      seo.description = 'Load more data automatically as users scroll near the end of the list.'
+    }
+  })
 </script>
 
 # Infinite Scroll

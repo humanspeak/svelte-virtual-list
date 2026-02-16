@@ -3,38 +3,34 @@
     import { ModeWatcher } from 'mode-watcher'
     import { page } from '$app/state'
     import BreadcrumbContext from '$lib/components/contexts/Breadcrumb/BreadcrumbContext.svelte'
+    import SeoContext from '$lib/components/contexts/Seo/SeoContext.svelte'
+    import type { SeoContext as SeoContextType } from '$lib/components/contexts/Seo/type'
 
     const { children } = $props()
     const imageLocation = `${page.url.origin}/`
+
+    const seo = $state<SeoContextType>({
+        title: 'Svelte Virtual List - High Performance List Virtualization for Svelte 5',
+        description:
+            'A lightweight, high-performance virtual list component for Svelte 5. Efficiently render large datasets with dynamic heights, bidirectional scrolling, and TypeScript support. Perfect for infinite scrolling, chat interfaces, and data tables.'
+    })
 </script>
 
 <svelte:head>
-    <title>Svelte Virtual List - High Performance List Virtualization for Svelte 5</title>
-    <meta
-        name="description"
-        content="A lightweight, high-performance virtual list component for Svelte 5. Efficiently render large datasets with dynamic heights, bidirectional scrolling, and TypeScript support. Perfect for infinite scrolling, chat interfaces, and data tables."
-    />
+    <title>{seo.title}</title>
+    <meta name="description" content={seo.description} />
 
     <!-- Open Graph / Social Media -->
-    <meta
-        property="og:title"
-        content="Svelte Virtual List - High Performance List Virtualization"
-    />
-    <meta
-        property="og:description"
-        content="Efficiently render large datasets in Svelte 5 with dynamic heights, bidirectional scrolling, and TypeScript support."
-    />
+    <meta property="og:title" content={seo.title} />
+    <meta property="og:description" content={seo.description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://virtuallist.svelte.page" />
     <meta property="og:image" content="{imageLocation}svelte-virtual-list-opengraph.png" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Svelte Virtual List Component" />
-    <meta
-        name="twitter:description"
-        content="High-performance virtual scrolling for Svelte 5 applications"
-    />
+    <meta name="twitter:title" content={seo.title} />
+    <meta name="twitter:description" content={seo.description} />
     <meta name="twitter:image" content="{imageLocation}svelte-virtual-list-twitter.png" />
 
     <!-- Keywords -->
@@ -74,5 +70,7 @@
 <ModeWatcher />
 
 <BreadcrumbContext>
-    {@render children?.()}
+    <SeoContext {seo}>
+        {@render children?.()}
+    </SeoContext>
 </BreadcrumbContext>

@@ -3,13 +3,18 @@ title: "Bottom to Top Mode"
 description: "Chat-style bottom-to-top scrolling mode for messaging interfaces"
 ---
 
-<svelte:head>
-  <title>Bottom to Top Mode | Docs | Svelte Virtual List</title>
-</svelte:head>
-
 <script>
   import Example from '$lib/components/general/Example.svelte'
   import BottomToTopExample from '$lib/examples/BottomToTopExample.svelte'
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  $effect(() => {
+    if (seo) {
+      seo.title = 'Bottom to Top Mode | Docs | Svelte Virtual List'
+      seo.description = 'Chat-style bottom-to-top scrolling mode for messaging interfaces'
+    }
+  })
 </script>
 
 # Bottom to Top Mode

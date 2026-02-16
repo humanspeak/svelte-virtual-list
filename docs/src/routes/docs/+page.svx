@@ -3,15 +3,20 @@ title: "Get started with Svelte Virtual List"
 description: "A high-performance virtual list component for Svelte 5 that efficiently renders large datasets with minimal memory usage."
 ---
 
-<svelte:head>
-  <title>Get Started | Docs | Svelte Virtual List</title>
-</svelte:head>
-
 <script>
   import Example from '$lib/components/general/Example.svelte'
   import BasicList from '$lib/examples/BasicList.svelte'
   import BottomToTopExample from '$lib/examples/BottomToTopExample.svelte'
   import VariableHeightExample from '$lib/examples/VariableHeightExample.svelte'
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  $effect(() => {
+    if (seo) {
+      seo.title = 'Get Started | Docs | Svelte Virtual List'
+      seo.description = 'A high-performance virtual list component for Svelte 5 that efficiently renders large datasets with minimal memory usage.'
+    }
+  })
 </script>
 
 # Get started with Svelte Virtual List

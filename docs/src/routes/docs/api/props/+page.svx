@@ -3,13 +3,18 @@ title: "Props"
 description: "All available props for the SvelteVirtualList component"
 ---
 
-<svelte:head>
-  <title>Props | API | Svelte Virtual List</title>
-</svelte:head>
-
 <script>
   import Example from '$lib/components/general/Example.svelte'
   import PropsExample from '$lib/examples/PropsExample.svelte'
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  $effect(() => {
+    if (seo) {
+      seo.title = 'Props | API | Svelte Virtual List'
+      seo.description = 'All available props for the SvelteVirtualList component'
+    }
+  })
 </script>
 
 # Props

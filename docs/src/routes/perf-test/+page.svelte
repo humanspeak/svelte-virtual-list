@@ -1,5 +1,6 @@
 <script lang="ts">
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
+    import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
     import SvelteVirtualList, {
         perfMetrics,
         startFpsTracking,
@@ -12,12 +13,20 @@
     import { onMount } from 'svelte'
 
     const breadcrumbs = $derived(getBreadcrumbContext())
+    const seo = getSeoContext()
     $effect(() => {
         if (breadcrumbs) {
             breadcrumbs.breadcrumbs = [
                 { title: 'Examples', href: '/examples' },
                 { title: 'Performance Test' }
             ]
+        }
+    })
+    $effect(() => {
+        if (seo) {
+            seo.title = 'Performance Test | Svelte Virtual List'
+            seo.description =
+                'Benchmark Svelte Virtual List performance with configurable item counts up to 100k and real-time FPS and memory tracking.'
         }
     })
 
@@ -205,10 +214,6 @@
         }
     })
 </script>
-
-<svelte:head>
-    <title>Performance Test | Svelte Virtual List</title>
-</svelte:head>
 
 <div class="flex h-full w-full flex-col gap-4 p-4">
     <!-- Controls -->

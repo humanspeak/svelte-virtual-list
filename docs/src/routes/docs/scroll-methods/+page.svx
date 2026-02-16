@@ -3,13 +3,18 @@ title: "Scroll Methods"
 description: "Programmatically scroll to any item in the virtual list with configurable alignment options."
 ---
 
-<svelte:head>
-  <title>Scroll Methods | Docs | Svelte Virtual List</title>
-</svelte:head>
-
 <script>
   import Example from '$lib/components/general/Example.svelte'
   import ScrollToItemExample from '$lib/examples/ScrollToItemExample.svelte'
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  $effect(() => {
+    if (seo) {
+      seo.title = 'Scroll Methods | Docs | Svelte Virtual List'
+      seo.description = 'Programmatically scroll to any item in the virtual list with configurable alignment options.'
+    }
+  })
 </script>
 
 # Scroll Methods
