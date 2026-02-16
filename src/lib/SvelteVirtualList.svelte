@@ -1347,6 +1347,38 @@
         }
     })
 
+    // Call debugFunction in an effect to avoid state_unsafe_mutation when
+    // the callback writes to $state (which is forbidden during render effects)
+    $effect(() => {
+        if (!debug) return
+        const currentVisibleRange = visibleItems()
+        if (
+            !shouldShowDebugInfo(
+                prevVisibleRange,
+                currentVisibleRange,
+                prevHeight,
+                heightManager.averageHeight
+            )
+        )
+            return
+
+        const info = createDebugInfo(
+            currentVisibleRange,
+            items.length,
+            Object.keys(heightManager.getHeightCache()).length,
+            heightManager.averageHeight,
+            heightManager.scrollTop,
+            height || 0,
+            totalHeight()
+        )
+
+        if (debugFunction) {
+            debugFunction(info)
+        } else {
+            console.info('Virtual List Debug:', info)
+        }
+    })
+
     /**
      * Scrolls the virtual list to the item at the given index.
      *
@@ -1599,22 +1631,7 @@
                 class={itemsClass ?? 'virtual-list-items'}
                 style:transform="translateY({transformY()}px)"
             >
-                {#each displayItems() as currentItemWithIndex, i (currentItemWithIndex.originalIndex)}
-                    <!-- Only debug when visible range or average height changes -->
-                    {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems(), prevHeight, heightManager.averageHeight)}
-                        {@const debugInfo = createDebugInfo(
-                            visibleItems(),
-                            items.length,
-                            Object.keys(heightManager.getHeightCache()).length,
-                            heightManager.averageHeight,
-                            heightManager.scrollTop,
-                            height || 0,
-                            totalHeight()
-                        )}
-                        {debugFunction
-                            ? debugFunction(debugInfo)
-                            : console.info('Virtual List Debug:', debugInfo)}
-                    {/if}
+                {#each displayItems() as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
                     <!-- Render each visible item -->
                     <div
                         bind:this={itemElements[currentItemWithIndex.sliceIndex]}
