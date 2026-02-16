@@ -21,7 +21,9 @@
             <i class="fa-duotone fa-heart"></i>
         </motion.span>
         <span>by</span>
-        <a class="humanspeak" target="_blank" href="https://humanspeak.com">Humanspeak</a>
+        <a class="humanspeak" target="_blank" rel="noopener" href="https://humanspeak.com"
+            >Humanspeak</a
+        >
     </p>
 </footer>
 
