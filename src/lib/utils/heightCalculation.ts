@@ -97,8 +97,7 @@ export const calculateAverageHeightDebounced = (
 ): NodeJS.Timeout | null => {
     if (!BROWSER || isCalculatingHeight) return null
 
-    const visibleRange = visibleItems
-    const currentIndex = visibleRange.start
+    const currentIndex = visibleItems.start
 
     if (currentIndex === lastMeasuredIndex && dirtyItems.size === 0) return null
     if (heightUpdateTimeout) clearTimeout(heightUpdateTimeout)
@@ -113,7 +112,7 @@ export const calculateAverageHeightDebounced = (
             heightChanges
         } = calculateAverageHeight(
             itemElements,
-            visibleRange,
+            visibleItems,
             heightCache,
             calculatedItemHeight,
             dirtyItems,
