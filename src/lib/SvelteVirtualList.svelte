@@ -471,7 +471,7 @@
          *
          * Dependencies:
          * - wasAtBottomBeforeHeightChange: Set to true when first item marked dirty, prevents cascading corrections
-         * - totalHeight(): Uses actual heightCache measurements instead of skewed averages
+         * - totalHeight: Uses actual heightCache measurements instead of skewed averages
          * - Aggressive scroll correction: Blocked when wasAtBottomBeforeHeightChange=true
          *
          * ⚠️  DO NOT MODIFY WITHOUT EXTENSIVE TESTING ⚠️
@@ -953,7 +953,7 @@
      *
      * @example
      * ```typescript
-     * const range = visibleItems()
+     * const range = visibleItems
      * console.info(`Rendering items from ${range.start} to ${range.end}`)
      * ```
      *
@@ -1160,7 +1160,7 @@
         })
         if (!heightManager.initialized && mode === 'bottomToTop') {
             // bottomToTop initialization: use scrollIntoView on Item 0 for precise positioning
-            // visibleItems() guarantees Item 0 is rendered during initialization
+            // visibleItems guarantees Item 0 is rendered during initialization
             tick().then(() => {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -1181,7 +1181,7 @@
 
                         setTimeout(() => {
                             // Step 1: Set initialized (for other purposes like scroll event handling)
-                            // The init path in visibleItems() stays active until bottomToTopScrollComplete
+                            // The init path in visibleItems stays active until bottomToTopScrollComplete
                             if (!heightManager.initialized) {
                                 heightManager.initialized = true
                             }

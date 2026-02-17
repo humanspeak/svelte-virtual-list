@@ -38,7 +38,7 @@ import { BROWSER } from 'esm-env'
  *         calculateAverageHeightDebounced(
  *             false,
  *             null,
- *             () => getVisibleRange(),
+ *             visibleRange,
  *             itemElements,
  *             heightCache,
  *             lastMeasuredIndex,
