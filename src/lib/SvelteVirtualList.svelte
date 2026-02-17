@@ -598,6 +598,7 @@
     // Keep height manager synchronized with items length
     $effect(() => {
         heightManager.updateItemLength(items.length)
+        stabilizedContentHeight = 0
     })
 
     // Infinite scroll: trigger onLoadMore when approaching end of list
@@ -1015,8 +1016,31 @@
      * Computed content height for the virtual list.
      * Uses the maximum of container height and total content height to ensure
      * proper scrolling behavior.
+     *
+     * In bottomToTop mode during active scroll, contentHeight is "ratcheted" —
+     * it can grow but never shrink. This prevents a feedback loop where
+     * averageHeight oscillation causes scrollHeight to bounce, triggering
+     * browser scrollTop adjustments that fire new scroll events.
+     * When scrolling stops (isScrolling goes false), it snaps to the true value.
      */
-    const contentHeight = $derived(Math.max(height, totalHeight))
+    let stabilizedContentHeight = 0
+
+    const contentHeight = $derived.by(() => {
+        const raw = Math.max(height, totalHeight)
+
+        if (mode !== 'bottomToTop' || !isScrolling) {
+            stabilizedContentHeight = raw
+            return raw
+        }
+
+        // During active scroll in bottomToTop: only allow growth (ratchet)
+        // Prevents shrink → scrollTop adjust → new scroll event feedback loop
+        if (raw > stabilizedContentHeight) {
+            stabilizedContentHeight = raw
+        }
+
+        return stabilizedContentHeight
+    })
 
     /**
      * Computed transform Y value for positioning the visible items.
@@ -1029,7 +1053,9 @@
         // Avoid synchronous DOM reads here; fall back once if height is 0
         const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
 
-        // Use precise offset for topToBottom using measured heights when available
+        // Use precise offset using measured heights when available.
+        // For bottomToTop, pass ratcheted contentHeight so the transform stays
+        // stable while scrollHeight is stabilized (prevents visual shift).
         return Math.round(
             calculateTransformY(
                 mode,
@@ -1038,7 +1064,7 @@
                 visibleRange.start,
                 heightManager.averageHeight,
                 effectiveHeight,
-                totalHeight,
+                mode === 'bottomToTop' ? contentHeight : totalHeight,
                 heightManager.getHeightCache(),
                 measuredFallbackHeight
             )

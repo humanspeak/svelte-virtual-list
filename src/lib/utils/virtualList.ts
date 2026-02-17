@@ -189,8 +189,16 @@ export const calculateTransformY = (
         // In bottomToTop mode, position items so they stack from bottom up
         const actualTotalHeight = totalContentHeight ?? totalItems * itemHeight
 
-        // Calculate transform to position visible items correctly
-        const basicTransform = (totalItems - visibleEnd) * itemHeight
+        // Calculate transform to position visible items correctly.
+        // Use measured heights when available to avoid oscillation caused by
+        // averageHeight changes shifting (totalItems - visibleEnd) * avg.
+        let basicTransform: number
+        if (heightCache) {
+            const offsetToVisibleEnd = getScrollOffsetForIndex(heightCache, itemHeight, visibleEnd)
+            basicTransform = actualTotalHeight - offsetToVisibleEnd
+        } else {
+            basicTransform = (totalItems - visibleEnd) * itemHeight
+        }
 
         // When content is smaller than viewport, push to bottom
         const bottomOffset = Math.max(0, effectiveViewport - actualTotalHeight)
