@@ -402,23 +402,6 @@
     // Dynamic update coordination to avoid UA scroll anchoring interference
     let suppressBottomAnchoringUntilMs = $state(0)
 
-    const displayItems = $derived.by(() => {
-        const visibleRange = visibleItems
-        const slice =
-            mode === 'bottomToTop'
-                ? items.slice(visibleRange.start, visibleRange.end).reverse()
-                : items.slice(visibleRange.start, visibleRange.end)
-
-        return slice.map((item, sliceIndex) => ({
-            item,
-            originalIndex:
-                mode === 'bottomToTop'
-                    ? visibleRange.end - 1 - sliceIndex
-                    : visibleRange.start + sliceIndex,
-            sliceIndex
-        }))
-    })
-
     /**
      * Handles scroll position corrections when item heights change, ensuring proper positioning
      * relative to the user's scroll context. This function calculates the cumulative impact of
@@ -1062,6 +1045,23 @@
         )
     })
 
+    const displayItems = $derived.by(() => {
+        const visibleRange = visibleItems
+        const slice =
+            mode === 'bottomToTop'
+                ? items.slice(visibleRange.start, visibleRange.end).reverse()
+                : items.slice(visibleRange.start, visibleRange.end)
+
+        return slice.map((item, sliceIndex) => ({
+            item,
+            originalIndex:
+                mode === 'bottomToTop'
+                    ? visibleRange.end - 1 - sliceIndex
+                    : visibleRange.start + sliceIndex,
+            sliceIndex
+        }))
+    })
+
     /**
      * Handles scroll events in the viewport using requestAnimationFrame for performance.
      *
@@ -1639,22 +1639,7 @@
                 class={itemsClass ?? 'virtual-list-items'}
                 style:transform="translateY({transformY}px)"
             >
-                {#each displayItems as currentItemWithIndex, i (currentItemWithIndex.originalIndex)}
-                    <!-- Only debug when visible range or average height changes -->
-                    {#if debug && i === 0 && shouldShowDebugInfo(prevVisibleRange, visibleItems, prevHeight, heightManager.averageHeight)}
-                        {@const debugInfo = createDebugInfo(
-                            visibleItems,
-                            items.length,
-                            Object.keys(heightManager.getHeightCache()).length,
-                            heightManager.averageHeight,
-                            heightManager.scrollTop,
-                            height || 0,
-                            totalHeight
-                        )}
-                        {debugFunction
-                            ? debugFunction(debugInfo)
-                            : console.info('Virtual List Debug:', debugInfo)}
-                    {/if}
+                {#each displayItems as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
                     <!-- Render each visible item -->
                     <div
                         bind:this={itemElements[currentItemWithIndex.sliceIndex]}
