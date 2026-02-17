@@ -38,7 +38,7 @@ import { BROWSER } from 'esm-env'
  *         calculateAverageHeightDebounced(
  *             false,
  *             null,
- *             () => getVisibleRange(),
+ *             visibleRange,
  *             itemElements,
  *             heightCache,
  *             lastMeasuredIndex,
@@ -62,7 +62,7 @@ import { BROWSER } from 'esm-env'
  *
  * @param isCalculatingHeight - Flag to prevent concurrent calculations
  * @param heightUpdateTimeout - Reference to existing update timeout
- * @param visibleItemsGetter - Function to get current visible range
+ * @param visibleItems - Current visible range
  * @param itemElements - Array of DOM elements to measure
  * @param heightCache - Cache of previously measured heights with dirty tracking
  * @param lastMeasuredIndex - Index of last measured element
@@ -74,7 +74,7 @@ import { BROWSER } from 'esm-env'
 export const calculateAverageHeightDebounced = (
     isCalculatingHeight: boolean,
     heightUpdateTimeout: ReturnType<typeof setTimeout> | null,
-    visibleItemsGetter: () => { start: number; end: number },
+    visibleItems: { start: number; end: number },
     itemElements: HTMLElement[],
     heightCache: Record<number, number>,
     lastMeasuredIndex: number,
@@ -97,8 +97,7 @@ export const calculateAverageHeightDebounced = (
 ): NodeJS.Timeout | null => {
     if (!BROWSER || isCalculatingHeight) return null
 
-    const visibleRange = visibleItemsGetter()
-    const currentIndex = visibleRange.start
+    const currentIndex = visibleItems.start
 
     if (currentIndex === lastMeasuredIndex && dirtyItems.size === 0) return null
     if (heightUpdateTimeout) clearTimeout(heightUpdateTimeout)
@@ -113,7 +112,7 @@ export const calculateAverageHeightDebounced = (
             heightChanges
         } = calculateAverageHeight(
             itemElements,
-            visibleRange,
+            visibleItems,
             heightCache,
             calculatedItemHeight,
             dirtyItems,

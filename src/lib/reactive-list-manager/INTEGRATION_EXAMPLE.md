@@ -71,7 +71,7 @@ const updateHeight = () => {
 
 ```typescript
 // OLD: O(n) calculation every time
-// let totalHeight = $derived(() => {
+// let totalHeight = $derived.by(() => {
 //     let total = 0
 //     for (let i = 0; i < items.length; i++) {
 //         total += heightCache[i] || calculatedItemHeight
@@ -80,7 +80,7 @@ const updateHeight = () => {
 // })
 
 // NEW: O(1) reactive calculation 🚀
-let totalHeight = $derived(() => heightManager.totalHeight)
+let totalHeight = $derived(heightManager.totalHeight)
 ```
 
 ## Performance Benefits

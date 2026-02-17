@@ -12,7 +12,7 @@ import type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './ty
  *
  * @example
  * ```typescript
- * const manager = new ReactiveListManager({ itemLength: 10000, estimatedHeight: 40 })
+ * const manager = new ReactiveListManager({ itemLength: 10000, itemHeight: 40 })
  *
  * // Process height changes incrementally
  * manager.processDirtyHeights(dirtyResults)

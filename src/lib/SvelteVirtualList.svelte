@@ -251,11 +251,11 @@
 
     const captureAnchor = () => {
         if (!heightManager.viewportElement) return
-        const vr = visibleItems()
+        const vr = visibleItems
         const anchorIndex = Math.max(0, vr.start)
         const cache = heightManager.getHeightCache()
         const est = heightManager.averageHeight
-        const maxScrollTop = Math.max(0, totalHeight() - (height || 0))
+        const maxScrollTop = Math.max(0, totalHeight - (height || 0))
         // Offset from start to anchored item
         const blockSums = buildBlockSums(cache, est, items.length)
         const offsetToIndex = getScrollOffsetForIndex(cache, est, anchorIndex, blockSums)
@@ -290,7 +290,7 @@
             Math.max(0, lastAnchorIndex),
             blockSums
         )
-        const maxScrollTop = clampValue(totalHeight() - (height || 0), 0, Infinity)
+        const maxScrollTop = clampValue(totalHeight - (height || 0), 0, Infinity)
         let targetTop: number
         if (mode === 'bottomToTop') {
             const distanceFromStart = clampValue(offsetToIndex + lastAnchorOffset, 0, Infinity)
@@ -402,23 +402,6 @@
     // Dynamic update coordination to avoid UA scroll anchoring interference
     let suppressBottomAnchoringUntilMs = $state(0)
 
-    const displayItems = $derived(() => {
-        const visibleRange = visibleItems()
-        const slice =
-            mode === 'bottomToTop'
-                ? items.slice(visibleRange.start, visibleRange.end).reverse()
-                : items.slice(visibleRange.start, visibleRange.end)
-
-        return slice.map((item, sliceIndex) => ({
-            item,
-            originalIndex:
-                mode === 'bottomToTop'
-                    ? visibleRange.end - 1 - sliceIndex
-                    : visibleRange.start + sliceIndex,
-            sliceIndex
-        }))
-    })
-
     /**
      * Handles scroll position corrections when item heights change, ensuring proper positioning
      * relative to the user's scroll context. This function calculates the cumulative impact of
@@ -442,7 +425,7 @@
         if (isScrolling) {
             // Accumulate net change above viewport and defer application
             let pending = 0
-            const currentVisibleRange = visibleItems()
+            const currentVisibleRange = visibleItems
             for (const change of heightChanges) {
                 if (change.index < currentVisibleRange.start) pending += change.delta
             }
@@ -488,7 +471,7 @@
          *
          * Dependencies:
          * - wasAtBottomBeforeHeightChange: Set to true when first item marked dirty, prevents cascading corrections
-         * - totalHeight(): Uses actual heightCache measurements instead of skewed averages
+         * - totalHeight: Uses actual heightCache measurements instead of skewed averages
          * - Aggressive scroll correction: Blocked when wasAtBottomBeforeHeightChange=true
          *
          * ⚠️  DO NOT MODIFY WITHOUT EXTENSIVE TESTING ⚠️
@@ -518,7 +501,7 @@
             lastCorrectionTimestampByViewport.set(viewportEl, now)
 
             // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
-            const approximateScrollTop = Math.max(0, totalHeight() - height)
+            const approximateScrollTop = Math.max(0, totalHeight - height)
             log('[SVL] b2t-correction-approx', { approximateScrollTop })
             syncScrollTop(approximateScrollTop)
 
@@ -555,11 +538,11 @@
         }
 
         const currentScrollTop = heightManager.viewport.scrollTop
-        const maxScrollTop = Math.max(0, totalHeight() - height)
+        const maxScrollTop = Math.max(0, totalHeight - height)
 
         // Calculate total height change impact above current visible area
         let heightChangeAboveViewport = 0
-        const currentVisibleRange = visibleItems()
+        const currentVisibleRange = visibleItems
 
         for (const change of heightChanges) {
             // Only consider items that are above the current visible range
@@ -623,7 +606,7 @@
         // Skip loading during bottomToTop initialization (init path renders all items artificially)
         if (mode === 'bottomToTop' && !bottomToTopScrollComplete) return
 
-        const range = visibleItems()
+        const range = visibleItems
         const atLoadingEdge = range.end >= items.length - loadMoreThreshold
         const insufficientItems = items.length < loadMoreThreshold && heightManager.initialized
 
@@ -755,9 +738,9 @@
      * This getter is reactive and updates whenever heightManager's internal state changes.
      * Used by: atBottom calculation, scroll corrections, maxScrollTop calculations
      */
-    const totalHeight = $derived(() => heightManager.totalHeight)
+    const totalHeight = $derived(heightManager.totalHeight)
 
-    const atBottom = $derived(heightManager.scrollTop >= totalHeight() - height - 1)
+    const atBottom = $derived(heightManager.scrollTop >= totalHeight - height - 1)
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
@@ -787,7 +770,7 @@
             mode === 'bottomToTop' &&
             heightManager.viewportElement
         ) {
-            const targetScrollTop = Math.max(0, totalHeight() - height)
+            const targetScrollTop = Math.max(0, totalHeight - height)
             const currentScrollTop = heightManager.viewport.scrollTop
             const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
 
@@ -797,7 +780,7 @@
             // 3. We're significantly off target
             // 4. We're not at the bottom (where height changes should be handled more carefully)
             const heightChanged = Math.abs(heightManager.averageHeight - lastCalculatedHeight) > 1
-            const maxScrollTop = Math.max(0, totalHeight() - height)
+            const maxScrollTop = Math.max(0, totalHeight - height)
 
             // In bottomToTop mode, we're "at bottom" when scroll is at max position
             const isAtBottom =
@@ -845,7 +828,7 @@
                 const currentScrollTop = heightManager.viewport.scrollTop
                 const currentCalculatedItemHeight = heightManager.averageHeight
                 const currentHeight = height
-                const currentTotalHeight = totalHeight()
+                const currentTotalHeight = totalHeight
                 const prevTotalHeight =
                     lastTotalHeightObserved ||
                     currentTotalHeight - itemsAdded * currentCalculatedItemHeight
@@ -891,7 +874,7 @@
                     // Reconcile on next frame in case measured heights adjust totals
                     requestAnimationFrame(() => {
                         const beforeReconcileScrollTop = heightManager.viewport.scrollTop
-                        const reconciledNextMax = clampValue(totalHeight() - height, 0, Infinity)
+                        const reconciledNextMax = clampValue(totalHeight - height, 0, Infinity)
                         const reconciledDeltaMaxChange = reconciledNextMax - nextMaxScrollTop
                         // Desired position is to maintain distance-from-end; equivalently keep (max - scrollTop) constant.
                         const desiredScrollTop = clampValue(
@@ -934,7 +917,7 @@
 
         lastItemsLength = currentItemsLength
         // Update last observed total height at the end of the effect
-        lastTotalHeightObserved = totalHeight()
+        lastTotalHeightObserved = totalHeight
     })
 
     // Update container height continuously to reflect layout changes that
@@ -970,13 +953,13 @@
      *
      * @example
      * ```typescript
-     * const range = visibleItems()
+     * const range = visibleItems
      * console.info(`Rendering items from ${range.start} to ${range.end}`)
      * ```
      *
      * @returns {SvelteVirtualListPreviousVisibleRange} Object containing start and end indices of visible items
      */
-    const visibleItems = $derived((): SvelteVirtualListPreviousVisibleRange => {
+    const visibleItems = $derived.by((): SvelteVirtualListPreviousVisibleRange => {
         if (!items.length) return { start: 0, end: 0 } as SvelteVirtualListPreviousVisibleRange
         const viewportHeight = height || 0
 
@@ -1021,7 +1004,7 @@
             atBottom,
             wasAtBottomBeforeHeightChange,
             lastVisibleRange,
-            totalHeight(),
+            totalHeight,
             heightManager.getHeightCache()
         )
 
@@ -1033,15 +1016,15 @@
      * Uses the maximum of container height and total content height to ensure
      * proper scrolling behavior.
      */
-    const contentHeight = $derived(() => Math.max(height, totalHeight()))
+    const contentHeight = $derived(Math.max(height, totalHeight))
 
     /**
      * Computed transform Y value for positioning the visible items.
      * Extracted from inline IIFE for better performance and readability.
      */
-    const transformY = $derived(() => {
+    const transformY = $derived.by(() => {
         const viewportHeight = height || measuredFallbackHeight || 0
-        const visibleRange = visibleItems()
+        const visibleRange = visibleItems
 
         // Avoid synchronous DOM reads here; fall back once if height is 0
         const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
@@ -1055,11 +1038,28 @@
                 visibleRange.start,
                 heightManager.averageHeight,
                 effectiveHeight,
-                totalHeight(),
+                totalHeight,
                 heightManager.getHeightCache(),
                 measuredFallbackHeight
             )
         )
+    })
+
+    const displayItems = $derived.by(() => {
+        const visibleRange = visibleItems
+        const slice =
+            mode === 'bottomToTop'
+                ? items.slice(visibleRange.start, visibleRange.end).reverse()
+                : items.slice(visibleRange.start, visibleRange.end)
+
+        return slice.map((item, sliceIndex) => ({
+            item,
+            originalIndex:
+                mode === 'bottomToTop'
+                    ? visibleRange.end - 1 - sliceIndex
+                    : visibleRange.start + sliceIndex,
+            sliceIndex
+        }))
     })
 
     /**
@@ -1124,12 +1124,12 @@
                 captureAnchor()
             }
             if (INTERNAL_DEBUG) {
-                const vr = visibleItems()
+                const vr = visibleItems
                 log('[SVL] scroll', {
                     mode,
                     scrollTop: heightManager.scrollTop,
                     height,
-                    totalHeight: totalHeight(),
+                    totalHeight: totalHeight,
                     averageItemHeight: heightManager.averageHeight,
                     visibleRange: vr
                 })
@@ -1160,7 +1160,7 @@
         })
         if (!heightManager.initialized && mode === 'bottomToTop') {
             // bottomToTop initialization: use scrollIntoView on Item 0 for precise positioning
-            // visibleItems() guarantees Item 0 is rendered during initialization
+            // visibleItems guarantees Item 0 is rendered during initialization
             tick().then(() => {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -1181,7 +1181,7 @@
 
                         setTimeout(() => {
                             // Step 1: Set initialized (for other purposes like scroll event handling)
-                            // The init path in visibleItems() stays active until bottomToTopScrollComplete
+                            // The init path in visibleItems stays active until bottomToTopScrollComplete
                             if (!heightManager.initialized) {
                                 heightManager.initialized = true
                             }
@@ -1265,7 +1265,7 @@
             rafSchedule(() => {
                 log('item-resize-observer', { entries: entries.length })
                 let shouldRecalculate = false
-                void visibleItems() // Cache once to avoid reactive loops
+                void visibleItems // Cache once to avoid reactive loops
 
                 for (const entry of entries) {
                     const element = entry.target as HTMLElement
@@ -1349,7 +1349,7 @@
     // Add the effect in the script section
     $effect(() => {
         if (INTERNAL_DEBUG) {
-            prevVisibleRange = visibleItems()
+            prevVisibleRange = visibleItems
             prevHeight = heightManager.averageHeight
         }
     })
@@ -1358,7 +1358,7 @@
     // the callback writes to $state (which is forbidden during render effects)
     $effect(() => {
         if (!debug) return
-        const currentVisibleRange = visibleItems()
+        const currentVisibleRange = visibleItems
         if (
             !shouldShowDebugInfo(
                 prevVisibleRange,
@@ -1376,7 +1376,7 @@
             heightManager.averageHeight,
             heightManager.scrollTop,
             height || 0,
-            totalHeight()
+            totalHeight
         )
 
         if (debugFunction) {
@@ -1484,7 +1484,7 @@
             }
         }
 
-        const { start: firstVisibleIndex, end: lastVisibleIndex } = visibleItems()
+        const { start: firstVisibleIndex, end: lastVisibleIndex } = visibleItems
 
         // Use extracted scroll calculation utility
         const scrollTarget = calculateScrollTarget({
@@ -1630,16 +1630,16 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            style:height="{contentHeight()}px"
+            style:height="{contentHeight}px"
         >
             <!-- Items container is translated to show correct items -->
             <div
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
-                style:transform="translateY({transformY()}px)"
+                style:transform="translateY({transformY}px)"
             >
-                {#each displayItems() as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
+                {#each displayItems as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
                     <!-- Render each visible item -->
                     <div
                         bind:this={itemElements[currentItemWithIndex.sliceIndex]}
