@@ -32,7 +32,7 @@ ReactiveListManager processes only **dirty/changed items**:
 ```typescript
 // ✅ O(dirty items) - Fast and reactive
 manager.processDirtyHeights(changedItems)
-const totalHeight = manager.getDerivedTotalHeight()
+const totalHeight = manager.totalHeight
 ```
 
 ## 📦 Installation
@@ -82,7 +82,7 @@ new ReactiveListManager(config: ListManagerConfig)
 **Parameters:**
 
 - `config.itemLength` - Total number of items
-- `config.estimatedHeight` - Default height for unmeasured items
+- `config.itemHeight` - Default height for unmeasured items
 
 ### Core Methods
 
@@ -154,7 +154,7 @@ Check if manager has sufficient measurement data.
 // Create manager
 const heightManager = new ReactiveListManager({
     itemLength: items.length,
-    estimatedHeight: defaultEstimatedItemHeight
+    itemHeight: defaultEstimatedItemHeight
 })
 
 // Update on items change
@@ -190,7 +190,7 @@ let totalHeight = $derived(heightManager.totalHeight)
 ```typescript
 import { ReactiveListManager, benchmarkHeightManager } from './reactive-list-manager'
 
-const manager = new ReactiveListManager({ itemLength: 1000, estimatedHeight: 50 })
+const manager = new ReactiveListManager({ itemLength: 1000, itemHeight: 50 })
 
 // Performance monitoring
 const results = benchmarkHeightManager(10000, 1000, 100)
@@ -264,7 +264,7 @@ npm run test -- --grep "Performance Tests"
 
 ```text
 
-Height Changes → processDirtyHeights() → Update State → getDerivedTotalHeight() → Reactive UI
+Height Changes → processDirtyHeights() → Update State → totalHeight → Reactive UI
 
 ```
 
@@ -274,7 +274,7 @@ Height Changes → processDirtyHeights() → Update State → getDerivedTotalHei
 private _totalMeasuredHeight = $state(0)  // Sum of all measured heights
 private _measuredCount = $state(0)        // Count of measured items
 private _itemLength = $state(0)           // Total items
-private _estimatedHeight = $state(40)     // Default estimate
+private _itemHeight = $state(40)           // Default estimate
 ```
 
 ## 🔧 Types
@@ -288,7 +288,7 @@ interface HeightChange {
 
 interface ListManagerConfig {
     itemLength: number
-    estimatedHeight: number
+    itemHeight: number
 }
 
 interface ListManagerDebugInfo {
@@ -296,7 +296,7 @@ interface ListManagerDebugInfo {
     measuredCount: number
     itemLength: number
     coveragePercent: number
-    estimatedHeight: number
+    itemHeight: number
 }
 ```
 

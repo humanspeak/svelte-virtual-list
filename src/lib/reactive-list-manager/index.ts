@@ -23,7 +23,7 @@
  * manager.processDirtyHeights(heightChanges)
  *
  * // Get reactive total height
- * const totalHeight = manager.getDerivedTotalHeight(calculatedItemHeight)
+ * const totalHeight = manager.totalHeight
  * ```
  *
  * @example Performance Monitoring
