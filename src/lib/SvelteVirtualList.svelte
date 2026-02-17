@@ -738,7 +738,7 @@
      * This getter is reactive and updates whenever heightManager's internal state changes.
      * Used by: atBottom calculation, scroll corrections, maxScrollTop calculations
      */
-    const totalHeight = $derived.by(() => heightManager.totalHeight)
+    const totalHeight = $derived(heightManager.totalHeight)
 
     const atBottom = $derived(heightManager.scrollTop >= totalHeight - height - 1)
     let wasAtBottomBeforeHeightChange = false
