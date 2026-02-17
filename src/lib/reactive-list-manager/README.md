@@ -182,7 +182,7 @@ $effect(() => {
 })
 
 // Reactive total height (automatically updates)
-let totalHeight = $derived(() => heightManager.totalHeight)
+let totalHeight = $derived(heightManager.totalHeight)
 ```
 
 ### Standalone Usage
