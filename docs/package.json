@@ -33,10 +33,10 @@
         "github-slugger": "^2.0.0"
     },
     "devDependencies": {
-        "@cloudflare/workers-types": "^4.20260214.0",
+        "@cloudflare/workers-types": "^4.20260217.0",
         "@eslint/compat": "^2.0.2",
         "@internationalized/date": "^3.11.0",
-        "@lucide/svelte": "^0.564.0",
+        "@lucide/svelte": "^0.574.0",
         "@playwright/test": "^1.58.2",
         "@sveltejs/adapter-auto": "^7.0.1",
         "@sveltejs/adapter-cloudflare": "^7.2.7",
@@ -51,7 +51,7 @@
         "@typescript-eslint/eslint-plugin": "^8.56.0",
         "@typescript-eslint/parser": "^8.56.0",
         "autoprefixer": "^10.4.24",
-        "bits-ui": "^2.15.5",
+        "bits-ui": "^2.15.6",
         "chokidar-cli": "^3.0.0",
         "clsx": "^2.1.1",
         "embla-carousel-svelte": "^8.6.0",
@@ -63,7 +63,7 @@
         "formsnap": "^2.0.1",
         "globals": "^17.3.0",
         "highlight.js": "^11.11.1",
-        "lucide-svelte": "^0.564.0",
+        "lucide-svelte": "^0.574.0",
         "mdsvex": "^0.12.6",
         "mode-watcher": "^1.1.0",
         "paneforge": "^1.0.2",
@@ -74,7 +74,7 @@
         "prettier-plugin-tailwindcss": "^0.7.2",
         "puppeteer": "^24.37.3",
         "shiki": "^3.22.0",
-        "svelte": "^5.51.2",
+        "svelte": "^5.51.3",
         "svelte-check": "^4.4.0",
         "svelte-sonner": "^1.0.7",
         "sveltekit-superforms": "^2.29.1",
@@ -88,7 +88,7 @@
         "vaul-svelte": "1.0.0-next.7",
         "vite": "^7.3.1",
         "vitest": "^4.0.18",
-        "wrangler": "^4.65.0",
+        "wrangler": "^4.66.0",
         "zod": "^4.3.6"
     },
     "volta": {
