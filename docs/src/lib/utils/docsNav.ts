@@ -7,20 +7,50 @@ export type NavItem = {
     title: string
     href: string
     icon: string
+    external?: boolean
 }
 
 export type NavSection = {
     title: string
+    icon: string
     items: NavItem[]
 }
 
 export const docsNavigation: NavSection[] = [
     {
         title: 'Get Started',
+        icon: 'fa-solid fa-rocket',
         items: [{ title: 'Introduction', href: '/docs', icon: 'fa-solid fa-rocket' }]
     },
     {
-        title: 'Features',
+        title: 'API Reference',
+        icon: 'fa-solid fa-book',
+        items: [
+            {
+                title: 'Props',
+                href: '/docs/api/props',
+                icon: 'fa-solid fa-sliders'
+            },
+            {
+                title: 'Methods',
+                href: '/docs/api/methods',
+                icon: 'fa-solid fa-code'
+            },
+            {
+                title: 'Events',
+                href: '/docs/api/events',
+                icon: 'fa-solid fa-bolt'
+            },
+            {
+                title: 'Types',
+                href: '/docs/api/types',
+                icon: 'fa-solid fa-t'
+            }
+        ]
+    },
+    {
+        title: 'Examples',
+        icon: 'fa-solid fa-code',
         items: [
             {
                 title: 'Variable Heights',
@@ -51,37 +81,49 @@ export const docsNavigation: NavSection[] = [
                 title: 'Debug Mode',
                 href: '/docs/debug',
                 icon: 'fa-solid fa-bug'
+            },
+            {
+                title: 'Convex',
+                href: '/docs/convex',
+                icon: 'fa-solid fa-database'
             }
         ]
     },
     {
-        title: 'API Reference',
+        title: 'Interactive Demos',
+        icon: 'fa-solid fa-play',
         items: [
             {
-                title: 'Props',
-                href: '/docs/api/props',
-                icon: 'fa-solid fa-sliders'
+                title: 'All Examples',
+                href: '/examples',
+                icon: 'fa-solid fa-play'
             },
             {
-                title: 'Methods',
-                href: '/docs/api/methods',
-                icon: 'fa-solid fa-code'
+                title: 'Basic List',
+                href: '/examples/basic-list',
+                icon: 'fa-solid fa-list'
             },
             {
-                title: 'Events',
-                href: '/docs/api/events',
-                icon: 'fa-solid fa-bolt'
+                title: 'Bottom to Top',
+                href: '/examples/bottom-to-top',
+                icon: 'fa-solid fa-comments'
             },
             {
-                title: 'Types',
-                href: '/docs/api/types',
-                icon: 'fa-solid fa-t'
+                title: 'Infinite Scroll',
+                href: '/examples/infinite-scroll',
+                icon: 'fa-solid fa-infinity'
+            },
+            {
+                title: 'Scroll to Item',
+                href: '/examples/scroll-to-item',
+                icon: 'fa-solid fa-crosshairs'
+            },
+            {
+                title: 'Variable Height',
+                href: '/examples/variable-height',
+                icon: 'fa-solid fa-arrows-up-down'
             }
         ]
-    },
-    {
-        title: 'Integrations',
-        items: [{ title: 'Convex', href: '/docs/convex', icon: 'fa-solid fa-database' }]
     }
 ]
 

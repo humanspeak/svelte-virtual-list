@@ -34,6 +34,9 @@ export default [
     ...svelte.configs['flat/prettier'],
     {
         languageOptions: {
+            parserOptions: {
+                tsconfigRootDir: import.meta.dirname
+            },
             globals: {
                 ...globals.browser,
                 ...globals.node
