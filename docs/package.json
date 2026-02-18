@@ -34,7 +34,7 @@
         "runed": "^0.37.1"
     },
     "devDependencies": {
-        "@cloudflare/workers-types": "^4.20260217.0",
+        "@cloudflare/workers-types": "^4.20260218.0",
         "@eslint/compat": "^2.0.2",
         "@internationalized/date": "^3.11.0",
         "@lucide/svelte": "^0.574.0",
@@ -52,7 +52,7 @@
         "@typescript-eslint/eslint-plugin": "^8.56.0",
         "@typescript-eslint/parser": "^8.56.0",
         "autoprefixer": "^10.4.24",
-        "bits-ui": "^2.15.6",
+        "bits-ui": "^2.15.7",
         "chokidar-cli": "^3.0.0",
         "clsx": "^2.1.1",
         "embla-carousel-svelte": "^8.6.0",
@@ -73,7 +73,7 @@
         "prettier-plugin-sort-json": "^4.2.0",
         "prettier-plugin-svelte": "^3.4.1",
         "prettier-plugin-tailwindcss": "^0.7.2",
-        "puppeteer": "^24.37.3",
+        "puppeteer": "^24.37.4",
         "shiki": "^3.22.0",
         "svelte": "^5.51.3",
         "svelte-check": "^4.4.0",
