@@ -30,7 +30,8 @@
         "@humanspeak/svelte-virtual-list": "workspace:*",
         "@sentry/cloudflare": "^10.39.0",
         "@sentry/sveltekit": "^10.39.0",
-        "github-slugger": "^2.0.0"
+        "github-slugger": "^2.0.0",
+        "runed": "^0.37.1"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20260217.0",

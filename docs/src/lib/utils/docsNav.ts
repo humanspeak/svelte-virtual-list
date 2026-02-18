@@ -12,16 +12,19 @@ export type NavItem = {
 
 export type NavSection = {
     title: string
+    icon: string
     items: NavItem[]
 }
 
 export const docsNavigation: NavSection[] = [
     {
         title: 'Get Started',
+        icon: 'fa-solid fa-rocket',
         items: [{ title: 'Introduction', href: '/docs', icon: 'fa-solid fa-rocket' }]
     },
     {
         title: 'API Reference',
+        icon: 'fa-solid fa-book',
         items: [
             {
                 title: 'Props',
@@ -47,6 +50,7 @@ export const docsNavigation: NavSection[] = [
     },
     {
         title: 'Examples',
+        icon: 'fa-solid fa-code',
         items: [
             {
                 title: 'Variable Heights',
@@ -87,6 +91,7 @@ export const docsNavigation: NavSection[] = [
     },
     {
         title: 'Interactive Demos',
+        icon: 'fa-solid fa-play',
         items: [
             {
                 title: 'All Examples',
