@@ -21,7 +21,7 @@ This is a **PNPM workspace** with two packages:
 - **Svelte 5** — Uses runes (`$state`, `$derived`, `$effect`) and snippets (`{#snippet}`)
 - **SvelteKit** — For dev server, test routes, and docs site
 - **TypeScript** — Strict mode, full type safety
-- **Vitest** — Unit tests (324 tests)
+- **Vitest** — Unit tests
 - **Playwright** — E2E tests
 
 ## Formatting and Linting
@@ -54,7 +54,7 @@ pnpm run check        # svelte-check (TypeScript validation)
 
 ### Core Component
 
-- `src/lib/SvelteVirtualList.svelte` — Main component (~1700 lines). Handles virtualization, scroll events, height measurement, bottomToTop mode, infinite scroll, and programmatic scrolling.
+- `src/lib/SvelteVirtualList.svelte` — Main component. Handles virtualization, scroll events, height measurement, bottomToTop mode, infinite scroll, and programmatic scrolling.
 
 ### Key Subsystems
 
