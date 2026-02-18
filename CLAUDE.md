@@ -6,8 +6,8 @@ Project context for Claude Code sessions.
 
 `@humanspeak/svelte-virtual-list` — A high-performance virtual list component for Svelte 5. Renders large datasets (10k+ items) with dynamic item heights, bi-directional scrolling, and minimal memory usage.
 
-- **Homepage**: https://virtuallist.svelte.page
-- **Repository**: https://github.com/humanspeak/svelte-virtual-list
+- **Homepage**: <https://virtuallist.svelte.page>
+- **Repository**: <https://github.com/humanspeak/svelte-virtual-list>
 
 ## Workspace Structure
 
