@@ -260,7 +260,7 @@
         const blockSums = buildBlockSums(cache, est, items.length)
         const offsetToIndex = getScrollOffsetForIndex(cache, est, anchorIndex, blockSums)
         const currentTop = heightManager.viewport.scrollTop
-        let offsetWithin = 0
+        let offsetWithin: number
         if (mode === 'bottomToTop') {
             // Convert distance-from-end to distance-from-start
             const distanceFromStart = maxScrollTop - currentTop
