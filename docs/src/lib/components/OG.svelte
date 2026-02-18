@@ -58,7 +58,7 @@
         <div class="flex flex-col justify-between space-y-12">
             <!-- Feature Pills -->
             <div class="flex flex-wrap gap-4">
-                {#each features as feature}
+                {#each features as feature (feature)}
                     <div
                         class="flex flex-shrink-0 rounded-full bg-white/10 px-6 py-2 text-lg font-medium backdrop-blur-sm"
                     >
