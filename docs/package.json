@@ -76,7 +76,7 @@
         "puppeteer": "^24.37.4",
         "shiki": "^3.22.0",
         "svelte": "^5.51.3",
-        "svelte-check": "^4.4.0",
+        "svelte-check": "^4.4.3",
         "svelte-sonner": "^1.0.7",
         "sveltekit-superforms": "^2.29.1",
         "tailwind-merge": "^3.4.1",
