@@ -75,6 +75,17 @@
     )
 </script>
 
+<ModeWatcher />
+
+<SeoContext {seo}>
+    <BreadcrumbContext>
+        <BreadcrumbJsonLd />
+        <MotionConfig transition={{ duration: 0.5 }}>
+            {@render children?.()}
+        </MotionConfig>
+    </BreadcrumbContext>
+</SeoContext>
+
 <svelte:head>
     <title>{seo.title}</title>
     <meta name="description" content={seo.description} />
@@ -124,13 +135,3 @@
         }
     })}${'</'}script>`}
 </svelte:head>
-<ModeWatcher />
-
-<SeoContext {seo}>
-    <BreadcrumbContext>
-        <BreadcrumbJsonLd />
-        <MotionConfig transition={{ duration: 0.5 }}>
-            {@render children?.()}
-        </MotionConfig>
-    </BreadcrumbContext>
-</SeoContext>
