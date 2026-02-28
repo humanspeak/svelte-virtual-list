@@ -24,6 +24,7 @@
 
 <svelte:head>
     {#if jsonLd}
-        {@html `<script type="application/ld+json">${jsonLd}</script>`}
+        <!-- eslint-disable-next-line svelte/no-at-html-tags -- Safe: content is JSON.stringify'd, not user input -->
+        {@html `<script type="application/ld+json">${jsonLd}${'</'}script>`}
     {/if}
 </svelte:head>

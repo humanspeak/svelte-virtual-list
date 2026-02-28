@@ -71,7 +71,7 @@
                 bestRating: '5',
                 ratingCount: String(githubStats.stars)
             }
-        })}<\/script>`
+        })}${'</'}script>`
     )
 </script>
 
@@ -107,6 +107,7 @@
     <link rel="alternate" type="text/plain" title="LLM instructions" href="/llms.txt" />
 
     <!-- JSON-LD structured data -->
+    <!-- eslint-disable svelte/no-at-html-tags -- Safe: content is JSON.stringify'd, not user input -->
     {@html softwareAppJsonLd}
 
     {@html `<script type="application/ld+json">${JSON.stringify({
@@ -121,7 +122,7 @@
             name: 'Humanspeak, Inc.',
             url: 'https://humanspeak.com'
         }
-    })}<\/script>`}
+    })}${'</'}script>`}
 </svelte:head>
 <ModeWatcher />
 
