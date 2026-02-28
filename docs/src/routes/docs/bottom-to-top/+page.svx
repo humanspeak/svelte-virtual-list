@@ -9,12 +9,14 @@ description: "Chat-style bottom-to-top scrolling mode for messaging interfaces"
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Bottom to Top Mode | Docs | Svelte Virtual List'
-      seo.description = 'Chat-style bottom-to-top scrolling mode for messaging interfaces'
-    }
-  })
+  if (seo) {
+    seo.title = 'Bottom to Top Mode | Docs | Svelte Virtual List'
+    seo.description = 'Chat-style bottom-to-top scrolling mode for messaging interfaces'
+    seo.ogTitle = 'Bottom to Top'
+    seo.ogTagline = 'Chat-style scrolling for messaging UIs.'
+    seo.ogFeatures = ['Chat UI', 'Bottom Anchored', 'Height Ratcheting', 'Jitter-free']
+    seo.ogSlug = 'docs-bottom-to-top'
+  }
 </script>
 
 # Bottom to Top Mode

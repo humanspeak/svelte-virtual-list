@@ -11,12 +11,14 @@ description: "A high-performance virtual list component for Svelte 5 that effici
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Get Started | Docs | Svelte Virtual List'
-      seo.description = 'A high-performance virtual list component for Svelte 5 that efficiently renders large datasets with minimal memory usage.'
-    }
-  })
+  if (seo) {
+    seo.title = 'Get Started | Docs | Svelte Virtual List'
+    seo.description = 'A high-performance virtual list component for Svelte 5 that efficiently renders large datasets with minimal memory usage.'
+    seo.ogTitle = 'Get Started'
+    seo.ogTagline = 'Install and start using Svelte Virtual List in minutes.'
+    seo.ogFeatures = ['Quick Setup', 'Svelte 5 Runes', 'TypeScript First', 'SvelteKit Ready']
+    seo.ogSlug = 'docs-get-started'
+  }
 </script>
 
 # Get started with Svelte Virtual List

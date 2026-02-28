@@ -9,12 +9,14 @@ description: "Programmatic control methods available on the VirtualList componen
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Methods | API | Svelte Virtual List'
-      seo.description = 'Programmatic control methods available on the VirtualList component'
-    }
-  })
+  if (seo) {
+    seo.title = 'Methods | API | Svelte Virtual List'
+    seo.description = 'Programmatic control methods available on the VirtualList component'
+    seo.ogTitle = 'Methods API'
+    seo.ogTagline = 'Programmatic control of the virtual list.'
+    seo.ogFeatures = ['scrollToIndex', 'scrollToOffset', 'getScrollState', 'reset']
+    seo.ogSlug = 'api-methods'
+  }
 </script>
 
 # Methods

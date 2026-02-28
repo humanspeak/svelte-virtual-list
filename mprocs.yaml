@@ -1,0 +1,13 @@
+procs:
+    urls:
+        shell: node --no-warnings scripts/dev-urls.mjs
+        autostart: true
+        autorestart: false
+    pkg:
+        shell: pnpm -w -r --filter @humanspeak/svelte-virtual-list run dev:pkg
+    docs:
+        shell: pnpm --filter docs run dev
+    sitemap:
+        shell: pnpm --filter docs run sitemap:watch
+    social:
+        shell: pnpm --filter docs run social:watch

@@ -1,41 +1,42 @@
 import { env } from '$env/dynamic/public'
-import * as Sentry from '@sentry/cloudflare'
+import { initCloudflareSentryHandle, sentryHandle } from '@sentry/sveltekit'
 import type { Handle } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 
-const securityHeaders = {
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-    'X-Frame-Options': 'DENY',
-    'X-Content-Type-Options': 'nosniff',
-    'X-XSS-Protection': '1; mode=block',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy':
-        'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
-    'Cross-Origin-Embedder-Policy': 'require-corp',
-    'Cross-Origin-Opener-Policy': 'same-origin',
-    'Cross-Origin-Resource-Policy': 'same-origin'
-}
-
-export const sentryHandle: Handle = async ({ event, resolve }) => {
-    Sentry.sentryPagesPlugin(() => ({
-        environment: env.PUBLIC_ENVIRONMENT ?? 'local',
-        dsn: env.PUBLIC_SENTRY_DSN
-    }))
+const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
     const response = await resolve(event)
-
-    // Check if headers are mutable before attempting to set them
-    try {
-        Object.entries(securityHeaders).forEach(([header, value]) => {
-            if (!response.headers.has(header)) {
-                response.headers.set(header, value)
-            }
-        })
-    } catch {
-        // Headers are immutable, log if needed
-    }
-
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('X-Frame-Options', 'DENY')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.set(
+        'Permissions-Policy',
+        'camera=(), microphone=(), geolocation=(), payment=()'
+    )
+    response.headers.set(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains; preload'
+    )
+    response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
     return response
 }
 
-// If you have custom handlers, make sure to place them after `sentryHandle()` in the `sequence` function.
-export const handle = sequence(sentryHandle)
+export const fullSentryHandle = sequence(
+    initCloudflareSentryHandle({
+        environment: env.PUBLIC_ENVIRONMENT ?? 'local',
+        dsn: env.PUBLIC_SENTRY_DSN,
+        // Adds request headers and IP for users, for more info visit:
+        // https://docs.sentry.io/platforms/javascript/guides/sveltekit/configuration/options/#sendDefaultPii
+        sendDefaultPii: true,
+        // Set tracesSampleRate to 1.0 to capture 100%
+        // of transactions for tracing.
+        // We recommend adjusting this value in production
+        // Learn more at
+        // https://docs.sentry.io/platforms/javascript/configuration/options/#traces-sample-rate
+        tracesSampleRate: 1.0,
+        // Enable logs to be sent to Sentry
+        enableLogs: true
+    }),
+    sentryHandle()
+)
+
+export const handle: Handle = sequence(fullSentryHandle, handleSecurityHeaders)

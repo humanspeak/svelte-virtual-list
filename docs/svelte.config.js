@@ -71,8 +71,9 @@ const config = {
                 'script-src': [
                     'self',
                     'https://kit.fontawesome.com',
-                    'https://*.ingest.us.sentry.io',
-                    'unsafe-inline'
+                    'https://*.ahrefs.com',
+                    'unsafe-inline',
+                    'wasm-unsafe-eval'
                 ],
                 'style-src': ['self', 'unsafe-inline', 'https://kit.fontawesome.com'],
                 'img-src': ['self', 'data:', 'https:'],

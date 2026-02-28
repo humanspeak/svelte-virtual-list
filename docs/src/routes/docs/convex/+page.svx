@@ -7,12 +7,14 @@ description: "Use Svelte Virtual List with Convex for real-time data and infinit
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Convex Integration | Docs | Svelte Virtual List'
-      seo.description = 'Use Svelte Virtual List with Convex for real-time data and infinite scroll pagination.'
-    }
-  })
+  if (seo) {
+    seo.title = 'Convex Integration | Docs | Svelte Virtual List'
+    seo.description = 'Use Svelte Virtual List with Convex for real-time data and infinite scroll pagination.'
+    seo.ogTitle = 'Convex Integration'
+    seo.ogTagline = 'Real-time data with infinite scroll pagination.'
+    seo.ogFeatures = ['Convex Backend', 'Real-time Sync', 'Cursor Pagination', 'Live Updates']
+    seo.ogSlug = 'docs-convex'
+  }
 </script>
 
 # Infinite Scroll with Convex
