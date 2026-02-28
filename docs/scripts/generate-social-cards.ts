@@ -55,7 +55,7 @@ function buildOgHtml(opts: {
         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; align-self: flex-start; gap: 0.5rem; border-radius: 9999px; border: 1px solid rgba(255, 255, 255, 0.1); background-color: rgba(255, 255, 255, 0.05); padding: 0.5rem 1rem; font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; letter-spacing: 0.025em; color: rgba(255, 255, 255, 0.8); text-transform: uppercase; font-family: 'lato';">
                 <img src="${humanspeakSvgDataUri}" width="16" height="16" style="height: 1rem; width: 1rem; opacity: 0.8;" />
-                <span>@humanspeak/svelte-markdown</span>
+                <span>@humanspeak/svelte-virtual-list</span>
             </div>
             <h1 style="margin: 0; font-size: ${titleFontSize}; line-height: 1.1; font-weight: 800; letter-spacing: -0.05em; font-family: 'lato-extrabold';">${title}</h1>
             <p style="margin: 0; font-size: ${descFontSize}; line-height: 1.375; max-width: 64rem; font-weight: 500; color: rgba(255, 255, 255, 0.7); font-family: 'lato';">${description}</p>
@@ -196,14 +196,13 @@ async function main() {
     console.log(`Found ${pages.length} pages with social card data`)
 
     // Build task list: per-page og + twitter variants, plus defaults
-    const defaultTitle = 'Svelte Markdown'
-    const defaultDescription =
-        'Fast, secure markdown rendering with built-in caching and snippet overrides.'
+    const defaultTitle = 'Svelte Virtual List'
+    const defaultDescription = 'Efficiently render thousands of items with minimal memory usage.'
     const defaultFeatures = [
-        'Svelte 5 Runes',
-        'TypeScript First',
-        '50-200x Caching',
-        'Marked Extensions'
+        'Dynamic Heights',
+        'Bidirectional Scrolling',
+        'TypeScript Support',
+        '5kb Gzipped'
     ]
 
     const tasks: CardTask[] = []
