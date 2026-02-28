@@ -40,3 +40,10 @@ junit-playwright.xml
 # Development Notes
 .notes/
 docs/src/lib/sitemap-manifest.json
+
+# mprocs
+mprocs.log
+
+# docs
+docs/static/social-cards/**
+docs/src/lib/github-stats.json
