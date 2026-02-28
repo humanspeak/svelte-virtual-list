@@ -131,7 +131,7 @@
                         <p
                             class="text-muted-foreground mt-6 text-base leading-7 text-pretty md:text-lg"
                         >
-                            High-performance virtual scrolling for Svelte 5. Render massive lists
+                            High-performance virtual scrolling for Svelte 5. <br /> Render massive lists
                             with minimal memory. Automatic height detection. SSR-ready.
                         </p>
                         <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
