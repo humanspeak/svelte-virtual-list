@@ -128,7 +128,7 @@ async function main() {
         const s = await stat(file)
         const route = toRoutePath(file)
         // Exclude non-public routes
-        if (route.startsWith('/social-cards')) continue
+        if (route.startsWith('/social-cards') || route.startsWith('/perf-test')) continue
         // Non-recursive lastmod: use the +page file's mtime only
         manifest[route] = new Date(s.mtimeMs).toISOString().slice(0, 10)
     }
