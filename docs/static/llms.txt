@@ -1,0 +1,55 @@
+# Svelte Virtual List
+
+> A high-performance virtual list component for Svelte 5
+
+Homepage: https://virtuallist.svelte.page
+Package: @humanspeak/svelte-virtual-list
+
+## What it does
+
+Svelte Virtual List efficiently renders large datasets (10,000+ items) by only rendering visible items in the DOM. It features:
+
+- Dynamic item height detection (no fixed height required)
+- Bi-directional scrolling (top-to-bottom and bottom-to-top/chat mode)
+- Infinite scroll with async data loading
+- Programmatic scrolling with alignment options
+- SSR compatible with hydration support
+- Full TypeScript support with generics
+- Zero dependencies
+
+## Install
+
+```bash
+npm install @humanspeak/svelte-virtual-list
+```
+
+## Quick start
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    const items = Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        text: `Item ${i}`
+    }))
+</script>
+
+<VirtualList {items}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## Key links
+
+- Docs: https://virtuallist.svelte.page/docs
+- API reference: https://virtuallist.svelte.page/docs/api/props
+- GitHub: https://github.com/humanspeak/svelte-virtual-list
+- npm: https://www.npmjs.com/package/@humanspeak/svelte-virtual-list
+- Interactive examples: https://virtuallist.svelte.page/examples
+
+## Full docs
+
+For comprehensive documentation including all props, methods, events, types, and code examples, see: https://virtuallist.svelte.page/llms-full.txt
