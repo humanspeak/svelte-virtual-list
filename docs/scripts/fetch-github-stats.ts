@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const OUTPUT = path.resolve(__dirname, '..', 'src', 'lib', 'github-stats.json')
 
-const REPO = 'humanspeak/svelte-markdown'
-const FALLBACK_STARS = 400
+const REPO = 'humanspeak/svelte-virtual-list'
+const FALLBACK_STARS = 100
 
 async function fetchGitHubStats() {
     try {
