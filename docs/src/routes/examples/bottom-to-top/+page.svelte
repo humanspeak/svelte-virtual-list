@@ -19,6 +19,10 @@
             seo.title = 'Bottom to Top | Examples | Svelte Virtual List'
             seo.description =
                 'Chat-style virtual list that renders items from bottom to top, ideal for messaging interfaces and real-time feeds.'
+            seo.ogTitle = 'Bottom to Top'
+            seo.ogTagline = 'Chat-style list anchored to the bottom.'
+            seo.ogFeatures = ['Chat UI', 'Bottom Anchored', 'Real-time Feeds', 'Auto Scroll']
+            seo.ogSlug = 'examples-bottom-to-top'
         }
     })
 </script>

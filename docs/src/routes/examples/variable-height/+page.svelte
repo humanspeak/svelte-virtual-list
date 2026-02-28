@@ -19,6 +19,15 @@
             seo.title = 'Variable Height | Examples | Svelte Virtual List'
             seo.description =
                 'Virtual list with automatic handling of variable item heights, supporting dynamic content like accordions and expandable rows.'
+            seo.ogTitle = 'Variable Heights'
+            seo.ogTagline = 'Auto-measured items with dynamic content.'
+            seo.ogFeatures = [
+                'Auto Measurement',
+                'Dynamic Content',
+                'Expandable Rows',
+                'Mixed Sizes'
+            ]
+            seo.ogSlug = 'examples-variable-height'
         }
     })
 </script>

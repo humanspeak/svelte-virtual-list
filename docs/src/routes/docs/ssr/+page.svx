@@ -13,6 +13,10 @@ description: "Server-side rendering support for Svelte Virtual List in SvelteKit
     if (seo) {
       seo.title = 'SSR Support | Docs | Svelte Virtual List'
       seo.description = 'Server-side rendering support for Svelte Virtual List in SvelteKit'
+      seo.ogTitle = 'SSR Support'
+      seo.ogTagline = 'Server-side rendering with SvelteKit.'
+      seo.ogFeatures = ['SvelteKit SSR', 'Hydration', 'SEO Friendly', 'No Flash']
+      seo.ogSlug = 'docs-ssr'
     }
   })
 </script>

@@ -27,6 +27,10 @@
             seo.title = 'Performance Test | Svelte Virtual List'
             seo.description =
                 'Benchmark Svelte Virtual List performance with configurable item counts up to 100k and real-time FPS and memory tracking.'
+            seo.ogTitle = 'Performance Test'
+            seo.ogTagline = 'Benchmark up to 100k items with real-time FPS tracking.'
+            seo.ogFeatures = ['100k Items', 'FPS Monitoring', 'Memory Tracking', 'Live Benchmarks']
+            seo.ogSlug = 'perf-test'
         }
     })
 

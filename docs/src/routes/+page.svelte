@@ -26,6 +26,15 @@
             seo.title = 'Svelte Virtual List - High-performance virtual scrolling for Svelte 5'
             seo.description =
                 'High-performance virtual list component for Svelte 5 that efficiently renders 10k+ items with minimal memory usage.'
+            seo.ogTitle = 'Svelte Virtual List'
+            seo.ogTagline = 'High-performance virtual scrolling for Svelte 5.'
+            seo.ogFeatures = [
+                'Dynamic Heights',
+                'Bidirectional Scrolling',
+                'TypeScript Support',
+                '5kb Gzipped'
+            ]
+            seo.ogSlug = 'home'
         }
     })
 

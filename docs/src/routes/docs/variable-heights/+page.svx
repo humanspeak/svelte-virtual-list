@@ -13,6 +13,10 @@ description: "Automatic handling of variable item heights in Svelte Virtual List
     if (seo) {
       seo.title = 'Variable Heights | Docs | Svelte Virtual List'
       seo.description = 'Automatic handling of variable item heights in Svelte Virtual List'
+      seo.ogTitle = 'Variable Heights'
+      seo.ogTagline = 'Auto-measured items of any size.'
+      seo.ogFeatures = ['Auto Measurement', 'Dynamic Resize', 'O(1) Updates', 'Mixed Sizes']
+      seo.ogSlug = 'docs-variable-heights'
     }
   })
 </script>

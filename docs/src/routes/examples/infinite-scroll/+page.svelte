@@ -19,6 +19,10 @@
             seo.title = 'Infinite Scroll | Examples | Svelte Virtual List'
             seo.description =
                 'Automatically load more data as users scroll near the end of the list with seamless pagination and loading indicators.'
+            seo.ogTitle = 'Infinite Scroll'
+            seo.ogTagline = 'Load more data seamlessly as users scroll.'
+            seo.ogFeatures = ['Auto Loading', 'Pagination', 'Loading States', 'Threshold Config']
+            seo.ogSlug = 'examples-infinite-scroll'
         }
     })
 </script>

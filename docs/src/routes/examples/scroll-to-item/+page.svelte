@@ -19,6 +19,10 @@
             seo.title = 'Scroll to Item | Examples | Svelte Virtual List'
             seo.description =
                 'Programmatically scroll to any item in the virtual list with configurable alignment options like start, center, and end.'
+            seo.ogTitle = 'Scroll to Item'
+            seo.ogTagline = 'Jump to any item with configurable alignment.'
+            seo.ogFeatures = ['scrollToIndex', 'Start/Center/End', 'Smooth Scroll', 'Instant Jump']
+            seo.ogSlug = 'examples-scroll-to-item'
         }
     })
 </script>

@@ -13,6 +13,10 @@ description: "Debug mode for development and troubleshooting Svelte Virtual List
     if (seo) {
       seo.title = 'Debug Mode | Docs | Svelte Virtual List'
       seo.description = 'Debug mode for development and troubleshooting Svelte Virtual List'
+      seo.ogTitle = 'Debug Mode'
+      seo.ogTagline = 'Visual debugging tools for development.'
+      seo.ogFeatures = ['Visual Overlay', 'Height Inspector', 'Scroll Position', 'Performance Info']
+      seo.ogSlug = 'docs-debug'
     }
   })
 </script>

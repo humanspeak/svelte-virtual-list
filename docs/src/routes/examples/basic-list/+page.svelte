@@ -19,6 +19,10 @@
             seo.title = 'Basic List | Examples | Svelte Virtual List'
             seo.description =
                 'A simple virtual list rendering thousands of items efficiently with fixed-height rows and smooth scrolling performance.'
+            seo.ogTitle = 'Basic List'
+            seo.ogTagline = 'Render thousands of items with smooth scrolling.'
+            seo.ogFeatures = ['Fixed Heights', 'Smooth Scroll', '10k+ Items', 'Minimal Memory']
+            seo.ogSlug = 'examples-basic-list'
         }
     })
 </script>
