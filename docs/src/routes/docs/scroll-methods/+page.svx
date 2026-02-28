@@ -9,16 +9,14 @@ description: "Programmatically scroll to any item in the virtual list with confi
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Scroll Methods | Docs | Svelte Virtual List'
-      seo.description = 'Programmatically scroll to any item in the virtual list with configurable alignment options.'
-      seo.ogTitle = 'Scroll Methods'
-      seo.ogTagline = 'Programmatic scrolling with alignment options.'
-      seo.ogFeatures = ['scrollToIndex', 'scrollToOffset', 'Start/Center/End', 'Smooth Scroll']
-      seo.ogSlug = 'docs-scroll-methods'
-    }
-  })
+  if (seo) {
+    seo.title = 'Scroll Methods | Docs | Svelte Virtual List'
+    seo.description = 'Programmatically scroll to any item in the virtual list with configurable alignment options.'
+    seo.ogTitle = 'Scroll Methods'
+    seo.ogTagline = 'Programmatic scrolling with alignment options.'
+    seo.ogFeatures = ['scrollToIndex', 'scrollToOffset', 'Start/Center/End', 'Smooth Scroll']
+    seo.ogSlug = 'docs-scroll-methods'
+  }
 </script>
 
 # Scroll Methods

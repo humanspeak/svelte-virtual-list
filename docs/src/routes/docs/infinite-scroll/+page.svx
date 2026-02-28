@@ -9,16 +9,14 @@ description: "Load more data automatically as users scroll near the end of the l
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Infinite Scroll | Docs | Svelte Virtual List'
-      seo.description = 'Load more data automatically as users scroll near the end of the list.'
-      seo.ogTitle = 'Infinite Scroll'
-      seo.ogTagline = 'Auto-load data as users scroll.'
-      seo.ogFeatures = ['Auto Loading', 'Threshold Config', 'Loading States', 'Both Directions']
-      seo.ogSlug = 'docs-infinite-scroll'
-    }
-  })
+  if (seo) {
+    seo.title = 'Infinite Scroll | Docs | Svelte Virtual List'
+    seo.description = 'Load more data automatically as users scroll near the end of the list.'
+    seo.ogTitle = 'Infinite Scroll'
+    seo.ogTagline = 'Auto-load data as users scroll.'
+    seo.ogFeatures = ['Auto Loading', 'Threshold Config', 'Loading States', 'Both Directions']
+    seo.ogSlug = 'docs-infinite-scroll'
+  }
 </script>
 
 # Infinite Scroll

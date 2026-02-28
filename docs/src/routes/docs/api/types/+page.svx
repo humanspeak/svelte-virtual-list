@@ -2,16 +2,14 @@
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Types | API | Svelte Virtual List'
-      seo.description = 'TypeScript types exported by the Svelte Virtual List package for type-safe component configuration.'
-      seo.ogTitle = 'Types API'
-      seo.ogTagline = 'TypeScript types for type-safe configuration.'
-      seo.ogFeatures = ['Full Type Safety', 'Generic Items', 'Exported Types', 'IntelliSense']
-      seo.ogSlug = 'api-types'
-    }
-  })
+  if (seo) {
+    seo.title = 'Types | API | Svelte Virtual List'
+    seo.description = 'TypeScript types exported by the Svelte Virtual List package for type-safe component configuration.'
+    seo.ogTitle = 'Types API'
+    seo.ogTagline = 'TypeScript types for type-safe configuration.'
+    seo.ogFeatures = ['Full Type Safety', 'Generic Items', 'Exported Types', 'IntelliSense']
+    seo.ogSlug = 'api-types'
+  }
 </script>
 
 # Types

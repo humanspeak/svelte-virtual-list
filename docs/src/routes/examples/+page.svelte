@@ -16,24 +16,21 @@
 
     const { data }: { data: PageData } = $props()
 
-    const breadcrumbs = $derived(getBreadcrumbContext())
+    const breadcrumbs = getBreadcrumbContext()
+    if (breadcrumbs) {
+        breadcrumbs.breadcrumbs = [{ title: 'Examples' }]
+    }
+
     const seo = getSeoContext()
-    $effect(() => {
-        if (breadcrumbs) {
-            breadcrumbs.breadcrumbs = [{ title: 'Examples' }]
-        }
-    })
-    $effect(() => {
-        if (seo) {
-            seo.title = 'Examples | Svelte Virtual List'
-            seo.description =
-                'Explore interactive examples showcasing virtual list features including basic lists, infinite scroll, variable heights, and more.'
-            seo.ogTitle = 'Examples'
-            seo.ogTagline = 'Interactive demos of every virtual list feature.'
-            seo.ogFeatures = ['Basic List', 'Infinite Scroll', 'Variable Heights', 'Bottom to Top']
-            seo.ogSlug = 'examples'
-        }
-    })
+    if (seo) {
+        seo.title = 'Examples | Svelte Virtual List'
+        seo.description =
+            'Explore interactive examples showcasing virtual list features including basic lists, infinite scroll, variable heights, and more.'
+        seo.ogTitle = 'Examples'
+        seo.ogTagline = 'Interactive demos of every virtual list feature.'
+        seo.ogFeatures = ['Basic List', 'Infinite Scroll', 'Variable Heights', 'Bottom to Top']
+        seo.ogSlug = 'examples'
+    }
 
     /**
      * Get all example routes from the sitemap manifest

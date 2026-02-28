@@ -4,27 +4,24 @@
     import Example from '$lib/components/general/Example.svelte'
     import InfiniteScrollExample from '$lib/examples/InfiniteScrollExample.svelte'
 
-    const breadcrumbs = $derived(getBreadcrumbContext())
+    const breadcrumbs = getBreadcrumbContext()
+    if (breadcrumbs) {
+        breadcrumbs.breadcrumbs = [
+            { title: 'Examples', href: '/examples' },
+            { title: 'Infinite Scroll' }
+        ]
+    }
+
     const seo = getSeoContext()
-    $effect(() => {
-        if (breadcrumbs) {
-            breadcrumbs.breadcrumbs = [
-                { title: 'Examples', href: '/examples' },
-                { title: 'Infinite Scroll' }
-            ]
-        }
-    })
-    $effect(() => {
-        if (seo) {
-            seo.title = 'Infinite Scroll | Examples | Svelte Virtual List'
-            seo.description =
-                'Automatically load more data as users scroll near the end of the list with seamless pagination and loading indicators.'
-            seo.ogTitle = 'Infinite Scroll'
-            seo.ogTagline = 'Load more data seamlessly as users scroll.'
-            seo.ogFeatures = ['Auto Loading', 'Pagination', 'Loading States', 'Threshold Config']
-            seo.ogSlug = 'examples-infinite-scroll'
-        }
-    })
+    if (seo) {
+        seo.title = 'Infinite Scroll | Examples | Svelte Virtual List'
+        seo.description =
+            'Automatically load more data as users scroll near the end of the list with seamless pagination and loading indicators.'
+        seo.ogTitle = 'Infinite Scroll'
+        seo.ogTagline = 'Load more data seamlessly as users scroll.'
+        seo.ogFeatures = ['Auto Loading', 'Pagination', 'Loading States', 'Threshold Config']
+        seo.ogSlug = 'examples-infinite-scroll'
+    }
 </script>
 
 <Example>

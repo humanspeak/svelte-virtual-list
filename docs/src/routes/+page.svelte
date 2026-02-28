@@ -5,38 +5,32 @@
     import Footer from '$lib/components/general/Footer.svelte'
     import Example from '$lib/components/general/Example.svelte'
     import BasicList from '$lib/examples/BasicList.svelte'
-    import { type BreadcrumbContext } from '$lib/components/contexts/Breadcrumb/type'
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
     import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
     import { goto } from '$app/navigation'
 
     // mounted no longer needed for CSS enter
     let headingContainer: HTMLDivElement | null = $state(null)
-    const breadcrumbContext = $state<BreadcrumbContext | undefined>(getBreadcrumbContext())
+    const breadcrumbContext = getBreadcrumbContext()
+    if (breadcrumbContext) {
+        breadcrumbContext.breadcrumbs = []
+    }
+
     const seo = getSeoContext()
-
-    $effect(() => {
-        if (breadcrumbContext) {
-            breadcrumbContext.breadcrumbs = []
-        }
-    })
-
-    $effect(() => {
-        if (seo) {
-            seo.title = 'Svelte Virtual List - High-performance virtual scrolling for Svelte 5'
-            seo.description =
-                'High-performance virtual list component for Svelte 5 that efficiently renders 10k+ items with minimal memory usage.'
-            seo.ogTitle = 'Svelte Virtual List'
-            seo.ogTagline = 'High-performance virtual scrolling for Svelte 5.'
-            seo.ogFeatures = [
-                'Dynamic Heights',
-                'Bidirectional Scrolling',
-                'TypeScript Support',
-                '5kb Gzipped'
-            ]
-            seo.ogSlug = 'home'
-        }
-    })
+    if (seo) {
+        seo.title = 'Svelte Virtual List - High-performance virtual scrolling for Svelte 5'
+        seo.description =
+            'High-performance virtual list component for Svelte 5 that efficiently renders 10k+ items with minimal memory usage.'
+        seo.ogTitle = 'Svelte Virtual List'
+        seo.ogTagline = 'High-performance virtual scrolling for Svelte 5.'
+        seo.ogFeatures = [
+            'Dynamic Heights',
+            'Bidirectional Scrolling',
+            'TypeScript Support',
+            '5kb Gzipped'
+        ]
+        seo.ogSlug = 'home'
+    }
 
     function splitHeadingWords(root: HTMLElement) {
         const lines = root.querySelectorAll('h1 span')

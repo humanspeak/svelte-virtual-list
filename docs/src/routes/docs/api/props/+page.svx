@@ -9,16 +9,14 @@ description: "All available props for the SvelteVirtualList component"
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Props | API | Svelte Virtual List'
-      seo.description = 'All available props for the SvelteVirtualList component'
-      seo.ogTitle = 'Props API'
-      seo.ogTagline = 'All available component props.'
-      seo.ogFeatures = ['items', 'itemHeight', 'bottomToTop', 'overScan']
-      seo.ogSlug = 'api-props'
-    }
-  })
+  if (seo) {
+    seo.title = 'Props | API | Svelte Virtual List'
+    seo.description = 'All available props for the SvelteVirtualList component'
+    seo.ogTitle = 'Props API'
+    seo.ogTagline = 'All available component props.'
+    seo.ogFeatures = ['items', 'itemHeight', 'bottomToTop', 'overScan']
+    seo.ogSlug = 'api-props'
+  }
 </script>
 
 # Props

@@ -2,16 +2,14 @@
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
   const seo = getSeoContext()
-  $effect(() => {
-    if (seo) {
-      seo.title = 'Events | API | Svelte Virtual List'
-      seo.description = 'Callbacks and event handlers for responding to virtual list scroll, load, and visibility events.'
-      seo.ogTitle = 'Events API'
-      seo.ogTagline = 'Respond to scroll, load, and visibility events.'
-      seo.ogFeatures = ['onScroll', 'onLoadMore', 'onVisibleChange', 'onScrollEnd']
-      seo.ogSlug = 'api-events'
-    }
-  })
+  if (seo) {
+    seo.title = 'Events | API | Svelte Virtual List'
+    seo.description = 'Callbacks and event handlers for responding to virtual list scroll, load, and visibility events.'
+    seo.ogTitle = 'Events API'
+    seo.ogTagline = 'Respond to scroll, load, and visibility events.'
+    seo.ogFeatures = ['onScroll', 'onLoadMore', 'onVisibleChange', 'onScrollEnd']
+    seo.ogSlug = 'api-events'
+  }
 </script>
 
 # Events & Callbacks

@@ -12,27 +12,24 @@
     } from '@humanspeak/svelte-virtual-list'
     import { onMount } from 'svelte'
 
-    const breadcrumbs = $derived(getBreadcrumbContext())
+    const breadcrumbs = getBreadcrumbContext()
+    if (breadcrumbs) {
+        breadcrumbs.breadcrumbs = [
+            { title: 'Examples', href: '/examples' },
+            { title: 'Performance Test' }
+        ]
+    }
+
     const seo = getSeoContext()
-    $effect(() => {
-        if (breadcrumbs) {
-            breadcrumbs.breadcrumbs = [
-                { title: 'Examples', href: '/examples' },
-                { title: 'Performance Test' }
-            ]
-        }
-    })
-    $effect(() => {
-        if (seo) {
-            seo.title = 'Performance Test | Svelte Virtual List'
-            seo.description =
-                'Benchmark Svelte Virtual List performance with configurable item counts up to 100k and real-time FPS and memory tracking.'
-            seo.ogTitle = 'Performance Test'
-            seo.ogTagline = 'Benchmark up to 100k items with real-time FPS tracking.'
-            seo.ogFeatures = ['100k Items', 'FPS Monitoring', 'Memory Tracking', 'Live Benchmarks']
-            seo.ogSlug = 'perf-test'
-        }
-    })
+    if (seo) {
+        seo.title = 'Performance Test | Svelte Virtual List'
+        seo.description =
+            'Benchmark Svelte Virtual List performance with configurable item counts up to 100k and real-time FPS and memory tracking.'
+        seo.ogTitle = 'Performance Test'
+        seo.ogTagline = 'Benchmark up to 100k items with real-time FPS tracking.'
+        seo.ogFeatures = ['100k Items', 'FPS Monitoring', 'Memory Tracking', 'Live Benchmarks']
+        seo.ogSlug = 'perf-test'
+    }
 
     // Test configuration
     type ItemCount = 10000 | 50000 | 100000
