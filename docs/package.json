@@ -3,7 +3,7 @@
     "version": "0.0.1",
     "type": "module",
     "scripts": {
-        "build": "tsx ./scripts/fetch-github-stats.ts && tsx ./scripts/generate-social-cards.ts && vite build",
+        "build": "tsx ./scripts/fetch-github-stats.ts && node ./scripts/generate-sitemap-manifest.mjs && tsx ./scripts/generate-social-cards.ts && vite build",
         "cf-typegen": "wrangler types && mv worker-configuration.d.ts src/",
         "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
         "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -64,7 +64,6 @@
         "formsnap": "^2.0.1",
         "globals": "^17.3.0",
         "highlight.js": "^11.11.1",
-        "lucide-svelte": "^0.575.0",
         "mdsvex": "^0.12.6",
         "mode-watcher": "^1.1.0",
         "paneforge": "^1.0.2",

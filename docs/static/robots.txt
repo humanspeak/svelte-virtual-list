@@ -1,0 +1,31 @@
+# https://virtuallist.svelte.page/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /social-cards
+Disallow: /perf-test
+
+# AI Crawlers - Welcome
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Anthropic-ai
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://virtuallist.svelte.page/sitemap.xml
+LLMsTxt: https://virtuallist.svelte.page/llms.txt

@@ -1,10 +1,10 @@
 <script lang="ts">
     import { motion, animate, type MotionTransition } from '@humanspeak/svelte-motion'
-    import type { DOMKeyframesDefinition } from 'motion'
     import Header from '$lib/components/general/Header.svelte'
     import Footer from '$lib/components/general/Footer.svelte'
     import Example from '$lib/components/general/Example.svelte'
     import BasicList from '$lib/examples/BasicList.svelte'
+    import Play from '@lucide/svelte/icons/play'
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
     import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
     import { goto } from '$app/navigation'
@@ -65,7 +65,7 @@
                 const words = splitHeadingWords(headingContainer)
                 headingContainer.style.visibility = 'visible'
                 words.forEach((el, i) => {
-                    const keyframes: DOMKeyframesDefinition = {
+                    const keyframes = {
                         opacity: [0, 1],
                         y: [10, 0]
                     }
@@ -131,7 +131,7 @@
                         <p
                             class="text-muted-foreground mt-6 text-base leading-7 text-pretty md:text-lg"
                         >
-                            High-performance virtual scrolling for Svelte 5. Render massive lists
+                            High-performance virtual scrolling for Svelte 5. <br /> Render massive lists
                             with minimal memory. Automatic height detection. SSR-ready.
                         </p>
                         <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -190,7 +190,7 @@
                                     <div
                                         class="border-border text-muted-foreground flex items-center gap-2 border-b px-4 py-3 text-sm"
                                     >
-                                        <i class="fa-solid fa-play text-brand-500 text-xs"></i>
+                                        <Play size={12} class="text-brand-500" />
                                         <span>Interactive Demo - 10,000 items</span>
                                     </div>
                                     <div class="h-[400px] overflow-hidden">

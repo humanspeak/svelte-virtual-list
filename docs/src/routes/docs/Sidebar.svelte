@@ -1,23 +1,20 @@
 <!--
   Left sidebar navigation component
-  Hierarchical structure with FontAwesome icons and proper styling
+  Hierarchical structure with Lucide icons and proper styling
 -->
 <script lang="ts">
     import { motion } from '@humanspeak/svelte-motion'
-    import { onMount } from 'svelte'
     import { slide } from 'svelte/transition'
     import { PersistedState } from 'runed'
     import { docsNavigation, type NavItem, type NavSection } from '$lib/utils/docsNav'
+    import Icon from '$lib/components/base/Icon.svelte'
+    import ChevronDown from '@lucide/svelte/icons/chevron-down'
+    import ArrowRight from '@lucide/svelte/icons/arrow-right'
+    import ExternalLink from '@lucide/svelte/icons/external-link'
 
-    const { currentPath } = $props()
+    const { currentPath, otherProjects = [] }: { currentPath: string; otherProjects?: NavItem[] } =
+        $props()
 
-    type OtherProject = {
-        url: string
-        slug: string
-        shortDescription: string
-    }
-
-    let otherProjects: NavItem[] = $state([])
     const openSections = new PersistedState<Record<string, boolean>>('sidebar-sections', {})
 
     // Navigation structure combining static docs nav with dynamic other projects
@@ -25,12 +22,12 @@
         ...docsNavigation,
         {
             title: 'Love and Respect',
-            icon: 'fa-solid fa-heart',
+            icon: 'heart',
             items: [
                 {
                     title: 'Beye.ai',
                     href: 'https://beye.ai',
-                    icon: 'fa-solid fa-heart',
+                    icon: 'heart',
                     external: true
                 }
             ]
@@ -39,7 +36,7 @@
             ? [
                   {
                       title: 'Other Projects',
-                      icon: 'fa-solid fa-cube',
+                      icon: 'box',
                       items: otherProjects
                   }
               ]
@@ -57,28 +54,6 @@
             [section.title]: !isSectionOpen(section)
         }
     }
-
-    onMount(async () => {
-        try {
-            const response = await fetch('/api/other-projects')
-            if (!response.ok) {
-                return
-            }
-            const projects: OtherProject[] = await response.json()
-
-            // Convert to nav items format
-            otherProjects = projects.map((project) => ({
-                title: formatTitle(project.slug),
-                href: project.url,
-                icon: 'fa-solid fa-heart',
-                external: true
-            }))
-        } catch (error) {
-            console.error('Failed to load other projects:', error)
-        }
-    })
-
-    const formatTitle = (slug: string): string => slug.toLowerCase()
 
     const isActive = (href: string) => {
         const basePath = currentPath.split(/[?#]/)[0]
@@ -112,17 +87,19 @@
                             whileHover={{ scale: 1.25 }}
                             transition={{ type: 'spring', stiffness: 500, damping: 15 }}
                         >
-                            <i class="{section.icon} fa-fw text-muted-foreground text-sm"></i>
+                            <Icon name={section.icon} size={14} class="text-muted-foreground" />
                         </motion.span>
                         {section.title}
                     </span>
-                    <i
-                        class="fa-solid fa-chevron-down text-muted-foreground shrink-0 text-xs transition-transform duration-200 {isSectionOpen(
+                    <span
+                        class="text-muted-foreground shrink-0 transition-transform duration-200 {isSectionOpen(
                             section
                         )
                             ? 'rotate-180'
                             : ''}"
-                    ></i>
+                    >
+                        <ChevronDown size={12} />
+                    </span>
                 </button>
                 {#if isSectionOpen(section)}
                     <ul
@@ -153,24 +130,24 @@
                                                 damping: 15
                                             }}
                                         >
-                                            <i
-                                                class="{item.icon} fa-fw text-sm {isActive(
-                                                    item.href
-                                                )
+                                            <Icon
+                                                name={item.icon}
+                                                size={14}
+                                                class={isActive(item.href)
                                                     ? 'text-accent-foreground'
-                                                    : 'text-muted-foreground group-hover:text-foreground'}"
-                                            ></i>
+                                                    : 'text-muted-foreground group-hover:text-foreground'}
+                                            />
                                         </motion.span>
                                     {:else}
-                                        <i
-                                            class="fa-solid fa-arrow-right fa-fw text-muted-foreground mr-3 text-xs"
-                                        ></i>
+                                        <span class="text-muted-foreground mr-3">
+                                            <ArrowRight size={12} />
+                                        </span>
                                     {/if}
                                     {item.title}
                                     {#if item?.external}
-                                        <i
-                                            class="fa-solid fa-arrow-up-right-from-square ml-2 text-xs opacity-50"
-                                        ></i>
+                                        <span class="ml-2 opacity-50">
+                                            <ExternalLink size={12} />
+                                        </span>
                                     {/if}
                                 </a>
                             </motion.li>

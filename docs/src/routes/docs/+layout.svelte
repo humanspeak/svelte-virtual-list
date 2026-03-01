@@ -9,7 +9,7 @@
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
     import { getDocsTitleByPath } from '$lib/utils/docsNav'
 
-    const { children } = $props()
+    const { children, data } = $props()
 
     // Set breadcrumb for docs section
     const breadcrumbContext = getBreadcrumbContext()
@@ -104,7 +104,7 @@
         <aside
             class="border-sidebar-border bg-sidebar hidden w-64 shrink-0 border-r lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto"
         >
-            <Sidebar currentPath={page.url.pathname} />
+            <Sidebar currentPath={page.url.pathname} otherProjects={data.otherProjects} />
         </aside>
 
         <!-- Main content area -->

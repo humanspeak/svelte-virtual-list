@@ -3,6 +3,8 @@
     import { mode } from 'mode-watcher'
     import ModeChanger from './ModeChanger.svelte'
     import * as Sidebar from '$lib/shadcn/components/ui/sidebar/index.js'
+    import Github from '@lucide/svelte/icons/github'
+    import Package from '@lucide/svelte/icons/package'
 </script>
 
 <div class="grid grid-cols-3 items-center">
@@ -27,7 +29,7 @@
             href="https://github.com/humanspeak/svelte-virtual-list"
             target="_blank"
         >
-            <i class="fa-brands fa-github text-xl"></i>
+            <Github size={20} />
         </Button>
         <Button
             variant="ghost"
@@ -35,7 +37,7 @@
             href="https://www.npmjs.com/package/@humanspeak/svelte-virtual-list"
             target="_blank"
         >
-            <i class="fa-brands fa-npm text-xl"></i>
+            <Package size={20} />
         </Button>
     </div>
 </div>

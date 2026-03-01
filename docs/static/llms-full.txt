@@ -1,0 +1,423 @@
+# Svelte Virtual List - Complete Documentation
+
+> A high-performance virtual list component for Svelte 5
+
+- Homepage: https://virtuallist.svelte.page
+- Package: @humanspeak/svelte-virtual-list
+- GitHub: https://github.com/humanspeak/svelte-virtual-list
+- License: MIT
+
+## Overview
+
+Svelte Virtual List efficiently renders large datasets (10,000+ items) by only mounting DOM elements for items visible in the viewport, plus a configurable buffer. It features automatic height detection, bi-directional scrolling, infinite scroll, and programmatic scroll control. Built for Svelte 5 using runes and snippets. Zero dependencies.
+
+## Features
+
+- Dynamic item height handling (no fixed height required)
+- Bi-directional scrolling (topToBottom and bottomToTop modes)
+- Automatic resize handling for dynamic content
+- Full TypeScript support with generics
+- SSR compatible with hydration support
+- Svelte 5 runes ($state, $derived, $effect) and snippets
+- Programmatic scrolling with alignment options
+- Infinite scroll support with onLoadMore callback
+- Memory-optimized for 10k+ items
+- Debug mode with real-time metrics
+
+## Installation
+
+```bash
+npm install @humanspeak/svelte-virtual-list
+pnpm add @humanspeak/svelte-virtual-list
+yarn add @humanspeak/svelte-virtual-list
+```
+
+Requires Svelte 5 and Node 18+.
+
+## Basic Usage
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    const items = Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        text: `Item ${i}`
+    }))
+</script>
+
+<VirtualList {items}>
+    {#snippet renderItem(item, index)}
+        <div class="item">{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## API Reference
+
+### Props
+
+#### Required Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| items | TItem[] | Array of items to render. Supports any type via generic parameter. |
+| renderItem | Snippet<[item: TItem, index: number]> | Svelte snippet defining how each item renders. Receives the item and its index. |
+
+#### Optional Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| mode | 'topToBottom' \| 'bottomToTop' | 'topToBottom' | Scroll direction. Use 'bottomToTop' for chat-style interfaces. |
+| bufferSize | number | 20 | Number of extra items rendered outside the visible viewport for smooth scrolling. |
+| defaultEstimatedItemHeight | number | 40 | Initial pixel height estimate per item before actual measurement. |
+| onLoadMore | () => void \| Promise<void> | undefined | Callback triggered when scrolling near the end of the list. Used for infinite scroll. |
+| loadMoreThreshold | number | 20 | Number of items from the end at which onLoadMore fires. |
+| hasMore | boolean | true | Set to false when all data has been loaded to stop triggering onLoadMore. |
+| containerClass | string | undefined | CSS class for the outer container element. |
+| viewportClass | string | undefined | CSS class for the scrollable viewport element. |
+| contentClass | string | undefined | CSS class for the content wrapper element. |
+| itemsClass | string | undefined | CSS class for individual item containers. |
+| debug | boolean | false | Enable debug mode with real-time metrics overlay. |
+| debugFunction | (info: SvelteVirtualListDebugInfo) => void | undefined | Custom callback receiving debug metrics on each render. |
+| testId | string | undefined | Base test ID for component elements (testing). |
+
+### Methods
+
+Access methods via bind:this on the component:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    type ListRef = {
+        scroll: (_options: {
+            index: number
+            smoothScroll?: boolean
+            align?: 'auto' | 'top' | 'bottom' | 'nearest'
+            shouldThrowOnBounds?: boolean
+        }) => Promise<void>
+    }
+
+    let virtualList: ListRef | undefined = $state(undefined)
+</script>
+
+<VirtualList bind:this={virtualList} {items}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+
+<button onclick={() => virtualList?.scroll({ index: 100 })}>Go to 100</button>
+```
+
+#### scroll(options: SvelteVirtualListScrollOptions): Promise<void>
+
+Scroll to a specific item by index.
+
+Options:
+- index (number, required) - The item index to scroll to.
+- smoothScroll (boolean, default: true) - Whether to animate the scroll.
+- shouldThrowOnBounds (boolean, default: true) - Throw if index is out of bounds.
+- align ('auto' | 'top' | 'bottom' | 'nearest', default: 'auto') - How to position the target item in the viewport.
+
+Alignment behaviors:
+- 'auto': Minimal scroll to make the item visible. No-op if already visible.
+- 'top': Position item at the top of the viewport.
+- 'bottom': Position item at the bottom of the viewport.
+- 'nearest': Scroll to the nearest edge (top or bottom) if the item is not visible.
+
+Examples:
+
+```typescript
+// Scroll to item 100 with smooth animation
+virtualList.scroll({ index: 100 })
+
+// Instant jump to item 500, aligned to top
+virtualList.scroll({ index: 500, smoothScroll: false, align: 'top' })
+
+// Scroll to bottom of list
+virtualList.scroll({ index: items.length - 1, align: 'bottom' })
+```
+
+### Events / Callbacks
+
+#### onLoadMore
+
+Triggered when the user scrolls within loadMoreThreshold items of the end. Supports both sync and async functions.
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let items = $state([...initialItems])
+    let hasMore = $state(true)
+    let loading = $state(false)
+
+    async function loadMore() {
+        if (loading) return
+        loading = true
+        try {
+            const newItems = await fetchMoreItems(items.length)
+            items = [...items, ...newItems]
+            if (newItems.length === 0) hasMore = false
+        } finally {
+            loading = false
+        }
+    }
+</script>
+
+<VirtualList {items} onLoadMore={loadMore} {hasMore}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+#### debugFunction
+
+Receives a SvelteVirtualListDebugInfo object on each render cycle:
+
+```typescript
+type SvelteVirtualListDebugInfo = {
+    startIndex: number        // First rendered item index
+    endIndex: number          // Last rendered item index
+    totalItems: number        // Total items in the list
+    visibleItemsCount: number // Currently visible items
+    processedItems: number    // Items with measured heights
+    averageItemHeight: number // Current average height estimate
+    atTop: boolean            // Whether scrolled to top
+    atBottom: boolean         // Whether scrolled to bottom
+    totalHeight: number       // Total calculated content height
+}
+```
+
+### Types
+
+All types are exported from the package:
+
+```typescript
+import type {
+    SvelteVirtualListProps,
+    SvelteVirtualListMode,
+    SvelteVirtualListScrollOptions,
+    SvelteVirtualListScrollAlign,
+    SvelteVirtualListDebugInfo
+} from '@humanspeak/svelte-virtual-list'
+```
+
+#### SvelteVirtualListMode
+
+```typescript
+type SvelteVirtualListMode = 'topToBottom' | 'bottomToTop'
+```
+
+#### SvelteVirtualListScrollAlign
+
+```typescript
+type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest'
+```
+
+#### SvelteVirtualListScrollOptions
+
+```typescript
+interface SvelteVirtualListScrollOptions {
+    index: number
+    smoothScroll?: boolean          // default: true
+    shouldThrowOnBounds?: boolean   // default: true
+    align?: SvelteVirtualListScrollAlign  // default: 'auto'
+}
+```
+
+#### Strongly-typed items
+
+```typescript
+interface User {
+    id: number
+    name: string
+    email: string
+}
+
+// The component infers TItem from the items array
+const users: User[] = [...]
+
+<VirtualList items={users}>
+    {#snippet renderItem(user: User, index: number)}
+        <div>{user.name} ({user.email})</div>
+    {/snippet}
+</VirtualList>
+```
+
+## Examples
+
+### Bottom-to-Top (Chat Mode)
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    const messages = Array.from({ length: 1000 }, (_, i) => ({
+        id: i,
+        text: `Message ${i}`,
+        sender: i % 2 === 0 ? 'user' : 'bot'
+    }))
+</script>
+
+<VirtualList items={messages} mode="bottomToTop">
+    {#snippet renderItem(message)}
+        <div class={message.sender}>
+            {message.text}
+        </div>
+    {/snippet}
+</VirtualList>
+```
+
+### Infinite Scroll
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let items = $state<{ id: number; text: string }[]>([])
+    let hasMore = $state(true)
+    let loading = $state(false)
+    let cursor = $state(0)
+
+    async function loadMore() {
+        if (loading) return
+        loading = true
+        const res = await fetch(`/api/items?cursor=${cursor}&limit=50`)
+        const { data, nextCursor } = await res.json()
+        items = [...items, ...data]
+        cursor = nextCursor
+        if (!nextCursor) hasMore = false
+        loading = false
+    }
+</script>
+
+<VirtualList {items} onLoadMore={loadMore} {hasMore} loadMoreThreshold={30}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+### Programmatic Scrolling
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    type ListRef = {
+        scroll: (_options: {
+            index: number
+            smoothScroll?: boolean
+            align?: 'auto' | 'top' | 'bottom' | 'nearest'
+            shouldThrowOnBounds?: boolean
+        }) => Promise<void>
+    }
+
+    let virtualList: ListRef | undefined = $state(undefined)
+
+    const items = Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        text: `Item ${i}`
+    }))
+</script>
+
+<div>
+    <button onclick={() => virtualList?.scroll({ index: 0 })}>Top</button>
+    <button onclick={() => virtualList?.scroll({ index: 5000 })}>Middle</button>
+    <button onclick={() => virtualList?.scroll({ index: items.length - 1 })}>Bottom</button>
+    <button onclick={() => virtualList?.scroll({ index: 100, align: 'top', smoothScroll: false })}>
+        Jump to 100
+    </button>
+</div>
+
+<VirtualList bind:this={virtualList} {items}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+### Debug Mode
+
+```svelte
+<VirtualList {items} debug>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+Or with a custom debug callback:
+
+```svelte
+<VirtualList
+    {items}
+    debug
+    debugFunction={(info) => {
+        console.log(`Rendering items ${info.startIndex}-${info.endIndex} of ${info.totalItems}`)
+        console.log(`Average height: ${info.averageItemHeight}px, Total: ${info.totalHeight}px`)
+    }}
+>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+### Variable Heights
+
+The component automatically handles items with different heights. No configuration needed beyond providing the items:
+
+```svelte
+<VirtualList {items} defaultEstimatedItemHeight={60}>
+    {#snippet renderItem(item)}
+        <div>
+            <h3>{item.title}</h3>
+            {#if item.description}
+                <p>{item.description}</p>
+            {/if}
+            {#if item.image}
+                <img src={item.image} alt={item.title} />
+            {/if}
+        </div>
+    {/snippet}
+</VirtualList>
+```
+
+Set defaultEstimatedItemHeight closer to your actual average to reduce initial layout shifts.
+
+## SSR Notes
+
+Svelte Virtual List is SSR compatible out of the box with SvelteKit. No special configuration is needed. During SSR, the component renders a subset of items based on the estimated heights. After hydration, actual heights are measured and the visible range is recalculated.
+
+For optimal SSR performance, load initial data in the page's load function:
+
+```typescript
+// +page.ts
+export async function load({ fetch }) {
+    const items = await fetch('/api/items').then((r) => r.json())
+    return { items }
+}
+```
+
+## DOM Structure
+
+The component uses a four-layer DOM structure:
+
+1. **Container** - Outer wrapper (containerClass)
+2. **Viewport** - Scrollable area (viewportClass)
+3. **Content** - Full-height spacer for scroll area (contentClass)
+4. **Items** - Positioned container for visible items (itemsClass)
+
+## Interactive Examples
+
+- All examples: https://virtuallist.svelte.page/examples
+- Basic list: https://virtuallist.svelte.page/examples/basic-list
+- Bottom to top: https://virtuallist.svelte.page/examples/bottom-to-top
+- Infinite scroll: https://virtuallist.svelte.page/examples/infinite-scroll
+- Scroll to item: https://virtuallist.svelte.page/examples/scroll-to-item
+- Variable height: https://virtuallist.svelte.page/examples/variable-height

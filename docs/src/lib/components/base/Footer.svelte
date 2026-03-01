@@ -1,5 +1,6 @@
 <script lang="ts">
     import { motion } from '@humanspeak/svelte-motion'
+    import Heart from '@lucide/svelte/icons/heart'
 </script>
 
 <footer>
@@ -18,7 +19,7 @@
             style="transform-origin: center center;"
             class="inline-block origin-center align-middle leading-none"
         >
-            <i class="fa-duotone fa-heart"></i>
+            <Heart size={16} class="text-red-500" fill="currentColor" />
         </motion.span>
         <span>by</span>
         <a class="humanspeak" target="_blank" rel="noopener" href="https://humanspeak.com"
@@ -32,9 +33,5 @@
         display: inline-flex;
         align-items: center;
         margin: 0 !important;
-    }
-
-    .fa-heart {
-        --fa-secondary-color: red;
     }
 </style>
