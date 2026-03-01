@@ -52,4 +52,6 @@
 {#if iconMap[name]}
     {@const IconComponent = iconMap[name]}
     <IconComponent {size} class={className} />
+{:else if import.meta.env.DEV}
+    {console.warn(`[Icon] Unknown icon name: "${name}"`)}
 {/if}

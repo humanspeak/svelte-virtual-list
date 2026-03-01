@@ -5,7 +5,6 @@
 - Homepage: https://virtuallist.svelte.page
 - Package: @humanspeak/svelte-virtual-list
 - GitHub: https://github.com/humanspeak/svelte-virtual-list
-- npm: https://www.npmjs.com/package/@humanspeak/svelte-virtual-list
 - License: MIT
 
 ## Overview
@@ -48,7 +47,7 @@ Requires Svelte 5 and Node 18+.
 </script>
 
 <VirtualList {items}>
-    {#snippet renderItem(item)}
+    {#snippet renderItem(item, index)}
         <div class="item">{item.text}</div>
     {/snippet}
 </VirtualList>
@@ -90,7 +89,17 @@ Access methods via bind:this on the component:
 ```svelte
 <script lang="ts">
     import VirtualList from '@humanspeak/svelte-virtual-list'
-    let virtualList: VirtualList
+
+    type ListRef = {
+        scroll: (_options: {
+            index: number
+            smoothScroll?: boolean
+            align?: 'auto' | 'top' | 'bottom' | 'nearest'
+            shouldThrowOnBounds?: boolean
+        }) => Promise<void>
+    }
+
+    let virtualList: ListRef | undefined = $state(undefined)
 </script>
 
 <VirtualList bind:this={virtualList} {items}>
@@ -99,10 +108,10 @@ Access methods via bind:this on the component:
     {/snippet}
 </VirtualList>
 
-<button onclick={() => virtualList.scroll({ index: 100 })}>Go to 100</button>
+<button onclick={() => virtualList?.scroll({ index: 100 })}>Go to 100</button>
 ```
 
-#### scroll(options: SvelteVirtualListScrollOptions): void
+#### scroll(options: SvelteVirtualListScrollOptions): Promise<void>
 
 Scroll to a specific item by index.
 
@@ -130,14 +139,6 @@ virtualList.scroll({ index: 500, smoothScroll: false, align: 'top' })
 // Scroll to bottom of list
 virtualList.scroll({ index: items.length - 1, align: 'bottom' })
 ```
-
-#### scrollToTop(): void
-
-Convenience method to scroll to the first item.
-
-#### scrollToBottom(): void
-
-Convenience method to scroll to the last item.
 
 ### Events / Callbacks
 
@@ -306,7 +307,17 @@ const users: User[] = [...]
 ```svelte
 <script lang="ts">
     import VirtualList from '@humanspeak/svelte-virtual-list'
-    let virtualList: VirtualList
+
+    type ListRef = {
+        scroll: (_options: {
+            index: number
+            smoothScroll?: boolean
+            align?: 'auto' | 'top' | 'bottom' | 'nearest'
+            shouldThrowOnBounds?: boolean
+        }) => Promise<void>
+    }
+
+    let virtualList: ListRef | undefined = $state(undefined)
 
     const items = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
@@ -315,10 +326,10 @@ const users: User[] = [...]
 </script>
 
 <div>
-    <button onclick={() => virtualList.scrollToTop()}>Top</button>
-    <button onclick={() => virtualList.scroll({ index: 5000 })}>Middle</button>
-    <button onclick={() => virtualList.scrollToBottom()}>Bottom</button>
-    <button onclick={() => virtualList.scroll({ index: 100, align: 'top', smoothScroll: false })}>
+    <button onclick={() => virtualList?.scroll({ index: 0 })}>Top</button>
+    <button onclick={() => virtualList?.scroll({ index: 5000 })}>Middle</button>
+    <button onclick={() => virtualList?.scroll({ index: items.length - 1 })}>Bottom</button>
+    <button onclick={() => virtualList?.scroll({ index: 100, align: 'top', smoothScroll: false })}>
         Jump to 100
     </button>
 </div>

@@ -92,9 +92,9 @@
                                     Components
                                     <span in:fade={{ duration: 500 }} class="ml-auto">
                                         {#if props['data-state'] === 'open'}
-                                            <Plus size={16} />
-                                        {:else}
                                             <Minus size={16} />
+                                        {:else}
+                                            <Plus size={16} />
                                         {/if}
                                     </span>
                                 </Sidebar.MenuButton>
@@ -151,9 +151,9 @@
                                     Love & Respect
                                     <span in:fade={{ duration: 500 }} class="ml-auto">
                                         {#if props['data-state'] === 'open'}
-                                            <Plus size={16} />
-                                        {:else}
                                             <Minus size={16} />
+                                        {:else}
+                                            <Plus size={16} />
                                         {/if}
                                     </span>
                                 </Sidebar.MenuButton>

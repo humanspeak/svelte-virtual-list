@@ -13,7 +13,7 @@ export const load: LayoutServerLoad = async ({ fetch }) => {
         const projects: OtherProject[] = await response.json()
         return {
             otherProjects: projects.map((project) => ({
-                title: project.slug.toLowerCase(),
+                title: project.slug,
                 href: project.url,
                 icon: 'heart',
                 external: true
