@@ -5,6 +5,7 @@
     import Footer from '$lib/components/general/Footer.svelte'
     import Example from '$lib/components/general/Example.svelte'
     import BasicList from '$lib/examples/BasicList.svelte'
+    import Play from '@lucide/svelte/icons/play'
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
     import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
     import { goto } from '$app/navigation'
@@ -190,7 +191,7 @@
                                     <div
                                         class="border-border text-muted-foreground flex items-center gap-2 border-b px-4 py-3 text-sm"
                                     >
-                                        <i class="fa-solid fa-play text-brand-500 text-xs"></i>
+                                        <Play size={12} class="text-brand-500" />
                                         <span>Interactive Demo - 10,000 items</span>
                                     </div>
                                     <div class="h-[400px] overflow-hidden">

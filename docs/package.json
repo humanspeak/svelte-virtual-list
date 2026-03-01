@@ -64,7 +64,6 @@
         "formsnap": "^2.0.1",
         "globals": "^17.3.0",
         "highlight.js": "^11.11.1",
-        "lucide-svelte": "^0.575.0",
         "mdsvex": "^0.12.6",
         "mode-watcher": "^1.1.0",
         "paneforge": "^1.0.2",

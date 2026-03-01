@@ -4,6 +4,9 @@
     import * as Collapsible from '$lib/shadcn/components/ui/collapsible/index.js'
     import { fade } from 'svelte/transition'
     import { onMount } from 'svelte'
+    import Book from '@lucide/svelte/icons/book'
+    import Plus from '@lucide/svelte/icons/plus'
+    import Minus from '@lucide/svelte/icons/minus'
 
     interface SvelteComponent {
         url: string
@@ -71,7 +74,7 @@
                     <Sidebar.MenuButton>
                         {#snippet child({ props }: { props: Record<string, unknown> })}
                             <a href="/docs" {...props}>
-                                <i class="fa-solid fa-book fa-fw mr-2"></i>
+                                <Book size={16} class="mr-2" />
                                 <span>Documentation</span>
                             </a>
                         {/snippet}
@@ -89,9 +92,9 @@
                                     Components
                                     <span in:fade={{ duration: 500 }} class="ml-auto">
                                         {#if props['data-state'] === 'open'}
-                                            <i class="fa-solid fa-plus fa-fw"></i>
+                                            <Plus size={16} />
                                         {:else}
-                                            <i class="fa-solid fa-minus fa-fw"></i>
+                                            <Minus size={16} />
                                         {/if}
                                     </span>
                                 </Sidebar.MenuButton>
@@ -148,9 +151,9 @@
                                     Love & Respect
                                     <span in:fade={{ duration: 500 }} class="ml-auto">
                                         {#if props['data-state'] === 'open'}
-                                            <i class="fa-solid fa-plus fa-fw"></i>
+                                            <Plus size={16} />
                                         {:else}
-                                            <i class="fa-solid fa-minus fa-fw"></i>
+                                            <Minus size={16} />
                                         {/if}
                                     </span>
                                 </Sidebar.MenuButton>

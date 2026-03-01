@@ -3,6 +3,9 @@
     import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
     import { motion } from '@humanspeak/svelte-motion'
     import { cn } from '$lib/shadcn/utils'
+    import PlayIcon from '@lucide/svelte/icons/play'
+    import ArrowRight from '@lucide/svelte/icons/arrow-right'
+    import Book from '@lucide/svelte/icons/book'
     import sitemapManifest from '$lib/sitemap-manifest.json'
     import type { PageData } from './$types'
 
@@ -142,7 +145,7 @@
                     <div
                         class="from-brand-500 to-brand-600 mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br transition-transform duration-300 group-hover:scale-110"
                     >
-                        <i class="fa-solid fa-play text-lg text-white"></i>
+                        <PlayIcon size={18} class="text-white" />
                     </div>
 
                     <h3
@@ -160,9 +163,11 @@
                         class="text-brand-600 group-hover:text-brand-700 flex items-center text-sm font-medium"
                     >
                         View Example
-                        <i
-                            class="fa-solid fa-arrow-right ml-2 transition-transform duration-200 group-hover:translate-x-1"
-                        ></i>
+                        <span
+                            class="ml-2 transition-transform duration-200 group-hover:translate-x-1"
+                        >
+                            <ArrowRight size={14} />
+                        </span>
                     </div>
                 </div>
 
@@ -195,7 +200,7 @@
                 whileTap={{ scale: 0.95 }}
             >
                 View Documentation
-                <i class="fa-solid fa-book ml-2"></i>
+                <Book size={16} class="ml-2" />
             </motion.a>
         </div>
     </motion.div>

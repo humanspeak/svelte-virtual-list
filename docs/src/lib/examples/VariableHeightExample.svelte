@@ -1,5 +1,6 @@
 <script lang="ts">
     import VirtualList from '@humanspeak/svelte-virtual-list'
+    import ChevronDown from '@lucide/svelte/icons/chevron-down'
 
     type Item = {
         id: number
@@ -47,11 +48,13 @@
                     class="flex w-full items-center justify-between text-left"
                 >
                     <span class="font-medium">{item.title}</span>
-                    <i
-                        class="fa-solid fa-chevron-down text-muted-foreground text-xs transition-transform {item.expanded
+                    <span
+                        class="text-muted-foreground transition-transform {item.expanded
                             ? 'rotate-180'
                             : ''}"
-                    ></i>
+                    >
+                        <ChevronDown size={12} />
+                    </span>
                 </button>
                 {#if item.expanded}
                     <p class="text-muted-foreground mt-2 text-sm">

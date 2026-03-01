@@ -19,109 +19,109 @@ export type NavSection = {
 export const docsNavigation: NavSection[] = [
     {
         title: 'Get Started',
-        icon: 'fa-solid fa-rocket',
-        items: [{ title: 'Introduction', href: '/docs', icon: 'fa-solid fa-rocket' }]
+        icon: 'rocket',
+        items: [{ title: 'Introduction', href: '/docs', icon: 'rocket' }]
     },
     {
         title: 'API Reference',
-        icon: 'fa-solid fa-book',
+        icon: 'book',
         items: [
             {
                 title: 'Props',
                 href: '/docs/api/props',
-                icon: 'fa-solid fa-sliders'
+                icon: 'sliders-horizontal'
             },
             {
                 title: 'Methods',
                 href: '/docs/api/methods',
-                icon: 'fa-solid fa-code'
+                icon: 'code'
             },
             {
                 title: 'Events',
                 href: '/docs/api/events',
-                icon: 'fa-solid fa-bolt'
+                icon: 'zap'
             },
             {
                 title: 'Types',
                 href: '/docs/api/types',
-                icon: 'fa-solid fa-t'
+                icon: 'type'
             }
         ]
     },
     {
         title: 'Examples',
-        icon: 'fa-solid fa-code',
+        icon: 'code',
         items: [
             {
                 title: 'Variable Heights',
                 href: '/docs/variable-heights',
-                icon: 'fa-solid fa-arrows-up-down'
+                icon: 'arrow-up-down'
             },
             {
                 title: 'Bottom to Top',
                 href: '/docs/bottom-to-top',
-                icon: 'fa-solid fa-comments'
+                icon: 'message-circle'
             },
             {
                 title: 'Infinite Scroll',
                 href: '/docs/infinite-scroll',
-                icon: 'fa-solid fa-infinity'
+                icon: 'infinity'
             },
             {
                 title: 'Scroll Methods',
                 href: '/docs/scroll-methods',
-                icon: 'fa-solid fa-crosshairs'
+                icon: 'crosshair'
             },
             {
                 title: 'SSR Support',
                 href: '/docs/ssr',
-                icon: 'fa-solid fa-server'
+                icon: 'server'
             },
             {
                 title: 'Debug Mode',
                 href: '/docs/debug',
-                icon: 'fa-solid fa-bug'
+                icon: 'bug'
             },
             {
                 title: 'Convex',
                 href: '/docs/convex',
-                icon: 'fa-solid fa-database'
+                icon: 'database'
             }
         ]
     },
     {
         title: 'Interactive Demos',
-        icon: 'fa-solid fa-play',
+        icon: 'play',
         items: [
             {
                 title: 'All Examples',
                 href: '/examples',
-                icon: 'fa-solid fa-play'
+                icon: 'play'
             },
             {
                 title: 'Basic List',
                 href: '/examples/basic-list',
-                icon: 'fa-solid fa-list'
+                icon: 'list'
             },
             {
                 title: 'Bottom to Top',
                 href: '/examples/bottom-to-top',
-                icon: 'fa-solid fa-comments'
+                icon: 'message-circle'
             },
             {
                 title: 'Infinite Scroll',
                 href: '/examples/infinite-scroll',
-                icon: 'fa-solid fa-infinity'
+                icon: 'infinity'
             },
             {
                 title: 'Scroll to Item',
                 href: '/examples/scroll-to-item',
-                icon: 'fa-solid fa-crosshairs'
+                icon: 'crosshair'
             },
             {
                 title: 'Variable Height',
                 href: '/examples/variable-height',
-                icon: 'fa-solid fa-arrows-up-down'
+                icon: 'arrow-up-down'
             }
         ]
     }
