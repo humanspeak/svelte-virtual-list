@@ -38,7 +38,7 @@
         "@eslint/compat": "^2.0.2",
         "@humanspeak/svelte-satori-fix": "^0.0.3",
         "@internationalized/date": "^3.11.0",
-        "@lucide/svelte": "^0.575.0",
+        "@lucide/svelte": "^0.576.0",
         "@playwright/test": "^1.58.2",
         "@resvg/resvg-js": "^2.6.2",
         "@sveltejs/adapter-auto": "^7.0.1",
