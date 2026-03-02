@@ -74,7 +74,7 @@
         "prettier-plugin-tailwindcss": "^0.7.2",
         "satori": "^0.19.2",
         "satori-html": "^0.3.2",
-        "shiki": "^4.0.0",
+        "shiki": "^4.0.1",
         "svelte": "^5.53.6",
         "svelte-check": "^4.4.4",
         "svelte-sonner": "^1.0.7",
