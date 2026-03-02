@@ -62,7 +62,7 @@
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-svelte": "^3.15.0",
         "formsnap": "^2.0.1",
-        "globals": "^17.3.0",
+        "globals": "^17.4.0",
         "highlight.js": "^11.11.1",
         "mdsvex": "^0.12.6",
         "mode-watcher": "^1.1.0",
