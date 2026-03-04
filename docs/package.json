@@ -35,7 +35,7 @@
         "runed": "^0.37.1"
     },
     "devDependencies": {
-        "@cloudflare/workers-types": "^4.20260304.0",
+        "@cloudflare/workers-types": "^4.20260305.0",
         "@eslint/compat": "^2.0.2",
         "@humanspeak/svelte-satori-fix": "^0.0.3",
         "@internationalized/date": "^3.11.0",
