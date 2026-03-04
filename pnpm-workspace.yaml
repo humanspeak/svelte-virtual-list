@@ -1,3 +1,5 @@
 packages:
     - .
     - docs
+onlyBuiltDependencies:
+    - '@humanspeak/docs-kit'

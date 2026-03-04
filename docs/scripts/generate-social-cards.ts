@@ -172,9 +172,18 @@ async function main() {
 
     // Load fonts
     const [latoRegular, latoExtraBold, latoExtraBoldItalic] = await Promise.all([
-        fs.readFile(path.join(ROOT, 'src/lib/fonts/lato/Lato-Regular.ttf')),
-        fs.readFile(path.join(ROOT, 'src/lib/fonts/lato/Lato-ExtraBold.ttf')),
-        fs.readFile(path.join(ROOT, 'src/lib/fonts/lato/Lato-ExtraBoldItalic.ttf'))
+        fs.readFile(
+            path.join(ROOT, 'node_modules/@humanspeak/docs-kit/dist/fonts/lato/Lato-Regular.ttf')
+        ),
+        fs.readFile(
+            path.join(ROOT, 'node_modules/@humanspeak/docs-kit/dist/fonts/lato/Lato-ExtraBold.ttf')
+        ),
+        fs.readFile(
+            path.join(
+                ROOT,
+                'node_modules/@humanspeak/docs-kit/dist/fonts/lato/Lato-ExtraBoldItalic.ttf'
+            )
+        )
     ])
 
     const fonts: satori.Font[] = [
