@@ -7,6 +7,7 @@
     import Sidebar from './Sidebar.svelte'
     import TableOfContents from './TableOfContents.svelte'
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
+    import { enhanceCodeBlocks } from '@humanspeak/docs-kit'
     import { getDocsTitleByPath } from '$lib/utils/docsNav'
 
     const { children, data } = $props()
@@ -102,7 +103,7 @@
     <div class="flex flex-1">
         <!-- Left sidebar - Navigation -->
         <aside
-            class="border-sidebar-border bg-sidebar hidden w-64 shrink-0 border-r lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto"
+            class="border-sidebar-border bg-sidebar-background/95 hidden w-64 shrink-0 border-r shadow-sm lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto"
         >
             <Sidebar currentPath={page.url.pathname} otherProjects={data.otherProjects} />
         </aside>
@@ -111,9 +112,13 @@
         <main class="flex-1">
             <div class="flex">
                 <!-- Content -->
-                <article bind:this={contentElement} class="flex-1 px-4 py-8 sm:px-6 lg:px-8">
+                <article
+                    bind:this={contentElement}
+                    use:enhanceCodeBlocks
+                    class="flex-1 px-4 py-8 sm:px-6 lg:px-8"
+                >
                     <div
-                        class="prose text-foreground prose-slate dark:prose-invert prose-headings:scroll-mt-20 max-w-none"
+                        class="prose text-text-primary prose-slate dark:prose-invert prose-headings:scroll-mt-20 max-w-none"
                     >
                         {@render children()}
                     </div>
@@ -121,7 +126,7 @@
 
                 <!-- Right sidebar - Table of Contents -->
                 <aside
-                    class="border-sidebar-border bg-sidebar hidden w-56 shrink-0 border-l xl:sticky xl:top-0 xl:block xl:h-screen xl:overflow-y-auto"
+                    class="border-sidebar-border bg-sidebar-background/95 hidden w-56 shrink-0 border-l shadow-sm xl:sticky xl:top-0 xl:block xl:h-screen xl:overflow-y-auto"
                 >
                     <TableOfContents {headings} />
                 </aside>
