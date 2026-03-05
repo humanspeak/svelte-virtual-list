@@ -1,6 +1,6 @@
 <script lang="ts">
     import Header from '$lib/components/general/Header.svelte'
-    import Footer from '$lib/components/general/Footer.svelte'
+    import { Footer } from '@humanspeak/docs-kit'
     import { MotionConfig } from '@humanspeak/svelte-motion'
 
     const { children } = $props()

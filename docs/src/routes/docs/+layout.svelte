@@ -1,30 +1,28 @@
 <script lang="ts">
     import { page } from '$app/state'
-    import { afterNavigate } from '$app/navigation'
     import GithubSlugger from 'github-slugger'
     import Header from '$lib/components/general/Header.svelte'
-    import Footer from '$lib/components/general/Footer.svelte'
-    import Sidebar from './Sidebar.svelte'
+    import {
+        Footer,
+        Sidebar,
+        getBreadcrumbContext,
+        getDocsTitleByPath,
+        enhanceCodeBlocks
+    } from '@humanspeak/docs-kit'
+    import { docsConfig } from '$lib/docs-config'
+    import { docsSections } from '$lib/docsNav'
     import TableOfContents from './TableOfContents.svelte'
-    import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
-    import { enhanceCodeBlocks } from '@humanspeak/docs-kit'
-    import { getDocsTitleByPath } from '$lib/utils/docsNav'
 
     const { children, data } = $props()
 
-    // Set breadcrumb for docs section
     const breadcrumbContext = getBreadcrumbContext()
     $effect(() => {
         if (breadcrumbContext) {
-            const pageTitle = getDocsTitleByPath(page.url.pathname)
-            if (pageTitle && page.url.pathname !== '/docs') {
-                breadcrumbContext.breadcrumbs = [
-                    { title: 'Docs', href: '/docs' },
-                    { title: pageTitle }
-                ]
-            } else {
-                breadcrumbContext.breadcrumbs = [{ title: 'Docs' }]
-            }
+            const title = getDocsTitleByPath(docsSections, page.url.pathname)
+            breadcrumbContext.breadcrumbs =
+                title && page.url.pathname !== '/docs'
+                    ? [{ title: 'Docs', href: '/docs' }, { title }]
+                    : [{ title: 'Docs' }]
         }
     })
 
@@ -66,14 +64,6 @@
         })
     }
 
-    // Re-extract headings when navigating between pages
-    afterNavigate(() => {
-        // Single rAF for initial navigation tick
-        requestAnimationFrame(() => {
-            extractHeadings()
-        })
-    })
-
     // Setup MutationObserver to watch for DOM changes and initial extraction
     $effect(() => {
         if (!contentElement) return
@@ -105,7 +95,12 @@
         <aside
             class="border-sidebar-border bg-sidebar-background/95 hidden w-64 shrink-0 border-r shadow-sm lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto"
         >
-            <Sidebar currentPath={page.url.pathname} otherProjects={data.otherProjects} />
+            <Sidebar
+                config={docsConfig}
+                sections={docsSections}
+                currentPath={page.url.pathname}
+                otherProjects={data.otherProjects}
+            />
         </aside>
 
         <!-- Main content area -->
