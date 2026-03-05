@@ -1,7 +1,7 @@
 <script lang="ts">
     import { motion, animate, type MotionTransition } from '@humanspeak/svelte-motion'
     import Header from '$lib/components/general/Header.svelte'
-    import Footer from '$lib/components/general/Footer.svelte'
+    import { Footer } from '@humanspeak/docs-kit'
     import Example from '$lib/components/general/Example.svelte'
     import BasicList from '$lib/examples/BasicList.svelte'
     import Play from '@lucide/svelte/icons/play'
