@@ -57,7 +57,7 @@
         "chokidar-cli": "^3.0.0",
         "clsx": "^2.1.1",
         "embla-carousel-svelte": "^8.6.0",
-        "eslint": "^10.0.2",
+        "eslint": "^10.0.3",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-svelte": "^3.15.0",
         "formsnap": "^2.0.1",
