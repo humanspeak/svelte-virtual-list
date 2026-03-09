@@ -63,7 +63,7 @@
         "formsnap": "^2.0.1",
         "globals": "^17.4.0",
         "highlight.js": "^11.11.1",
-        "mdsvex": "^0.12.6",
+        "mdsvex": "^0.12.7",
         "mode-watcher": "^1.1.0",
         "paneforge": "^1.0.2",
         "prettier": "^3.8.1",
