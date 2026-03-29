@@ -1,8 +1,9 @@
 <script lang="ts">
     import { BlogIndex } from '@humanspeak/docs-kit/blog'
     import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+    import type { PageData } from './$types'
 
-    const { data } = $props()
+    const { data }: { data: PageData } = $props()
 
     const seo = getSeoContext()
     if (seo) {

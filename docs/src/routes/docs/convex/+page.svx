@@ -428,7 +428,7 @@ Chat UIs benefit from optimistic updates — showing the user's message instantl
             serverMessages.filter((m) => m.nonce).map((m) => m.nonce)
         )
         const pending = optimisticMessages.filter(
-            (om) => !serverNonces.has(om._id)
+            (om) => !serverNonces.has(om.nonce)
         )
         return [...pending, ...serverMessages, ...olderMessages]
     })
