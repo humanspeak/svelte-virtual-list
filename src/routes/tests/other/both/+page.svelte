@@ -1,12 +1,9 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
+    import { createTestItems } from '$lib/test/utils/createTestItems.js'
+    import type { Item } from '$lib/test/types/item.js'
 
-    type Item = {
-        id: number
-        text: string
-    }
-
-    const items: Item[] = Array.from({ length: 100000 }, (_, i) => ({ id: i, text: `Item ${i}` }))
+    const items: Item[] = createTestItems(100000)
 </script>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 600px;">

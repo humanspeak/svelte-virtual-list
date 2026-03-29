@@ -1,7 +1,6 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
-
-    type Item = { id: number; text: string }
+    import type { Item } from '$lib/test/types/item.js'
 
     let items = $state<Item[]>([])
 

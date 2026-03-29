@@ -1,11 +1,9 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
 
-    type Item = {
-        id: number
-        text: string
-        expanded: boolean
-    }
+    import type { Item as BaseItem } from '$lib/test/types/item.js'
+
+    type Item = BaseItem & { expanded: boolean }
 
     // 1000 items with expand/collapse capability.
     // Simulates accordion-style variable heights that triggered #327.
