@@ -1,24 +1,28 @@
-import { env } from '$env/dynamic/public'
-import * as Sentry from '@sentry/sveltekit'
-import { handleErrorWithSentry, replayIntegration } from '@sentry/sveltekit'
+import type { HandleClientError } from '@sveltejs/kit'
 
-Sentry.init({
-    dsn: env.PUBLIC_SENTRY_DSN,
-    environment: env.PUBLIC_ENVIRONMENT ?? 'local',
+export const handleError: HandleClientError = ({ error }) => {
+    console.error(error)
+}
 
-    tracesSampleRate: 1.0,
+if (typeof window !== 'undefined') {
+    const schedule =
+        'requestIdleCallback' in window
+            ? requestIdleCallback
+            : (cb: () => void) => setTimeout(cb, 3000)
 
-    // This sets the sample rate to be 10%. You may want this to be 100% while
-    // in development and sample at a lower rate in production
-    replaysSessionSampleRate: 0.01,
+    schedule(async () => {
+        const [Sentry, { env }] = await Promise.all([
+            import('@sentry/sveltekit'),
+            import('$env/dynamic/public')
+        ])
 
-    // If the entire session is not sampled, use the below sample rate to sample
-    // sessions when an error occurs.
-    replaysOnErrorSampleRate: 1.0,
-
-    // If you don't want to use Session Replay, just remove the line below:
-    integrations: [replayIntegration()]
-})
-
-// If you have a custom error handler, pass it to `handleErrorWithSentry`
-export const handleError = handleErrorWithSentry()
+        Sentry.init({
+            dsn: env.PUBLIC_SENTRY_DSN,
+            environment: env.PUBLIC_ENVIRONMENT ?? 'local',
+            tracesSampleRate: 1.0,
+            replaysSessionSampleRate: 0.01,
+            replaysOnErrorSampleRate: 1.0,
+            integrations: [Sentry.replayIntegration()]
+        })
+    })
+}
