@@ -8,7 +8,6 @@ import {
     clampValue,
     getScrollOffsetForIndex,
     getValidHeight,
-    processChunked,
     updateHeightAndScroll
 } from './virtualList.js'
 
@@ -728,76 +727,6 @@ describe('calculateAverageHeight', () => {
         expect(result.newHeight).toBe(48.333333333333336) // (35 + 50 + 60) / 3
         expect(result.newTotalHeight).toBe(145) // 35 + 50 + 60 (30 was replaced with 35)
         expect(result.newValidCount).toBe(3)
-    })
-})
-
-describe('processChunked', () => {
-    beforeEach(() => {
-        vi.useFakeTimers()
-    })
-
-    afterEach(() => {
-        vi.clearAllTimers()
-        vi.useRealTimers()
-    })
-
-    it('should process empty array immediately', async () => {
-        const onProgress = vi.fn()
-        const onComplete = vi.fn()
-
-        const promise = processChunked([], 50, onProgress, onComplete)
-        await promise
-        await vi.advanceTimersByTimeAsync(0)
-
-        expect(onProgress).not.toHaveBeenCalled()
-        expect(onComplete).toHaveBeenCalledOnce()
-    })
-
-    it('should process items in chunks', async () => {
-        const items = Array.from({ length: 150 }, (_, i) => i)
-        const onProgress = vi.fn()
-        const onComplete = vi.fn()
-
-        const promise = processChunked(items, 50, onProgress, onComplete)
-        await vi.runAllTimersAsync()
-        await promise
-
-        expect(onProgress).toHaveBeenCalledTimes(3)
-        expect(onProgress).toHaveBeenNthCalledWith(1, 50)
-        expect(onProgress).toHaveBeenNthCalledWith(2, 100)
-        expect(onProgress).toHaveBeenNthCalledWith(3, 150)
-        expect(onComplete).toHaveBeenCalledOnce()
-    })
-
-    it('should handle chunk sizes larger than array', async () => {
-        const items = Array.from({ length: 30 }, (_, i) => i)
-        const onProgress = vi.fn()
-        const onComplete = vi.fn()
-
-        const promise = processChunked(items, 50, onProgress, onComplete)
-        await vi.runAllTimersAsync()
-        await promise
-
-        expect(onProgress).toHaveBeenCalledTimes(1)
-        expect(onProgress).toHaveBeenCalledWith(30)
-        expect(onComplete).toHaveBeenCalledOnce()
-    })
-
-    it('should yield to main thread between chunks', async () => {
-        const items = Array.from({ length: 150 }, (_, i) => i)
-        const onProgress = vi.fn()
-        const onComplete = vi.fn()
-
-        const promise = processChunked(items, 50, onProgress, onComplete)
-
-        // First chunk processes immediately
-        expect(onProgress).toHaveBeenCalledWith(50)
-
-        await vi.runAllTimersAsync()
-        await promise
-
-        expect(onProgress).toHaveBeenCalledTimes(3)
-        expect(onComplete).toHaveBeenCalledOnce()
     })
 })
 

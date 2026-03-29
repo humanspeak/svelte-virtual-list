@@ -1,3 +1,4 @@
+import { buildBlockSums } from '../utils/virtualList.js'
 import { RecomputeScheduler } from './RecomputeScheduler.js'
 import type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './types.js'
 
@@ -411,31 +412,15 @@ export class ReactiveListManager {
      */
     getBlockSums(): number[] {
         if (!this._blockSumsValid || this._blockSums.length === 0) {
-            this._blockSums = this.buildBlockSums()
+            this._blockSums = buildBlockSums(
+                this._heightCache,
+                this._averageHeight,
+                this._itemLength,
+                this._blockSize
+            )
             this._blockSumsValid = true
         }
         return this._blockSums
-    }
-
-    /**
-     * Build block prefix sums for efficient offset calculations.
-     * Uses the same algorithm as the utility function but leverages internal state.
-     */
-    private buildBlockSums(): number[] {
-        const blocks = Math.ceil(this._itemLength / this._blockSize)
-        const sums: number[] = new Array(Math.max(0, blocks - 1))
-        let running = 0
-
-        for (let b = 0; b < blocks - 1; b++) {
-            const start = b * this._blockSize
-            const end = start + this._blockSize
-            for (let i = start; i < end; i++) {
-                const height = this._heightCache[i]
-                running += Number.isFinite(height) && height > 0 ? height : this._averageHeight
-            }
-            sums[b] = running
-        }
-        return sums
     }
 
     /**

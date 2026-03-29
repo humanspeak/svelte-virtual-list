@@ -424,55 +424,6 @@ export const calculateAverageHeight = (
 }
 
 /**
- * Processes large arrays in chunks to prevent UI blocking.
- *
- * This function implements a progressive processing strategy that:
- * 1. Breaks down large arrays into manageable chunks
- * 2. Processes each chunk asynchronously
- * 3. Reports progress after each chunk
- * 4. Yields to the main thread between chunks
- *
- * @param {any[]} items - Array of items to process
- * @param {number} chunkSize - Number of items to process in each chunk
- * @param {(processed: number) => void} onProgress - Callback for progress updates
- * @param {() => void} onComplete - Callback when all processing is complete
- *
- * @returns {Promise<void>} Resolves when all chunks have been processed
- *
- * @example
- * await processChunked(
- *   largeArray,
- *   50,
- *   (processed) => console.log(`Processed ${processed} items`),
- *   () => console.log('All items processed')
- * )
- */
-export const processChunked = async (
-    items: any[], // eslint-disable-line @typescript-eslint/no-explicit-any
-    chunkSize: number,
-    onProgress: (processed: number) => void, // eslint-disable-line no-unused-vars
-    onComplete: () => void
-) => {
-    if (!items.length) {
-        onComplete()
-        return
-    }
-
-    const processChunk = async (startIdx: number) => {
-        const endIdx = Math.min(startIdx + chunkSize, items.length)
-        onProgress(endIdx)
-
-        if (endIdx < items.length) {
-            setTimeout(() => processChunk(endIdx), 0)
-        } else {
-            onComplete()
-        }
-    }
-
-    await processChunk(0)
-}
-
-/**
  * Calculates the scroll offset (in pixels) needed to bring a specific item into view in a virtual list.
  *
  * Uses block memoization for efficient O(b) offset calculation, where b = block size (default 1000).
