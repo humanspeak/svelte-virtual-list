@@ -1,16 +1,12 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
-
-    type Item = { id: number; text: string; height: number }
+    import {
+        createTestItemsWithHeight,
+        type ItemWithHeight as Item
+    } from '$lib/test/utils/createTestItems.js'
 
     const BATCH_SIZE = 50
-    const items = $state<Item[]>([
-        ...Array.from({ length: BATCH_SIZE }, (_, i) => ({
-            id: i,
-            text: `Item ${i}`,
-            height: 40
-        }))
-    ])
+    const items = $state<Item[]>([...createTestItemsWithHeight(BATCH_SIZE, [40])])
 
     let hasMore = $state(true)
     let loadCount = $state(0)

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
     import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
-    import { motion } from '@humanspeak/svelte-motion'
+    import { MotionDiv, MotionA } from '@humanspeak/svelte-motion'
     import { cn } from '$lib/shadcn/utils'
     import PlayIcon from '@lucide/svelte/icons/play'
     import ArrowRight from '@lucide/svelte/icons/arrow-right'
@@ -92,7 +92,7 @@
 
 <div class="container mx-auto px-4 py-12">
     <!-- Hero Section -->
-    <motion.div
+    <MotionDiv
         class="mb-16 text-center"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -108,17 +108,17 @@
             Virtual List. Each example demonstrates different patterns for high-performance list
             rendering.
         </p>
-    </motion.div>
+    </MotionDiv>
 
     <!-- Examples Grid -->
-    <motion.div
+    <MotionDiv
         class="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
         variants={containerVariants}
         initial={containerVariants.hidden}
         animate={containerVariants.visible}
     >
         {#each examples() as example (example.slug)}
-            <motion.a
+            <MotionA
                 href={example.route}
                 class={cn(
                     'group border-border bg-card relative overflow-hidden rounded-xl border p-6',
@@ -175,12 +175,12 @@
                 <div
                     class="from-brand-500/10 absolute top-0 right-0 h-20 w-20 rounded-bl-full bg-gradient-to-bl to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                 ></div>
-            </motion.a>
+            </MotionA>
         {/each}
-    </motion.div>
+    </MotionDiv>
 
     <!-- Call to Action -->
-    <motion.div
+    <MotionDiv
         class="mt-16 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -193,7 +193,7 @@
             <p class="text-muted-foreground mb-6">
                 Get started with Svelte Virtual List and create your own high-performance lists.
             </p>
-            <motion.a
+            <MotionA
                 href="/docs"
                 class="from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 inline-flex items-center rounded-lg bg-gradient-to-r px-6 py-3 font-medium text-white transition-all duration-200"
                 whileHover={{ scale: 1.05 }}
@@ -201,9 +201,9 @@
             >
                 View Documentation
                 <Book size={16} class="ml-2" />
-            </motion.a>
+            </MotionA>
         </div>
-    </motion.div>
+    </MotionDiv>
 </div>
 
 <style>

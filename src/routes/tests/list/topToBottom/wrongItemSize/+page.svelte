@@ -1,21 +1,14 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
     import { page } from '$app/state'
-
-    type Item = {
-        id: number
-        text: string
-    }
+    import { createTestItems, type Item } from '$lib/test/utils/createTestItems.js'
 
     const raw = page.url.searchParams.get('itemHeight')
     const itemHeight = Number.isNaN(parseInt(raw ?? '', 10)) ? 40 : parseInt(raw!, 10)
     let virtualList: SvelteVirtualList<Item> | null = $state(null)
 
     // Create a large dataset to test performance
-    const items: Item[] = Array.from({ length: 1000 }, (_, i) => ({
-        id: i,
-        text: `Item ${i}`
-    }))
+    const items: Item[] = createTestItems(1000)
 
     const smoothScrollToTop = () => {
         virtualList?.scroll({

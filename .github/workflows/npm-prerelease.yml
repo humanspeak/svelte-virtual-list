@@ -206,36 +206,42 @@ jobs:
 
             - name: Create GitHub prerelease
               id: create_prerelease
-              uses: softprops/action-gh-release@v2 # zizmor: ignore[unpinned-uses]
-              with:
-                  tag_name: ${{ steps.version.outputs.new_version }}
-                  name: Prerelease ${{ steps.version.outputs.new_version }}
-                  body: |
-                      🚧 **This is a prerelease version for testing purposes**
-
-                      **Type**: `${{ steps.version.outputs.prerelease_type }}`
-                      **Branch**: `${{ github.ref_name }}`
-
-                      ${{ github.event.inputs.custom_message && format('**Message**: {0}', github.event.inputs.custom_message) || '' }}
-
-                      ## Installation for Testing
-
-                      ```bash
-                      pnpm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.stripped_version }}
-                      # or
-                      pnpm install @humanspeak/svelte-virtual-list@${{ steps.version.outputs.prerelease_type }}
-                      ```
-
-                      ## ⚠️ Important Notes
-                      - This version may contain breaking changes
-                      - Not recommended for production use
-                      - Feedback and testing reports are welcome!
-                  draft: false
-                  prerelease: true
-                  make_latest: false
-                  generate_release_notes: false
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NEW_VERSION: ${{ steps.version.outputs.new_version }}
+                  STRIPPED_VERSION: ${{ steps.version.outputs.stripped_version }}
+                  PRERELEASE_TYPE: ${{ steps.version.outputs.prerelease_type }}
+                  BRANCH_NAME: ${{ github.ref_name }}
+                  CUSTOM_MESSAGE: ${{ github.event.inputs.custom_message }}
+              run: |
+                  BODY="🚧 **This is a prerelease version for testing purposes**
+
+                  **Type**: \`$PRERELEASE_TYPE\`
+                  **Branch**: \`$BRANCH_NAME\`"
+                  if [[ -n "$CUSTOM_MESSAGE" ]]; then
+                      BODY="$BODY
+
+                  **Message**: $CUSTOM_MESSAGE"
+                  fi
+                  BODY="$BODY
+
+                  ## Installation for Testing
+
+                  \`\`\`bash
+                  pnpm install @humanspeak/svelte-virtual-list@$STRIPPED_VERSION
+                  # or
+                  pnpm install @humanspeak/svelte-virtual-list@$PRERELEASE_TYPE
+                  \`\`\`
+
+                  ## ⚠️ Important Notes
+                  - This version may contain breaking changes
+                  - Not recommended for production use
+                  - Feedback and testing reports are welcome!"
+                  gh release create "$NEW_VERSION" \
+                      --title "Prerelease $NEW_VERSION" \
+                      --notes "$BODY" \
+                      --prerelease \
+                      --latest=false
 
             - name: Publish to NPM with prerelease tag
               env:

@@ -178,8 +178,11 @@
     import { onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-    // Per-instance correction guard to avoid same-frame tug-of-war per viewport
-    const GLOBAL_CORRECTION_COOLDOWN = 16
+    // Timing constants
+    const GLOBAL_CORRECTION_COOLDOWN_MS = 16
+    const SCROLL_IDLE_DELAY_MS = 250
+    const SUPPRESSION_WINDOW_MS = 450
+    const HEIGHT_DEBOUNCE_MS = 100
     const lastCorrectionTimestampByViewport = new WeakMap<HTMLElement, number>()
     // Package-specific debug flag - safe for library distribution
     // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
@@ -494,7 +497,7 @@
             const now = performance.now()
             const viewportEl = heightManager.viewport
             const lastCorrectionMs = lastCorrectionTimestampByViewport.get(viewportEl) ?? 0
-            if (now - lastCorrectionMs < GLOBAL_CORRECTION_COOLDOWN) {
+            if (now - lastCorrectionMs < GLOBAL_CORRECTION_COOLDOWN_MS) {
                 suppressBottomAnchoringUntilMs = now + 50
                 return
             }
@@ -524,11 +527,12 @@
                         // Note: `container: 'nearest'` option could replace this once browser support improves
                         const currentScrollTop = heightManager.viewport.scrollTop
                         const offset = itemRect.bottom - contRect.bottom
-                        heightManager.viewport.scrollTop = currentScrollTop + offset
+                        syncScrollTop(currentScrollTop + offset)
                         log('[SVL] b2t-correction-manual', { offset })
+                    } else {
+                        // Sync our internal scroll state with actual DOM position
+                        heightManager.scrollTop = heightManager.viewport.scrollTop
                     }
-                    // Sync our internal scroll state with actual DOM position
-                    heightManager.scrollTop = heightManager.viewport.scrollTop
                     // After peer correction, delay further corrections briefly
                     suppressBottomAnchoringUntilMs = performance.now() + 200
                 }
@@ -688,7 +692,7 @@
                 })
                 heightManager.endDynamicUpdate()
             },
-            lastMeasuredIndex < 0 || dirtyItems.size > 0 ? 0 : 100, // debounceTime (no debounce on first pass or when dirty items exist)
+            lastMeasuredIndex < 0 || dirtyItems.size > 0 ? 0 : HEIGHT_DEBOUNCE_MS,
             dirtyItems, // Pass dirty items for processing
             0, // Don't pass ReactiveListManager state - let each system manage its own totals
             0, // Don't pass ReactiveListManager state - let each system manage its own totals
@@ -1124,7 +1128,7 @@
             if (idleCorrectionsOnly || anchorModeEnabled) {
                 reconcileToAnchorIfEnabled()
             }
-        }, 250)
+        }, SCROLL_IDLE_DELAY_MS)
 
         rafSchedule(() => {
             const current = heightManager.viewport.scrollTop
@@ -1132,7 +1136,7 @@
                 const delta = lastScrollTopSnapshot - current
                 if (delta > 0.5) {
                     // Widen suppression to avoid fighting peer instance corrections
-                    suppressBottomAnchoringUntilMs = performance.now() + 450
+                    suppressBottomAnchoringUntilMs = performance.now() + SUPPRESSION_WINDOW_MS
                     userHasScrolledAway = true
                 }
             }

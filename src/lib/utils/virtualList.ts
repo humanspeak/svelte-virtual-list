@@ -21,6 +21,8 @@ import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
 export const getValidHeight = (height: unknown, fallback: number): number =>
     Number.isFinite(height) && (height as number) > 0 ? (height as number) : fallback
 
+const BOTTOM_TOLERANCE_FACTOR = 0.25
+
 /**
  * Clamps a numeric value to be within a specified range.
  *
@@ -126,7 +128,7 @@ export const calculateVisibleRange = (
         const totalHeight = totalContentHeight ?? totalItems * itemHeight
         const maxScrollTop = Math.max(0, totalHeight - viewportHeight)
         // Use strict tolerance to avoid premature bottom anchoring that leaves a visible gap
-        const tolerance = Math.max(1, Math.floor(itemHeight * 0.25)) // pixels, adaptive for wrong initial sizes
+        const tolerance = Math.max(1, Math.floor(itemHeight * BOTTOM_TOLERANCE_FACTOR))
         const isAtBottom = Math.abs(scrollTop - maxScrollTop) <= tolerance
 
         if (isAtBottom) {
@@ -421,55 +423,6 @@ export const calculateAverageHeight = (
         newValidCount: validHeightCount,
         heightChanges
     }
-}
-
-/**
- * Processes large arrays in chunks to prevent UI blocking.
- *
- * This function implements a progressive processing strategy that:
- * 1. Breaks down large arrays into manageable chunks
- * 2. Processes each chunk asynchronously
- * 3. Reports progress after each chunk
- * 4. Yields to the main thread between chunks
- *
- * @param {any[]} items - Array of items to process
- * @param {number} chunkSize - Number of items to process in each chunk
- * @param {(processed: number) => void} onProgress - Callback for progress updates
- * @param {() => void} onComplete - Callback when all processing is complete
- *
- * @returns {Promise<void>} Resolves when all chunks have been processed
- *
- * @example
- * await processChunked(
- *   largeArray,
- *   50,
- *   (processed) => console.log(`Processed ${processed} items`),
- *   () => console.log('All items processed')
- * )
- */
-export const processChunked = async (
-    items: any[], // eslint-disable-line @typescript-eslint/no-explicit-any
-    chunkSize: number,
-    onProgress: (processed: number) => void, // eslint-disable-line no-unused-vars
-    onComplete: () => void
-) => {
-    if (!items.length) {
-        onComplete()
-        return
-    }
-
-    const processChunk = async (startIdx: number) => {
-        const endIdx = Math.min(startIdx + chunkSize, items.length)
-        onProgress(endIdx)
-
-        if (endIdx < items.length) {
-            setTimeout(() => processChunk(endIdx), 0)
-        } else {
-            onComplete()
-        }
-    }
-
-    await processChunk(0)
 }
 
 /**

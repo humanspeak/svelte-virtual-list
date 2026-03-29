@@ -12,7 +12,7 @@ description: "Use Svelte Virtual List with Convex for real-time data and infinit
     seo.description = 'Use Svelte Virtual List with Convex for real-time data and infinite scroll pagination.'
     seo.ogTitle = 'Convex Integration'
     seo.ogTagline = 'Real-time data with infinite scroll pagination.'
-    seo.ogFeatures = ['Convex Backend', 'Real-time Sync', 'Cursor Pagination', 'Live Updates']
+    seo.ogFeatures = ['Convex Backend', 'Real-time Sync', 'Cursor Pagination', 'Live Updates', 'Chat UI', 'Optimistic Updates']
     seo.ogSlug = 'docs-convex'
   }
 </script>
@@ -281,6 +281,217 @@ export const load: PageServerLoad = async () => {
 }
 ```
 
+## Chat UI Pattern (Bottom-to-Top)
+
+For chat and messaging UIs, use `bottomToTop` mode so the newest message appears at the bottom and scrolling up loads older messages.
+
+### Chat Backend with Composite Index
+
+Chat queries typically filter by conversation or channel. Define a composite index for efficient lookups:
+
+```typescript
+// convex/schema.ts
+import { defineSchema, defineTable } from 'convex/server'
+import { v } from 'convex/values'
+
+export default defineSchema({
+    messages: defineTable({
+        conversation: v.id('conversations'),
+        content: v.string(),
+        isDeleted: v.optional(v.number()),
+        createdAt: v.number(),
+        updatedAt: v.number()
+    }).index('by_conversation', ['conversation', 'isDeleted'])
+})
+```
+
+Use the index in both the live and paginated queries:
+
+```typescript
+// convex/messages.ts
+import { query } from './_generated/server'
+import { v } from 'convex/values'
+
+export const listByConversation = query({
+    args: {
+        conversation: v.id('conversations'),
+        limit: v.optional(v.number())
+    },
+    handler: async (ctx, args) => {
+        const limit = args.limit ?? 50
+        return await ctx.db
+            .query('messages')
+            .withIndex('by_conversation', (q) =>
+                q.eq('conversation', args.conversation).eq('isDeleted', undefined)
+            )
+            .order('desc')
+            .take(limit)
+    }
+})
+
+export const listByConversationPaginated = query({
+    args: {
+        conversation: v.id('conversations'),
+        cursor: v.optional(v.number()),
+        limit: v.optional(v.number())
+    },
+    handler: async (ctx, args) => {
+        const limit = args.limit ?? 50
+        const cursor = args.cursor
+
+        let queryBuilder = ctx.db
+            .query('messages')
+            .withIndex('by_conversation', (q) =>
+                q.eq('conversation', args.conversation).eq('isDeleted', undefined)
+            )
+
+        if (cursor !== undefined) {
+            queryBuilder = queryBuilder.filter((q) =>
+                q.lt(q.field('_creationTime'), cursor)
+            )
+        }
+
+        const items = await queryBuilder.order('desc').take(limit + 1)
+        const hasMore = items.length > limit
+        const pageItems = hasMore ? items.slice(0, limit) : items
+
+        return {
+            items: pageItems,
+            hasMore,
+            nextCursor: pageItems.length > 0
+                ? pageItems[pageItems.length - 1]._creationTime
+                : null
+        }
+    }
+})
+```
+
+### Chat Frontend with Optimistic Updates
+
+Chat UIs benefit from optimistic updates — showing the user's message instantly before the server confirms it. This requires a three-layer data merge:
+
+```svelte
+<script lang="ts">
+    import { useQuery, useConvexClient } from 'convex-svelte'
+    import { api } from '$lib/convex/api'
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    type Message = {
+        _id: string
+        _creationTime: number
+        conversation: string
+        content: string
+        nonce?: string
+    }
+
+    let { conversationId } = $props()
+
+    const liveQuery = useQuery(
+        api.messages.listByConversation,
+        { conversation: conversationId, limit: 50 }
+    )
+
+    const client = useConvexClient()
+
+    // Optimistic messages shown before server confirms
+    let optimisticMessages = $state<Message[]>([])
+
+    // Pagination state for older messages
+    let olderMessages = $state<Message[]>([])
+    let cursor = $state<number | null>(null)
+    let hasMore = $state(true)
+
+    // Reset pagination when conversation changes
+    $effect(() => {
+        void conversationId
+        olderMessages = []
+        cursor = null
+        hasMore = true
+    })
+
+    const serverMessages = $derived(liveQuery.data ?? [])
+
+    // Update cursor from live data
+    $effect(() => {
+        if (serverMessages.length > 0) {
+            cursor = serverMessages[serverMessages.length - 1]._creationTime
+        }
+    })
+
+    // Three-layer merge: optimistic + live + older
+    const messages = $derived.by(() => {
+        if (optimisticMessages.length === 0 && olderMessages.length === 0) {
+            return serverMessages
+        }
+        // Remove optimistic messages that the server has confirmed (by nonce)
+        const serverNonces = new Set(
+            serverMessages.filter((m) => m.nonce).map((m) => m.nonce)
+        )
+        const pending = optimisticMessages.filter(
+            (om) => !serverNonces.has(om.nonce)
+        )
+        return [...pending, ...serverMessages, ...olderMessages]
+    })
+
+    async function loadMore() {
+        if (!hasMore || !cursor || !client) return
+
+        const result = await client.query(
+            api.messages.listByConversationPaginated,
+            { conversation: conversationId, cursor, limit: 50 }
+        )
+
+        if (!result) return
+        olderMessages = [...olderMessages, ...result.items]
+        cursor = result.nextCursor
+        hasMore = result.hasMore
+    }
+
+    function sendMessage(content: string) {
+        const nonce = crypto.randomUUID()
+        const now = Date.now()
+
+        // Show optimistically
+        optimisticMessages = [
+            { _id: nonce, _creationTime: now, conversation: conversationId, content, nonce },
+            ...optimisticMessages
+        ]
+
+        // Send to server (your mutation or API call)
+        // The server should store the nonce so the live query
+        // can reconcile and remove the optimistic entry
+    }
+</script>
+
+<VirtualList
+    items={messages}
+    mode="bottomToTop"
+    defaultEstimatedItemHeight={60}
+    onLoadMore={loadMore}
+    {hasMore}
+>
+    {#snippet renderItem(message: Message)}
+        <div class="message">{message.content}</div>
+    {/snippet}
+</VirtualList>
+```
+
+### Resetting pagination on context change
+
+When the user switches conversations (or any scoped context), the pagination state must be reset. Otherwise, older messages from the previous conversation would remain visible:
+
+```typescript
+// Reset pagination when conversation changes
+$effect(() => {
+    void conversationId  // track the reactive dependency
+    olderMessages = []
+    cursor = null
+    hasMore = true
+})
+```
+
+This pattern applies to any context where the underlying data set changes — channels, rooms, threads, or filtered views.
+
 ## Key Design Decisions
 
 ### Why `_creationTime` for pagination?
@@ -327,7 +538,9 @@ export const load: PageServerLoad = async () => {
 
 ## Related
 
+- [Why Cursor Pagination? (Blog)](/blog/cursor-pagination-infinite-scroll-convex-svelte) — Deep dive on cursor vs offset pagination with Convex
 - [Convex Documentation](https://docs.convex.dev)
 - [convex-svelte](https://github.com/get-convex/convex-svelte)
+- [Bottom-to-Top Mode](/docs/bottom-to-top)
 - [Infinite Scroll Guide](/docs/infinite-scroll)
 - [Get Started](/docs)

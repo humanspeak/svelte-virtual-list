@@ -1,15 +1,11 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
+    import {
+        createTestItemsWithHeight,
+        type ItemWithHeight as Item
+    } from '$lib/test/utils/createTestItems.js'
 
-    type Item = { id: number; text: string; height: number }
-
-    const items = $state<Item[]>([
-        ...Array.from({ length: 2 }, (_, i) => ({
-            id: i,
-            text: `Item ${i}`,
-            height: 20
-        }))
-    ])
+    const items = $state<Item[]>([...createTestItemsWithHeight(2, [20])])
     let virtualList = $state<SvelteVirtualList<Item> | null>(null)
 
     setTimeout(() => {

@@ -1,17 +1,10 @@
 <script lang="ts">
     import SvelteVirtualList, { type SvelteVirtualListScrollAlign } from '$lib/index.js'
-
-    type Item = {
-        id: number
-        text: string
-    }
+    import { createTestItems, type Item } from '$lib/test/utils/createTestItems.js'
 
     let virtualList: SvelteVirtualList<Item>
 
-    const items: Item[] = Array.from({ length: 10000 }, (_, i) => ({
-        id: i,
-        text: `Item ${i}`
-    }))
+    const items: Item[] = createTestItems(10000)
 
     let index = $state(5000)
     let smoothScroll = $state(true)
