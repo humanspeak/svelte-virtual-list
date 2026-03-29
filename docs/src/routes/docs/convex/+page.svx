@@ -538,6 +538,7 @@ This pattern applies to any context where the underlying data set changes — ch
 
 ## Related
 
+- [Why Cursor Pagination? (Blog)](/blog/cursor-pagination-infinite-scroll-convex-svelte) — Deep dive on cursor vs offset pagination with Convex
 - [Convex Documentation](https://docs.convex.dev)
 - [convex-svelte](https://github.com/get-convex/convex-svelte)
 - [Bottom-to-Top Mode](/docs/bottom-to-top)

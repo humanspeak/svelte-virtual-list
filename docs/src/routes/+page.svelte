@@ -155,6 +155,16 @@
                             >
                                 View Examples
                             </motion.button>
+                            <motion.button
+                                onclick={() => {
+                                    goto('/blog')
+                                }}
+                                whileTap={{ scale: 0.96 }}
+                                whileHover={{ scale: 1.03 }}
+                                class="border-border-mid text-foreground hover:bg-muted inline-flex items-center justify-center rounded-full border bg-transparent px-4 py-2 text-sm font-semibold"
+                            >
+                                Blog
+                            </motion.button>
                         </div>
                         <ul
                             class="text-muted-foreground mt-10 flex flex-wrap justify-center gap-2 text-xs"

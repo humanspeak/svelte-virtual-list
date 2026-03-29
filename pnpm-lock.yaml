@@ -134,7 +134,10 @@ importers:
     dependencies:
       '@humanspeak/docs-kit':
         specifier: github:humanspeak/docs-kit#2026.3.23
-        version: https://codeload.github.com/humanspeak/docs-kit/tar.gz/09d0ca06dd1c8973df3624f9e4deeb281c4447b4(@humanspeak/svelte-motion@0.2.0(svelte@5.55.0))(@internationalized/date@3.12.0)(@lucide/svelte@1.7.0(svelte@5.55.0))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@7.0.0(svelte@5.55.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)))(svelte@5.55.0)(typescript@5.9.3)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)))(mode-watcher@1.1.0(svelte@5.55.0))(svelte@5.55.0)(zod@4.3.6)
+        version: https://codeload.github.com/humanspeak/docs-kit/tar.gz/09d0ca06dd1c8973df3624f9e4deeb281c4447b4(@humanspeak/svelte-markdown@1.2.0(svelte@5.55.0))(@humanspeak/svelte-motion@0.2.0(svelte@5.55.0))(@internationalized/date@3.12.0)(@lucide/svelte@1.7.0(svelte@5.55.0))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@7.0.0(svelte@5.55.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)))(svelte@5.55.0)(typescript@5.9.3)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)))(mode-watcher@1.1.0(svelte@5.55.0))(svelte@5.55.0)(zod@4.3.6)
+      '@humanspeak/svelte-markdown':
+        specifier: ^1.2.0
+        version: 1.2.0(svelte@5.55.0)
       '@humanspeak/svelte-motion':
         specifier: ^0.2.0
         version: 0.2.0(svelte@5.55.0)
@@ -932,6 +935,19 @@ packages:
       svelte: ^5.0.0
     peerDependenciesMeta:
       '@humanspeak/svelte-markdown':
+        optional: true
+
+  '@humanspeak/memory-cache@1.0.6':
+    resolution: {integrity: sha512-8nS/7OIysYsjd5d64cprdwupgqzpMmFDHw25EWuPLRxxJw5q91K7Z+bjIcAPjikMU9vmptY5GyhsZDbcr1ym4Q==}
+    engines: {node: '>=18.0.0'}
+
+  '@humanspeak/svelte-markdown@1.2.0':
+    resolution: {integrity: sha512-qmc5vfH9jjiHVvchGBn5WSgXSwMNO5r0guGwmQGXkc0oAXOwALhmIRlZRriCyNM3PgAx7ULAcj6YZ8LqFde4fQ==}
+    peerDependencies:
+      mermaid: '>=10.0.0'
+      svelte: ^5.0.0
+    peerDependenciesMeta:
+      mermaid:
         optional: true
 
   '@humanspeak/svelte-motion@0.2.0':
@@ -2698,6 +2714,22 @@ packages:
   dom-accessibility-api@0.6.3:
     resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
 
+  dom-serializer@3.0.0:
+    resolution: {integrity: sha512-x+9D6nkC8tdXOQUS32egtZpZFLP90+HBZmWjuT920srbJvD/zPgFB9t4k3pEhlw5BQrXStQtRc1Y1zuriXk+Nw==}
+    engines: {node: '>=20.19.0'}
+
+  domelementtype@3.0.0:
+    resolution: {integrity: sha512-umCQid3jKbDmVjx8jGaW7uUykm4DEUeyV21hPxNMo2nV955DhUThwqyOIDtreepP31hl84X7G5U9ZfsWvIB3Pg==}
+    engines: {node: '>=20.19.0'}
+
+  domhandler@6.0.1:
+    resolution: {integrity: sha512-gYzvtM72ZtxQO0T048kd6HWSbbGCNOUwcnfQ01cqIJ4X2IYKFFHZ5mKvrQETcFXxsRObZulDaKmy//R7TPtsBg==}
+    engines: {node: '>=20.19.0'}
+
+  domutils@4.0.2:
+    resolution: {integrity: sha512-qI4JLRKnSzqFqr7hAlS5xQDusBCjKSEG4t4+7aNrIQMHBcsC2TGEhuyABJdYkgSewL57PNLYEiibY2iPKhKpaA==}
+    engines: {node: '>=20.19.0'}
+
   dotenv@16.6.1:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
@@ -2739,6 +2771,10 @@ packages:
   entities@6.0.1:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
+
+  entities@8.0.0:
+    resolution: {integrity: sha512-zwfzJecQ/Uej6tusMqwAqU/6KL2XaB2VZ2Jg54Je6ahNBGNH6Ek6g3jjNCF0fG9EWQKGZNddNjU5F1ZQn/sBnA==}
+    engines: {node: '>=20.19.0'}
 
   error-stack-parser-es@1.0.5:
     resolution: {integrity: sha512-5qucVt2XcuGMcEGgWI7i+yZpmpByQ8J1lHhcL7PwqCwu9FPP3VUXzT4ltHe5i2z9dePwEHcDVOAfSnHsOlCXRA==}
@@ -3151,6 +3187,10 @@ packages:
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
 
+  htmlparser2@12.0.0:
+    resolution: {integrity: sha512-Tz7u1i95/g2x2jz81+x0FBVhBhY5aRTvD3tXXdFaljuNdzDLJ8UGNRrTcj2cgQvAg3iW/h77Fz15nLW0L0CrZw==}
+    engines: {node: '>=20.19.0'}
+
   https-proxy-agent@5.0.1:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
     engines: {node: '>= 6'}
@@ -3530,6 +3570,11 @@ packages:
   make-dir@4.0.0:
     resolution: {integrity: sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==}
     engines: {node: '>=10'}
+
+  marked@17.0.5:
+    resolution: {integrity: sha512-6hLvc0/JEbRjRgzI6wnT2P1XuM1/RrrDEX0kPt0N7jGm1133g6X7DlxFasUIx+72aKAr904GTxhSLDrd5DIlZg==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -5289,7 +5334,7 @@ snapshots:
       '@humanfs/core': 0.19.1
       '@humanwhocodes/retry': 0.4.3
 
-  '@humanspeak/docs-kit@https://codeload.github.com/humanspeak/docs-kit/tar.gz/09d0ca06dd1c8973df3624f9e4deeb281c4447b4(@humanspeak/svelte-motion@0.2.0(svelte@5.55.0))(@internationalized/date@3.12.0)(@lucide/svelte@1.7.0(svelte@5.55.0))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@7.0.0(svelte@5.55.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)))(svelte@5.55.0)(typescript@5.9.3)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)))(mode-watcher@1.1.0(svelte@5.55.0))(svelte@5.55.0)(zod@4.3.6)':
+  '@humanspeak/docs-kit@https://codeload.github.com/humanspeak/docs-kit/tar.gz/09d0ca06dd1c8973df3624f9e4deeb281c4447b4(@humanspeak/svelte-markdown@1.2.0(svelte@5.55.0))(@humanspeak/svelte-motion@0.2.0(svelte@5.55.0))(@internationalized/date@3.12.0)(@lucide/svelte@1.7.0(svelte@5.55.0))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@7.0.0(svelte@5.55.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)))(svelte@5.55.0)(typescript@5.9.3)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)))(mode-watcher@1.1.0(svelte@5.55.0))(svelte@5.55.0)(zod@4.3.6)':
     dependencies:
       '@humanspeak/svelte-motion': 0.2.0(svelte@5.55.0)
       '@humanspeak/svelte-satori-fix': 0.0.3(svelte@5.55.0)
@@ -5306,9 +5351,21 @@ snapshots:
       satori-html: 0.3.2
       svelte: 5.55.0
       tailwind-merge: 3.5.0
+    optionalDependencies:
+      '@humanspeak/svelte-markdown': 1.2.0(svelte@5.55.0)
     transitivePeerDependencies:
       - '@internationalized/date'
       - zod
+
+  '@humanspeak/memory-cache@1.0.6': {}
+
+  '@humanspeak/svelte-markdown@1.2.0(svelte@5.55.0)':
+    dependencies:
+      '@humanspeak/memory-cache': 1.0.6
+      github-slugger: 2.0.0
+      htmlparser2: 12.0.0
+      marked: 17.0.5
+      svelte: 5.55.0
 
   '@humanspeak/svelte-motion@0.2.0(svelte@5.55.0)':
     dependencies:
@@ -7051,6 +7108,24 @@ snapshots:
 
   dom-accessibility-api@0.6.3: {}
 
+  dom-serializer@3.0.0:
+    dependencies:
+      domelementtype: 3.0.0
+      domhandler: 6.0.1
+      entities: 8.0.0
+
+  domelementtype@3.0.0: {}
+
+  domhandler@6.0.1:
+    dependencies:
+      domelementtype: 3.0.0
+
+  domutils@4.0.2:
+    dependencies:
+      dom-serializer: 3.0.0
+      domelementtype: 3.0.0
+      domhandler: 6.0.1
+
   dotenv@16.6.1: {}
 
   dunder-proto@1.0.1:
@@ -7089,6 +7164,8 @@ snapshots:
       tapable: 2.3.0
 
   entities@6.0.1: {}
+
+  entities@8.0.0: {}
 
   error-stack-parser-es@1.0.5: {}
 
@@ -7620,6 +7697,13 @@ snapshots:
 
   html-void-elements@3.0.0: {}
 
+  htmlparser2@12.0.0:
+    dependencies:
+      domelementtype: 3.0.0
+      domhandler: 6.0.1
+      domutils: 4.0.2
+      entities: 8.0.0
+
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
@@ -7984,6 +8068,8 @@ snapshots:
   make-dir@4.0.0:
     dependencies:
       semver: 7.7.4
+
+  marked@17.0.5: {}
 
   math-intrinsics@1.1.0: {}
 

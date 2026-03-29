@@ -8,6 +8,7 @@ import Database from '@lucide/svelte/icons/database'
 import InfinityIcon from '@lucide/svelte/icons/infinity'
 import List from '@lucide/svelte/icons/list'
 import MessageCircle from '@lucide/svelte/icons/message-circle'
+import Newspaper from '@lucide/svelte/icons/newspaper'
 import Play from '@lucide/svelte/icons/play'
 import Rocket from '@lucide/svelte/icons/rocket'
 import Server from '@lucide/svelte/icons/server'
@@ -42,6 +43,18 @@ export const docsSections: NavSection[] = [
             { title: 'SSR Support', href: '/docs/ssr', icon: Server },
             { title: 'Debug Mode', href: '/docs/debug', icon: Bug },
             { title: 'Convex', href: '/docs/convex', icon: Database }
+        ]
+    },
+    {
+        title: 'Blog',
+        icon: Newspaper,
+        items: [
+            { title: 'All Posts', href: '/blog', icon: Newspaper },
+            {
+                title: 'Cursor Pagination with Convex',
+                href: '/blog/cursor-pagination-infinite-scroll-convex-svelte',
+                icon: Database
+            }
         ]
     },
     {

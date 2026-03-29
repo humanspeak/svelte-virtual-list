@@ -8,7 +8,7 @@ export const createTestItems = (count: number): Item[] =>
 
 export const createTestItemsWithHeight = (
     count: number,
-    heights: number[] | ((i: number) => number)
+    heights: number[] | ((_i: number) => number)
 ): ItemWithHeight[] =>
     Array.from({ length: count }, (_, i) => ({
         id: i,
