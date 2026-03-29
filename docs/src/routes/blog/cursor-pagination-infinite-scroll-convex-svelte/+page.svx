@@ -11,7 +11,35 @@ tags:
     - chat ui
 author: Jason Kummerl
 ogSlug: blog-cursor-pagination-convex
+readingTime: 8
 ---
+
+<script>
+    import { BlogPost } from '@humanspeak/docs-kit/blog'
+    import { docsConfig } from '$lib/docs-config'
+    import { getBreadcrumbContext } from '@humanspeak/docs-kit'
+
+    const breadcrumbContext = getBreadcrumbContext()
+    if (breadcrumbContext) {
+        breadcrumbContext.breadcrumbs = [
+            { title: 'Blog', href: '/blog' },
+            { title: 'Cursor Pagination with Convex' }
+        ]
+    }
+
+    const post = {
+        slug: 'cursor-pagination-infinite-scroll-convex-svelte',
+        title: 'Cursor Pagination and Infinite Scroll with Convex and Svelte',
+        date: '2026-03-29',
+        description: 'Learn why cursor-based pagination outperforms offset pagination for real-time data, and how to build infinite scroll with Convex and Svelte Virtual List — including a chat UI with optimistic updates.',
+        tags: ['cursor pagination', 'convex', 'infinite scroll', 'svelte', 'real-time', 'chat ui'],
+        author: 'Jason Kummerl',
+        readingTime: 8,
+        ogSlug: 'blog-cursor-pagination-convex'
+    }
+</script>
+
+<BlogPost {post} config={docsConfig}>
 
 If you've ever built an infinite-scrolling list backed by a real-time database, you've hit the classic problem: **offset pagination breaks when the underlying data changes**. A new item arrives, every offset shifts by one, and your user sees duplicates or skipped rows.
 
@@ -364,3 +392,5 @@ Without virtualization, rendering 10,000 items creates 10,000 DOM nodes. With `@
 - **[Bottom-to-top mode](/docs/bottom-to-top)** — Chat-style scrolling
 - **[API reference](/docs/api/props)** — All component props
 - **[@humanspeak/svelte-markdown](https://markdown.svelte.page)** — Streaming markdown renderer for AI chat UIs
+
+</BlogPost>

@@ -27,7 +27,7 @@
         }
     },
     "dependencies": {
-        "@humanspeak/docs-kit": "github:humanspeak/docs-kit#2026.3.28",
+        "@humanspeak/docs-kit": "github:humanspeak/docs-kit#2026.3.30",
         "@humanspeak/svelte-markdown": "^1.2.0",
         "@humanspeak/svelte-motion": "^0.2.0",
         "@humanspeak/svelte-virtual-list": "workspace:*",
