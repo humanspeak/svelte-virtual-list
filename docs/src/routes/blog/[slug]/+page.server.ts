@@ -1,4 +1,4 @@
-import { loadBlogPosts } from '@humanspeak/docs-kit/blog'
+import { highlightBlogPosts, loadBlogPosts } from '@humanspeak/docs-kit/blog'
 import { error } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types'
 
@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ params }) => {
         import: 'default'
     }) as Record<string, string>
 
-    const posts = loadBlogPosts(globResult)
+    const posts = await highlightBlogPosts(loadBlogPosts(globResult))
     const post = posts.find((p) => p.slug === params.slug)
 
     if (!post) {

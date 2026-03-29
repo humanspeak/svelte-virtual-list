@@ -1,4 +1,4 @@
-import { loadBlogPosts } from '@humanspeak/docs-kit/blog'
+import { highlightBlogPosts, loadBlogPosts } from '@humanspeak/docs-kit/blog'
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = async () => {
@@ -8,7 +8,7 @@ export const load: PageServerLoad = async () => {
         import: 'default'
     }) as Record<string, string>
 
-    const posts = loadBlogPosts(globResult)
+    const posts = await highlightBlogPosts(loadBlogPosts(globResult))
 
     return { posts }
 }

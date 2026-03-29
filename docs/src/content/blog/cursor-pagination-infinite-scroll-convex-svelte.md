@@ -303,6 +303,22 @@ Chat UIs need to feel instant. Optimistic updates show the user's message immedi
 </VirtualList>
 ```
 
+## Bonus: Streaming AI Chat with Svelte Markdown
+
+Building an LLM-powered chat? The chat pattern above pairs naturally with [`@humanspeak/svelte-markdown`](https://markdown.svelte.page) and its **streaming mode**. As your AI model streams tokens back, svelte-markdown renders the markdown incrementally — headings, code blocks, tables, and all — giving users the real-time "typing" experience they expect from tools like ChatGPT.
+
+```svelte
+<script lang="ts">
+    import SvelteMarkdown from '@humanspeak/svelte-markdown'
+
+    let { content, isStreaming } = $props()
+</script>
+
+<SvelteMarkdown source={content} streaming={isStreaming} />
+```
+
+When `streaming` is `true`, the renderer handles partial markdown gracefully — no flickering from incomplete fences or half-parsed tables. Combined with `bottomToTop` virtual scrolling, you get a production-grade AI chat UI: the virtual list manages the message history and infinite scroll, while svelte-markdown handles the live rendering of the latest response as it streams in.
+
 ## Frequently Asked Questions
 
 ### Why not use Convex's built-in `usePaginatedQuery`?
@@ -347,3 +363,4 @@ Without virtualization, rendering 10,000 items creates 10,000 DOM nodes. With `@
 - **[Infinite scroll docs](/docs/infinite-scroll)** — Props, behavior, and examples
 - **[Bottom-to-top mode](/docs/bottom-to-top)** — Chat-style scrolling
 - **[API reference](/docs/api/props)** — All component props
+- **[@humanspeak/svelte-markdown](https://markdown.svelte.page)** — Streaming markdown renderer for AI chat UIs

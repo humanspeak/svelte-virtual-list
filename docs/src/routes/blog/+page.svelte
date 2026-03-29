@@ -21,6 +21,4 @@
     real-time UIs with Svelte.
 </p>
 
-<div class="not-prose">
-    <BlogIndex posts={data.posts} basePath="/blog" />
-</div>
+<BlogIndex posts={data.posts} basePath="/blog" />
