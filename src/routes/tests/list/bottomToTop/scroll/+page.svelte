@@ -1,7 +1,6 @@
 <script lang="ts">
     import SvelteVirtualList, { type SvelteVirtualListScrollAlign } from '$lib/index.js'
-    import { createTestItems } from '$lib/test/utils/createTestItems.js'
-    import type { Item } from '$lib/test/types/item.js'
+    import { createTestItems, type Item } from '$lib/test/utils/createTestItems.js'
 
     let virtualList: SvelteVirtualList<Item>
 
