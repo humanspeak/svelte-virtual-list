@@ -1,5 +1,10 @@
 <script lang="ts">
-    import { motion, animate, type MotionTransition } from '@humanspeak/svelte-motion'
+    import {
+        MotionDiv,
+        MotionButton,
+        animate,
+        type MotionTransition
+    } from '@humanspeak/svelte-motion'
     import Header from '$lib/components/general/Header.svelte'
     import { Footer } from '@humanspeak/docs-kit'
     import Example from '$lib/components/general/Example.svelte'
@@ -94,7 +99,7 @@
             <!-- Layer: soft radial glow -->
             <div class="bg-glow pointer-events-none absolute inset-0 -z-10"></div>
             <!-- Layer: animated orbs via motion -->
-            <motion.div
+            <MotionDiv
                 class="orb-a-bg absolute bottom-[-80px] left-[-80px] h-[320px] w-[320px] rounded-full opacity-50 blur-[30px]"
                 style="will-change: transform;"
                 animate={{
@@ -103,7 +108,7 @@
                 }}
                 transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
             />
-            <motion.div
+            <MotionDiv
                 class="orb-b-bg absolute top-[20%] right-[-60px] h-[260px] w-[260px] rounded-full opacity-50 blur-[30px]"
                 style="will-change: transform;"
                 animate={{
@@ -116,7 +121,7 @@
             <div
                 class="relative mx-auto flex w-full max-w-7xl items-center justify-center px-6 py-8 md:py-12"
             >
-                <motion.div class="mx-auto max-w-4xl text-center">
+                <MotionDiv class="mx-auto max-w-4xl text-center">
                     <div bind:this={headingContainer} class="mx-auto max-w-4xl text-center">
                         <h1
                             class="text-foreground text-5xl leading-tight font-semibold text-balance md:text-7xl"
@@ -135,7 +140,7 @@
                             with minimal memory. Automatic height detection. SSR-ready.
                         </p>
                         <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
-                            <motion.button
+                            <MotionButton
                                 onclick={() => {
                                     goto('/docs')
                                 }}
@@ -144,8 +149,8 @@
                                 class="border-border-mid bg-brand-200 text-background inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold"
                             >
                                 Get Started
-                            </motion.button>
-                            <motion.button
+                            </MotionButton>
+                            <MotionButton
                                 onclick={() => {
                                     goto('/examples')
                                 }}
@@ -154,8 +159,8 @@
                                 class="border-border-mid text-foreground hover:bg-muted inline-flex items-center justify-center rounded-full border bg-transparent px-4 py-2 text-sm font-semibold"
                             >
                                 View Examples
-                            </motion.button>
-                            <motion.button
+                            </MotionButton>
+                            <MotionButton
                                 onclick={() => {
                                     goto('/blog')
                                 }}
@@ -164,7 +169,7 @@
                                 class="border-border-mid text-foreground hover:bg-muted inline-flex items-center justify-center rounded-full border bg-transparent px-4 py-2 text-sm font-semibold"
                             >
                                 Blog
-                            </motion.button>
+                            </MotionButton>
                         </div>
                         <ul
                             class="text-muted-foreground mt-10 flex flex-wrap justify-center gap-2 text-xs"
@@ -187,7 +192,7 @@
                         </ul>
 
                         <!-- Interactive Demo -->
-                        <motion.div
+                        <MotionDiv
                             class="mt-12 w-full"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -213,9 +218,9 @@
                             <p class="text-muted-foreground mt-4 text-center text-sm">
                                 Scroll through 10,000 items with smooth performance
                             </p>
-                        </motion.div>
+                        </MotionDiv>
                     </div>
-                </motion.div>
+                </MotionDiv>
             </div>
         </section>
     </div>

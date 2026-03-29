@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { motion } from '@humanspeak/svelte-motion'
+    import { MotionButton } from '@humanspeak/svelte-motion'
     import { cn } from '$lib/shadcn/utils'
     import type { Snippet } from 'svelte'
     import RotateCw from '@lucide/svelte/icons/rotate-cw'
@@ -28,14 +28,14 @@
         <div class="flex flex-1 items-center gap-4"></div>
         <div class="flex flex-1 items-center justify-center gap-4"></div>
         <div class="flex flex-1 items-center justify-end gap-4">
-            <motion.button
+            <MotionButton
                 onclick={refreshMotion}
                 whileTap={{ scale: 0.9 }}
                 whileHover={{ scale: 1.1 }}
                 class="border-border-muted text-text-muted hover:border-border-mid hover:text-text-secondary inline-flex size-6 items-center justify-center rounded-full border transition-colors"
             >
                 <RotateCw size={12} />
-            </motion.button>
+            </MotionButton>
         </div>
     </div>
     <!-- Subtle orange background that never clips content -->
