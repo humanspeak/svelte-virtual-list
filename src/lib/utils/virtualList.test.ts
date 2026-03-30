@@ -406,7 +406,7 @@ describe('calculateVisibleRange', () => {
         )
         expect(result).toEqual({
             start: 84, // Items near the end for bottomToTop when scrollTop = 100
-            end: 100 // items 86-97 visible (2580-2910px covers viewport 2600-2900px), +1 safety, +2 buffer
+            end: 99
         })
     })
 
@@ -469,32 +469,6 @@ describe('calculateVisibleRange', () => {
             cache
         )
         expect(result).toEqual({ start: 1, end: 8 })
-    })
-
-    it('should use measured heights for bottomToTop with heightCache', () => {
-        // 10 items, cache: 0→100, 1→50, 2→80, 3→60, 4→40, rest→30 (fallback)
-        // totalHeight = 100+50+80+60+40+30×5 = 480
-        // maxScrollTop = 480 - 200 = 280
-        // scrollTop=100 → distanceFromStart = 280 - 100 = 180
-        // findStart(180): cumulative[2]=150 ≤ 180, cumulative[3]=230 > 180 → start=2, offset=150
-        // findEnd(2, 150, 380): 150+80=230, +60=290, +40=330, +30=360, +30=390 (390 ≥ 380) → end=7, +1=8
-        // With buffer=1: start=max(0,2-1)=1, end=min(10,8+1)=9
-        const cache: Record<number, number> = { 0: 100, 1: 50, 2: 80, 3: 60, 4: 40 }
-        const totalHeight = 100 + 50 + 80 + 60 + 40 + 30 * 5 // 480
-        const result = calculateVisibleRange(
-            100,
-            200,
-            30,
-            10,
-            1,
-            'bottomToTop',
-            false,
-            false,
-            null,
-            totalHeight,
-            cache
-        )
-        expect(result).toEqual({ start: 1, end: 9 })
     })
 })
 
