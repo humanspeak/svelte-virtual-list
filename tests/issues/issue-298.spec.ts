@@ -1,13 +1,5 @@
 import { expect, test } from '@playwright/test'
-
-// Use 200ms waits instead of rafWait (2 RAF frames / ~33ms). The component's
-// bottomToTop scroll correction pipeline has multiple async layers — programmatic
-// scroll, ResizeObserver, reconciliation RAF, and a 200ms suppression window —
-// that need time to settle. rafWait was adopted over waitForTimeout as an
-// improvement, but 2 RAF frames is insufficient for slower browsers (WebKit,
-// Firefox, mobile-safari). 200ms gives the full pipeline time to complete and
-// matches human-perceptible timing.
-const SETTLE_MS = 200
+import { SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
 
 test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
     test('item 0 stays visible and at bottom after adding messages', async ({ page }) => {
