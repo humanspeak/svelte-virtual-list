@@ -78,6 +78,11 @@ export const calculateScrollPosition = (
  * @param {number} totalItems - Total number of items in the list
  * @param {number} bufferSize - Number of items to render outside the visible area
  * @param {SvelteVirtualListMode} mode - Scroll direction mode
+ * @param {boolean} atBottom - Whether the list is scrolled to the bottom (unused, legacy parameter)
+ * @param {boolean} wasAtBottomBeforeHeightChange - Whether the list was at bottom before a height change (unused, legacy parameter)
+ * @param {SvelteVirtualListPreviousVisibleRange | null} lastVisibleRange - Previous visible range (unused, legacy parameter)
+ * @param {number} [totalContentHeight] - Pre-calculated total content height; defaults to totalItems * itemHeight
+ * @param {Record<number, number>} [heightCache] - Cache of measured item heights keyed by index, used in topToBottom mode to walk actual heights instead of dividing by average
  * @returns {SvelteVirtualListPreviousVisibleRange} Range of indices to render
  */
 export const calculateVisibleRange = (

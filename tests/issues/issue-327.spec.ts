@@ -191,15 +191,13 @@ test.describe('Issue 327 - Variable height scroll flash on item expand', () => {
         // plateau rather than grow with each cycle. We check plateau stability
         // rather than absolute drift because the measured-height drift is not
         // user-visible (confirmed via visual screenshot comparison).
-        if (collapsedHeights.length >= 2) {
-            const lastDrift = Math.abs(
-                collapsedHeights[collapsedHeights.length - 1] - baselineHeight
-            )
-            const secondToLastDrift = Math.abs(
-                collapsedHeights[collapsedHeights.length - 2] - baselineHeight
-            )
-            // Drift should plateau — last two cycles should be within 500px of each other
-            expect(Math.abs(lastDrift - secondToLastDrift)).toBeLessThan(500)
+        // Use the last 3 cycles to verify plateau — a 3-sample spread check is
+        // more robust than 2-sample against a still-increasing drift that happens
+        // to have similar consecutive deltas.
+        if (collapsedHeights.length >= 3) {
+            const tailDrifts = collapsedHeights.slice(-3).map((h) => Math.abs(h - baselineHeight))
+            const spread = Math.max(...tailDrifts) - Math.min(...tailDrifts)
+            expect(spread).toBeLessThan(500)
         }
     })
 
