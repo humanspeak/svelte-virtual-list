@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
+import { MULTI_ITEM_SETTLE_MS, SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
 
 /**
  * Comprehensive test suite for bottomToTop mode with dynamic item height changes.
@@ -310,10 +310,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         expect((await page.locator('[data-testid="list-item-1"]').boundingBox())?.height).toBe(100)
         expect((await page.locator('[data-testid="list-item-2"]').boundingBox())?.height).toBe(120)
         expect((await page.locator('[data-testid="list-item-3"]').boundingBox())?.height).toBe(60)
-        // Extended settle time (longer than SETTLE_MS) because this test applies
-        // 4 simultaneous height changes across different items, requiring more
-        // ResizeObserver + reconciliation cycles to fully stabilize.
-        await page.waitForTimeout(500)
+        await page.waitForTimeout(MULTI_ITEM_SETTLE_MS)
 
         // Verify layout is still coherent (no overlapping or gaps)
         const item0Box = await page.locator('[data-testid="list-item-0"]').boundingBox()

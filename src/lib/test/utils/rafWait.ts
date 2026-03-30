@@ -36,6 +36,21 @@ import type { Locator, Page, TestInfo } from '@playwright/test'
 export const SETTLE_MS = 200
 
 /**
+ * Extended settle time for tests that apply multiple simultaneous height
+ * changes across different items, requiring more ResizeObserver callbacks
+ * and reconciliation cycles to fully stabilize than a single change would.
+ *
+ * @example
+ * ```typescript
+ * import { MULTI_ITEM_SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
+ *
+ * // After applying 4 height changes at once
+ * await page.waitForTimeout(MULTI_ITEM_SETTLE_MS)
+ * ```
+ */
+export const MULTI_ITEM_SETTLE_MS = SETTLE_MS + 300
+
+/**
  * Waits for consecutive animation frame cycles to complete.
  *
  * This function is useful for ensuring that DOM measurements are stable after
