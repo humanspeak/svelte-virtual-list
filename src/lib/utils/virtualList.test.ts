@@ -6,6 +6,8 @@ import {
     calculateTransformY,
     calculateVisibleRange,
     clampValue,
+    findEndIndex,
+    findStartIndex,
     getScrollOffsetForIndex,
     getValidHeight,
     updateHeightAndScroll
@@ -279,6 +281,97 @@ describe('calculateScrollPosition', () => {
     })
 })
 
+describe('findStartIndex', () => {
+    it('should use O(1) division when no heightCache is provided', () => {
+        const result = findStartIndex(150, 100, 50)
+        expect(result).toEqual({ index: 3, offset: 150 })
+    })
+
+    it('should handle zero offset', () => {
+        const result = findStartIndex(0, 100, 50)
+        expect(result).toEqual({ index: 0, offset: 0 })
+    })
+
+    it('should handle offset beyond total content', () => {
+        // 10 items × 50px = 500px total, offset 600 → index 12 (clamped by caller)
+        const result = findStartIndex(600, 10, 50)
+        expect(result).toEqual({ index: 12, offset: 600 })
+    })
+
+    it('should binary search with uniform heightCache', () => {
+        const cache: Record<number, number> = {}
+        for (let i = 0; i < 20; i++) cache[i] = 50
+        const result = findStartIndex(150, 20, 50, cache)
+        expect(result).toEqual({ index: 3, offset: 150 })
+    })
+
+    it('should binary search with variable heightCache', () => {
+        // Items: 0→40, 1→60, 2→80, 3→50, 4→30
+        // Cumulative: 0, 40, 100, 180, 230, 260
+        const cache: Record<number, number> = { 0: 40, 1: 60, 2: 80, 3: 50, 4: 30 }
+        // targetOffset=150: cumulative[3]=180 > 150, cumulative[2]=100 ≤ 150 → index 2
+        const result = findStartIndex(150, 5, 50, cache)
+        expect(result).toEqual({ index: 2, offset: 100 })
+    })
+
+    it('should find exact boundary with variable heights', () => {
+        // Cumulative: 0, 40, 100, 180
+        const cache: Record<number, number> = { 0: 40, 1: 60, 2: 80 }
+        // targetOffset=100: cumulative[2]=100 ≤ 100, cumulative[3]=180 > 100 → index 2
+        const result = findStartIndex(100, 3, 50, cache)
+        expect(result).toEqual({ index: 2, offset: 100 })
+    })
+
+    it('should fall back to itemHeight for unmeasured items in cache', () => {
+        // Only item 0 measured, rest use fallback of 30
+        const cache: Record<number, number> = { 0: 100 }
+        // Cumulative: 0, 100, 130, 160, 190
+        // targetOffset=150: cumulative[4]=190 > 150, cumulative[3]=160 > 150, cumulative[2]=130 ≤ 150 → index 2 (probably)
+        const result = findStartIndex(150, 10, 30, cache)
+        expect(result.index).toBe(2)
+        expect(result.offset).toBe(130)
+    })
+})
+
+describe('findEndIndex', () => {
+    it('should walk forward with uniform heights (no cache)', () => {
+        // Start at item 3 (offset 90), viewport ends at 390, 30px items
+        // Items 3-12 fill 90→390 (10 items × 30px), then +1 = 14
+        const end = findEndIndex(3, 90, 390, 100, 30)
+        expect(end).toBe(14)
+    })
+
+    it('should walk forward with variable heights', () => {
+        // Start at item 0 (offset 0), viewport ends at 200
+        // Items: 0→40, 1→60, 2→80, 3→50 → cumulative 40, 100, 180, 230
+        // Item 3 pushes past 200, so end loop gives 4, +1 = 5
+        const cache: Record<number, number> = { 0: 40, 1: 60, 2: 80, 3: 50 }
+        const end = findEndIndex(0, 0, 200, 100, 30, cache)
+        expect(end).toBe(5)
+    })
+
+    it('should clamp to totalItems', () => {
+        // Only 5 items, viewport needs more
+        const end = findEndIndex(0, 0, 1000, 5, 30)
+        expect(end).toBe(5) // min(5, 5+1) = 5... actually all items consumed, end=5, +1=6, min(5,6)=5
+    })
+
+    it('should handle start partway through first item', () => {
+        // Start at item 2 (offset 60), viewport ends at 380
+        // Items 2-12: offset grows 60→90→...→390 (item 12 pushes to 390 ≥ 380)
+        // end=13, +1=14
+        const end = findEndIndex(2, 60, 380, 100, 30)
+        expect(end).toBe(14)
+    })
+
+    it('should handle single item filling viewport', () => {
+        // One very tall item at index 0
+        const cache: Record<number, number> = { 0: 1000 }
+        const end = findEndIndex(0, 0, 300, 10, 30, cache)
+        expect(end).toBe(2) // item 0 fills viewport (1000 ≥ 300), end=1, +1=2
+    })
+})
+
 describe('calculateVisibleRange', () => {
     it('should calculate correct range for top-to-bottom mode', () => {
         const result = calculateVisibleRange(
@@ -294,7 +387,7 @@ describe('calculateVisibleRange', () => {
         )
         expect(result).toEqual({
             start: 1, // (100/30 - 2) rounded down
-            end: 16 // (floor(100/30) + ceil(300/30) + 1 + 2) = 3 + 10 + 1 + 2
+            end: 17 // items 3-13 visible (90-420px covers viewport 100-400px), +1 safety, +2 buffer
         })
     })
 
@@ -313,7 +406,7 @@ describe('calculateVisibleRange', () => {
         )
         expect(result).toEqual({
             start: 84, // Items near the end for bottomToTop when scrollTop = 100
-            end: 99
+            end: 100 // items 86-97 visible (2580-2910px covers viewport 2600-2900px), +1 safety, +2 buffer
         })
     })
 
@@ -352,6 +445,56 @@ describe('calculateVisibleRange', () => {
             start: 0,
             end: 10
         })
+    })
+
+    it('should use measured heights for topToBottom with heightCache', () => {
+        // Items: 0→100, 1→50, 2→80, 3→60, 4→40, rest→30 (fallback)
+        // Cumulative: 0, 100, 150, 230, 290, 330, 360, ...
+        // scrollTop=160, viewportHeight=200 → viewport covers 160-360
+        // findStart(160): cumulative[2]=150 ≤ 160, cumulative[3]=230 > 160 → start=2, offset=150
+        // findEnd(2, 150, 360): 150+80=230, +60=290, +40=330, +30=360 (360 not < 360) → end=6, +1=7
+        // With buffer=1: start=max(0,2-1)=1, end=min(10,7+1)=8
+        const cache: Record<number, number> = { 0: 100, 1: 50, 2: 80, 3: 60, 4: 40 }
+        const result = calculateVisibleRange(
+            160,
+            200,
+            30,
+            10,
+            1,
+            'topToBottom',
+            false,
+            false,
+            null,
+            undefined,
+            cache
+        )
+        expect(result).toEqual({ start: 1, end: 8 })
+    })
+
+    it('should use measured heights for bottomToTop with heightCache', () => {
+        // 10 items, cache: 0→100, 1→50, 2→80, 3→60, 4→40, rest→30 (fallback)
+        // totalHeight = 100+50+80+60+40+30×5 = 480
+        // maxScrollTop = 480 - 200 = 280
+        // scrollTop=100 → distanceFromStart = 280 - 100 = 180
+        // findStart(180): cumulative[2]=150 ≤ 180, cumulative[3]=230 > 180 → start=2, offset=150
+        // findEnd(2, 150, 380): 150+80=230, +60=290, +40=330, +30=360, +30=390 (390 ≥ 380) → end=7, +1=8
+        // With buffer=1: start=max(0,2-1)=1, end=min(10,8+1)=9
+        const cache: Record<number, number> = { 0: 100, 1: 50, 2: 80, 3: 60, 4: 40 }
+        const totalHeight = 100 + 50 + 80 + 60 + 40 + 30 * 5 // 480
+        const result = calculateVisibleRange(
+            100,
+            200,
+            30,
+            10,
+            1,
+            'bottomToTop',
+            false,
+            false,
+            null,
+            totalHeight,
+            cache
+        )
+        expect(result).toEqual({ start: 1, end: 9 })
     })
 })
 

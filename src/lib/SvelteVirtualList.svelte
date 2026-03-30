@@ -1010,7 +1010,8 @@
             wasAtBottomBeforeHeightChange,
             lastVisibleRange,
             totalHeight,
-            heightManager.getHeightCache()
+            heightManager.getHeightCache(),
+            heightManager.getBlockSums()
         )
 
         return lastVisibleRange
