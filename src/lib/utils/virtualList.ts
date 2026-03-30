@@ -121,15 +121,14 @@ export const calculateVisibleRange = (
 
         return { start, end } as SvelteVirtualListPreviousVisibleRange
     } else {
-        const getH = (i: number) =>
-            getValidHeight(heightCache ? heightCache[i] : undefined, itemHeight)
-
         // Walk forward through measured heights to find the correct start index
         // instead of dividing by average height (which is wrong for variable-height items).
         let start = 0
         let acc = 0
-        while (start < totalItems && acc + getH(start) <= scrollTop) {
-            acc += getH(start)
+        while (start < totalItems) {
+            const h = getValidHeight(heightCache?.[start], itemHeight)
+            if (acc + h > scrollTop) break
+            acc += h
             start++
         }
 
@@ -137,7 +136,7 @@ export const calculateVisibleRange = (
         let end = start
         let viewAcc = 0
         while (end < totalItems && viewAcc < viewportHeight) {
-            viewAcc += getH(end)
+            viewAcc += getValidHeight(heightCache?.[end], itemHeight)
             end++
         }
         end = Math.min(totalItems, end + 1) // +1 to ensure partial items are visible
@@ -155,8 +154,7 @@ export const calculateVisibleRange = (
             let startCore = adjustedEnd
             let backAcc = 0
             while (startCore > 0 && backAcc < viewportHeight) {
-                const h = getH(startCore - 1)
-                backAcc += h
+                backAcc += getValidHeight(heightCache?.[startCore - 1], itemHeight)
                 startCore -= 1
             }
             return {

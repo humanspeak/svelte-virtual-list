@@ -353,6 +353,112 @@ describe('calculateVisibleRange', () => {
             end: 10
         })
     })
+
+    it('should use measured heights for topToBottom start index when heightCache provided', () => {
+        // Items: 0→100, 1→50, 2→80, rest→30 (fallback)
+        // Cumulative: 0, 100, 150, 230, 260, 290, ...
+        // scrollTop=160: item 2 starts at 150, item 3 starts at 230 → start=2
+        const cache: Record<number, number> = { 0: 100, 1: 50, 2: 80 }
+        const result = calculateVisibleRange(
+            160,
+            300,
+            30,
+            100,
+            2,
+            'topToBottom',
+            false,
+            false,
+            null,
+            undefined,
+            cache
+        )
+        expect(result.start).toBe(0) // start=2 minus buffer=2
+    })
+
+    it('should use measured heights for topToBottom end calculation', () => {
+        // Items all 30px, scrollTop=0, viewportHeight=100
+        // Walk: 0→30, 30→60, 60→90, 90→120 (>100) → end=4, +1=5
+        // With buffer=1: end=min(20, 5+1)=6
+        const result = calculateVisibleRange(0, 100, 30, 20, 1, 'topToBottom', false, false, null)
+        expect(result.end).toBe(6)
+    })
+
+    it('should handle variable heights correctly in topToBottom visible range', () => {
+        // 5 items with known heights: 40, 60, 80, 50, 30
+        // Cumulative: 0, 40, 100, 180, 230, 260
+        // scrollTop=50, viewportHeight=120 → viewport covers 50-170
+        // Start walk: 0→40 (40≤50), 1→100 (100>50) → start=1
+        // End walk from 1: viewAcc=0+60=60, +80=140 (≥120) → end=3, +1=4
+        // With buffer=0: start=1, end=4
+        const cache: Record<number, number> = { 0: 40, 1: 60, 2: 80, 3: 50, 4: 30 }
+        const result = calculateVisibleRange(
+            50,
+            120,
+            40,
+            5,
+            0,
+            'topToBottom',
+            false,
+            false,
+            null,
+            undefined,
+            cache
+        )
+        expect(result).toEqual({ start: 1, end: 4 })
+    })
+
+    it('should fall back to itemHeight for unmeasured items in heightCache', () => {
+        // Only item 0 measured at 100px, rest use fallback of 30px
+        // Cumulative: 0, 100, 130, 160, 190
+        // scrollTop=140: item 2 at 130 (130≤140), item 3 at 160 (160>140) → start=2
+        const cache: Record<number, number> = { 0: 100 }
+        const result = calculateVisibleRange(
+            140,
+            300,
+            30,
+            100,
+            0,
+            'topToBottom',
+            false,
+            false,
+            null,
+            undefined,
+            cache
+        )
+        expect(result.start).toBe(2)
+    })
+
+    it('should produce same result with uniform heights whether cache present or not', () => {
+        // All items 40px — cache and no-cache should agree
+        const cache: Record<number, number> = {}
+        for (let i = 0; i < 50; i++) cache[i] = 40
+
+        const withCache = calculateVisibleRange(
+            200,
+            400,
+            40,
+            50,
+            2,
+            'topToBottom',
+            false,
+            false,
+            null,
+            undefined,
+            cache
+        )
+        const withoutCache = calculateVisibleRange(
+            200,
+            400,
+            40,
+            50,
+            2,
+            'topToBottom',
+            false,
+            false,
+            null
+        )
+        expect(withCache).toEqual(withoutCache)
+    })
 })
 
 describe('calculateTransformY', () => {
