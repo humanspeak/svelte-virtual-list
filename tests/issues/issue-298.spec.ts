@@ -1,17 +1,25 @@
 import { expect, test } from '@playwright/test'
-import { rafWait } from '../../src/lib/test/utils/rafWait.js'
+
+// Use 200ms waits instead of rafWait (2 RAF frames / ~33ms). The component's
+// bottomToTop scroll correction pipeline has multiple async layers — programmatic
+// scroll, ResizeObserver, reconciliation RAF, and a 200ms suppression window —
+// that need time to settle. rafWait was adopted over waitForTimeout as an
+// improvement, but 2 RAF frames is insufficient for slower browsers (WebKit,
+// Firefox, mobile-safari). 200ms gives the full pipeline time to complete and
+// matches human-perceptible timing.
+const SETTLE_MS = 200
 
 test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
     test('item 0 stays visible and at bottom after adding messages', async ({ page }) => {
         await page.goto('/tests/issues/issue-298', { waitUntil: 'domcontentloaded' })
-        await rafWait(page)
+        await page.waitForTimeout(SETTLE_MS)
 
         // Ensure list is anchored to bottom
         await page.evaluate(() => {
             const viewport = document.querySelector('#virtual-list-viewport') as HTMLElement | null
             if (viewport) viewport.scrollTo({ top: viewport.scrollHeight })
         })
-        await rafWait(page)
+        await page.waitForTimeout(SETTLE_MS)
 
         // Wait for item 0 to be attached
         await page
@@ -57,7 +65,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
         // Click add message several times; anchoring should keep item 0 pinned to bottom
         const addBtn = page.getByTestId('add-message-button')
         await addBtn.click()
-        await rafWait(page)
+        await page.waitForTimeout(SETTLE_MS)
         const after1 = await isItem0AtBottom()
         expect(after1.ok).toBe(true)
         expect(after1.distanceFromBottom).toBeLessThan(40)
@@ -71,7 +79,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
         await expect(page.locator('[data-original-index="0"]').first()).toBeVisible()
 
         await addBtn.click()
-        await rafWait(page)
+        await page.waitForTimeout(SETTLE_MS)
         const after2 = await isItem0AtBottom()
         expect(after2.ok).toBe(true)
         expect(after2.distanceFromBottom).toBeLessThan(40)
@@ -84,7 +92,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
         await expect(page.locator('[data-original-index="0"]').first()).toBeVisible()
 
         await addBtn.click()
-        await rafWait(page)
+        await page.waitForTimeout(SETTLE_MS)
         const after3 = await isItem0AtBottom()
         expect(after3.ok).toBe(true)
         expect(after3.distanceFromBottom).toBeLessThan(40)
@@ -101,7 +109,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
         page
     }) => {
         await page.goto('/tests/issues/issue-298', { waitUntil: 'domcontentloaded' })
-        await rafWait(page)
+        await page.waitForTimeout(SETTLE_MS)
 
         const metrics = async () =>
             page.evaluate(() => {
@@ -127,7 +135,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
                             viewport.scrollTop = Math.floor(maxScroll / 2)
                         }
                     })
-                    await rafWait(page)
+                    await page.waitForTimeout(SETTLE_MS)
                     const m = await metrics()
                     const maxScroll = m.scrollHeight - m.clientHeight
                     const target = Math.floor(maxScroll / 2)
@@ -145,7 +153,7 @@ test.describe('Issue 298 - bottomToTop keeps anchor on add', () => {
 
         // Add one message
         await page.getByTestId('add-message-button').click()
-        await rafWait(page)
+        await page.waitForTimeout(SETTLE_MS)
 
         const after = await metrics()
 
