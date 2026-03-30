@@ -108,8 +108,8 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 2000 }
         )
 
-        // Allow time for the full scroll correction pipeline to settle
-        await page.waitForTimeout(SETTLE_MS)
+        // Advance fake clock so the scroll correction pipeline settles
+        await page.clock.runFor(SETTLE_MS)
 
         // Verify item 0 is still visible and positioned at bottom
         const finalItem0Box = await item0.boundingBox()
@@ -161,8 +161,8 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 5000 }
         )
 
-        // Wait for the full scroll correction pipeline to settle
-        await page.waitForTimeout(SETTLE_MS)
+        // Advance fake clock so the scroll correction pipeline settles
+        await page.clock.runFor(SETTLE_MS)
 
         // CRITICAL: In bottomToTop mode, list-item-0 should STILL be visible in viewport after height change
         // This is the main test - if we see middle items (like Item 131) instead, the test should fail
@@ -170,7 +170,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             timeout: 1050
         })
 
-        await page.waitForTimeout(SETTLE_MS)
+        await page.clock.runFor(SETTLE_MS)
 
         // Get fresh references after navigation
         const finalContainerBox = await page
@@ -310,7 +310,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         expect((await page.locator('[data-testid="list-item-1"]').boundingBox())?.height).toBe(100)
         expect((await page.locator('[data-testid="list-item-2"]').boundingBox())?.height).toBe(120)
         expect((await page.locator('[data-testid="list-item-3"]').boundingBox())?.height).toBe(60)
-        await page.waitForTimeout(MULTI_ITEM_SETTLE_MS)
+        await page.clock.runFor(MULTI_ITEM_SETTLE_MS)
 
         // Verify layout is still coherent (no overlapping or gaps)
         const item0Box = await page.locator('[data-testid="list-item-0"]').boundingBox()
