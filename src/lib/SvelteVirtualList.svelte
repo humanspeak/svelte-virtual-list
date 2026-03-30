@@ -167,8 +167,7 @@
         calculateVisibleRange,
         clampValue,
         updateHeightAndScroll as utilsUpdateHeightAndScroll,
-        getScrollOffsetForIndex,
-        buildBlockSums
+        getScrollOffsetForIndex
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
@@ -260,7 +259,7 @@
         const est = heightManager.averageHeight
         const maxScrollTop = Math.max(0, totalHeight - (height || 0))
         // Offset from start to anchored item
-        const blockSums = buildBlockSums(cache, est, items.length)
+        const blockSums = heightManager.getBlockSums()
         const offsetToIndex = getScrollOffsetForIndex(cache, est, anchorIndex, blockSums)
         const currentTop = heightManager.viewport.scrollTop
         let offsetWithin: number
@@ -286,7 +285,7 @@
         if (!pendingAnchorReconcile) return
         const cache = heightManager.getHeightCache()
         const est = heightManager.averageHeight
-        const blockSums = buildBlockSums(cache, est, items.length)
+        const blockSums = heightManager.getBlockSums()
         const offsetToIndex = getScrollOffsetForIndex(
             cache,
             est,
@@ -999,19 +998,16 @@
             }
         }
 
-        lastVisibleRange = calculateVisibleRange(
-            heightManager.scrollTop,
+        lastVisibleRange = calculateVisibleRange({
+            scrollTop: heightManager.scrollTop,
             viewportHeight,
-            heightManager.averageHeight,
-            items.length,
+            itemHeight: heightManager.averageHeight,
+            totalItems: items.length,
             bufferSize,
             mode,
-            atBottom,
-            wasAtBottomBeforeHeightChange,
-            lastVisibleRange,
-            totalHeight,
-            heightManager.getHeightCache()
-        )
+            totalContentHeight: totalHeight,
+            heightCache: heightManager.getHeightCache()
+        })
 
         return lastVisibleRange
     })

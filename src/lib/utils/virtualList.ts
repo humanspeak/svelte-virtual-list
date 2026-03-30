@@ -65,39 +65,41 @@ export const calculateScrollPosition = (
     return Math.max(0, totalHeight - containerHeight)
 }
 
+/** Options for {@link calculateVisibleRange}. */
+export interface VisibleRangeOptions {
+    scrollTop: number
+    viewportHeight: number
+    /** Estimated/average item height used as fallback for unmeasured items. */
+    itemHeight: number
+    totalItems: number
+    /** Number of extra items to render outside the visible area. */
+    bufferSize: number
+    mode: SvelteVirtualListMode
+    /** Pre-calculated total content height; defaults to `totalItems * itemHeight`. */
+    totalContentHeight?: number
+    /** Measured item heights keyed by index; used in topToBottom mode to walk actual heights instead of dividing by average. */
+    heightCache?: Record<number, number>
+}
+
 /**
  * Determines the range of items that should be rendered in the virtual list.
  *
- * This function calculates which items should be visible based on the current scroll position,
- * viewport size, and scroll direction. It includes a buffer zone to enable smooth scrolling
+ * Calculates which items should be visible based on the current scroll position,
+ * viewport size, and scroll direction. Includes a buffer zone to enable smooth scrolling
  * and prevent visible gaps during rapid scroll movements.
  *
- * @param {number} scrollTop - Current scroll position in pixels
- * @param {number} viewportHeight - Height of the visible area in pixels
- * @param {number} itemHeight - Height of each list item in pixels
- * @param {number} totalItems - Total number of items in the list
- * @param {number} bufferSize - Number of items to render outside the visible area
- * @param {SvelteVirtualListMode} mode - Scroll direction mode
- * @param {boolean} atBottom - Whether the list is scrolled to the bottom (unused, legacy parameter)
- * @param {boolean} wasAtBottomBeforeHeightChange - Whether the list was at bottom before a height change (unused, legacy parameter)
- * @param {SvelteVirtualListPreviousVisibleRange | null} lastVisibleRange - Previous visible range (unused, legacy parameter)
- * @param {number} [totalContentHeight] - Pre-calculated total content height; defaults to totalItems * itemHeight
- * @param {Record<number, number>} [heightCache] - Cache of measured item heights keyed by index, used in topToBottom mode to walk actual heights instead of dividing by average
- * @returns {SvelteVirtualListPreviousVisibleRange} Range of indices to render
+ * @returns Range of indices to render
  */
-export const calculateVisibleRange = (
-    scrollTop: number,
-    viewportHeight: number,
-    itemHeight: number,
-    totalItems: number,
-    bufferSize: number,
-    mode: SvelteVirtualListMode,
-    atBottom: boolean,
-    wasAtBottomBeforeHeightChange: boolean,
-    lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null,
-    totalContentHeight?: number,
-    heightCache?: Record<number, number>
-): SvelteVirtualListPreviousVisibleRange => {
+export const calculateVisibleRange = ({
+    scrollTop,
+    viewportHeight,
+    itemHeight,
+    totalItems,
+    bufferSize,
+    mode,
+    totalContentHeight,
+    heightCache
+}: VisibleRangeOptions): SvelteVirtualListPreviousVisibleRange => {
     if (mode === 'bottomToTop') {
         const visibleCount = Math.ceil(viewportHeight / itemHeight) + 1
 
