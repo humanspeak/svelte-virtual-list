@@ -8,6 +8,49 @@
 import type { Locator, Page, TestInfo } from '@playwright/test'
 
 /**
+ * Time in milliseconds to wait for the virtual list's async pipeline to settle.
+ *
+ * The component's scroll correction pipeline has multiple async layers that
+ * fire in sequence after any DOM change (item add, height change, scroll):
+ *
+ * 1. Programmatic scroll adjustment (immediate)
+ * 2. ResizeObserver callback (browser-scheduled, typically next frame)
+ * 3. Height recalculation + reconciliation RAF (1-2 additional frames)
+ * 4. Bottom-anchoring suppression window (up to 200ms)
+ *
+ * `rafWait()` (2 RAF frames / ~33ms) is insufficient for slower browsers
+ * (WebKit, Firefox, mobile-safari) where these layers take longer to complete.
+ * 200ms covers the full pipeline including the suppression window and matches
+ * human-perceptible timing — no real user would observe state changes faster
+ * than this.
+ *
+ * @example
+ * ```typescript
+ * import { SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
+ *
+ * await addBtn.click()
+ * await page.waitForTimeout(SETTLE_MS)
+ * // Component state is now stable for assertions
+ * ```
+ */
+export const SETTLE_MS = 200
+
+/**
+ * Extended settle time for tests that apply multiple simultaneous height
+ * changes across different items, requiring more ResizeObserver callbacks
+ * and reconciliation cycles to fully stabilize than a single change would.
+ *
+ * @example
+ * ```typescript
+ * import { MULTI_ITEM_SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
+ *
+ * // After applying 4 height changes at once
+ * await page.waitForTimeout(MULTI_ITEM_SETTLE_MS)
+ * ```
+ */
+export const MULTI_ITEM_SETTLE_MS = SETTLE_MS + 300
+
+/**
  * Waits for consecutive animation frame cycles to complete.
  *
  * This function is useful for ensuring that DOM measurements are stable after

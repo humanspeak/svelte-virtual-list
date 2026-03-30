@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { MULTI_ITEM_SETTLE_MS, SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
 
 /**
  * Comprehensive test suite for bottomToTop mode with dynamic item height changes.
@@ -107,8 +108,8 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 2000 }
         )
 
-        // Allow some time for any scroll corrections to settle
-        await page.waitForTimeout(100)
+        // Allow time for the full scroll correction pipeline to settle
+        await page.waitForTimeout(SETTLE_MS)
 
         // Verify item 0 is still visible and positioned at bottom
         const finalItem0Box = await item0.boundingBox()
@@ -160,8 +161,8 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             { timeout: 5000 }
         )
 
-        // Then wait a bit more for virtual list to reposition
-        await page.waitForTimeout(50)
+        // Wait for the full scroll correction pipeline to settle
+        await page.waitForTimeout(SETTLE_MS)
 
         // CRITICAL: In bottomToTop mode, list-item-0 should STILL be visible in viewport after height change
         // This is the main test - if we see middle items (like Item 131) instead, the test should fail
@@ -169,7 +170,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             timeout: 1050
         })
 
-        await page.waitForTimeout(100)
+        await page.waitForTimeout(SETTLE_MS)
 
         // Get fresh references after navigation
         const finalContainerBox = await page
@@ -309,7 +310,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         expect((await page.locator('[data-testid="list-item-1"]').boundingBox())?.height).toBe(100)
         expect((await page.locator('[data-testid="list-item-2"]').boundingBox())?.height).toBe(120)
         expect((await page.locator('[data-testid="list-item-3"]').boundingBox())?.height).toBe(60)
-        await page.waitForTimeout(500)
+        await page.waitForTimeout(MULTI_ITEM_SETTLE_MS)
 
         // Verify layout is still coherent (no overlapping or gaps)
         const item0Box = await page.locator('[data-testid="list-item-0"]').boundingBox()

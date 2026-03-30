@@ -78,6 +78,11 @@ export const calculateScrollPosition = (
  * @param {number} totalItems - Total number of items in the list
  * @param {number} bufferSize - Number of items to render outside the visible area
  * @param {SvelteVirtualListMode} mode - Scroll direction mode
+ * @param {boolean} atBottom - Whether the list is scrolled to the bottom (unused, legacy parameter)
+ * @param {boolean} wasAtBottomBeforeHeightChange - Whether the list was at bottom before a height change (unused, legacy parameter)
+ * @param {SvelteVirtualListPreviousVisibleRange | null} lastVisibleRange - Previous visible range (unused, legacy parameter)
+ * @param {number} [totalContentHeight] - Pre-calculated total content height; defaults to totalItems * itemHeight
+ * @param {Record<number, number>} [heightCache] - Cache of measured item heights keyed by index, used in topToBottom mode to walk actual heights instead of dividing by average
  * @returns {SvelteVirtualListPreviousVisibleRange} Range of indices to render
  */
 export const calculateVisibleRange = (
@@ -121,8 +126,25 @@ export const calculateVisibleRange = (
 
         return { start, end } as SvelteVirtualListPreviousVisibleRange
     } else {
-        const start = Math.floor(scrollTop / itemHeight)
-        const end = Math.min(totalItems, start + Math.ceil(viewportHeight / itemHeight) + 1)
+        // Walk forward through measured heights to find the correct start index
+        // instead of dividing by average height (which is wrong for variable-height items).
+        let start = 0
+        let acc = 0
+        while (start < totalItems) {
+            const h = getValidHeight(heightCache?.[start], itemHeight)
+            if (acc + h > scrollTop) break
+            acc += h
+            start++
+        }
+
+        // Walk forward from start to find end
+        let end = start
+        let viewAcc = 0
+        while (end < totalItems && viewAcc < viewportHeight) {
+            viewAcc += getValidHeight(heightCache?.[end], itemHeight)
+            end++
+        }
+        end = Math.min(totalItems, end + 1) // +1 to ensure partial items are visible
 
         // Safeguard for topToBottom: ensure last item is fully visible when at max scroll
         const totalHeight = totalContentHeight ?? totalItems * itemHeight
@@ -135,12 +157,9 @@ export const calculateVisibleRange = (
             // Pack from the end using measured heights when available: walk backward until viewport filled
             const adjustedEnd = totalItems
             let startCore = adjustedEnd
-            let acc = 0
-            const getH = (i: number) =>
-                getValidHeight(heightCache ? heightCache[i] : undefined, itemHeight)
-            while (startCore > 0 && acc < viewportHeight) {
-                const h = getH(startCore - 1)
-                acc += h
+            let backAcc = 0
+            while (startCore > 0 && backAcc < viewportHeight) {
+                backAcc += getValidHeight(heightCache?.[startCore - 1], itemHeight)
                 startCore -= 1
             }
             return {
