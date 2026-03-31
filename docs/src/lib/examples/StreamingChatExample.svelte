@@ -203,7 +203,7 @@
             'Yes! A ResizeObserver watches each mounted item. When an item resizes, the height cache updates and scroll corrections fire automatically.',
             'Built-in via `onLoadMore` callback. Triggers when the user scrolls near the threshold, with `hasMore` flag to stop.'
         ]
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 50; i++) {
             const isUser = i % 2 === 0
             msgs.push({
                 id: `init-${i}`,
@@ -221,12 +221,7 @@
     let activeStreamingIds = $state<string[]>([])
     let pendingStarts = $state(0)
     let isStreaming = $derived(activeStreamingIds.length > 0 || pendingStarts > 0)
-    let debugInfo = $state({
-        totalItems: 0,
-        visibleItemsCount: 0,
-        totalHeight: 0,
-        averageItemHeight: 0
-    })
+    let debugInfo = $state({ visibleItemsCount: 0, totalHeight: 0 })
     const activeIntervals = new Map<string, ReturnType<typeof setInterval>>()
     const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>()
 

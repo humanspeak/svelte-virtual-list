@@ -182,6 +182,7 @@
     const SCROLL_IDLE_DELAY_MS = 250
     const SUPPRESSION_WINDOW_MS = 450
     const HEIGHT_DEBOUNCE_MS = 100
+    const BOTTOM_PIN_FRAMES = 24 // ~400ms at 60fps — enough for ResizeObserver to settle
     const lastCorrectionTimestampByViewport = new WeakMap<HTMLElement, number>()
     // Package-specific debug flag - safe for library distribution
     // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
@@ -428,14 +429,11 @@
         pendingBottomPin = true
         bottomPinFramesRemaining = Math.max(bottomPinFramesRemaining, frames)
 
-        if (
-            heightManager.viewportElement &&
-            heightManager.initialized &&
-            (!userHasScrolledAway || isViewportNearBottom())
-        ) {
+        if (heightManager.viewportElement && heightManager.initialized) {
             const maxScrollTop = getViewportMaxScrollTop()
             const gap = maxScrollTop - heightManager.viewport.scrollTop
-            if (gap > 2) {
+            const nearBottom = gap <= Math.max(2, Math.round(heightManager.averageHeight))
+            if ((!userHasScrolledAway || nearBottom) && gap > 2) {
                 syncScrollTop(maxScrollTop, true)
             }
         }
@@ -728,7 +726,7 @@
                 // Handle height changes for scroll correction (manager totals already updated)
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
                     if (!userHasScrolledAway || isViewportNearBottom()) {
-                        scheduleBottomPin(24)
+                        scheduleBottomPin(BOTTOM_PIN_FRAMES)
                     }
                     // Run correction after dynamic update finishes to avoid blocking conditions
                     const changes = result.heightChanges
@@ -972,7 +970,7 @@
                 // If near the bottom, this naturally pins to the new max; otherwise it preserves the current content.
                 programmaticScrollInProgress = true
                 if (shouldStickToBottom) {
-                    scheduleBottomPin(24)
+                    scheduleBottomPin(BOTTOM_PIN_FRAMES)
                 }
                 void heightManager.runDynamicUpdate(() => {
                     const newScrollTop = shouldStickToBottom
@@ -1249,11 +1247,9 @@
             const current = heightManager.viewport.scrollTop
             if (mode === 'bottomToTop') {
                 const delta = lastScrollTopSnapshot - current
-                const maxScrollTop = getViewportMaxScrollTop()
-                const gapFromBottom = maxScrollTop - current
-                const nearBottom =
-                    gapFromBottom <= Math.max(2, Math.round(heightManager.averageHeight))
+                const nearBottom = isViewportNearBottom()
                 const userScrollAwayThreshold = Math.max(heightManager.averageHeight * 2, 120)
+                const gapFromBottom = getViewportMaxScrollTop() - current
                 if (nearBottom) {
                     userHasScrolledAway = false
                 } else if (delta > 0.5 && gapFromBottom > userScrollAwayThreshold) {
@@ -1320,7 +1316,7 @@
                         const measuredHeight =
                             heightManager.container.getBoundingClientRect().height
                         height = measuredHeight
-                        scheduleBottomPin(24)
+                        scheduleBottomPin(BOTTOM_PIN_FRAMES)
                         syncScrollTop(getViewportMaxScrollTop(), true)
 
                         // Instance jitter to avoid same-frame collisions when two lists init together
@@ -1439,7 +1435,7 @@
                                     mode === 'bottomToTop' &&
                                     (!userHasScrolledAway || isViewportNearBottom())
                                 ) {
-                                    scheduleBottomPin(24)
+                                    scheduleBottomPin(BOTTOM_PIN_FRAMES)
                                 }
                                 // Capture bottom state when FIRST item gets marked dirty
                                 if (dirtyItemsCount === 0) {

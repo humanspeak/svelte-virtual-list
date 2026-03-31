@@ -445,7 +445,6 @@
     let activeStreamingMessageIds = $state<string[]>([])
     let pendingStreamStarts = $state(0)
     let isStreaming = $derived(activeStreamingMessageIds.length > 0 || pendingStreamStarts > 0)
-    let hasMore = $state(false)
     let totalSent = $state(0)
     let totalConfirmed = $state(0)
     let totalDropped = $state(0)
@@ -600,7 +599,6 @@
             items={messages}
             mode="bottomToTop"
             defaultEstimatedItemHeight={80}
-            {hasMore}
             testId="streaming-list"
         >
             {#snippet renderItem(message)}
