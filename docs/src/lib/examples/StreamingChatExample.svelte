@@ -388,7 +388,10 @@
                                 <div
                                     class="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
                                 >
-                                    <SvelteMarkdown source={message.content} />
+                                    <SvelteMarkdown
+                                        source={message.content}
+                                        streaming={message.isStreaming}
+                                    />
                                 </div>
                             {:else}
                                 <p class="text-sm">{message.content}</p>
