@@ -401,6 +401,17 @@
         heightManager.scrollTop = scrollValue
     }
 
+    const getViewportMaxScrollTop = () => {
+        if (!heightManager.viewportElement) {
+            return Math.max(0, totalHeight - height)
+        }
+
+        return Math.max(
+            0,
+            heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+        )
+    }
+
     // Dynamic update coordination to avoid UA scroll anchoring interference
     let suppressBottomAnchoringUntilMs = $state(0)
 
@@ -702,6 +713,7 @@
     // Add new effect to handle height changes
     // Track if user has scrolled away from bottom to prevent snap-back
     let userHasScrolledAway = $state(false)
+    let pendingInitialBottomPin = $state(false)
     let programmaticScrollInProgress = $state(false) // Prevent bottom-anchoring during programmatic scrolls
     let lastCalculatedHeight = $state(0)
     let lastItemsLength = $state(0)
@@ -810,6 +822,39 @@
             }
 
             lastCalculatedHeight = heightManager.averageHeight
+        }
+    })
+
+    $effect(() => {
+        if (
+            !BROWSER ||
+            !pendingInitialBottomPin ||
+            mode !== 'bottomToTop' ||
+            !heightManager.initialized ||
+            !heightManager.viewportElement
+        ) {
+            return
+        }
+
+        if (userHasScrolledAway) {
+            pendingInitialBottomPin = false
+            return
+        }
+
+        if (programmaticScrollInProgress || heightManager.isDynamicUpdateInProgress) {
+            return
+        }
+
+        const maxScrollTop = getViewportMaxScrollTop()
+        const gap = maxScrollTop - heightManager.viewport.scrollTop
+
+        if (gap > 2) {
+            syncScrollTop(maxScrollTop, true)
+            return
+        }
+
+        if (bottomToTopScrollComplete && !isScrolling) {
+            pendingInitialBottomPin = false
         }
     })
 
@@ -1194,6 +1239,8 @@
                         const measuredHeight =
                             heightManager.container.getBoundingClientRect().height
                         height = measuredHeight
+                        pendingInitialBottomPin = true
+                        syncScrollTop(getViewportMaxScrollTop(), true)
 
                         // Instance jitter to avoid same-frame collisions when two lists init together
                         const cleanedId = String(instanceId)
@@ -1217,10 +1264,9 @@
                             requestAnimationFrame(() => {
                                 requestAnimationFrame(() => {
                                     // Item 0 is guaranteed to be in DOM due to init path
-                                    // Skip if user has already scrolled (scrollTop significantly != 0)
+                                    // Skip if the user already moved away from the init anchor.
                                     const currentScroll = heightManager.viewport.scrollTop
-                                    const userHasScrolled =
-                                        currentScroll > heightManager.averageHeight
+                                    const userHasScrolled = userHasScrolledAway
                                     const el = heightManager.viewport.querySelector(
                                         '[data-original-index="0"]'
                                     ) as HTMLElement | null
@@ -1246,9 +1292,8 @@
                                         // Reset bottom-anchoring flag to prevent stale state from init
                                         // affecting later operations (e.g., adding items while scrolled away)
                                         wasAtBottomBeforeHeightChange = false
-                                        // Suppress bottom-anchoring briefly to let heights stabilize
-                                        // after switching to normal mode
-                                        suppressBottomAnchoringUntilMs = performance.now() + 200
+                                        // Keep init anchoring active through post-init measurements.
+                                        suppressBottomAnchoringUntilMs = performance.now()
                                     })
                                 })
                             })
