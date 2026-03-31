@@ -1,6 +1,7 @@
 import type { NavSection } from '@humanspeak/docs-kit'
 import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down'
 import Book from '@lucide/svelte/icons/book'
+import BotMessageSquare from '@lucide/svelte/icons/bot-message-square'
 import Bug from '@lucide/svelte/icons/bug'
 import Code from '@lucide/svelte/icons/code'
 import Crosshair from '@lucide/svelte/icons/crosshair'
@@ -66,7 +67,8 @@ export const docsSections: NavSection[] = [
             { title: 'Bottom to Top', href: '/examples/bottom-to-top', icon: MessageCircle },
             { title: 'Infinite Scroll', href: '/examples/infinite-scroll', icon: InfinityIcon },
             { title: 'Scroll to Item', href: '/examples/scroll-to-item', icon: Crosshair },
-            { title: 'Variable Height', href: '/examples/variable-height', icon: ArrowUpDown }
+            { title: 'Variable Height', href: '/examples/variable-height', icon: ArrowUpDown },
+            { title: 'Streaming Chat', href: '/examples/streaming-chat', icon: BotMessageSquare }
         ]
     }
 ]

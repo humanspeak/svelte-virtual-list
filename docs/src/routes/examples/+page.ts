@@ -24,6 +24,11 @@ export const load: PageLoad = async () => {
             description: 'Interactive scroll to item animation example using Svelte Motion.',
             sourceUrl: null
         },
+        'streaming-chat': {
+            title: 'Streaming Chat',
+            description: 'Interactive streaming chat animation example using Svelte Motion.',
+            sourceUrl: null
+        },
         'variable-height': {
             title: 'Variable Height',
             description: 'Interactive variable height animation example using Svelte Motion.',
