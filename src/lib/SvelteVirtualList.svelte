@@ -412,6 +412,13 @@
         )
     }
 
+    const isViewportNearBottom = (
+        tolerance = Math.max(2, Math.round(heightManager.averageHeight))
+    ) => {
+        if (!heightManager.viewportElement) return false
+        return getViewportMaxScrollTop() - heightManager.viewport.scrollTop <= tolerance
+    }
+
     let bottomPinRafId: number | null = null
     let bottomPinFramesRemaining = 0
 
@@ -421,14 +428,27 @@
         pendingBottomPin = true
         bottomPinFramesRemaining = Math.max(bottomPinFramesRemaining, frames)
 
+        if (
+            heightManager.viewportElement &&
+            heightManager.initialized &&
+            (!userHasScrolledAway || isViewportNearBottom())
+        ) {
+            const maxScrollTop = getViewportMaxScrollTop()
+            const gap = maxScrollTop - heightManager.viewport.scrollTop
+            if (gap > 2) {
+                syncScrollTop(maxScrollTop, true)
+            }
+        }
+
         if (bottomPinRafId !== null) return
 
         const step = () => {
             bottomPinRafId = null
+            const nearBottom = isViewportNearBottom()
 
             if (
                 !pendingBottomPin ||
-                userHasScrolledAway ||
+                (userHasScrolledAway && !nearBottom) ||
                 !heightManager.viewportElement ||
                 !heightManager.initialized
             ) {
@@ -436,13 +456,15 @@
                 return
             }
 
-            if (!programmaticScrollInProgress && !heightManager.isDynamicUpdateInProgress) {
-                const maxScrollTop = getViewportMaxScrollTop()
-                const gap = maxScrollTop - heightManager.viewport.scrollTop
+            if (nearBottom) {
+                userHasScrolledAway = false
+            }
 
-                if (gap > 2) {
-                    syncScrollTop(maxScrollTop, true)
-                }
+            const maxScrollTop = getViewportMaxScrollTop()
+            const gap = maxScrollTop - heightManager.viewport.scrollTop
+
+            if (gap > 2) {
+                syncScrollTop(maxScrollTop, true)
             }
 
             bottomPinFramesRemaining = Math.max(0, bottomPinFramesRemaining - 1)
@@ -705,8 +727,8 @@
 
                 // Handle height changes for scroll correction (manager totals already updated)
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
-                    if (pendingBottomPin) {
-                        scheduleBottomPin(12)
+                    if (!userHasScrolledAway || isViewportNearBottom()) {
+                        scheduleBottomPin(24)
                     }
                     // Run correction after dynamic update finishes to avoid blocking conditions
                     const changes = result.heightChanges
@@ -881,7 +903,12 @@
             return
         }
 
-        if (userHasScrolledAway) {
+        const nearBottom = isViewportNearBottom()
+        if (nearBottom) {
+            userHasScrolledAway = false
+        }
+
+        if (userHasScrolledAway && !nearBottom) {
             pendingBottomPin = false
             return
         }
@@ -925,7 +952,7 @@
                 const prevMaxScrollTop = Math.max(0, prevTotalHeight - currentHeight)
                 const nextMaxScrollTop = Math.max(0, currentTotalHeight - currentHeight)
                 const deltaMax = nextMaxScrollTop - prevMaxScrollTop
-                const shouldStickToBottom = !userHasScrolledAway
+                const shouldStickToBottom = !userHasScrolledAway || isViewportNearBottom()
                 log('[SVL] items-length-change:before', {
                     instanceId,
                     itemsAdded,
@@ -949,7 +976,7 @@
                 }
                 void heightManager.runDynamicUpdate(() => {
                     const newScrollTop = shouldStickToBottom
-                        ? nextMaxScrollTop
+                        ? getViewportMaxScrollTop()
                         : clampValue(currentScrollTop + deltaMax, 0, nextMaxScrollTop)
                     syncScrollTop(newScrollTop)
                     log('[SVL] items-length-change:applied', {
@@ -972,7 +999,7 @@
                         const reconciledDeltaMaxChange = reconciledNextMax - nextMaxScrollTop
                         // Desired position is to maintain distance-from-end; equivalently keep (max - scrollTop) constant.
                         const desiredScrollTop = shouldStickToBottom
-                            ? reconciledNextMax
+                            ? getViewportMaxScrollTop()
                             : clampValue(
                                   newScrollTop + reconciledDeltaMaxChange,
                                   0,
@@ -1224,8 +1251,12 @@
                 const delta = lastScrollTopSnapshot - current
                 const maxScrollTop = getViewportMaxScrollTop()
                 const gapFromBottom = maxScrollTop - current
+                const nearBottom =
+                    gapFromBottom <= Math.max(2, Math.round(heightManager.averageHeight))
                 const userScrollAwayThreshold = Math.max(heightManager.averageHeight * 2, 120)
-                if (delta > 0.5 && gapFromBottom > userScrollAwayThreshold) {
+                if (nearBottom) {
+                    userHasScrolledAway = false
+                } else if (delta > 0.5 && gapFromBottom > userScrollAwayThreshold) {
                     // Widen suppression to avoid fighting peer instance corrections
                     suppressBottomAnchoringUntilMs = performance.now() + SUPPRESSION_WINDOW_MS
                     userHasScrolledAway = true
@@ -1404,6 +1435,12 @@
 
                             // Only mark as dirty if height change is significant
                             if (isSignificant) {
+                                if (
+                                    mode === 'bottomToTop' &&
+                                    (!userHasScrolledAway || isViewportNearBottom())
+                                ) {
+                                    scheduleBottomPin(24)
+                                }
                                 // Capture bottom state when FIRST item gets marked dirty
                                 if (dirtyItemsCount === 0) {
                                     wasAtBottomBeforeHeightChange = atBottom

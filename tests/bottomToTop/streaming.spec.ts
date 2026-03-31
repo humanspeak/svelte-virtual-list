@@ -49,4 +49,62 @@ test.describe('BottomToTop Streaming Chat', () => {
             expect(scrollState!.gap).toBeLessThanOrEqual(2)
         }
     })
+
+    test('should stay locked to bottom during stress test bursts', async ({ page }) => {
+        await page.waitForTimeout(500)
+        await page.getByTestId('stress-button').click()
+
+        for (const waitMs of [0, 50, 120, 250, 500, 900, 1400, 2200, 3200, 4500]) {
+            if (waitMs > 0) {
+                await page.waitForTimeout(waitMs)
+            }
+
+            const scrollState = await page.evaluate(getScrollState, VIEWPORT_SELECTOR)
+            expect(scrollState).not.toBeNull()
+            expect(scrollState!.gap).toBeLessThanOrEqual(2)
+        }
+    })
+
+    test('should allow multiple assistant streams concurrently during stress test', async ({
+        page
+    }) => {
+        await page.waitForTimeout(500)
+        await page.getByTestId('stress-button').click()
+
+        await page.waitForFunction(
+            () => {
+                const status = document.querySelector('[data-testid="stream-status"]')
+                const streamingTags = document.querySelectorAll('.streaming-tag')
+                const statusText = status?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+                return statusText.includes('Active streams: 5') && streamingTags.length === 5
+            },
+            undefined,
+            { timeout: 10000 }
+        )
+
+        await expect(page.locator('.streaming-tag')).toHaveCount(5)
+    })
+
+    test('should clear all streaming indicators after stress test completes', async ({ page }) => {
+        await page.waitForTimeout(500)
+        await page.getByTestId('stress-button').click()
+
+        await page.waitForFunction(
+            () => {
+                const status = document.querySelector('[data-testid="stream-status"]')
+                const streamingTags = document.querySelectorAll('.streaming-tag')
+                const statusText = status?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+                return (
+                    statusText.includes('Streaming: false') &&
+                    statusText.includes('Active streams: 0') &&
+                    statusText.includes('Pending starts: 0') &&
+                    streamingTags.length === 0
+                )
+            },
+            undefined,
+            { timeout: 30000 }
+        )
+
+        await expect(page.locator('.streaming-tag')).toHaveCount(0)
+    })
 })

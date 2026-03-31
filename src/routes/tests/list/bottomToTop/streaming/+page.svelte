@@ -442,15 +442,16 @@
 
     // --- State ---
     let messages = $state<ChatMessage[]>([...INITIAL_MESSAGES])
-    let streamingMessageId = $state<string | null>(null)
-    let isStreaming = $state(false)
-    let messageQueue = $state<string[]>([])
+    let activeStreamingMessageIds = $state<string[]>([])
+    let pendingStreamStarts = $state(0)
+    let isStreaming = $derived(activeStreamingMessageIds.length > 0 || pendingStreamStarts > 0)
     let hasMore = $state(false)
     let totalSent = $state(0)
     let totalConfirmed = $state(0)
     let totalDropped = $state(0)
     let inputText = $state('')
-    let activeIntervalId: ReturnType<typeof setInterval> | null = null
+    const activeIntervalIds = new Map<string, ReturnType<typeof setInterval>>()
+    const pendingStreamStartIds = new Set<ReturnType<typeof setTimeout>>()
 
     // --- Streaming ---
     function streamResponse(messageId: string) {
@@ -466,23 +467,20 @@
             isStreaming: true
         }
         messages = [assistantMsg, ...messages]
-        streamingMessageId = messageId
-        isStreaming = true
+        activeStreamingMessageIds = [...activeStreamingMessageIds, messageId]
 
-        activeIntervalId = setInterval(() => {
+        const intervalId = setInterval(() => {
             if (chunkIndex >= chunks.length) {
                 // Streaming complete
-                if (activeIntervalId !== null) {
-                    clearInterval(activeIntervalId)
-                    activeIntervalId = null
-                }
+                clearInterval(intervalId)
+                activeIntervalIds.delete(messageId)
                 const idx = messages.findIndex((m) => m.id === messageId)
                 if (idx !== -1) {
                     messages[idx] = { ...messages[idx], isStreaming: false }
                 }
-                streamingMessageId = null
-                isStreaming = false
-                startNextStream()
+                activeStreamingMessageIds = activeStreamingMessageIds.filter(
+                    (id) => id !== messageId
+                )
                 return
             }
 
@@ -495,16 +493,21 @@
             }
             chunkIndex++
         }, 40)
+
+        activeIntervalIds.set(messageId, intervalId)
     }
 
-    function startNextStream() {
-        if (messageQueue.length === 0) return
-        const _text = messageQueue.shift()!
+    function scheduleStreamResponse() {
+        pendingStreamStarts++
         // Small delay before assistant starts responding
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
+            pendingStreamStartIds.delete(timeoutId)
+            pendingStreamStarts = Math.max(0, pendingStreamStarts - 1)
             const assistantId = `assistant-${crypto.randomUUID()}`
             streamResponse(assistantId)
         }, 200)
+
+        pendingStreamStartIds.add(timeoutId)
     }
 
     // --- Optimistic send ---
@@ -539,11 +542,8 @@
             messages = [confirmedMsg, ...messages]
             totalConfirmed++
 
-            // Queue streaming response
-            messageQueue = [...messageQueue, text]
-            if (!isStreaming) {
-                startNextStream()
-            }
+            // Start the assistant response independently so bursts stream concurrently.
+            scheduleStreamResponse()
         }, 500)
     }
 
@@ -570,8 +570,11 @@
     }
 
     onDestroy(() => {
-        if (activeIntervalId !== null) {
-            clearInterval(activeIntervalId)
+        for (const intervalId of activeIntervalIds.values()) {
+            clearInterval(intervalId)
+        }
+        for (const timeoutId of pendingStreamStartIds.values()) {
+            clearTimeout(timeoutId)
         }
     })
 </script>
@@ -579,7 +582,8 @@
 <div class="page-container">
     <div class="status" data-testid="stream-status">
         Messages: {messages.length} | Streaming: {isStreaming} | Sent: {totalSent} | Confirmed: {totalConfirmed}
-        | Dropped: {totalDropped} | Queue: {messageQueue.length}
+        | Dropped: {totalDropped} | Active streams: {activeStreamingMessageIds.length} | Pending starts:
+        {pendingStreamStarts}
     </div>
     <div class="controls" data-testid="controls">
         <input
