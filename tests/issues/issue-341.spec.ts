@@ -94,7 +94,7 @@ test.describe('Issue 341 - bottomToTop scroll jitter with variable heights', () 
      * Verify transform stability: the translateY on the content wrapper
      * should not jump back and forth during scroll.
      */
-    test('transform should not jitter during slow upward scroll', async ({ page }) => {
+    test('transform should not jitter during slow upward scroll', async ({ page, browserName }) => {
         const measurements = await page.evaluate(
             async ({ selector }) => {
                 const vp = document.querySelector(selector) as HTMLElement | null
@@ -150,9 +150,9 @@ test.describe('Issue 341 - bottomToTop scroll jitter with variable heights', () 
 
         // Before the fix: many reversals as transform bounced with averageHeight.
         // After the fix: should be mostly monotonic. Allow a few for edge cases.
-        // Mobile-safari has less predictable RAF scheduling under CI load, so we
-        // allow slightly more reversals than desktop browsers.
-        expect(reversals).toBeLessThanOrEqual(5)
+        // WebKit/mobile-safari has less predictable RAF scheduling under CI load.
+        const maxReversals = browserName === 'webkit' ? 5 : 3
+        expect(reversals).toBeLessThanOrEqual(maxReversals)
     })
 
     /**

@@ -88,7 +88,21 @@ export interface VisibleRangeOptions {
  * viewport size, and scroll direction. Includes a buffer zone to enable smooth scrolling
  * and prevent visible gaps during rapid scroll movements.
  *
- * @returns Range of indices to render
+ * @param options - Inputs used to compute the visible range (see {@link VisibleRangeOptions}).
+ * @returns Range of indices to render.
+ *
+ * @example
+ * ```ts
+ * const range = calculateVisibleRange({
+ *     scrollTop: 200,
+ *     viewportHeight: 400,
+ *     itemHeight: 40,
+ *     totalItems: 1000,
+ *     bufferSize: 2,
+ *     mode: 'topToBottom'
+ * })
+ * // range => { start: 3, end: 15 }
+ * ```
  */
 export const calculateVisibleRange = ({
     scrollTop,
