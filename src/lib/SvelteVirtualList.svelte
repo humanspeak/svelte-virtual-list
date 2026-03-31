@@ -412,6 +412,48 @@
         )
     }
 
+    let bottomPinRafId: number | null = null
+    let bottomPinFramesRemaining = 0
+
+    const scheduleBottomPin = (frames = 8) => {
+        if (!BROWSER) return
+
+        pendingBottomPin = true
+        bottomPinFramesRemaining = Math.max(bottomPinFramesRemaining, frames)
+
+        if (bottomPinRafId !== null) return
+
+        const step = () => {
+            bottomPinRafId = null
+
+            if (
+                !pendingBottomPin ||
+                userHasScrolledAway ||
+                !heightManager.viewportElement ||
+                !heightManager.initialized
+            ) {
+                bottomPinFramesRemaining = 0
+                return
+            }
+
+            if (!programmaticScrollInProgress && !heightManager.isDynamicUpdateInProgress) {
+                const maxScrollTop = getViewportMaxScrollTop()
+                const gap = maxScrollTop - heightManager.viewport.scrollTop
+
+                if (gap > 2) {
+                    syncScrollTop(maxScrollTop, true)
+                }
+            }
+
+            bottomPinFramesRemaining = Math.max(0, bottomPinFramesRemaining - 1)
+            if (bottomPinFramesRemaining > 0) {
+                bottomPinRafId = requestAnimationFrame(step)
+            }
+        }
+
+        bottomPinRafId = requestAnimationFrame(step)
+    }
+
     // Dynamic update coordination to avoid UA scroll anchoring interference
     let suppressBottomAnchoringUntilMs = $state(0)
 
@@ -663,6 +705,9 @@
 
                 // Handle height changes for scroll correction (manager totals already updated)
                 if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
+                    if (pendingBottomPin) {
+                        scheduleBottomPin(12)
+                    }
                     // Run correction after dynamic update finishes to avoid blocking conditions
                     const changes = result.heightChanges
                     queueMicrotask(() => handleHeightChangesScrollCorrection(changes))
@@ -713,7 +758,7 @@
     // Add new effect to handle height changes
     // Track if user has scrolled away from bottom to prevent snap-back
     let userHasScrolledAway = $state(false)
-    let pendingInitialBottomPin = $state(false)
+    let pendingBottomPin = $state(false)
     let programmaticScrollInProgress = $state(false) // Prevent bottom-anchoring during programmatic scrolls
     let lastCalculatedHeight = $state(0)
     let lastItemsLength = $state(0)
@@ -828,7 +873,7 @@
     $effect(() => {
         if (
             !BROWSER ||
-            !pendingInitialBottomPin ||
+            !pendingBottomPin ||
             mode !== 'bottomToTop' ||
             !heightManager.initialized ||
             !heightManager.viewportElement
@@ -837,7 +882,7 @@
         }
 
         if (userHasScrolledAway) {
-            pendingInitialBottomPin = false
+            pendingBottomPin = false
             return
         }
 
@@ -851,10 +896,6 @@
         if (gap > 2) {
             syncScrollTop(maxScrollTop, true)
             return
-        }
-
-        if (bottomToTopScrollComplete && !isScrolling) {
-            pendingInitialBottomPin = false
         }
     })
 
@@ -884,6 +925,7 @@
                 const prevMaxScrollTop = Math.max(0, prevTotalHeight - currentHeight)
                 const nextMaxScrollTop = Math.max(0, currentTotalHeight - currentHeight)
                 const deltaMax = nextMaxScrollTop - prevMaxScrollTop
+                const shouldStickToBottom = !userHasScrolledAway
                 log('[SVL] items-length-change:before', {
                     instanceId,
                     itemsAdded,
@@ -895,18 +937,20 @@
                     prevMaxScrollTop,
                     nextMaxScrollTop,
                     deltaMax,
+                    shouldStickToBottom,
                     averageItemHeight: currentCalculatedItemHeight
                 })
 
                 // Maintain visual position for ALL cases by advancing scrollTop by deltaMax.
                 // If near the bottom, this naturally pins to the new max; otherwise it preserves the current content.
                 programmaticScrollInProgress = true
+                if (shouldStickToBottom) {
+                    scheduleBottomPin(24)
+                }
                 void heightManager.runDynamicUpdate(() => {
-                    const newScrollTop = clampValue(
-                        currentScrollTop + deltaMax,
-                        0,
-                        nextMaxScrollTop
-                    )
+                    const newScrollTop = shouldStickToBottom
+                        ? nextMaxScrollTop
+                        : clampValue(currentScrollTop + deltaMax, 0, nextMaxScrollTop)
                     syncScrollTop(newScrollTop)
                     log('[SVL] items-length-change:applied', {
                         instanceId,
@@ -914,7 +958,8 @@
                         appliedScrollTop: newScrollTop,
                         prevMaxScrollTop,
                         nextMaxScrollTop,
-                        deltaMax
+                        deltaMax,
+                        shouldStickToBottom
                     })
 
                     // We are explicitly managing position; consider this a programmatic action.
@@ -926,11 +971,13 @@
                         const reconciledNextMax = clampValue(totalHeight - height, 0, Infinity)
                         const reconciledDeltaMaxChange = reconciledNextMax - nextMaxScrollTop
                         // Desired position is to maintain distance-from-end; equivalently keep (max - scrollTop) constant.
-                        const desiredScrollTop = clampValue(
-                            newScrollTop + reconciledDeltaMaxChange,
-                            0,
-                            reconciledNextMax
-                        )
+                        const desiredScrollTop = shouldStickToBottom
+                            ? reconciledNextMax
+                            : clampValue(
+                                  newScrollTop + reconciledDeltaMaxChange,
+                                  0,
+                                  reconciledNextMax
+                              )
                         // Snap to integer pixels to prevent oscillation due to subpixel rounding
                         const desiredRounded = Math.round(desiredScrollTop)
                         const diffToDesired = desiredRounded - heightManager.viewport.scrollTop
@@ -1175,7 +1222,10 @@
             const current = heightManager.viewport.scrollTop
             if (mode === 'bottomToTop') {
                 const delta = lastScrollTopSnapshot - current
-                if (delta > 0.5) {
+                const maxScrollTop = getViewportMaxScrollTop()
+                const gapFromBottom = maxScrollTop - current
+                const userScrollAwayThreshold = Math.max(heightManager.averageHeight * 2, 120)
+                if (delta > 0.5 && gapFromBottom > userScrollAwayThreshold) {
                     // Widen suppression to avoid fighting peer instance corrections
                     suppressBottomAnchoringUntilMs = performance.now() + SUPPRESSION_WINDOW_MS
                     userHasScrolledAway = true
@@ -1239,7 +1289,7 @@
                         const measuredHeight =
                             heightManager.container.getBoundingClientRect().height
                         height = measuredHeight
-                        pendingInitialBottomPin = true
+                        scheduleBottomPin(24)
                         syncScrollTop(getViewportMaxScrollTop(), true)
 
                         // Instance jitter to avoid same-frame collisions when two lists init together
@@ -1412,6 +1462,9 @@
                 }
                 if (itemResizeObserver) {
                     itemResizeObserver.disconnect()
+                }
+                if (bottomPinRafId !== null) {
+                    cancelAnimationFrame(bottomPinRafId)
                 }
             }
         }
