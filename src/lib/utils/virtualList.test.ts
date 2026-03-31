@@ -281,17 +281,14 @@ describe('calculateScrollPosition', () => {
 
 describe('calculateVisibleRange', () => {
     it('should calculate correct range for top-to-bottom mode', () => {
-        const result = calculateVisibleRange(
-            100,
-            300,
-            30,
-            100,
-            2,
-            'topToBottom',
-            false,
-            false,
-            null
-        )
+        const result = calculateVisibleRange({
+            scrollTop: 100,
+            viewportHeight: 300,
+            itemHeight: 30,
+            totalItems: 100,
+            bufferSize: 2,
+            mode: 'topToBottom'
+        })
         expect(result).toEqual({
             start: 1, // (100/30 - 2) rounded down
             end: 16 // (floor(100/30) + ceil(300/30) + 1 + 2) = 3 + 10 + 1 + 2
@@ -300,17 +297,14 @@ describe('calculateVisibleRange', () => {
 
     it('should calculate correct range for bottom-to-top mode', () => {
         // scrollTop = 100 in bottomToTop means 100px from content end
-        const result = calculateVisibleRange(
-            100,
-            300,
-            30,
-            100,
-            2,
-            'bottomToTop',
-            false,
-            false,
-            null
-        )
+        const result = calculateVisibleRange({
+            scrollTop: 100,
+            viewportHeight: 300,
+            itemHeight: 30,
+            totalItems: 100,
+            bufferSize: 2,
+            mode: 'bottomToTop'
+        })
         expect(result).toEqual({
             start: 84, // Items near the end for bottomToTop when scrollTop = 100
             end: 99
@@ -319,7 +313,14 @@ describe('calculateVisibleRange', () => {
 
     it('should show first items when scrollTop = 0 in bottomToTop mode', () => {
         // When scrollTop = 0, bottomToTop should show first items (0, 1, 2...)
-        const result = calculateVisibleRange(0, 300, 30, 100, 2, 'bottomToTop', false, false, null)
+        const result = calculateVisibleRange({
+            scrollTop: 0,
+            viewportHeight: 300,
+            itemHeight: 30,
+            totalItems: 100,
+            bufferSize: 2,
+            mode: 'bottomToTop'
+        })
         expect(result).toEqual({
             start: 88, // Near the end items when at scrollTop = 0
             end: 100
@@ -329,17 +330,14 @@ describe('calculateVisibleRange', () => {
     it('should show last items when at maxScrollTop in bottomToTop mode', () => {
         // When at maxScrollTop, bottomToTop should show last items
         const maxScrollTop = 100 * 30 - 300 // totalHeight - viewportHeight = 2700
-        const result = calculateVisibleRange(
-            maxScrollTop,
-            300,
-            30,
-            100,
-            2,
-            'bottomToTop',
-            false,
-            false,
-            null
-        )
+        const result = calculateVisibleRange({
+            scrollTop: maxScrollTop,
+            viewportHeight: 300,
+            itemHeight: 30,
+            totalItems: 100,
+            bufferSize: 2,
+            mode: 'bottomToTop'
+        })
         expect(result).toEqual({
             start: 0, // First items when at max scroll
             end: 13
@@ -347,7 +345,14 @@ describe('calculateVisibleRange', () => {
     })
 
     it('should handle edge cases with buffer exceeding bounds', () => {
-        const result = calculateVisibleRange(0, 300, 30, 10, 5, 'topToBottom', false, false, null)
+        const result = calculateVisibleRange({
+            scrollTop: 0,
+            viewportHeight: 300,
+            itemHeight: 30,
+            totalItems: 10,
+            bufferSize: 5,
+            mode: 'topToBottom'
+        })
         expect(result).toEqual({
             start: 0,
             end: 10
@@ -359,19 +364,15 @@ describe('calculateVisibleRange', () => {
         // Cumulative: 0, 100, 150, 230, 260, 290, ...
         // scrollTop=160: item 2 starts at 150, item 3 starts at 230 → start=2
         const cache: Record<number, number> = { 0: 100, 1: 50, 2: 80 }
-        const result = calculateVisibleRange(
-            160,
-            300,
-            30,
-            100,
-            2,
-            'topToBottom',
-            false,
-            false,
-            null,
-            undefined,
-            cache
-        )
+        const result = calculateVisibleRange({
+            scrollTop: 160,
+            viewportHeight: 300,
+            itemHeight: 30,
+            totalItems: 100,
+            bufferSize: 2,
+            mode: 'topToBottom',
+            heightCache: cache
+        })
         expect(result.start).toBe(0) // start=2 minus buffer=2
     })
 
@@ -379,7 +380,14 @@ describe('calculateVisibleRange', () => {
         // Items all 30px, scrollTop=0, viewportHeight=100
         // Walk: 0→30, 30→60, 60→90, 90→120 (>100) → end=4, +1=5
         // With buffer=1: end=min(20, 5+1)=6
-        const result = calculateVisibleRange(0, 100, 30, 20, 1, 'topToBottom', false, false, null)
+        const result = calculateVisibleRange({
+            scrollTop: 0,
+            viewportHeight: 100,
+            itemHeight: 30,
+            totalItems: 20,
+            bufferSize: 1,
+            mode: 'topToBottom'
+        })
         expect(result.end).toBe(6)
     })
 
@@ -391,19 +399,15 @@ describe('calculateVisibleRange', () => {
         // End walk from 1: viewAcc=0+60=60, +80=140 (≥120) → end=3, +1=4
         // With buffer=0: start=1, end=4
         const cache: Record<number, number> = { 0: 40, 1: 60, 2: 80, 3: 50, 4: 30 }
-        const result = calculateVisibleRange(
-            50,
-            120,
-            40,
-            5,
-            0,
-            'topToBottom',
-            false,
-            false,
-            null,
-            undefined,
-            cache
-        )
+        const result = calculateVisibleRange({
+            scrollTop: 50,
+            viewportHeight: 120,
+            itemHeight: 40,
+            totalItems: 5,
+            bufferSize: 0,
+            mode: 'topToBottom',
+            heightCache: cache
+        })
         expect(result).toEqual({ start: 1, end: 4 })
     })
 
@@ -412,19 +416,15 @@ describe('calculateVisibleRange', () => {
         // Cumulative: 0, 100, 130, 160, 190
         // scrollTop=140: item 2 at 130 (130≤140), item 3 at 160 (160>140) → start=2
         const cache: Record<number, number> = { 0: 100 }
-        const result = calculateVisibleRange(
-            140,
-            300,
-            30,
-            100,
-            0,
-            'topToBottom',
-            false,
-            false,
-            null,
-            undefined,
-            cache
-        )
+        const result = calculateVisibleRange({
+            scrollTop: 140,
+            viewportHeight: 300,
+            itemHeight: 30,
+            totalItems: 100,
+            bufferSize: 0,
+            mode: 'topToBottom',
+            heightCache: cache
+        })
         expect(result.start).toBe(2)
     })
 
@@ -433,30 +433,23 @@ describe('calculateVisibleRange', () => {
         const cache: Record<number, number> = {}
         for (let i = 0; i < 50; i++) cache[i] = 40
 
-        const withCache = calculateVisibleRange(
-            200,
-            400,
-            40,
-            50,
-            2,
-            'topToBottom',
-            false,
-            false,
-            null,
-            undefined,
-            cache
-        )
-        const withoutCache = calculateVisibleRange(
-            200,
-            400,
-            40,
-            50,
-            2,
-            'topToBottom',
-            false,
-            false,
-            null
-        )
+        const withCache = calculateVisibleRange({
+            scrollTop: 200,
+            viewportHeight: 400,
+            itemHeight: 40,
+            totalItems: 50,
+            bufferSize: 2,
+            mode: 'topToBottom',
+            heightCache: cache
+        })
+        const withoutCache = calculateVisibleRange({
+            scrollTop: 200,
+            viewportHeight: 400,
+            itemHeight: 40,
+            totalItems: 50,
+            bufferSize: 2,
+            mode: 'topToBottom'
+        })
         expect(withCache).toEqual(withoutCache)
     })
 })
