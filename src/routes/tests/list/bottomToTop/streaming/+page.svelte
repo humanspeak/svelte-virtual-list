@@ -1,6 +1,7 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
     import { onDestroy } from 'svelte'
+    import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
     type ChatMessage = {
         id: string
@@ -449,8 +450,8 @@
     let totalConfirmed = $state(0)
     let totalDropped = $state(0)
     let inputText = $state('')
-    const activeIntervalIds = new Map<string, ReturnType<typeof setInterval>>()
-    const pendingStreamStartIds = new Set<ReturnType<typeof setTimeout>>()
+    const activeIntervalIds = new SvelteMap<string, ReturnType<typeof setInterval>>()
+    const pendingStreamStartIds = new SvelteSet<ReturnType<typeof setTimeout>>()
 
     // --- Streaming ---
     function streamResponse(messageId: string) {

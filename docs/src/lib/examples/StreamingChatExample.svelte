@@ -2,6 +2,7 @@
     import VirtualList from '@humanspeak/svelte-virtual-list'
     import SvelteMarkdown from '@humanspeak/svelte-markdown'
     import { onDestroy } from 'svelte'
+    import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
     type ChatMessage = {
         id: string
@@ -222,8 +223,8 @@
     let pendingStarts = $state(0)
     let isStreaming = $derived(activeStreamingIds.length > 0 || pendingStarts > 0)
     let debugInfo = $state({ visibleItemsCount: 0, totalHeight: 0 })
-    const activeIntervals = new Map<string, ReturnType<typeof setInterval>>()
-    const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>()
+    const activeIntervals = new SvelteMap<string, ReturnType<typeof setInterval>>()
+    const pendingTimeouts = new SvelteSet<ReturnType<typeof setTimeout>>()
 
     function streamResponse(messageId: string) {
         const chunks = STREAM_VARIANTS[streamVariantIndex % STREAM_VARIANTS.length]
