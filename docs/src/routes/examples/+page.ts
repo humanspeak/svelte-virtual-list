@@ -26,7 +26,8 @@ export const load: PageLoad = async () => {
         },
         'streaming-chat': {
             title: 'Streaming Chat',
-            description: 'Interactive streaming chat animation example using Svelte Motion.',
+            description:
+                'Virtualized streaming chat with real-time markdown rendering and bottom-anchored scrolling.',
             sourceUrl: null
         },
         'variable-height': {

@@ -286,7 +286,8 @@
         }
         messages = [optimistic, ...messages]
 
-        setTimeout(() => {
+        const tid = setTimeout(() => {
+            pendingTimeouts.delete(tid)
             messages = messages.filter((m) => m.id !== `opt-${nonce}`)
             messages = [
                 { id: `confirmed-${nonce}`, nonce, role: 'user', content: text },
@@ -294,6 +295,7 @@
             ]
             scheduleStream()
         }, 400)
+        pendingTimeouts.add(tid)
     }
 
     function handleSend() {
@@ -405,6 +407,7 @@
                 bind:value={inputText}
                 onkeydown={handleKeydown}
                 placeholder="Send a message..."
+                aria-label="Message"
                 class="flex-1 rounded-full border border-gray-300 bg-gray-50 px-4 py-2 text-sm transition-colors outline-none focus:border-blue-400 focus:bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-500 dark:focus:bg-gray-700"
             />
             <button

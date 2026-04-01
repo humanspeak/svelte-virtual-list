@@ -526,7 +526,8 @@
         messages = [optimisticMsg, ...messages]
 
         // Simulate server confirmation after 500ms
-        setTimeout(() => {
+        const tid = setTimeout(() => {
+            pendingStreamStartIds.delete(tid)
             // Remove optimistic
             messages = messages.filter((m) => m.id !== `opt-${nonce}`)
             totalDropped++
@@ -545,6 +546,7 @@
             // Start the assistant response independently so bursts stream concurrently.
             scheduleStreamResponse()
         }, 500)
+        pendingStreamStartIds.add(tid)
     }
 
     // --- Handlers ---
