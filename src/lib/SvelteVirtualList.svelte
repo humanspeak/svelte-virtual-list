@@ -176,11 +176,12 @@
     import { ReactiveListManager } from '$lib/index.js'
     import { BROWSER } from 'esm-env'
     import { flushSync, onMount, tick, untrack } from 'svelte'
+    import { SvelteSet } from 'svelte/reactivity'
 
     const rafSchedule = createRafScheduler()
     // Timing constants
     const GLOBAL_CORRECTION_COOLDOWN_MS = 16
-    const SCROLL_IDLE_DELAY_MS = 250
+    const SCROLL_IDLE_DELAY_MS = 120
     const SUPPRESSION_WINDOW_MS = 450
     const HEIGHT_DEBOUNCE_MS = 100
     const BOTTOM_PIN_FRAMES = 24 // ~400ms at 60fps — enough for ResizeObserver to settle
@@ -342,9 +343,8 @@
     let lastMeasuredIndex = $state(-1) // Index of last measured item
     let lastScrollTopSnapshot = $state(0) // Previous scroll position snapshot
     let bottomToTopScrollDirection = $state<-1 | 0 | 1>(0)
-    let bottomLockMutationDirection = $state<-1 | 0 | 1>(0)
+    let itemsWrapperElement = $state<HTMLElement | null>(null)
     let stabilizedTransformY = 0
-    let bottomLockMutationFramesRemaining = 0
 
     /**
      * Timers and Observers
@@ -356,7 +356,7 @@
     /**
      * Performance Optimization State
      */
-    const dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
+    const dirtyItems = new SvelteSet<number>() // Set of item indices that need height recalculation
     let dirtyItemsCount = $state(0) // Reactive count of dirty items
     // Fallback measurement used only when height has not been established yet
     let measuredFallbackHeight = $state(0)
@@ -412,10 +412,18 @@
             return Math.max(0, totalHeight - height)
         }
 
-        return Math.max(
-            0,
-            heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
-        )
+        const clientHeight = heightManager.viewport.clientHeight
+        const estimatedMaxScrollTop = Math.max(0, totalHeight - clientHeight)
+        const domMaxScrollTop = Math.max(0, heightManager.viewport.scrollHeight - clientHeight)
+
+        // In non-overflow bottomToTop layouts, rely on the list model instead of DOM scrollHeight.
+        // The DOM can report a small phantom scroll range from min-height/layout rounding, which
+        // incorrectly nudges the viewport away from the static bottom-aligned state.
+        if (mode === 'bottomToTop' && totalHeight <= clientHeight + 1) {
+            return estimatedMaxScrollTop
+        }
+
+        return Math.max(estimatedMaxScrollTop, domMaxScrollTop)
     }
 
     const isViewportNearBottom = (
@@ -427,17 +435,68 @@
 
     let bottomPinRafId: number | null = null
     let bottomPinFramesRemaining = 0
+    let bottomLockGeometryReconcileRafId: number | null = null
+    let renderedItemsBottomExtentRafId: number | null = null
+    let renderedItemsBottomExtent = $state(0)
+    let renderedItemsBottomExtentFramesRemaining = $state(0)
 
     const cancelBottomPin = () => {
         pendingBottomPin = false
         bottomPinFramesRemaining = 0
-        bottomLockMutationDirection = 0
-        bottomLockMutationFramesRemaining = 0
+        if (bottomLockGeometryReconcileRafId !== null) {
+            cancelAnimationFrame(bottomLockGeometryReconcileRafId)
+            bottomLockGeometryReconcileRafId = null
+        }
 
         if (bottomPinRafId !== null) {
             cancelAnimationFrame(bottomPinRafId)
             bottomPinRafId = null
         }
+    }
+
+    const cancelRenderedItemsBottomExtentMeasure = () => {
+        if (renderedItemsBottomExtentRafId !== null) {
+            cancelAnimationFrame(renderedItemsBottomExtentRafId)
+            renderedItemsBottomExtentRafId = null
+        }
+    }
+
+    const scheduleRenderedItemsBottomExtentMeasure = () => {
+        if (
+            !BROWSER ||
+            mode !== 'bottomToTop' ||
+            renderedItemsBottomExtentFramesRemaining <= 0 ||
+            !itemsWrapperElement
+        ) {
+            cancelRenderedItemsBottomExtentMeasure()
+            renderedItemsBottomExtent = 0
+            return
+        }
+
+        if (renderedItemsBottomExtentRafId !== null) return
+
+        renderedItemsBottomExtentRafId = requestAnimationFrame(() => {
+            renderedItemsBottomExtentRafId = null
+
+            if (!itemsWrapperElement) {
+                renderedItemsBottomExtent = 0
+                return
+            }
+
+            const wrapperHeight = itemsWrapperElement.getBoundingClientRect().height
+            const nextExtent = Math.max(0, Math.ceil(transformY + wrapperHeight))
+            if (Number.isFinite(nextExtent)) {
+                renderedItemsBottomExtent = nextExtent
+            }
+
+            renderedItemsBottomExtentFramesRemaining = Math.max(
+                0,
+                renderedItemsBottomExtentFramesRemaining - 1
+            )
+            if (renderedItemsBottomExtentFramesRemaining > 0) {
+                scheduleRenderedItemsBottomExtentMeasure()
+            }
+        })
     }
 
     const scheduleBottomPin = (frames = 8) => {
@@ -493,15 +552,6 @@
             }
 
             bottomPinFramesRemaining = Math.max(0, bottomPinFramesRemaining - 1)
-            if (bottomLockMutationFramesRemaining > 0) {
-                bottomLockMutationFramesRemaining = Math.max(
-                    0,
-                    bottomLockMutationFramesRemaining - 1
-                )
-                if (bottomLockMutationFramesRemaining === 0) {
-                    bottomLockMutationDirection = 0
-                }
-            }
             if (bottomPinFramesRemaining > 0) {
                 bottomPinRafId = requestAnimationFrame(step)
             } else {
@@ -510,6 +560,81 @@
         }
 
         bottomPinRafId = requestAnimationFrame(step)
+    }
+
+    const getBottomAnchorDelta = () => {
+        if (!heightManager.viewportElement) return null
+
+        const visibleElements = Array.from(
+            heightManager.viewport.querySelectorAll('[data-original-index]')
+        ) as HTMLElement[]
+        if (visibleElements.length === 0) return null
+
+        let anchorElement = visibleElements[0]
+        let lowestOriginalIndex = parseInt(anchorElement.dataset.originalIndex || '0', 10)
+
+        for (const element of visibleElements) {
+            const originalIndex = parseInt(element.dataset.originalIndex || '0', 10)
+            if (originalIndex < lowestOriginalIndex) {
+                lowestOriginalIndex = originalIndex
+                anchorElement = element
+            }
+        }
+
+        const viewportRect = heightManager.viewport.getBoundingClientRect()
+        const anchorRect = anchorElement.getBoundingClientRect()
+        return anchorRect.bottom - viewportRect.bottom
+    }
+
+    const scheduleBottomLockGeometryReconcile = (frames = 3) => {
+        if (!BROWSER || mode !== 'bottomToTop' || !heightManager.viewportElement) return
+
+        if (bottomLockGeometryReconcileRafId !== null) {
+            cancelAnimationFrame(bottomLockGeometryReconcileRafId)
+            bottomLockGeometryReconcileRafId = null
+        }
+
+        let framesRemaining = Math.max(1, frames)
+        let stableFrames = 0
+
+        const step = () => {
+            bottomLockGeometryReconcileRafId = null
+
+            if (
+                !heightManager.viewportElement ||
+                mode !== 'bottomToTop' ||
+                userHasScrolledAway ||
+                !heightManager.initialized
+            ) {
+                return
+            }
+
+            const delta = getBottomAnchorDelta()
+            if (delta === null) {
+                return
+            }
+
+            if (Math.abs(delta) <= 1) {
+                stableFrames += 1
+            } else {
+                stableFrames = 0
+                const targetScrollTop = clampValue(
+                    heightManager.viewport.scrollTop + delta,
+                    0,
+                    getViewportMaxScrollTop()
+                )
+                syncScrollTop(targetScrollTop, true)
+            }
+
+            framesRemaining -= 1
+            if (stableFrames >= 2 || framesRemaining <= 0) {
+                return
+            }
+
+            bottomLockGeometryReconcileRafId = requestAnimationFrame(step)
+        }
+
+        bottomLockGeometryReconcileRafId = requestAnimationFrame(step)
     }
 
     // Dynamic update coordination to avoid UA scroll anchoring interference
@@ -758,7 +883,7 @@
 
                 // Update manager totals/cache before any scroll correction logic relies on them
                 if (result.heightChanges.length > 0) {
-                    heightManager.processDirtyHeights(result.heightChanges, !isScrolling)
+                    heightManager.processDirtyHeights(result.heightChanges)
                 }
 
                 // Handle height changes for scroll correction (manager totals already updated)
@@ -816,7 +941,7 @@
     const measureVisibleItemsImmediately = () => {
         const currentVisibleRange = visibleItems
         const heightCache = heightManager.getHeightCache()
-        const dirtyVisibleItems = new Set<number>()
+        const dirtyVisibleItems = new SvelteSet<number>()
 
         for (const element of itemElements) {
             if (!element) continue
@@ -860,7 +985,7 @@
         }
 
         lastMeasuredIndex = result.newLastMeasuredIndex
-        heightManager.processDirtyHeights(result.heightChanges, true)
+        heightManager.processDirtyHeights(result.heightChanges)
         return true
     }
 
@@ -1013,6 +1138,23 @@
         }
     })
 
+    $effect(() => {
+        if (
+            !BROWSER ||
+            mode !== 'bottomToTop' ||
+            renderedItemsBottomExtentFramesRemaining <= 0 ||
+            !itemsWrapperElement
+        ) {
+            cancelRenderedItemsBottomExtentMeasure()
+            renderedItemsBottomExtent = 0
+            return
+        }
+
+        void visibleItems
+        void transformY
+        scheduleRenderedItemsBottomExtentMeasure()
+    })
+
     // Handle items being added/removed in bottomToTop mode
     $effect(() => {
         // Only track items.length to prevent re-runs on other reactive changes
@@ -1059,12 +1201,7 @@
                 // If near the bottom, this naturally pins to the new max; otherwise it preserves the current content.
                 programmaticScrollInProgress = true
                 if (shouldStickToBottom) {
-                    bottomLockMutationDirection = itemsAdded > 0 ? -1 : itemsAdded < 0 ? 1 : 0
-                    bottomLockMutationFramesRemaining = BOTTOM_PIN_FRAMES
                     scheduleBottomPin(BOTTOM_PIN_FRAMES)
-                } else {
-                    bottomLockMutationDirection = 0
-                    bottomLockMutationFramesRemaining = 0
                 }
                 void heightManager.runDynamicUpdate(() => {
                     const newScrollTop = shouldStickToBottom
@@ -1081,9 +1218,10 @@
                         shouldStickToBottom
                     })
 
-                    if (shouldStickToBottom) {
+                    if (shouldStickToBottom && itemsAdded > 0) {
                         flushSync(() => {
-                            if (measureVisibleItemsImmediately()) {
+                            const didMeasureVisibleItems = measureVisibleItemsImmediately()
+                            if (didMeasureVisibleItems) {
                                 const exactMaxScrollTop = Math.max(0, totalHeight - height)
                                 syncScrollTop(exactMaxScrollTop, true)
                                 log('[SVL] items-length-change:sync-measurement-correction', {
@@ -1093,21 +1231,7 @@
                             }
                         })
 
-                        void tick().then(() => {
-                            if (!heightManager.viewportElement || !programmaticScrollInProgress) {
-                                return
-                            }
-
-                            const domMaxScrollTop = getViewportMaxScrollTop()
-                            if (domMaxScrollTop - heightManager.viewport.scrollTop > 1) {
-                                syncScrollTop(domMaxScrollTop, true)
-                                log('[SVL] items-length-change:dom-max-correction', {
-                                    instanceId,
-                                    previousScrollTop: newScrollTop,
-                                    domMaxScrollTop
-                                })
-                            }
-                        })
+                        scheduleBottomLockGeometryReconcile()
                     }
 
                     // We are explicitly managing position; consider this a programmatic action.
@@ -1270,9 +1394,18 @@
     let stabilizedContentHeight = 0
 
     const contentHeight = $derived.by(() => {
-        const raw = Math.max(height, totalHeight)
+        const effectiveViewportHeight = height || measuredFallbackHeight || 0
+        const hasScrollableOverflow =
+            mode === 'bottomToTop' &&
+            effectiveViewportHeight > 0 &&
+            totalHeight > effectiveViewportHeight + 1
+        let raw = Math.max(height, totalHeight)
 
-        if (mode !== 'bottomToTop' || !isScrolling) {
+        if (hasScrollableOverflow) {
+            raw = Math.max(raw, renderedItemsBottomExtent)
+        }
+
+        if (mode !== 'bottomToTop' || !isScrolling || !hasScrollableOverflow) {
             stabilizedContentHeight = raw
             return raw
         }
@@ -1296,6 +1429,8 @@
 
         // Avoid synchronous DOM reads here; fall back once if height is 0
         const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
+        const hasScrollableOverflow =
+            mode === 'bottomToTop' && viewportHeight > 0 && totalHeight > viewportHeight + 1
 
         // Use precise offset using measured heights when available.
         // For bottomToTop, pass ratcheted contentHeight so the transform stays
@@ -1315,13 +1450,11 @@
         )
 
         const activeTransformDirection =
-            mode !== 'bottomToTop'
+            mode !== 'bottomToTop' || !hasScrollableOverflow
                 ? 0
-                : bottomLockMutationDirection !== 0
-                  ? bottomLockMutationDirection
-                  : isScrolling
-                    ? bottomToTopScrollDirection
-                    : 0
+                : isScrolling
+                  ? bottomToTopScrollDirection
+                  : 0
 
         if (mode !== 'bottomToTop' || activeTransformDirection === 0) {
             stabilizedTransformY = rawTransformY
@@ -1386,6 +1519,8 @@
             } else if (immediateDelta < -0.5) {
                 bottomToTopScrollDirection = 1
             }
+
+            renderedItemsBottomExtentFramesRemaining = 3
         }
 
         if (mode === 'bottomToTop' && pendingBottomPin && !programmaticScrollInProgress) {
@@ -1554,6 +1689,11 @@
                                         wasAtBottomBeforeHeightChange = false
                                         // Keep init anchoring active through post-init measurements.
                                         suppressBottomAnchoringUntilMs = performance.now()
+                                        flushSync(() => {
+                                            if (measureVisibleItemsImmediately()) {
+                                                syncScrollTop(getViewportMaxScrollTop(), true)
+                                            }
+                                        })
                                     })
                                 })
                             })
@@ -1679,6 +1819,7 @@
                 if (itemResizeObserver) {
                     itemResizeObserver.disconnect()
                 }
+                cancelRenderedItemsBottomExtentMeasure()
                 cancelBottomPin()
             }
         }
@@ -1976,6 +2117,7 @@
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
+                bind:this={itemsWrapperElement}
                 style:transform="translateY({transformY}px)"
             >
                 {#each displayItems as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
