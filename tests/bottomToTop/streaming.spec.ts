@@ -107,4 +107,49 @@ test.describe('BottomToTop Streaming Chat', () => {
 
         await expect(page.locator('.streaming-tag')).toHaveCount(0)
     })
+
+    test('should keep rendering items when scrolling upward after stress test completes', async ({
+        page
+    }) => {
+        await page.waitForTimeout(500)
+        await page.getByTestId('stress-button').click()
+
+        await page.waitForFunction(
+            () => {
+                const status = document.querySelector('[data-testid="stream-status"]')
+                const statusText = status?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+                return (
+                    statusText.includes('Streaming: false') &&
+                    statusText.includes('Active streams: 0') &&
+                    statusText.includes('Pending starts: 0')
+                )
+            },
+            undefined,
+            { timeout: 30000 }
+        )
+
+        await page.evaluate((selector) => {
+            const viewport = document.querySelector(selector) as HTMLElement | null
+            if (!viewport) return
+            const maxScroll = viewport.scrollHeight - viewport.clientHeight
+            viewport.scrollTop = Math.floor(maxScroll * 0.5)
+            viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
+        }, VIEWPORT_SELECTOR)
+
+        await rafWait(page, 3)
+        await page.waitForTimeout(SETTLE_MS)
+
+        const visibleCount = await page.evaluate((selector) => {
+            const viewport = document.querySelector(selector) as HTMLElement | null
+            if (!viewport) return -1
+            const viewportRect = viewport.getBoundingClientRect()
+            const items = Array.from(document.querySelectorAll('[data-original-index]'))
+            return items.filter((item) => {
+                const rect = item.getBoundingClientRect()
+                return rect.bottom > viewportRect.top && rect.top < viewportRect.bottom
+            }).length
+        }, VIEWPORT_SELECTOR)
+
+        expect(visibleCount).toBeGreaterThan(0)
+    })
 })

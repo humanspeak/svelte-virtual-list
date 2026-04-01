@@ -49,3 +49,4 @@ docs/static/social-cards/**
 docs/src/lib/github-stats.json
 docs/static/og-default.png
 docs/static/twitter-default.png
+tmp/

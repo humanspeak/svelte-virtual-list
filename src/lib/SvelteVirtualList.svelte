@@ -423,13 +423,27 @@
     let bottomPinRafId: number | null = null
     let bottomPinFramesRemaining = 0
 
+    const cancelBottomPin = () => {
+        pendingBottomPin = false
+        bottomPinFramesRemaining = 0
+
+        if (bottomPinRafId !== null) {
+            cancelAnimationFrame(bottomPinRafId)
+            bottomPinRafId = null
+        }
+    }
+
     const scheduleBottomPin = (frames = 8) => {
-        if (!BROWSER) return
+        if (!BROWSER || programmaticScrollInProgress) return
 
         pendingBottomPin = true
         bottomPinFramesRemaining = Math.max(bottomPinFramesRemaining, frames)
 
-        if (heightManager.viewportElement && heightManager.initialized) {
+        if (
+            heightManager.viewportElement &&
+            heightManager.initialized &&
+            !heightManager.isDynamicUpdateInProgress
+        ) {
             const maxScrollTop = getViewportMaxScrollTop()
             const gap = maxScrollTop - heightManager.viewport.scrollTop
             const nearBottom = gap <= Math.max(2, Math.round(heightManager.averageHeight))
@@ -446,11 +460,12 @@
 
             if (
                 !pendingBottomPin ||
+                programmaticScrollInProgress ||
                 (userHasScrolledAway && !nearBottom) ||
                 !heightManager.viewportElement ||
                 !heightManager.initialized
             ) {
-                bottomPinFramesRemaining = 0
+                cancelBottomPin()
                 return
             }
 
@@ -461,13 +476,15 @@
             const maxScrollTop = getViewportMaxScrollTop()
             const gap = maxScrollTop - heightManager.viewport.scrollTop
 
-            if (gap > 2) {
+            if (!heightManager.isDynamicUpdateInProgress && gap > 2) {
                 syncScrollTop(maxScrollTop, true)
             }
 
             bottomPinFramesRemaining = Math.max(0, bottomPinFramesRemaining - 1)
             if (bottomPinFramesRemaining > 0) {
                 bottomPinRafId = requestAnimationFrame(step)
+            } else {
+                pendingBottomPin = false
             }
         }
 
@@ -720,7 +737,7 @@
 
                 // Update manager totals/cache before any scroll correction logic relies on them
                 if (result.heightChanges.length > 0) {
-                    heightManager.processDirtyHeights(result.heightChanges)
+                    heightManager.processDirtyHeights(result.heightChanges, !isScrolling)
                 }
 
                 // Handle height changes for scroll correction (manager totals already updated)
@@ -1031,6 +1048,9 @@
                             })
                         }
                         programmaticScrollInProgress = false
+                        if (shouldStickToBottom) {
+                            scheduleBottomPin(BOTTOM_PIN_FRAMES)
+                        }
                     })
                 })
             }
@@ -1123,7 +1143,8 @@
             bufferSize,
             mode,
             totalContentHeight: totalHeight,
-            heightCache: heightManager.getHeightCache()
+            heightCache: heightManager.getHeightCache(),
+            blockSums: heightManager.getBlockSums()
         })
 
         return lastVisibleRange
@@ -1229,6 +1250,18 @@
     const handleScroll = () => {
         if (!BROWSER || !heightManager.viewportElement) return
 
+        if (mode === 'bottomToTop' && pendingBottomPin && !programmaticScrollInProgress) {
+            const currentScrollTop = heightManager.viewport.scrollTop
+            const gapFromBottom = getViewportMaxScrollTop() - currentScrollTop
+            const userScrollAwayThreshold = Math.max(heightManager.averageHeight * 2, 120)
+
+            if (gapFromBottom > userScrollAwayThreshold) {
+                cancelBottomPin()
+                suppressBottomAnchoringUntilMs = performance.now() + SUPPRESSION_WINDOW_MS
+                userHasScrolledAway = true
+            }
+        }
+
         // Mark active scrolling and debounce idle transition (~120ms)
         isScrolling = true
         if (scrollIdleTimer) {
@@ -1307,6 +1340,12 @@
             mode
         })
         if (!heightManager.initialized && mode === 'bottomToTop') {
+            if (heightManager.isReady) {
+                // Eagerly jump to the current max scroll so first paint is bottom-biased
+                // instead of waiting for the full init measurement/realignment sequence.
+                syncScrollTop(getViewportMaxScrollTop(), true)
+            }
+
             // bottomToTop initialization: use scrollIntoView on Item 0 for precise positioning
             // visibleItems guarantees Item 0 is rendered during initialization
             tick().then(() => {
@@ -1496,9 +1535,7 @@
                 if (itemResizeObserver) {
                     itemResizeObserver.disconnect()
                 }
-                if (bottomPinRafId !== null) {
-                    cancelAnimationFrame(bottomPinRafId)
-                }
+                cancelBottomPin()
             }
         }
     })
@@ -1663,6 +1700,7 @@
         }
 
         // Prevent bottom-anchoring logic from interfering with programmatic scroll
+        cancelBottomPin()
         programmaticScrollInProgress = true
 
         if (INTERNAL_DEBUG && heightManager.viewportElement) {

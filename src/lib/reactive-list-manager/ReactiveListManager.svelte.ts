@@ -447,7 +447,7 @@ export class ReactiveListManager {
      *
      * @param dirtyResults - Array of height changes to process
      */
-    processDirtyHeights(dirtyResults: HeightChange[]): void {
+    processDirtyHeights(dirtyResults: HeightChange[], allowPureHeightDelta = false): void {
         if (dirtyResults.length === 0) return
         // Batch calculate changes to trigger reactivity only once
         let heightDelta = 0
@@ -499,7 +499,8 @@ export class ReactiveListManager {
         if (isNonBrowser) {
             if (heightDelta === 0 && countDelta === 0) return
         } else {
-            if (countDelta === 0) return
+            if (countDelta === 0 && !allowPureHeightDelta) return
+            if (heightDelta === 0 && countDelta === 0) return
         }
         // Apply all changes at once - triggers reactivity only once
         this._totalMeasuredHeight += heightDelta
