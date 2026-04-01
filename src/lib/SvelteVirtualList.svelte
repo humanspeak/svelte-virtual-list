@@ -164,6 +164,7 @@
     import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
     import {
         calculateTransformY,
+        calculateAverageHeight,
         calculateVisibleRange,
         clampValue,
         updateHeightAndScroll as utilsUpdateHeightAndScroll,
@@ -174,7 +175,7 @@
     import { createAdvancedThrottledCallback } from '$lib/utils/throttle.js'
     import { ReactiveListManager } from '$lib/index.js'
     import { BROWSER } from 'esm-env'
-    import { onMount, tick, untrack } from 'svelte'
+    import { flushSync, onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
     // Timing constants
@@ -340,6 +341,10 @@
     }
     let lastMeasuredIndex = $state(-1) // Index of last measured item
     let lastScrollTopSnapshot = $state(0) // Previous scroll position snapshot
+    let bottomToTopScrollDirection = $state<-1 | 0 | 1>(0)
+    let bottomLockMutationDirection = $state<-1 | 0 | 1>(0)
+    let stabilizedTransformY = 0
+    let bottomLockMutationFramesRemaining = 0
 
     /**
      * Timers and Observers
@@ -426,6 +431,8 @@
     const cancelBottomPin = () => {
         pendingBottomPin = false
         bottomPinFramesRemaining = 0
+        bottomLockMutationDirection = 0
+        bottomLockMutationFramesRemaining = 0
 
         if (bottomPinRafId !== null) {
             cancelAnimationFrame(bottomPinRafId)
@@ -434,7 +441,7 @@
     }
 
     const scheduleBottomPin = (frames = 8) => {
-        if (!BROWSER || programmaticScrollInProgress) return
+        if (!BROWSER) return
 
         pendingBottomPin = true
         bottomPinFramesRemaining = Math.max(bottomPinFramesRemaining, frames)
@@ -442,7 +449,8 @@
         if (
             heightManager.viewportElement &&
             heightManager.initialized &&
-            !heightManager.isDynamicUpdateInProgress
+            !heightManager.isDynamicUpdateInProgress &&
+            !programmaticScrollInProgress
         ) {
             const maxScrollTop = getViewportMaxScrollTop()
             const gap = maxScrollTop - heightManager.viewport.scrollTop
@@ -460,12 +468,16 @@
 
             if (
                 !pendingBottomPin ||
-                programmaticScrollInProgress ||
                 (userHasScrolledAway && !nearBottom) ||
                 !heightManager.viewportElement ||
                 !heightManager.initialized
             ) {
                 cancelBottomPin()
+                return
+            }
+
+            if (programmaticScrollInProgress || heightManager.isDynamicUpdateInProgress) {
+                bottomPinRafId = requestAnimationFrame(step)
                 return
             }
 
@@ -481,6 +493,15 @@
             }
 
             bottomPinFramesRemaining = Math.max(0, bottomPinFramesRemaining - 1)
+            if (bottomLockMutationFramesRemaining > 0) {
+                bottomLockMutationFramesRemaining = Math.max(
+                    0,
+                    bottomLockMutationFramesRemaining - 1
+                )
+                if (bottomLockMutationFramesRemaining === 0) {
+                    bottomLockMutationDirection = 0
+                }
+            }
             if (bottomPinFramesRemaining > 0) {
                 bottomPinRafId = requestAnimationFrame(step)
             } else {
@@ -792,6 +813,57 @@
         )
     }
 
+    const measureVisibleItemsImmediately = () => {
+        const currentVisibleRange = visibleItems
+        const heightCache = heightManager.getHeightCache()
+        const dirtyVisibleItems = new Set<number>()
+
+        for (const element of itemElements) {
+            if (!element) continue
+
+            const itemIndex = parseInt(element.dataset.originalIndex || '-1', 10)
+            if (itemIndex < 0) continue
+
+            const measuredHeight = element.getBoundingClientRect().height
+            const cachedHeight = heightCache[itemIndex]
+
+            if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) {
+                continue
+            }
+
+            if (!cachedHeight || Math.abs(cachedHeight - measuredHeight) >= 0.1) {
+                dirtyVisibleItems.add(itemIndex)
+            }
+        }
+
+        if (dirtyVisibleItems.size === 0) {
+            return false
+        }
+
+        const result = calculateAverageHeight(
+            itemElements,
+            currentVisibleRange,
+            heightCache,
+            heightManager.averageHeight,
+            dirtyVisibleItems,
+            heightManager.totalMeasuredHeight,
+            heightManager.measuredCount,
+            mode
+        )
+
+        if (result.heightChanges.length === 0) {
+            return false
+        }
+
+        if (result.newValidCount !== 1) {
+            heightManager.itemHeight = result.newHeight
+        }
+
+        lastMeasuredIndex = result.newLastMeasuredIndex
+        heightManager.processDirtyHeights(result.heightChanges, true)
+        return true
+    }
+
     // Add new effect to handle height changes
     // Track if user has scrolled away from bottom to prevent snap-back
     let userHasScrolledAway = $state(false)
@@ -987,7 +1059,12 @@
                 // If near the bottom, this naturally pins to the new max; otherwise it preserves the current content.
                 programmaticScrollInProgress = true
                 if (shouldStickToBottom) {
+                    bottomLockMutationDirection = itemsAdded > 0 ? -1 : itemsAdded < 0 ? 1 : 0
+                    bottomLockMutationFramesRemaining = BOTTOM_PIN_FRAMES
                     scheduleBottomPin(BOTTOM_PIN_FRAMES)
+                } else {
+                    bottomLockMutationDirection = 0
+                    bottomLockMutationFramesRemaining = 0
                 }
                 void heightManager.runDynamicUpdate(() => {
                     const newScrollTop = shouldStickToBottom
@@ -1003,6 +1080,35 @@
                         deltaMax,
                         shouldStickToBottom
                     })
+
+                    if (shouldStickToBottom) {
+                        flushSync(() => {
+                            if (measureVisibleItemsImmediately()) {
+                                const exactMaxScrollTop = Math.max(0, totalHeight - height)
+                                syncScrollTop(exactMaxScrollTop, true)
+                                log('[SVL] items-length-change:sync-measurement-correction', {
+                                    instanceId,
+                                    exactMaxScrollTop
+                                })
+                            }
+                        })
+
+                        void tick().then(() => {
+                            if (!heightManager.viewportElement || !programmaticScrollInProgress) {
+                                return
+                            }
+
+                            const domMaxScrollTop = getViewportMaxScrollTop()
+                            if (domMaxScrollTop - heightManager.viewport.scrollTop > 1) {
+                                syncScrollTop(domMaxScrollTop, true)
+                                log('[SVL] items-length-change:dom-max-correction', {
+                                    instanceId,
+                                    previousScrollTop: newScrollTop,
+                                    domMaxScrollTop
+                                })
+                            }
+                        })
+                    }
 
                     // We are explicitly managing position; consider this a programmatic action.
                     // Do not flip userHasScrolledAway here; it should reflect user intent only.
@@ -1194,7 +1300,7 @@
         // Use precise offset using measured heights when available.
         // For bottomToTop, pass ratcheted contentHeight so the transform stays
         // stable while scrollHeight is stabilized (prevents visual shift).
-        return Math.round(
+        const rawTransformY = Math.round(
             calculateTransformY(
                 mode,
                 items.length,
@@ -1207,6 +1313,28 @@
                 measuredFallbackHeight
             )
         )
+
+        const activeTransformDirection =
+            mode !== 'bottomToTop'
+                ? 0
+                : bottomLockMutationDirection !== 0
+                  ? bottomLockMutationDirection
+                  : isScrolling
+                    ? bottomToTopScrollDirection
+                    : 0
+
+        if (mode !== 'bottomToTop' || activeTransformDirection === 0) {
+            stabilizedTransformY = rawTransformY
+            return rawTransformY
+        }
+
+        if (activeTransformDirection < 0) {
+            stabilizedTransformY = Math.min(stabilizedTransformY, rawTransformY)
+            return stabilizedTransformY
+        }
+
+        stabilizedTransformY = Math.max(stabilizedTransformY, rawTransformY)
+        return stabilizedTransformY
     })
 
     const displayItems = $derived.by(() => {
@@ -1250,6 +1378,16 @@
     const handleScroll = () => {
         if (!BROWSER || !heightManager.viewportElement) return
 
+        if (mode === 'bottomToTop') {
+            const immediateCurrent = heightManager.viewport.scrollTop
+            const immediateDelta = lastScrollTopSnapshot - immediateCurrent
+            if (immediateDelta > 0.5) {
+                bottomToTopScrollDirection = -1
+            } else if (immediateDelta < -0.5) {
+                bottomToTopScrollDirection = 1
+            }
+        }
+
         if (mode === 'bottomToTop' && pendingBottomPin && !programmaticScrollInProgress) {
             const currentScrollTop = heightManager.viewport.scrollTop
             const gapFromBottom = getViewportMaxScrollTop() - currentScrollTop
@@ -1270,6 +1408,7 @@
         }
         scrollIdleTimer = window.setTimeout(() => {
             isScrolling = false
+            bottomToTopScrollDirection = 0
             // Apply deferred anchor correction on idle
             if (idleCorrectionsOnly || anchorModeEnabled) {
                 reconcileToAnchorIfEnabled()
@@ -1280,6 +1419,11 @@
             const current = heightManager.viewport.scrollTop
             if (mode === 'bottomToTop') {
                 const delta = lastScrollTopSnapshot - current
+                if (delta > 0.5) {
+                    bottomToTopScrollDirection = -1
+                } else if (delta < -0.5) {
+                    bottomToTopScrollDirection = 1
+                }
                 const nearBottom = isViewportNearBottom()
                 const userScrollAwayThreshold = Math.max(heightManager.averageHeight * 2, 120)
                 const gapFromBottom = getViewportMaxScrollTop() - current

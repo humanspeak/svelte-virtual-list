@@ -443,6 +443,7 @@
 
     // --- State ---
     let messages = $state<ChatMessage[]>([...INITIAL_MESSAGES])
+    let listRef: SvelteVirtualList<ChatMessage>
     let activeStreamingMessageIds = $state<string[]>([])
     let pendingStreamStarts = $state(0)
     let isStreaming = $derived(activeStreamingMessageIds.length > 0 || pendingStreamStarts > 0)
@@ -564,11 +565,13 @@
     }
 
     function stressTest() {
-        for (let i = 1; i <= 5; i++) {
-            sendMessage(
-                `Stress test question ${i}: How does virtual scrolling handle rapid message bursts?`
-            )
-        }
+        listRef.runInBatch(() => {
+            for (let i = 1; i <= 5; i++) {
+                sendMessage(
+                    `Stress test question ${i}: How does virtual scrolling handle rapid message bursts?`
+                )
+            }
+        })
     }
 
     onDestroy(() => {
@@ -599,6 +602,7 @@
     </div>
     <div class="list-wrapper" style="height: 500px;">
         <SvelteVirtualList
+            bind:this={listRef}
             items={messages}
             mode="bottomToTop"
             defaultEstimatedItemHeight={80}
