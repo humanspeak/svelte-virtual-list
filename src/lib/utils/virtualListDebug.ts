@@ -1,4 +1,4 @@
-import type { SvelteVirtualListDebugInfo } from '$lib/types.js'
+import type { SvelteVirtualListDebugInfo, SvelteVirtualListExtendedDebugInfo } from '$lib/types.js'
 
 /**
  * Determines whether debug information should be displayed based on state changes in the virtual list.
@@ -87,10 +87,21 @@ export const createDebugInfo = (
     averageItemHeight: number,
     scrollTop: number,
     viewportHeight: number,
-    totalHeight: number
+    totalHeight: number,
+    extras: Partial<SvelteVirtualListExtendedDebugInfo> = {}
 ): SvelteVirtualListDebugInfo => {
     const atTop = scrollTop <= 1 // Small tolerance for floating point precision
     const atBottom = scrollTop >= totalHeight - viewportHeight - 1 // Small tolerance
+    const maxScrollTopPx = Math.max(0, extras.maxScrollTopPx ?? totalHeight - viewportHeight)
+    const gapFromBottomPx = Math.max(
+        0,
+        extras.gapFromBottomPx ?? Math.round(maxScrollTopPx - scrollTop)
+    )
+    const measuredCount = extras.measuredCount ?? processedItems
+    const measuredPercent =
+        extras.measuredPercent ?? (totalItems > 0 ? (measuredCount / totalItems) * 100 : 0)
+    const renderedVisibleCount =
+        extras.renderedVisibleCount ?? visibleRange.end - visibleRange.start
 
     return {
         visibleItemsCount: visibleRange.end - visibleRange.start,
@@ -101,6 +112,30 @@ export const createDebugInfo = (
         averageItemHeight,
         atTop,
         atBottom,
-        totalHeight
+        totalHeight,
+        mode: extras.mode ?? 'topToBottom',
+        engine: extras.engine ?? 'legacy',
+        bottomToTopState: extras.bottomToTopState,
+        renderedVisibleCount,
+        measurementLaneCount: extras.measurementLaneCount ?? 0,
+        mountedCount: extras.mountedCount ?? renderedVisibleCount,
+        measuredCount,
+        measuredPercent,
+        logicalWindowStart: extras.logicalWindowStart ?? visibleRange.start,
+        logicalWindowEnd: extras.logicalWindowEnd ?? visibleRange.end,
+        physicalWindowStart: extras.physicalWindowStart,
+        physicalWindowEnd: extras.physicalWindowEnd,
+        topSpacerPx: extras.topSpacerPx,
+        bottomSpacerPx: extras.bottomSpacerPx,
+        scrollTopPx: extras.scrollTopPx ?? scrollTop,
+        clientHeightPx: extras.clientHeightPx ?? viewportHeight,
+        scrollHeightPx: extras.scrollHeightPx ?? totalHeight,
+        maxScrollTopPx,
+        gapFromBottomPx,
+        averageItemHeightPx: extras.averageItemHeightPx ?? averageItemHeight,
+        totalHeightPx: extras.totalHeightPx ?? totalHeight,
+        measurementQueueCount: extras.measurementQueueCount ?? 0,
+        backfillPending: extras.backfillPending ?? false,
+        reconcileActive: extras.reconcileActive ?? false
     }
 }

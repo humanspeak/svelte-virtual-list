@@ -97,7 +97,7 @@ export type SvelteVirtualListProps<TItem = any> = {
  * @property {boolean} atBottom - Whether the list is scrolled to the bottom position.
  * @property {number} totalHeight - Total calculated height of all items in the list.
  */
-export type SvelteVirtualListDebugInfo = {
+export type SvelteVirtualListBaseDebugInfo = {
     endIndex: number
     startIndex: number
     totalItems: number
@@ -108,6 +108,37 @@ export type SvelteVirtualListDebugInfo = {
     atBottom: boolean
     totalHeight: number
 }
+
+export type SvelteVirtualListExtendedDebugInfo = SvelteVirtualListBaseDebugInfo & {
+    mode: SvelteVirtualListMode
+    engine: 'legacy' | 'dedicated-bottom-to-top'
+    bottomToTopState?: 'initializing' | 'lockedBottom'
+    renderedVisibleCount: number
+    measurementLaneCount: number
+    mountedCount: number
+    measuredCount: number
+    measuredPercent: number
+    logicalWindowStart: number
+    logicalWindowEnd: number
+    physicalWindowStart?: number
+    physicalWindowEnd?: number
+    topSpacerPx?: number
+    bottomSpacerPx?: number
+    scrollTopPx: number
+    clientHeightPx: number
+    scrollHeightPx: number
+    maxScrollTopPx: number
+    gapFromBottomPx: number
+    averageItemHeightPx: number
+    totalHeightPx: number
+    measurementQueueCount?: number
+    backfillPending?: boolean
+    reconcileActive?: boolean
+}
+
+export type SvelteVirtualListDebugInfo =
+    | SvelteVirtualListBaseDebugInfo
+    | SvelteVirtualListExtendedDebugInfo
 
 /**
  * Alignment options for programmatic scrolling.

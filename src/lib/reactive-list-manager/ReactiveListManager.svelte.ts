@@ -554,6 +554,36 @@ export class ReactiveListManager {
     }
 
     /**
+     * Replace the entire measured-height cache.
+     *
+     * This is used by the dedicated bottomToTop engine when item mutations require
+     * internal physical indices to be remapped as older items are appended or removed.
+     */
+    replaceMeasurements(heightCache: Record<number, number>): void {
+        this._heightCache = {}
+        this._measuredFlags = this._itemLength > 0 ? new Uint8Array(this._itemLength) : null
+        this._totalMeasuredHeight = 0
+        this._measuredCount = 0
+
+        for (const [key, value] of Object.entries(heightCache)) {
+            const index = Number.parseInt(key, 10)
+            if (!Number.isFinite(index) || index < 0 || index >= this._itemLength) continue
+            if (!Number.isFinite(value) || value <= 0) continue
+
+            this._heightCache[index] = value
+            this._totalMeasuredHeight += value
+            this._measuredCount += 1
+            if (this._measuredFlags) {
+                this._measuredFlags[index] = 1
+            }
+        }
+
+        this._blockSums = []
+        this._blockSumsValid = false
+        this.recomputeDerivedHeights()
+    }
+
+    /**
      * Reset all state to initial values
      *
      * Useful for testing or when completely reinitializing the list

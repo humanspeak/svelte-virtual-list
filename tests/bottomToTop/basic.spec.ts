@@ -72,6 +72,46 @@ test.describe('Basic BottomToTop Rendering', () => {
         expect(hasHigherIndexItems).toBe(true)
     })
 
+    test('should expose bottom-to-top stats on the basic page', async ({ page }) => {
+        await expect(page.locator('[data-testid="bottom-to-top-basic-stats"]')).toBeVisible()
+        await page.waitForFunction(() => {
+            const text = document.querySelector('[data-testid="stats-scroll"]')?.textContent ?? ''
+            const match = text.match(/Bottom Gap\s+(\d+)px/)
+            const gap = match ? parseInt(match[1] || '0', 10) : Number.POSITIVE_INFINITY
+            return Number.isFinite(gap) && gap <= 2
+        })
+
+        const stats = await page.evaluate(() => {
+            const getText = (testId: string) =>
+                document.querySelector(`[data-testid="${testId}"]`)?.textContent ?? ''
+
+            const measuredText = getText('stats-measured')
+            const mountedText = getText('stats-mounted')
+            const spacersText = getText('stats-spacers')
+            const scrollText = getText('stats-scroll')
+
+            const measuredMatch = measuredText.match(/(\d+)\/(\d+)/)
+            const mountedMatch = mountedText.match(/DOM\s+(\d+)/)
+            const spacerMatch = spacersText.match(/Spacers\s+(\d+)px/)
+            const gapMatch = scrollText.match(/Bottom Gap\s+(\d+)px/)
+
+            return {
+                measuredCount: measuredMatch ? parseInt(measuredMatch[1] || '0', 10) : -1,
+                totalItems: measuredMatch ? parseInt(measuredMatch[2] || '0', 10) : -1,
+                mountedCount: mountedMatch ? parseInt(mountedMatch[1] || '0', 10) : -1,
+                topSpacerPx: spacerMatch ? parseInt(spacerMatch[1] || '0', 10) : -1,
+                gapFromBottomPx: gapMatch ? parseInt(gapMatch[1] || '0', 10) : -1
+            }
+        })
+
+        expect(stats.totalItems).toBe(10000)
+        expect(stats.measuredCount).toBeGreaterThan(0)
+        expect(stats.mountedCount).toBeGreaterThan(0)
+        expect(stats.mountedCount).toBeLessThan(100)
+        expect(stats.topSpacerPx).toBeGreaterThanOrEqual(0)
+        expect(stats.gapFromBottomPx).toBeLessThanOrEqual(2)
+    })
+
     test('should render correct item content for visible items', async ({ page }) => {
         // Get the actually visible items and verify they have correct content
         const visibleItems = await page.evaluate(() => {
@@ -150,17 +190,21 @@ test.describe('Basic BottomToTop Rendering', () => {
     })
 
     test('should start at correct scroll position', async ({ page }) => {
-        // In bottomToTop mode, scrollTop starts at 0 to show Item 0 at the bottom
-        const scrollTop = await page.evaluate(() => {
-            const container = document.querySelector('.virtual-list-container') as HTMLElement
-            return container?.scrollTop || 0
+        const scrollState = await page.evaluate(() => {
+            const container = document.querySelector(
+                '.virtual-list-container'
+            ) as HTMLElement | null
+            if (!container) return null
+            const maxScrollTop = container.scrollHeight - container.clientHeight
+            return {
+                scrollTop: Math.round(container.scrollTop),
+                maxScrollTop: Math.round(maxScrollTop),
+                gap: Math.round(maxScrollTop - container.scrollTop)
+            }
         })
 
-        // ScrollTop should be 0 in bottomToTop mode (this is correct behavior)
-        expect(scrollTop).toBe(0)
-
-        // Ensure anchor to bottom before asserting Item 0 visibility
-        await scrollToMaxAndWait(page)
+        expect(scrollState).not.toBeNull()
+        expect(scrollState!.gap).toBeLessThanOrEqual(2)
 
         await page
             .locator('[data-original-index="0"]')
@@ -187,6 +231,8 @@ test.describe('Basic BottomToTop Rendering', () => {
     })
 
     test('should handle scroll events in bottomToTop mode', async ({ page }, testInfo) => {
+        await scrollToMaxAndWait(page)
+
         // Get initial visible items (should include Item 0 at bottom and higher indices)
         const initialIndices = await page.evaluate(() => {
             return Array.from(document.querySelectorAll('[data-original-index]')).map((el) =>
