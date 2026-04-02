@@ -1135,8 +1135,7 @@
             averageHeight: heightManager.averageHeight,
             totalItems: items.length,
             totalHeight,
-            blockSums: heightManager.getBlockSums(),
-            viewportHeight: height || measuredFallbackHeight || 0
+            blockSums: heightManager.getBlockSums()
         })
     })
 
@@ -2646,9 +2645,9 @@
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
             class:virtual-list-content-bottom-to-top={useDedicatedBottomToTopEngine}
-            style:height={useDedicatedBottomToTopEngine
-                ? `${Math.max(totalHeight, height || 0)}px`
-                : `${contentHeight}px`}
+            class:virtual-list-content-bottom-to-top-short={useDedicatedBottomToTopEngine &&
+                totalHeight < (height || Infinity)}
+            style:height={useDedicatedBottomToTopEngine ? undefined : `${contentHeight}px`}
         >
             {#if useDedicatedBottomToTopEngine}
                 <div
@@ -2667,6 +2666,7 @@
                             bind:this={itemElements[currentItemWithIndex.sliceIndex]}
                             use:autoObserveItemResize
                             data-original-index={currentItemWithIndex.originalIndex}
+                            style:overflow="hidden"
                             {...testId
                                 ? {
                                       'data-testid': `${testId}-item-${currentItemWithIndex.originalIndex}`
@@ -2757,6 +2757,10 @@
     }
 
     .virtual-list-content-initializing {
+        justify-content: flex-end;
+    }
+
+    .virtual-list-content-bottom-to-top-short {
         justify-content: flex-end;
     }
 

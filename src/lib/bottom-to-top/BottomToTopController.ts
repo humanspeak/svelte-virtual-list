@@ -83,8 +83,7 @@ export const calculateBottomToTopSpacers = ({
     averageHeight,
     totalItems,
     totalHeight,
-    blockSums,
-    viewportHeight
+    blockSums
 }: {
     window: BottomToTopWindow
     heightCache: Record<number, number>
@@ -92,7 +91,6 @@ export const calculateBottomToTopSpacers = ({
     totalItems: number
     totalHeight: number
     blockSums: number[]
-    viewportHeight?: number
 }) => {
     const topSpacer = getScrollOffsetForIndex(
         heightCache,
@@ -107,15 +105,8 @@ export const calculateBottomToTopSpacers = ({
         blockSums
     )
 
-    let adjustedTopSpacer = Math.max(0, Math.round(topSpacer))
-
-    // When content is shorter than viewport, pad the top spacer to push items to the bottom
-    if (viewportHeight && viewportHeight > 0 && totalHeight < viewportHeight) {
-        adjustedTopSpacer += viewportHeight - totalHeight
-    }
-
     return {
-        topSpacer: adjustedTopSpacer,
+        topSpacer: Math.max(0, Math.round(topSpacer)),
         bottomSpacer: Math.max(0, Math.round(totalHeight - bottomOffset))
     }
 }

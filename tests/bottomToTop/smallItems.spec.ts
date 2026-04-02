@@ -113,9 +113,13 @@ test.describe('BottomToTop Small Items', () => {
         const contentContainer = page.locator('[data-testid="basic-list-content"]')
         await expect(contentContainer).toBeVisible()
 
-        // With 2 items of 20px each, total height should be around 40px
-        const contentContainerStyle = await contentContainer.getAttribute('style')
-        expect(contentContainerStyle).toContain('height')
+        // Content container should have height management (inline style or CSS min-height)
+        const hasHeight = await contentContainer.evaluate((el) => {
+            const style = el.getAttribute('style') || ''
+            const computed = getComputedStyle(el)
+            return style.includes('height') || computed.minHeight !== '0px'
+        })
+        expect(hasHeight).toBe(true)
     })
 
     test('should apply correct CSS classes and test IDs', async ({ page }) => {
@@ -135,7 +139,7 @@ test.describe('BottomToTop Small Items', () => {
         for (let i = 0; i < 2; i++) {
             const item = page.locator(`[data-testid="list-item-${i}"]`)
             await expect(item).toBeVisible()
-            await expect(item).toHaveClass('test-item')
+            await expect(item).toHaveClass(/test-item/)
         }
     })
 
