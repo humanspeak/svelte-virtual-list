@@ -174,6 +174,26 @@
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
     import { createAdvancedThrottledCallback } from '$lib/utils/throttle.js'
     import { ReactiveListManager } from '$lib/index.js'
+    import BottomToTopMeasurementLane from '$lib/bottom-to-top/BottomToTopMeasurementLane.svelte'
+    import {
+        buildBottomToTopBackfillIndices,
+        buildBottomToTopEstimatedTailWindow,
+        buildBottomToTopMeasurementTasks,
+        calculateBottomToTopPhysicalWindow,
+        calculateBottomToTopSpacers,
+        type BottomToTopWindow
+    } from '$lib/bottom-to-top/BottomToTopController.js'
+    import {
+        BottomToTopStateMachine,
+        type BottomToTopModeState
+    } from '$lib/bottom-to-top/BottomToTopStateMachine.js'
+    import {
+        detectBottomToTopMutation,
+        getLogicalIndexFromPhysical,
+        getPhysicalIndexFromLogical,
+        mapPhysicalWindowToLogicalRange,
+        remapPhysicalMeasurementsForMutation
+    } from '$lib/bottom-to-top/bottomToTopMapping.js'
     import { BROWSER } from 'esm-env'
     import { flushSync, onMount, tick, untrack } from 'svelte'
     import { SvelteSet } from 'svelte/reactivity'
@@ -229,6 +249,7 @@
         loadMoreThreshold = 20, // Items from end to trigger load
         hasMore = true // Set false when all data loaded
     }: SvelteVirtualListProps<TItem> = $props()
+    const useDedicatedBottomToTopEngine = mode === 'bottomToTop'
 
     /**
      * DOM References and Core State
@@ -378,6 +399,23 @@
         internalDebug: INTERNAL_DEBUG
     })
     const instanceId = Math.random().toString(36).slice(2, 7)
+    const bottomToTopStateMachine = new BottomToTopStateMachine()
+    let bottomToTopModeState = $state<BottomToTopModeState>(
+        useDedicatedBottomToTopEngine ? bottomToTopStateMachine.enterInitializing() : 'lockedBottom'
+    )
+    let bottomToTopInitWindow = $state<BottomToTopWindow>(
+        buildBottomToTopEstimatedTailWindow({
+            totalItems: items.length,
+            estimatedItemHeight: defaultEstimatedItemHeight,
+            viewportHeight: 400,
+            overscan: bufferSize
+        })
+    )
+    let bottomToTopPreviousItems = $state<TItem[]>(items)
+    const bottomToTopMeasurementQueue = new SvelteSet<number>()
+    let bottomToTopReconcileRafId: number | null = null
+    let bottomToTopBackfillRafId: number | null = null
+    let bottomToTopMaintainingBottom = $state(false)
 
     // Centralized debug logger gated by flags
     const log = (tag: string, payload?: unknown) => {
@@ -815,7 +853,7 @@
     // Create throttled height update function with trailing execution to ensure measurement always happens
     const triggerHeightUpdate = createAdvancedThrottledCallback(
         () => {
-            if (BROWSER && dirtyItemsCount > 0) {
+            if (BROWSER && dirtyItemsCount > 0 && !useDedicatedBottomToTopEngine) {
                 // Capture bottom state before any height processing to prevent cascading corrections
                 wasAtBottomBeforeHeightChange = atBottom
                 heightManager.startDynamicUpdate()
@@ -836,6 +874,10 @@
 
     // Keep height manager synchronized with items length
     $effect(() => {
+        if (useDedicatedBottomToTopEngine) {
+            stabilizedContentHeight = 0
+            return
+        }
         heightManager.updateItemLength(items.length)
         stabilizedContentHeight = 0
     })
@@ -844,7 +886,9 @@
     $effect(() => {
         if (!BROWSER || !onLoadMore || !hasMore || isLoadingMore) return
         // Skip loading during bottomToTop initialization (init path renders all items artificially)
-        if (mode === 'bottomToTop' && !bottomToTopScrollComplete) return
+        if (useDedicatedBottomToTopEngine && bottomToTopModeState === 'initializing') return
+        if (mode === 'bottomToTop' && !useDedicatedBottomToTopEngine && !bottomToTopScrollComplete)
+            return
 
         const range = visibleItems
         const atLoadingEdge = range.end >= items.length - loadMoreThreshold
@@ -859,6 +903,7 @@
     })
 
     const updateHeight = () => {
+        if (useDedicatedBottomToTopEngine) return
         // Capture previous total height for scroll correction (topToBottom anchoring)
         prevTotalHeightForScrollCorrection = heightManager.totalHeight
         heightUpdateTimeout = calculateAverageHeightDebounced(
@@ -884,16 +929,6 @@
                 // Update manager totals/cache before any scroll correction logic relies on them
                 if (result.heightChanges.length > 0) {
                     heightManager.processDirtyHeights(result.heightChanges)
-                }
-
-                // Handle height changes for scroll correction (manager totals already updated)
-                if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
-                    if (!userHasScrolledAway || isViewportNearBottom()) {
-                        scheduleBottomPin(BOTTOM_PIN_FRAMES)
-                    }
-                    // Run correction after dynamic update finishes to avoid blocking conditions
-                    const changes = result.heightChanges
-                    queueMicrotask(() => handleHeightChangesScrollCorrection(changes))
                 }
 
                 // TopToBottom: maintain bottom anchoring when total height changes
@@ -1039,6 +1074,442 @@
     let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
+    const bottomToTopPhysicalWindow = $derived.by((): BottomToTopWindow => {
+        if (!useDedicatedBottomToTopEngine || !items.length) {
+            return { startPhysical: 0, endPhysical: 0 }
+        }
+
+        if (bottomToTopModeState === 'initializing') {
+            return bottomToTopInitWindow
+        }
+
+        const viewportHeight = height || measuredFallbackHeight || 0
+        return calculateBottomToTopPhysicalWindow({
+            scrollTop: heightManager.scrollTop,
+            viewportHeight,
+            itemHeight: heightManager.averageHeight,
+            totalItems: items.length,
+            bufferSize,
+            totalContentHeight: totalHeight,
+            heightCache: heightManager.getHeightCache(),
+            blockSums: heightManager.getBlockSums()
+        })
+    })
+
+    const bottomToTopLogicalVisibleRange = $derived.by(
+        (): SvelteVirtualListPreviousVisibleRange => {
+            if (!useDedicatedBottomToTopEngine || !items.length) {
+                return { start: 0, end: 0 } as SvelteVirtualListPreviousVisibleRange
+            }
+
+            let window =
+                bottomToTopModeState === 'initializing'
+                    ? bottomToTopInitWindow
+                    : bottomToTopPhysicalWindow
+
+            if (window.endPhysical <= window.startPhysical) {
+                window = buildBottomToTopEstimatedTailWindow({
+                    totalItems: items.length,
+                    estimatedItemHeight: heightManager.averageHeight,
+                    viewportHeight: height || measuredFallbackHeight || 400,
+                    overscan: bufferSize
+                })
+            }
+
+            return mapPhysicalWindowToLogicalRange(
+                window.startPhysical,
+                window.endPhysical,
+                items.length
+            )
+        }
+    )
+
+    const bottomToTopSpacers = $derived.by(() => {
+        if (!useDedicatedBottomToTopEngine || !items.length) {
+            return { topSpacer: 0, bottomSpacer: 0 }
+        }
+
+        return calculateBottomToTopSpacers({
+            window: bottomToTopPhysicalWindow,
+            heightCache: heightManager.getHeightCache(),
+            averageHeight: heightManager.averageHeight,
+            totalItems: items.length,
+            totalHeight,
+            blockSums: heightManager.getBlockSums()
+        })
+    })
+
+    const bottomToTopMeasurementTasks = $derived.by(() => {
+        if (!useDedicatedBottomToTopEngine || !bottomToTopMeasurementQueue.size) return []
+        const indices = Array.from(bottomToTopMeasurementQueue).sort((a, b) => a - b)
+
+        return buildBottomToTopMeasurementTasks({
+            indices,
+            items,
+            getLogicalIndexFromPhysical: (physicalIndex) =>
+                getLogicalIndexFromPhysical(physicalIndex, items.length)
+        })
+    })
+
+    const getBottomToTopCurrentWindow = (): BottomToTopWindow =>
+        bottomToTopModeState === 'initializing' ? bottomToTopInitWindow : bottomToTopPhysicalWindow
+
+    const shouldMaintainBottomToTopBottomLock = () =>
+        bottomToTopModeState === 'initializing' || !userHasScrolledAway
+
+    const queueBottomToTopMeasurements = (indices: number[]) => {
+        if (!useDedicatedBottomToTopEngine) return
+        const heightCache = heightManager.getHeightCache()
+
+        for (const physicalIndex of indices) {
+            if (physicalIndex < 0 || physicalIndex >= items.length) continue
+            if (Number.isFinite(heightCache[physicalIndex])) continue
+            bottomToTopMeasurementQueue.add(physicalIndex)
+        }
+    }
+
+    const clearBottomToTopBackfill = () => {
+        if (bottomToTopBackfillRafId !== null) {
+            cancelAnimationFrame(bottomToTopBackfillRafId)
+            bottomToTopBackfillRafId = null
+        }
+    }
+
+    const cancelBottomToTopReconcile = () => {
+        if (bottomToTopReconcileRafId !== null) {
+            cancelAnimationFrame(bottomToTopReconcileRafId)
+            bottomToTopReconcileRafId = null
+        }
+        bottomToTopMaintainingBottom = false
+    }
+
+    const measureBottomToTopVisibleItemsImmediately = () => {
+        if (!useDedicatedBottomToTopEngine) return false
+
+        let changed = false
+        for (const element of itemElements) {
+            if (!element) continue
+
+            const logicalIndex = Number.parseInt(element.dataset.originalIndex || '-1', 10)
+            if (logicalIndex < 0) continue
+
+            const physicalIndex = getPhysicalIndexFromLogical(logicalIndex, items.length)
+            const measuredHeight = element.getBoundingClientRect().height
+            const cachedHeight = heightManager.getHeightCache()[physicalIndex]
+
+            if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) continue
+            if (
+                Number.isFinite(cachedHeight) &&
+                Math.abs((cachedHeight as number) - measuredHeight) < 0.1
+            ) {
+                bottomToTopMeasurementQueue.delete(physicalIndex)
+                continue
+            }
+
+            heightManager.setMeasuredHeight(physicalIndex, measuredHeight)
+            bottomToTopMeasurementQueue.delete(physicalIndex)
+            changed = true
+        }
+
+        return changed
+    }
+
+    const handleBottomToTopMeasurement = (physicalIndex: number, measuredHeight: number) => {
+        if (!useDedicatedBottomToTopEngine) return
+        if (physicalIndex < 0 || physicalIndex >= items.length) return
+        if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) return
+
+        const cachedHeight = heightManager.getHeightCache()[physicalIndex]
+        bottomToTopMeasurementQueue.delete(physicalIndex)
+
+        if (
+            Number.isFinite(cachedHeight) &&
+            Math.abs((cachedHeight as number) - measuredHeight) < 0.1
+        ) {
+            return
+        }
+
+        heightManager.setMeasuredHeight(physicalIndex, measuredHeight)
+        if (shouldMaintainBottomToTopBottomLock()) {
+            reconcileBottomToTopToBottom(4)
+        }
+    }
+
+    const reconcileBottomToTopToBottom = (frames = 3) => {
+        if (!useDedicatedBottomToTopEngine || !heightManager.viewportElement) return
+
+        cancelBottomToTopReconcile()
+        bottomToTopMaintainingBottom = true
+        let remainingFrames = Math.max(1, frames)
+        let stableFrames = 0
+
+        const step = () => {
+            bottomToTopReconcileRafId = null
+
+            if (!heightManager.viewportElement || programmaticScrollInProgress) {
+                bottomToTopMaintainingBottom = false
+                return
+            }
+
+            const domMaxScrollTop = Math.max(
+                0,
+                heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+            )
+            const domGap = domMaxScrollTop - heightManager.viewport.scrollTop
+            if (domGap > 1) {
+                syncScrollTop(domMaxScrollTop, true)
+            }
+
+            const delta = getBottomAnchorDelta()
+            if (delta !== null && Math.abs(delta) > 1) {
+                syncScrollTop(
+                    clampValue(heightManager.viewport.scrollTop + delta, 0, domMaxScrollTop),
+                    true
+                )
+                stableFrames = 0
+            } else if (domGap <= 1) {
+                stableFrames += 1
+            }
+
+            remainingFrames -= 1
+            if (stableFrames >= 2 || remainingFrames <= 0) {
+                if (bottomToTopModeState === 'initializing') {
+                    bottomToTopModeState = bottomToTopStateMachine.enterLockedBottom()
+                    userHasScrolledAway = false
+                    bottomToTopScrollComplete = true
+                }
+                bottomToTopMaintainingBottom = false
+                return
+            }
+
+            bottomToTopReconcileRafId = requestAnimationFrame(step)
+        }
+
+        bottomToTopReconcileRafId = requestAnimationFrame(step)
+    }
+
+    const scheduleBottomToTopBackfill = () => {
+        if (
+            !useDedicatedBottomToTopEngine ||
+            bottomToTopBackfillRafId !== null ||
+            bottomToTopModeState === 'initializing' ||
+            isScrolling ||
+            !heightManager.viewportElement
+        ) {
+            return
+        }
+
+        bottomToTopBackfillRafId = requestAnimationFrame(() => {
+            bottomToTopBackfillRafId = null
+
+            const measuredIndices = new Set(
+                Object.keys(heightManager.getHeightCache()).map((key) => Number.parseInt(key, 10))
+            )
+            const backfillIndices = buildBottomToTopBackfillIndices({
+                window: bottomToTopPhysicalWindow,
+                totalItems: items.length,
+                measuredIndices,
+                limit: 4
+            })
+
+            queueBottomToTopMeasurements(backfillIndices)
+        })
+    }
+
+    const initializeBottomToTopWindow = () => {
+        if (!useDedicatedBottomToTopEngine || !heightManager.isReady) return
+
+        const nextHeight = Math.max(
+            0,
+            Math.round(
+                heightManager.viewport.clientHeight ||
+                    heightManager.container.getBoundingClientRect().height
+            )
+        )
+        if (nextHeight > 0) {
+            height = nextHeight
+        }
+
+        if (!items.length) {
+            if (!heightManager.initialized) {
+                heightManager.initialized = true
+            }
+            bottomToTopModeState = bottomToTopStateMachine.enterLockedBottom()
+            bottomToTopScrollComplete = true
+            return
+        }
+
+        bottomToTopInitWindow = buildBottomToTopEstimatedTailWindow({
+            totalItems: items.length,
+            estimatedItemHeight: heightManager.averageHeight,
+            viewportHeight: nextHeight,
+            overscan: bufferSize
+        })
+
+        const indices: number[] = []
+        for (
+            let physicalIndex = bottomToTopInitWindow.startPhysical;
+            physicalIndex < bottomToTopInitWindow.endPhysical;
+            physicalIndex += 1
+        ) {
+            indices.push(physicalIndex)
+        }
+        queueBottomToTopMeasurements(indices)
+
+        tick().then(() =>
+            requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                    if (!heightManager.viewportElement) return
+                    syncScrollTop(getViewportMaxScrollTop(), true)
+                    if (measureBottomToTopVisibleItemsImmediately()) {
+                        syncScrollTop(getViewportMaxScrollTop(), true)
+                    }
+                    reconcileBottomToTopToBottom(5)
+                })
+            )
+        )
+    }
+
+    $effect(() => {
+        if (!useDedicatedBottomToTopEngine || !BROWSER || !heightManager.isReady) return
+        if (bottomToTopModeState !== 'initializing') return
+
+        untrack(() => initializeBottomToTopWindow())
+    })
+
+    $effect(() => {
+        if (!useDedicatedBottomToTopEngine || !BROWSER || !heightManager.isReady || !items.length)
+            return
+
+        const window = getBottomToTopCurrentWindow()
+        const indices: number[] = []
+        for (
+            let physicalIndex = window.startPhysical;
+            physicalIndex < window.endPhysical;
+            physicalIndex += 1
+        ) {
+            indices.push(physicalIndex)
+        }
+        untrack(() => {
+            queueBottomToTopMeasurements(indices)
+            const didMeasureVisibleItems = measureBottomToTopVisibleItemsImmediately()
+
+            if (didMeasureVisibleItems && shouldMaintainBottomToTopBottomLock()) {
+                reconcileBottomToTopToBottom(4)
+            }
+        })
+    })
+
+    $effect(() => {
+        if (!useDedicatedBottomToTopEngine || !BROWSER || !heightManager.isReady) return
+        if (bottomToTopModeState !== 'initializing') return
+        if (!items.length) return
+
+        const heightCache = heightManager.getHeightCache()
+        for (
+            let physicalIndex = bottomToTopInitWindow.startPhysical;
+            physicalIndex < bottomToTopInitWindow.endPhysical;
+            physicalIndex += 1
+        ) {
+            if (!Number.isFinite(heightCache[physicalIndex])) {
+                return
+            }
+        }
+
+        if (!heightManager.initialized) {
+            heightManager.initialized = true
+        }
+        tick().then(() =>
+            requestAnimationFrame(() => {
+                syncScrollTop(getViewportMaxScrollTop(), true)
+                reconcileBottomToTopToBottom(5)
+            })
+        )
+    })
+
+    $effect(() => {
+        if (!useDedicatedBottomToTopEngine || !BROWSER || !heightManager.initialized) return
+
+        if (
+            bottomToTopModeState !== 'lockedBottom' ||
+            isScrolling ||
+            bottomToTopMeasurementQueue.size > 0 ||
+            !isViewportNearBottom(Math.max(2, Math.round(heightManager.averageHeight * 0.5)))
+        ) {
+            clearBottomToTopBackfill()
+            return
+        }
+
+        scheduleBottomToTopBackfill()
+    })
+
+    $effect(() => {
+        if (!useDedicatedBottomToTopEngine) return
+        const currentItems = items
+
+        untrack(() => {
+            const previousItems = bottomToTopPreviousItems
+
+            if (previousItems.length === currentItems.length) {
+                bottomToTopPreviousItems = currentItems
+                return
+            }
+
+            const mutation = detectBottomToTopMutation(previousItems, currentItems)
+
+            const wasLockedBottom =
+                bottomToTopModeState === 'lockedBottom' || bottomToTopModeState === 'initializing'
+
+            if (mutation.kind === 'replace') {
+                heightManager.updateItemLength(currentItems.length)
+                heightManager.replaceMeasurements({})
+                bottomToTopMeasurementQueue.clear()
+                bottomToTopPreviousItems = currentItems
+                bottomToTopModeState = bottomToTopStateMachine.enterInitializing()
+                bottomToTopScrollComplete = false
+                initializeBottomToTopWindow()
+                return
+            }
+
+            const remappedMeasurements = remapPhysicalMeasurementsForMutation(
+                heightManager.getHeightCache(),
+                currentItems.length,
+                mutation
+            )
+            heightManager.updateItemLength(currentItems.length)
+            heightManager.replaceMeasurements(remappedMeasurements)
+
+            const insertedIndices: number[] = []
+            if (mutation.kind === 'prependLogicalStart') {
+                for (
+                    let index = currentItems.length - mutation.delta;
+                    index < currentItems.length;
+                    index += 1
+                ) {
+                    insertedIndices.push(index)
+                }
+            } else if (mutation.kind === 'appendLogicalEnd') {
+                for (let index = 0; index < mutation.delta; index += 1) {
+                    insertedIndices.push(index)
+                }
+            }
+            queueBottomToTopMeasurements(insertedIndices)
+
+            bottomToTopPreviousItems = currentItems
+
+            tick().then(() =>
+                requestAnimationFrame(() => {
+                    if (!heightManager.viewportElement) return
+
+                    if (wasLockedBottom && shouldMaintainBottomToTopBottomLock()) {
+                        syncScrollTop(getViewportMaxScrollTop(), true)
+                        reconcileBottomToTopToBottom(4)
+                    }
+                })
+            )
+        })
+    })
+
     function updateDebugTailDistance() {
         if (!heightManager.viewportElement) return
         const last = heightManager.viewport.querySelector(
@@ -1063,6 +1534,7 @@
             BROWSER &&
             heightManager.initialized &&
             mode === 'bottomToTop' &&
+            !useDedicatedBottomToTopEngine &&
             heightManager.viewportElement
         ) {
             const targetScrollTop = Math.max(0, totalHeight - height)
@@ -1109,6 +1581,7 @@
             !BROWSER ||
             !pendingBottomPin ||
             mode !== 'bottomToTop' ||
+            useDedicatedBottomToTopEngine ||
             !heightManager.initialized ||
             !heightManager.viewportElement
         ) {
@@ -1142,6 +1615,7 @@
         if (
             !BROWSER ||
             mode !== 'bottomToTop' ||
+            useDedicatedBottomToTopEngine ||
             renderedItemsBottomExtentFramesRemaining <= 0 ||
             !itemsWrapperElement
         ) {
@@ -1164,6 +1638,7 @@
             BROWSER &&
             heightManager.initialized &&
             mode === 'bottomToTop' &&
+            !useDedicatedBottomToTopEngine &&
             heightManager.isReady &&
             lastItemsLength > 0
         ) {
@@ -1332,23 +1807,13 @@
      */
     const visibleItems = $derived.by((): SvelteVirtualListPreviousVisibleRange => {
         if (!items.length) return { start: 0, end: 0 } as SvelteVirtualListPreviousVisibleRange
-        const viewportHeight = height || 0
 
-        // For bottomToTop mode, always render items starting from index 0 during initialization
-        // This ensures Item 0 is in the DOM so we can use scrollIntoView for precise positioning
-        // The scrollIntoView in updateHeightAndScroll will handle correct alignment after heights are measured
-        // Use bottomToTopScrollComplete (not just initialized) to keep init path active until scroll is done
-        if (mode === 'bottomToTop' && !bottomToTopScrollComplete) {
-            // Use a reasonable default if viewport height isn't measured yet
-            const effectiveViewport = viewportHeight || 400
-            const visibleCount = Math.ceil(effectiveViewport / heightManager.averageHeight) + 1
-            lastVisibleRange = {
-                start: 0,
-                end: Math.min(items.length, visibleCount + bufferSize * 2)
-            } as SvelteVirtualListPreviousVisibleRange
-
-            return lastVisibleRange
+        if (useDedicatedBottomToTopEngine) {
+            lastVisibleRange = bottomToTopLogicalVisibleRange
+            return bottomToTopLogicalVisibleRange
         }
+
+        const viewportHeight = height || 0
 
         // Scroll delta threshold optimization: skip recalculation if scroll delta is less than
         // half the average item height and we have a cached range. This reduces unnecessary
@@ -1394,28 +1859,12 @@
     let stabilizedContentHeight = 0
 
     const contentHeight = $derived.by(() => {
-        const effectiveViewportHeight = height || measuredFallbackHeight || 0
-        const hasScrollableOverflow =
-            mode === 'bottomToTop' &&
-            effectiveViewportHeight > 0 &&
-            totalHeight > effectiveViewportHeight + 1
-        let raw = Math.max(height, totalHeight)
-
-        if (hasScrollableOverflow) {
-            raw = Math.max(raw, renderedItemsBottomExtent)
+        if (useDedicatedBottomToTopEngine) {
+            return Math.max(height, totalHeight)
         }
 
-        if (mode !== 'bottomToTop' || !isScrolling || !hasScrollableOverflow) {
-            stabilizedContentHeight = raw
-            return raw
-        }
-
-        // During active scroll in bottomToTop: only allow growth (ratchet)
-        // Prevents shrink → scrollTop adjust → new scroll event feedback loop
-        if (raw > stabilizedContentHeight) {
-            stabilizedContentHeight = raw
-        }
-
+        const raw = Math.max(height, totalHeight)
+        stabilizedContentHeight = raw
         return stabilizedContentHeight
     })
 
@@ -1424,17 +1873,16 @@
      * Extracted from inline IIFE for better performance and readability.
      */
     const transformY = $derived.by(() => {
+        if (useDedicatedBottomToTopEngine) {
+            stabilizedTransformY = 0
+            return 0
+        }
+
         const viewportHeight = height || measuredFallbackHeight || 0
         const visibleRange = visibleItems
 
         // Avoid synchronous DOM reads here; fall back once if height is 0
         const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
-        const hasScrollableOverflow =
-            mode === 'bottomToTop' && viewportHeight > 0 && totalHeight > viewportHeight + 1
-
-        // Use precise offset using measured heights when available.
-        // For bottomToTop, pass ratcheted contentHeight so the transform stays
-        // stable while scrollHeight is stabilized (prevents visual shift).
         const rawTransformY = Math.round(
             calculateTransformY(
                 mode,
@@ -1443,31 +1891,14 @@
                 visibleRange.start,
                 heightManager.averageHeight,
                 effectiveHeight,
-                mode === 'bottomToTop' ? contentHeight : totalHeight,
+                totalHeight,
                 heightManager.getHeightCache(),
                 measuredFallbackHeight
             )
         )
 
-        const activeTransformDirection =
-            mode !== 'bottomToTop' || !hasScrollableOverflow
-                ? 0
-                : isScrolling
-                  ? bottomToTopScrollDirection
-                  : 0
-
-        if (mode !== 'bottomToTop' || activeTransformDirection === 0) {
-            stabilizedTransformY = rawTransformY
-            return rawTransformY
-        }
-
-        if (activeTransformDirection < 0) {
-            stabilizedTransformY = Math.min(stabilizedTransformY, rawTransformY)
-            return stabilizedTransformY
-        }
-
-        stabilizedTransformY = Math.max(stabilizedTransformY, rawTransformY)
-        return stabilizedTransformY
+        stabilizedTransformY = rawTransformY
+        return rawTransformY
     })
 
     const displayItems = $derived.by(() => {
@@ -1511,28 +1942,42 @@
     const handleScroll = () => {
         if (!BROWSER || !heightManager.viewportElement) return
 
-        if (mode === 'bottomToTop') {
-            const immediateCurrent = heightManager.viewport.scrollTop
-            const immediateDelta = lastScrollTopSnapshot - immediateCurrent
-            if (immediateDelta > 0.5) {
-                bottomToTopScrollDirection = -1
-            } else if (immediateDelta < -0.5) {
-                bottomToTopScrollDirection = 1
+        if (useDedicatedBottomToTopEngine) {
+            isScrolling = true
+            if (scrollIdleTimer) {
+                clearTimeout(scrollIdleTimer)
+                scrollIdleTimer = null
             }
+            scrollIdleTimer = window.setTimeout(() => {
+                isScrolling = false
+                if (
+                    isViewportNearBottom(Math.max(2, Math.round(heightManager.averageHeight * 0.5)))
+                ) {
+                    scheduleBottomToTopBackfill()
+                }
+            }, SCROLL_IDLE_DELAY_MS)
 
-            renderedItemsBottomExtentFramesRemaining = 3
-        }
+            rafSchedule(() => {
+                const current = heightManager.viewport.scrollTop
+                heightManager.scrollTop = current
+                lastScrollTopSnapshot = current
 
-        if (mode === 'bottomToTop' && pendingBottomPin && !programmaticScrollInProgress) {
-            const currentScrollTop = heightManager.viewport.scrollTop
-            const gapFromBottom = getViewportMaxScrollTop() - currentScrollTop
-            const userScrollAwayThreshold = Math.max(heightManager.averageHeight * 2, 120)
+                if (programmaticScrollInProgress || bottomToTopMaintainingBottom) {
+                    updateDebugTailDistance()
+                    return
+                }
 
-            if (gapFromBottom > userScrollAwayThreshold) {
-                cancelBottomPin()
-                suppressBottomAnchoringUntilMs = performance.now() + SUPPRESSION_WINDOW_MS
-                userHasScrolledAway = true
-            }
+                const gapFromBottom = getViewportMaxScrollTop() - current
+                userHasScrolledAway =
+                    gapFromBottom > Math.max(2, Math.round(heightManager.averageHeight * 0.5))
+
+                if (!userHasScrolledAway) {
+                    reconcileBottomToTopToBottom(2)
+                }
+
+                updateDebugTailDistance()
+            })
+            return
         }
 
         // Mark active scrolling and debounce idle transition (~120ms)
@@ -1543,7 +1988,6 @@
         }
         scrollIdleTimer = window.setTimeout(() => {
             isScrolling = false
-            bottomToTopScrollDirection = 0
             // Apply deferred anchor correction on idle
             if (idleCorrectionsOnly || anchorModeEnabled) {
                 reconcileToAnchorIfEnabled()
@@ -1552,24 +1996,6 @@
 
         rafSchedule(() => {
             const current = heightManager.viewport.scrollTop
-            if (mode === 'bottomToTop') {
-                const delta = lastScrollTopSnapshot - current
-                if (delta > 0.5) {
-                    bottomToTopScrollDirection = -1
-                } else if (delta < -0.5) {
-                    bottomToTopScrollDirection = 1
-                }
-                const nearBottom = isViewportNearBottom()
-                const userScrollAwayThreshold = Math.max(heightManager.averageHeight * 2, 120)
-                const gapFromBottom = getViewportMaxScrollTop() - current
-                if (nearBottom) {
-                    userHasScrolledAway = false
-                } else if (delta > 0.5 && gapFromBottom > userScrollAwayThreshold) {
-                    // Widen suppression to avoid fighting peer instance corrections
-                    suppressBottomAnchoringUntilMs = performance.now() + SUPPRESSION_WINDOW_MS
-                    userHasScrolledAway = true
-                }
-            }
             lastScrollTopSnapshot = current
             heightManager.scrollTop = current
             // Update last processed scroll position for delta threshold optimization
@@ -1618,89 +2044,31 @@
             initialized: heightManager.initialized,
             mode
         })
-        if (!heightManager.initialized && mode === 'bottomToTop') {
-            if (heightManager.isReady) {
-                // Eagerly jump to the current max scroll so first paint is bottom-biased
-                // instead of waiting for the full init measurement/realignment sequence.
-                syncScrollTop(getViewportMaxScrollTop(), true)
+        if (useDedicatedBottomToTopEngine) {
+            if (!heightManager.isReady) return
+
+            const measuredHeight =
+                heightManager.viewport.clientHeight ||
+                heightManager.container.getBoundingClientRect().height
+            if (Number.isFinite(measuredHeight) && measuredHeight > 0) {
+                height = measuredHeight
             }
 
-            // bottomToTop initialization: use scrollIntoView on Item 0 for precise positioning
-            // visibleItems guarantees Item 0 is rendered during initialization
-            tick().then(() => {
+            if (bottomToTopModeState === 'initializing' || !heightManager.initialized) {
+                initializeBottomToTopWindow()
+                return
+            }
+
+            tick().then(() =>
                 requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        if (!heightManager.isReady) return
-                        const measuredHeight =
-                            heightManager.container.getBoundingClientRect().height
-                        height = measuredHeight
-                        scheduleBottomPin(BOTTOM_PIN_FRAMES)
+                    if (!heightManager.viewportElement) return
+
+                    if (bottomToTopModeState === 'lockedBottom' && isViewportNearBottom()) {
                         syncScrollTop(getViewportMaxScrollTop(), true)
-
-                        // Instance jitter to avoid same-frame collisions when two lists init together
-                        const cleanedId = String(instanceId)
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]/g, '')
-                        const suffix = cleanedId.slice(-4)
-                        const parsed = parseInt(suffix, 36)
-                        const jitterMs = Number.isNaN(parsed)
-                            ? Math.floor(Math.random() * 3)
-                            : parsed % 3
-
-                        setTimeout(() => {
-                            // Step 1: Set initialized (for other purposes like scroll event handling)
-                            // The init path in visibleItems stays active until bottomToTopScrollComplete
-                            if (!heightManager.initialized) {
-                                heightManager.initialized = true
-                            }
-
-                            // Step 2: Use scrollIntoView on Item 0 for precise positioning
-                            // Use double RAF to ensure heights are measured and layout is stable
-                            requestAnimationFrame(() => {
-                                requestAnimationFrame(() => {
-                                    // Item 0 is guaranteed to be in DOM due to init path
-                                    // Skip if the user already moved away from the init anchor.
-                                    const currentScroll = heightManager.viewport.scrollTop
-                                    const userHasScrolled = userHasScrolledAway
-                                    const el = heightManager.viewport.querySelector(
-                                        '[data-original-index="0"]'
-                                    ) as HTMLElement | null
-
-                                    if (el && !userHasScrolled) {
-                                        // Use manual scrollTop instead of scrollIntoView to prevent parent scroll
-                                        // (scrollIntoView scrolls all ancestor containers, not just the viewport)
-                                        // Note: `container: 'nearest'` option could replace this once browser support improves
-                                        const viewportRect =
-                                            heightManager.viewport.getBoundingClientRect()
-                                        const elRect = el.getBoundingClientRect()
-                                        const offset = elRect.bottom - viewportRect.bottom
-                                        heightManager.viewport.scrollTop += offset
-                                        heightManager.scrollTop = heightManager.viewport.scrollTop
-                                    } else if (userHasScrolled) {
-                                        // Sync internal state with current scroll
-                                        heightManager.scrollTop = currentScroll
-                                    }
-
-                                    // Step 3: Mark scroll complete - switches visibleItems to normal mode
-                                    requestAnimationFrame(() => {
-                                        bottomToTopScrollComplete = true
-                                        // Reset bottom-anchoring flag to prevent stale state from init
-                                        // affecting later operations (e.g., adding items while scrolled away)
-                                        wasAtBottomBeforeHeightChange = false
-                                        // Keep init anchoring active through post-init measurements.
-                                        suppressBottomAnchoringUntilMs = performance.now()
-                                        flushSync(() => {
-                                            if (measureVisibleItemsImmediately()) {
-                                                syncScrollTop(getViewportMaxScrollTop(), true)
-                                            }
-                                        })
-                                    })
-                                })
-                            })
-                        }, jitterMs)
-                    })
+                        reconcileBottomToTopToBottom(4)
+                    }
                 })
-            })
+            )
             return
         }
 
@@ -1738,6 +2106,50 @@
                 let shouldRecalculate = false
                 void visibleItems // Cache once to avoid reactive loops
 
+                if (useDedicatedBottomToTopEngine) {
+                    let didUpdatePhysicalHeights = false
+
+                    for (const entry of entries) {
+                        const element = entry.target as HTMLElement
+                        const elementIndex = itemElements.indexOf(element)
+                        const logicalIndex = parseInt(element.dataset.originalIndex || '-1', 10)
+                        if (elementIndex === -1 || logicalIndex < 0) continue
+
+                        const physicalIndex = getPhysicalIndexFromLogical(
+                            logicalIndex,
+                            items.length
+                        )
+                        const currentHeight = element.getBoundingClientRect().height
+                        const cachedHeight = heightManager.getHeightCache()[physicalIndex]
+                        const isSignificant =
+                            !Number.isFinite(cachedHeight) ||
+                            Math.abs((cachedHeight as number) - currentHeight) >= 0.5
+
+                        if (
+                            !Number.isFinite(currentHeight) ||
+                            currentHeight <= 0 ||
+                            !isSignificant
+                        ) {
+                            continue
+                        }
+
+                        heightManager.setMeasuredHeight(physicalIndex, currentHeight)
+                        bottomToTopMeasurementQueue.delete(physicalIndex)
+                        didUpdatePhysicalHeights = true
+                    }
+
+                    if (didUpdatePhysicalHeights) {
+                        if (
+                            (bottomToTopModeState === 'lockedBottom' ||
+                                bottomToTopModeState === 'initializing') &&
+                            shouldMaintainBottomToTopBottomLock()
+                        ) {
+                            reconcileBottomToTopToBottom(4)
+                        }
+                    }
+                    return
+                }
+
                 for (const entry of entries) {
                     const element = entry.target as HTMLElement
                     const elementIndex = itemElements.indexOf(element)
@@ -1754,12 +2166,6 @@
 
                             // Only mark as dirty if height change is significant
                             if (isSignificant) {
-                                if (
-                                    mode === 'bottomToTop' &&
-                                    (!userHasScrolledAway || isViewportNearBottom())
-                                ) {
-                                    scheduleBottomPin(BOTTOM_PIN_FRAMES)
-                                }
                                 // Capture bottom state when FIRST item gets marked dirty
                                 if (dirtyItemsCount === 0) {
                                     wasAtBottomBeforeHeightChange = atBottom
@@ -1792,6 +2198,15 @@
                 requestAnimationFrame(() =>
                     requestAnimationFrame(() => {
                         log('post-hydration-measure')
+                        if (useDedicatedBottomToTopEngine) {
+                            if (
+                                measureBottomToTopVisibleItemsImmediately() &&
+                                shouldMaintainBottomToTopBottomLock()
+                            ) {
+                                reconcileBottomToTopToBottom(4)
+                            }
+                            return
+                        }
                         updateHeight()
                     })
                 )
@@ -1821,6 +2236,8 @@
                 }
                 cancelRenderedItemsBottomExtentMeasure()
                 cancelBottomPin()
+                cancelBottomToTopReconcile()
+                clearBottomToTopBackfill()
             }
         }
     })
@@ -1838,7 +2255,67 @@
     $effect(() => {
         if (!debug) return
         const currentVisibleRange = visibleItems
+        const viewportElement = heightManager.viewportElement
+        const scrollTopPx = Math.round(viewportElement?.scrollTop ?? heightManager.scrollTop ?? 0)
+        const clientHeightPx = Math.round(viewportElement?.clientHeight ?? height ?? 0)
+        const scrollHeightPx = Math.round(viewportElement?.scrollHeight ?? totalHeight)
+        const maxScrollTopPx = Math.max(0, scrollHeightPx - clientHeightPx)
+        const gapFromBottomPx = Math.max(0, Math.round(maxScrollTopPx - scrollTopPx))
+        const bottomToTopWindow = useDedicatedBottomToTopEngine
+            ? getBottomToTopCurrentWindow()
+            : null
+        const measuredCount = heightManager.measuredCount
+        const measuredPercent = items.length > 0 ? (measuredCount / items.length) * 100 : 0
+        const info = createDebugInfo(
+            currentVisibleRange,
+            items.length,
+            Object.keys(heightManager.getHeightCache()).length,
+            heightManager.averageHeight,
+            scrollTopPx,
+            clientHeightPx,
+            totalHeight,
+            {
+                mode,
+                engine: useDedicatedBottomToTopEngine ? 'dedicated-bottom-to-top' : 'legacy',
+                bottomToTopState: useDedicatedBottomToTopEngine ? bottomToTopModeState : undefined,
+                renderedVisibleCount: displayItems.length,
+                measurementLaneCount: useDedicatedBottomToTopEngine
+                    ? bottomToTopMeasurementTasks.length
+                    : 0,
+                mountedCount: displayItems.length,
+                measuredCount,
+                measuredPercent,
+                logicalWindowStart: currentVisibleRange.start,
+                logicalWindowEnd: currentVisibleRange.end,
+                physicalWindowStart: bottomToTopWindow?.startPhysical,
+                physicalWindowEnd: bottomToTopWindow?.endPhysical,
+                topSpacerPx: useDedicatedBottomToTopEngine
+                    ? bottomToTopSpacers.topSpacer
+                    : undefined,
+                bottomSpacerPx: useDedicatedBottomToTopEngine
+                    ? bottomToTopSpacers.bottomSpacer
+                    : undefined,
+                scrollTopPx,
+                clientHeightPx,
+                scrollHeightPx,
+                maxScrollTopPx,
+                gapFromBottomPx,
+                averageItemHeightPx: heightManager.averageHeight,
+                totalHeightPx: totalHeight,
+                measurementQueueCount: useDedicatedBottomToTopEngine
+                    ? bottomToTopMeasurementQueue.size
+                    : 0,
+                backfillPending: useDedicatedBottomToTopEngine
+                    ? bottomToTopBackfillRafId !== null
+                    : false,
+                reconcileActive: useDedicatedBottomToTopEngine
+                    ? bottomToTopMaintainingBottom
+                    : false
+            }
+        )
+
         if (
+            !useDedicatedBottomToTopEngine &&
             !shouldShowDebugInfo(
                 prevVisibleRange,
                 currentVisibleRange,
@@ -1848,15 +2325,13 @@
         )
             return
 
-        const info = createDebugInfo(
-            currentVisibleRange,
-            items.length,
-            Object.keys(heightManager.getHeightCache()).length,
-            heightManager.averageHeight,
-            heightManager.scrollTop,
-            height || 0,
-            totalHeight
-        )
+        if (heightManager.viewportElement) {
+            ;(
+                heightManager.viewportElement as HTMLElement & {
+                    __svlDebug?: typeof info
+                }
+            ).__svlDebug = info
+        }
 
         if (debugFunction) {
             debugFunction(info)
@@ -1963,6 +2438,55 @@
             }
         }
 
+        if (useDedicatedBottomToTopEngine) {
+            const physicalTargetIndex = getPhysicalIndexFromLogical(targetIndex, items.length)
+            const scrollTarget = calculateScrollTarget({
+                mode: 'topToBottom',
+                align: align || 'auto',
+                targetIndex: physicalTargetIndex,
+                itemsLength: items.length,
+                calculatedItemHeight: heightManager.averageHeight,
+                height,
+                scrollTop: heightManager.scrollTop,
+                firstVisibleIndex: bottomToTopPhysicalWindow.startPhysical,
+                lastVisibleIndex: bottomToTopPhysicalWindow.endPhysical,
+                heightCache: heightManager.getHeightCache()
+            })
+
+            if (scrollTarget === null) {
+                return
+            }
+
+            cancelBottomPin()
+            cancelBottomToTopReconcile()
+            clearBottomToTopBackfill()
+            programmaticScrollInProgress = true
+
+            heightManager.viewport.scrollTo({
+                top: scrollTarget,
+                behavior: smoothScroll ? 'smooth' : 'auto'
+            })
+
+            requestAnimationFrame(() => {
+                heightManager.scrollTop = scrollTarget
+            })
+
+            window.setTimeout(
+                () => {
+                    programmaticScrollInProgress = false
+                    if (!heightManager.viewportElement) return
+                    userHasScrolledAway = !isViewportNearBottom(
+                        Math.max(2, Math.round(heightManager.averageHeight * 0.5))
+                    )
+                    if (!userHasScrolledAway) {
+                        reconcileBottomToTopToBottom(4)
+                    }
+                },
+                smoothScroll ? 500 : 100
+            )
+            return
+        }
+
         const { start: firstVisibleIndex, end: lastVisibleIndex } = visibleItems
 
         // Use extracted scroll calculation utility
@@ -2002,32 +2526,6 @@
                 scrollTarget,
                 domMaxScrollTop: domMax
             })
-        }
-
-        // CROSS-BROWSER COMPATIBILITY FIX:
-        // All major browsers (Chrome, Firefox, Safari) have inconsistent behavior with scrollTo()
-        // in bottomToTop mode when using smooth scrolling. Using scrollIntoView() on the highest
-        // visible element provides consistent cross-browser smooth scrolling behavior.
-        // This approach works universally and maintains the user's expected smooth scroll experience.
-        if (mode === 'bottomToTop' && smoothScroll) {
-            // Find the element with the highest original-index in the current viewport
-            const visibleElements = heightManager.viewport.querySelectorAll('[data-original-index]')
-            let maxIndex = -1
-            let maxElement: HTMLElement | null = null
-            for (const el of visibleElements) {
-                const index = parseInt(el.getAttribute('data-original-index') || '-1')
-                if (index > maxIndex) {
-                    maxIndex = index
-                    maxElement = el as HTMLElement
-                }
-            }
-
-            maxElement?.scrollIntoView({
-                behavior: 'smooth'
-            })
-            await tick()
-            await new Promise((resolve) => setTimeout(resolve, 100))
-            await tick()
         }
 
         heightManager.viewport.scrollTo({
@@ -2110,35 +2608,79 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            style:height="{contentHeight}px"
+            class:virtual-list-content-bottom-to-top={useDedicatedBottomToTopEngine}
+            style:height={useDedicatedBottomToTopEngine ? undefined : `${contentHeight}px`}
         >
-            <!-- Items container is translated to show correct items -->
-            <div
-                id="virtual-list-items"
-                {...testId ? { 'data-testid': `${testId}-items` } : {}}
-                class={itemsClass ?? 'virtual-list-items'}
-                bind:this={itemsWrapperElement}
-                style:transform="translateY({transformY}px)"
-            >
-                {#each displayItems as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
-                    <!-- Render each visible item -->
-                    <div
-                        bind:this={itemElements[currentItemWithIndex.sliceIndex]}
-                        use:autoObserveItemResize
-                        data-original-index={currentItemWithIndex.originalIndex}
-                        {...testId
-                            ? {
-                                  'data-testid': `${testId}-item-${currentItemWithIndex.originalIndex}`
-                              }
-                            : {}}
-                    >
-                        {@render renderItem(
-                            currentItemWithIndex.item,
-                            currentItemWithIndex.originalIndex
-                        )}
-                    </div>
-                {/each}
-            </div>
+            {#if useDedicatedBottomToTopEngine}
+                <div
+                    class="virtual-list-spacer"
+                    style:height={`${bottomToTopSpacers.topSpacer}px`}
+                ></div>
+
+                <div
+                    id="virtual-list-items"
+                    {...testId ? { 'data-testid': `${testId}-items` } : {}}
+                    class={`${itemsClass ?? 'virtual-list-items'} virtual-list-items-flow`}
+                    bind:this={itemsWrapperElement}
+                >
+                    {#each displayItems as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
+                        <div
+                            bind:this={itemElements[currentItemWithIndex.sliceIndex]}
+                            use:autoObserveItemResize
+                            data-original-index={currentItemWithIndex.originalIndex}
+                            {...testId
+                                ? {
+                                      'data-testid': `${testId}-item-${currentItemWithIndex.originalIndex}`
+                                  }
+                                : {}}
+                        >
+                            {@render renderItem(
+                                currentItemWithIndex.item,
+                                currentItemWithIndex.originalIndex
+                            )}
+                        </div>
+                    {/each}
+                </div>
+
+                <div
+                    class="virtual-list-spacer"
+                    style:height={`${bottomToTopSpacers.bottomSpacer}px`}
+                ></div>
+
+                <BottomToTopMeasurementLane
+                    tasks={bottomToTopMeasurementTasks}
+                    {renderItem}
+                    onMeasure={handleBottomToTopMeasurement}
+                />
+            {:else}
+                <!-- Items container is translated to show correct items -->
+                <div
+                    id="virtual-list-items"
+                    {...testId ? { 'data-testid': `${testId}-items` } : {}}
+                    class={itemsClass ?? 'virtual-list-items'}
+                    bind:this={itemsWrapperElement}
+                    style:transform="translateY({transformY}px)"
+                >
+                    {#each displayItems as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
+                        <!-- Render each visible item -->
+                        <div
+                            bind:this={itemElements[currentItemWithIndex.sliceIndex]}
+                            use:autoObserveItemResize
+                            data-original-index={currentItemWithIndex.originalIndex}
+                            {...testId
+                                ? {
+                                      'data-testid': `${testId}-item-${currentItemWithIndex.originalIndex}`
+                                  }
+                                : {}}
+                        >
+                            {@render renderItem(
+                                currentItemWithIndex.item,
+                                currentItemWithIndex.originalIndex
+                            )}
+                        </div>
+                    {/each}
+                </div>
+            {/if}
         </div>
     </div>
 </div>
@@ -2170,12 +2712,37 @@
         min-height: 100%;
     }
 
+    .virtual-list-content-bottom-to-top {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .virtual-list-content-initializing {
+        justify-content: flex-end;
+    }
+
     /* Items wrapper is translated for virtual scrolling */
     .virtual-list-items {
         position: absolute;
         width: 100%;
         left: 0;
         top: 0;
+    }
+
+    .virtual-list-items-flow {
+        position: relative;
+        left: auto;
+        top: auto;
+        flex: 0 0 auto;
+    }
+
+    .virtual-list-items-bottom-aligned {
+        margin-top: auto;
+    }
+
+    .virtual-list-spacer {
+        width: 100%;
+        flex: 0 0 auto;
     }
 
     /* Item wrapper divs should size to their content */
