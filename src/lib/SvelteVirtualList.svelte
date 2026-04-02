@@ -399,6 +399,8 @@
         internalDebug: INTERNAL_DEBUG
     })
     const instanceId = Math.random().toString(36).slice(2, 7)
+    const HEIGHT_CHANGE_TOLERANCE = 0.1
+    const SCROLL_ANCHOR_TOLERANCE = 0.5
     const bottomToTopStateMachine = new BottomToTopStateMachine()
     let bottomToTopModeState = $state<BottomToTopModeState>(
         useDedicatedBottomToTopEngine ? bottomToTopStateMachine.enterInitializing() : 'lockedBottom'
@@ -1200,7 +1202,7 @@
             if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) continue
             if (
                 Number.isFinite(cachedHeight) &&
-                Math.abs((cachedHeight as number) - measuredHeight) < 0.1
+                Math.abs((cachedHeight as number) - measuredHeight) < HEIGHT_CHANGE_TOLERANCE
             ) {
                 bottomToTopMeasurementQueue.delete(physicalIndex)
                 continue
@@ -1220,16 +1222,17 @@
         if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) return
 
         const cachedHeight = heightManager.getHeightCache()[physicalIndex]
-        bottomToTopMeasurementQueue.delete(physicalIndex)
 
         if (
             Number.isFinite(cachedHeight) &&
-            Math.abs((cachedHeight as number) - measuredHeight) < 0.1
+            Math.abs((cachedHeight as number) - measuredHeight) < HEIGHT_CHANGE_TOLERANCE
         ) {
+            bottomToTopMeasurementQueue.delete(physicalIndex)
             return
         }
 
-        // Compute the height delta from this single measurement
+        bottomToTopMeasurementQueue.delete(physicalIndex)
+
         const oldHeight = Number.isFinite(cachedHeight)
             ? (cachedHeight as number)
             : heightManager.averageHeight
@@ -1245,7 +1248,7 @@
 
         if (shouldMaintainBottomToTopBottomLock()) {
             reconcileBottomToTopToBottom(2)
-        } else if (isAboveWindow && Math.abs(heightDelta) > 0.5) {
+        } else if (isAboveWindow && Math.abs(heightDelta) > SCROLL_ANCHOR_TOLERANCE) {
             // User scrolled away: anchor content by shifting scrollTop
             syncScrollTop(heightManager.viewport.scrollTop + heightDelta)
         }
@@ -1253,6 +1256,17 @@
 
     const reconcileBottomToTopToBottom = (frames = 3) => {
         if (!useDedicatedBottomToTopEngine || !heightManager.viewportElement) return
+
+        // When content is shorter than viewport, flexbox handles positioning — no scroll reconcile needed
+        if (totalHeight < (height || 0)) {
+            if (bottomToTopModeState === 'initializing') {
+                bottomToTopModeState = bottomToTopStateMachine.enterLockedBottom()
+                userHasScrolledAway = false
+                bottomToTopScrollComplete = true
+            }
+            bottomToTopMaintainingBottom = false
+            return
+        }
 
         cancelBottomToTopReconcile()
         bottomToTopMaintainingBottom = true
@@ -1288,6 +1302,14 @@
             }
 
             remainingFrames -= 1
+
+            // In lockedBottom, keep reconciling as long as there's a gap
+            // (backfill measurements continuously change scrollHeight)
+            if (domGap > 1 && bottomToTopModeState === 'lockedBottom') {
+                remainingFrames = Math.max(remainingFrames, 2)
+                stableFrames = 0
+            }
+
             if (stableFrames >= 2 || remainingFrames <= 0) {
                 if (bottomToTopModeState === 'initializing') {
                     bottomToTopModeState = bottomToTopStateMachine.enterLockedBottom()
@@ -2175,11 +2197,32 @@
                     }
 
                     if (didUpdatePhysicalHeights) {
+                        const oldTotal = heightManager.totalHeight
+
+                        heightManager.flushRecompute()
+
                         if (
-                            (bottomToTopModeState === 'lockedBottom' ||
-                                bottomToTopModeState === 'initializing') &&
-                            shouldMaintainBottomToTopBottomLock()
+                            bottomToTopModeState === 'lockedBottom' ||
+                            bottomToTopModeState === 'initializing'
                         ) {
+                            userHasScrolledAway = false
+
+                            // A single item resize shifts averageHeight, cascading through
+                            // all unmeasured items — often a thousands-of-pixels totalHeight
+                            // delta. We must update the spacer DOM directly and adjust
+                            // scrollTop BEFORE Svelte re-renders, or the browser clamps
+                            // scrollTop to the old (stale) scrollHeight.
+                            const totalDelta = heightManager.totalHeight - oldTotal
+                            if (Math.abs(totalDelta) > 1) {
+                                const topSpacerEl = heightManager.viewport.querySelector(
+                                    '.virtual-list-spacer'
+                                ) as HTMLElement | null
+                                if (topSpacerEl) {
+                                    const currentSpacerH = topSpacerEl.offsetHeight
+                                    topSpacerEl.style.height = `${currentSpacerH + totalDelta}px`
+                                }
+                                syncScrollTop(heightManager.viewport.scrollTop + totalDelta, true)
+                            }
                             reconcileBottomToTopToBottom(4)
                         }
                     }
@@ -2666,7 +2709,6 @@
                             bind:this={itemElements[currentItemWithIndex.sliceIndex]}
                             use:autoObserveItemResize
                             data-original-index={currentItemWithIndex.originalIndex}
-                            style:overflow="hidden"
                             {...testId
                                 ? {
                                       'data-testid': `${testId}-item-${currentItemWithIndex.originalIndex}`
@@ -2762,6 +2804,7 @@
 
     .virtual-list-content-bottom-to-top-short {
         justify-content: flex-end;
+        overflow: clip;
     }
 
     /* Items wrapper is translated for virtual scrolling */
