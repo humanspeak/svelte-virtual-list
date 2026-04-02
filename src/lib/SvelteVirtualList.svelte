@@ -1135,7 +1135,8 @@
             averageHeight: heightManager.averageHeight,
             totalItems: items.length,
             totalHeight,
-            blockSums: heightManager.getBlockSums()
+            blockSums: heightManager.getBlockSums(),
+            viewportHeight: height || measuredFallbackHeight || 0
         })
     })
 
@@ -2645,7 +2646,9 @@
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
             class:virtual-list-content-bottom-to-top={useDedicatedBottomToTopEngine}
-            style:height={useDedicatedBottomToTopEngine ? undefined : `${contentHeight}px`}
+            style:height={useDedicatedBottomToTopEngine
+                ? `${Math.max(totalHeight, height || 0)}px`
+                : `${contentHeight}px`}
         >
             {#if useDedicatedBottomToTopEngine}
                 <div
