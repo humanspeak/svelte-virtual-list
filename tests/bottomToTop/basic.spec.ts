@@ -262,6 +262,127 @@ test.describe('Basic BottomToTop Rendering', () => {
         expect(newIndices.length).toBeGreaterThan(0)
     })
 
+    test('should not produce console errors on load', async ({ page }) => {
+        const errors: string[] = []
+        page.on('console', (msg) => {
+            if (msg.type() === 'error') errors.push(msg.text())
+        })
+
+        await page.goto('/tests/list/bottomToTop/basic', { waitUntil: 'domcontentloaded' })
+        await page.waitForTimeout(3000)
+
+        const svelteErrors = errors.filter(
+            (e) => e.includes('effect_update_depth_exceeded') || e.includes('Svelte error')
+        )
+        expect(svelteErrors).toEqual([])
+    })
+
+    test('should progressively backfill measurements', async ({ page }) => {
+        // Get initial measurement count after settling
+        const initial = await page.evaluate((selector) => {
+            const viewport = document.querySelector(selector) as HTMLElement & {
+                __svlDebug?: { measuredCount?: number }
+            }
+            return viewport?.__svlDebug?.measuredCount ?? 0
+        }, VIEWPORT_SELECTOR)
+
+        // Wait a few seconds for backfill to progress
+        await page.waitForTimeout(3000)
+
+        const after = await page.evaluate((selector) => {
+            const viewport = document.querySelector(selector) as HTMLElement & {
+                __svlDebug?: { measuredCount?: number; totalItems?: number }
+            }
+            return {
+                measured: viewport?.__svlDebug?.measuredCount ?? 0,
+                total: viewport?.__svlDebug?.totalItems ?? 0
+            }
+        }, VIEWPORT_SELECTOR)
+
+        expect(after.total).toBe(10000)
+        // Backfill should have measured significantly more than the initial visible set
+        expect(after.measured).toBeGreaterThan(initial + 100)
+    })
+
+    test('should anchor scroll position during backfill when scrolled away', async ({
+        page
+    }, testInfo) => {
+        // Scroll up immediately while backfill is still active
+        const viewport = page.locator(VIEWPORT_SELECTOR)
+        await scrollByWheel(page, viewport, 0, -2000, testInfo)
+        await page.waitForTimeout(200)
+
+        // Record scroll position
+        const initialScrollTop = await page.evaluate((selector) => {
+            const el = document.querySelector(selector) as HTMLElement
+            return Math.round(el?.scrollTop ?? 0)
+        }, VIEWPORT_SELECTOR)
+
+        // Wait while backfill continues, sampling scroll position
+        const drift = await page.evaluate(
+            ([selector, startPos]) => {
+                return new Promise<number>((resolve) => {
+                    const el = document.querySelector(selector) as HTMLElement
+                    if (!el) {
+                        resolve(999999)
+                        return
+                    }
+                    let maxDrift = 0
+                    const interval = setInterval(() => {
+                        const current = Math.round(el.scrollTop)
+                        const d = Math.abs(current - startPos)
+                        if (d > maxDrift) maxDrift = d
+                    }, 50)
+                    setTimeout(() => {
+                        clearInterval(interval)
+                        resolve(maxDrift)
+                    }, 2000)
+                })
+            },
+            [VIEWPORT_SELECTOR, initialScrollTop] as const
+        )
+
+        // Allow small drift from rounding, but no large jumps
+        expect(drift).toBeLessThan(50)
+    })
+
+    test('should re-engage bottom lock when scrolling back to bottom', async ({
+        page
+    }, testInfo) => {
+        await scrollToMaxAndWait(page)
+
+        // Scroll away from bottom
+        const viewport = page.locator(VIEWPORT_SELECTOR)
+        await scrollByWheel(page, viewport, 0, -1000, testInfo)
+        await page.waitForTimeout(300)
+
+        // Verify we've scrolled away
+        const gapAfterScroll = await page.evaluate((selector) => {
+            const el = document.querySelector(selector) as HTMLElement
+            if (!el) return -1
+            return el.scrollHeight - el.clientHeight - el.scrollTop
+        }, VIEWPORT_SELECTOR)
+        expect(gapAfterScroll).toBeGreaterThan(100)
+
+        // Scroll back to bottom
+        await page.evaluate((selector) => {
+            const el = document.querySelector(selector) as HTMLElement
+            if (el) el.scrollTop = el.scrollHeight - el.clientHeight
+        }, VIEWPORT_SELECTOR)
+        await page.waitForTimeout(500)
+
+        // Verify bottom lock re-engaged (gap should be <= 2)
+        const gapAtBottom = await page.evaluate((selector) => {
+            const el = document.querySelector(selector) as HTMLElement
+            if (!el) return -1
+            return Math.round(el.scrollHeight - el.clientHeight - el.scrollTop)
+        }, VIEWPORT_SELECTOR)
+        expect(gapAtBottom).toBeLessThanOrEqual(2)
+
+        // Verify Item 0 is visible again
+        await expect(page.locator('[data-original-index="0"]').first()).toBeVisible()
+    })
+
     test('should position Item 0 at bottom of viewport', async ({ page }) => {
         // Ensure anchor and Item 0 attachment before measuring positions
         await scrollToMaxAndWait(page)
