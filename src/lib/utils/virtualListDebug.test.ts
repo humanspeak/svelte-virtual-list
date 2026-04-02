@@ -58,16 +58,35 @@ describe('virtualListDebug utilities', () => {
                 totalItems * averageItemHeight // totalHeight = 100 * 50 = 5000
             )
 
-            expect(result).toEqual({
+            expect(result).toMatchObject({
                 visibleItemsCount: 10,
                 startIndex: 5,
                 endIndex: 15,
                 totalItems: 100,
-                processedItems: 25, // Number of items with measured heights
+                processedItems: 25,
                 averageItemHeight: 50,
-                atTop: false, // scrollTop (250) > 1
-                atBottom: false, // scrollTop (250) < totalHeight (5000) - viewportHeight (400) - 1
-                totalHeight: 5000 // 100 items * 50px average height
+                atTop: false,
+                atBottom: false,
+                totalHeight: 5000,
+                engine: 'legacy',
+                mode: 'topToBottom',
+                measuredCount: 25,
+                measuredPercent: 25,
+                mountedCount: 10,
+                renderedVisibleCount: 10,
+                averageItemHeightPx: 50,
+                totalHeightPx: 5000,
+                scrollTopPx: 250,
+                maxScrollTopPx: 4600,
+                clientHeightPx: 400,
+                scrollHeightPx: 5000,
+                gapFromBottomPx: 4350,
+                measurementQueueCount: 0,
+                measurementLaneCount: 0,
+                backfillPending: false,
+                reconcileActive: false,
+                logicalWindowStart: 5,
+                logicalWindowEnd: 15
             })
         })
 

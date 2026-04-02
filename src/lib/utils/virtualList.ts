@@ -586,11 +586,11 @@ export const buildBlockSums = (
     blockSize = 1000
 ): number[] => {
     const blocks = Math.ceil(totalItems / blockSize)
-    const sums: number[] = new Array(Math.max(0, blocks - 1))
+    const sums: number[] = new Array(blocks)
     let running = 0
-    for (let b = 0; b < blocks - 1; b++) {
+    for (let b = 0; b < blocks; b++) {
         const start = b * blockSize
-        const end = start + blockSize
+        const end = Math.min(start + blockSize, totalItems)
         for (let i = start; i < end; i++) {
             running += getValidHeight(heightCache[i], calculatedItemHeight)
         }

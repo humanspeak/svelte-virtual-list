@@ -628,8 +628,7 @@ describe('ReactiveListManager (alias)', () => {
 
             expect(Array.isArray(blockSums)).toBe(true)
             // With 3000 items and blockSize=1000, we have 3 blocks
-            // Block sums has blocks-1 entries (prefix sums) = 2
-            expect(blockSums.length).toBe(2)
+            expect(blockSums.length).toBe(3)
         })
 
         it('should cache block sums and return same array on repeated calls', () => {
@@ -647,12 +646,13 @@ describe('ReactiveListManager (alias)', () => {
             const blockSums = manager.getBlockSums()
 
             // With 2500 items, we have 3 blocks (0-999, 1000-1999, 2000-2499)
-            // Block sums has 2 entries (prefix sums for blocks 0 and 1)
             // Entry 0: sum of items 0-999 = 1000 * 40 = 40000
             // Entry 1: sum of items 0-1999 = 2000 * 40 = 80000
-            expect(blockSums.length).toBe(2)
+            // Entry 2: sum of items 0-2499 = 2500 * 40 = 100000
+            expect(blockSums.length).toBe(3)
             expect(blockSums[0]).toBe(40000)
             expect(blockSums[1]).toBe(80000)
+            expect(blockSums[2]).toBe(100000)
         })
 
         it('should use measured heights in block sum calculation', () => {
@@ -697,8 +697,8 @@ describe('ReactiveListManager (alias)', () => {
             // Getting block sums should rebuild from block 1 onwards
             const blockSums = manager.getBlockSums()
 
-            // 5000 items = 5 blocks, so 4 prefix sums
-            expect(blockSums.length).toBe(4)
+            // 5000 items = 5 blocks
+            expect(blockSums.length).toBe(5)
         })
 
         it('should invalidate all block sums on reset', () => {
@@ -717,14 +717,14 @@ describe('ReactiveListManager (alias)', () => {
             const manager = new ReactiveListManager({ itemLength: 3000, itemHeight: 40 })
 
             const blockSums1 = manager.getBlockSums()
-            // 3000 items = 3 blocks, so 2 prefix sums
-            expect(blockSums1.length).toBe(2)
+            // 3000 items = 3 blocks
+            expect(blockSums1.length).toBe(3)
 
             manager.updateItemLength(5000)
 
             const blockSums2 = manager.getBlockSums()
-            // 5000 items = 5 blocks, so 4 prefix sums
-            expect(blockSums2.length).toBe(4)
+            // 5000 items = 5 blocks
+            expect(blockSums2.length).toBe(5)
             expect(blockSums1).not.toBe(blockSums2)
         })
 
@@ -753,8 +753,8 @@ describe('ReactiveListManager (alias)', () => {
 
             const blockSums = manager.getBlockSums()
 
-            // With only 1 block, there are no prefix sums needed
-            expect(blockSums.length).toBe(0)
+            // With only 1 block
+            expect(blockSums.length).toBe(1)
         })
 
         it('should handle exactly one block of items', () => {
@@ -762,8 +762,8 @@ describe('ReactiveListManager (alias)', () => {
 
             const blockSums = manager.getBlockSums()
 
-            // With exactly 1 block, there are no prefix sums needed
-            expect(blockSums.length).toBe(0)
+            // With exactly 1 block
+            expect(blockSums.length).toBe(1)
         })
 
         it('should perform efficiently with large item counts', () => {
@@ -775,8 +775,8 @@ describe('ReactiveListManager (alias)', () => {
 
             // First call should be fast (< 10ms)
             expect(firstCall).toBeLessThan(10)
-            // Block sums has blocks-1 entries (prefix sums for 100 blocks = 99 entries)
-            expect(blockSums.length).toBe(99)
+            // 100000 items = 100 blocks
+            expect(blockSums.length).toBe(100)
 
             // Second call should be near instant (cached)
             const start2 = performance.now()
