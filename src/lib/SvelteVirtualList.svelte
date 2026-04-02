@@ -1430,12 +1430,7 @@
     $effect(() => {
         if (!useDedicatedBottomToTopEngine || !BROWSER || !heightManager.initialized) return
 
-        if (
-            bottomToTopModeState !== 'lockedBottom' ||
-            isScrolling ||
-            bottomToTopMeasurementQueue.size > 0 ||
-            !isViewportNearBottom(Math.max(2, Math.round(heightManager.averageHeight * 0.5)))
-        ) {
+        if (isScrolling || bottomToTopMeasurementQueue.size > 0) {
             clearBottomToTopBackfill()
             return
         }
