@@ -47,7 +47,7 @@
             text: `Item ${i}`
         }))
     ])
-    let virtualList: SvelteVirtualList<{ id: number; text: string; height: number }> | null =
+    let virtualList: SvelteVirtualList<{ id: number; text: string; height?: number }> | null =
         $state(null)
 
     let stats = $state<SvelteVirtualListDebugInfo | null>(null)
