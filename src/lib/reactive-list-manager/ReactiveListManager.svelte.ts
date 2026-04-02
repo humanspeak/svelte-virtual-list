@@ -67,6 +67,15 @@ export class ReactiveListManager {
         this._totalHeight = this._totalMeasuredHeight + unmeasuredCount * average
     }
 
+    /**
+     * Cancel any pending scheduled recompute and run it synchronously.
+     * Use when the caller needs averageHeight/totalHeight to be current immediately.
+     */
+    flushRecompute(): void {
+        this._scheduler.cancel()
+        this.recomputeDerivedHeights()
+    }
+
     private recomputeIsReady(): void {
         this._isReady = !!this._containerElement && !!this._viewportElement
     }
@@ -368,13 +377,6 @@ export class ReactiveListManager {
      */
     get totalHeight(): number {
         return this._totalHeight
-    }
-
-    /**
-     * Test helper: force a recompute immediately (bypasses scheduler).
-     */
-    flushRecompute = (): void => {
-        this.recomputeDerivedHeights()
     }
 
     /**

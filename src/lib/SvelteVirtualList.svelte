@@ -1229,9 +1229,25 @@
             return
         }
 
+        // Compute the height delta from this single measurement
+        const oldHeight = Number.isFinite(cachedHeight)
+            ? (cachedHeight as number)
+            : heightManager.averageHeight
+        const heightDelta = measuredHeight - oldHeight
+
         heightManager.setMeasuredHeight(physicalIndex, measuredHeight)
+        heightManager.flushRecompute()
+
+        if (!heightManager.viewportElement) return
+
+        const window = getBottomToTopCurrentWindow()
+        const isAboveWindow = physicalIndex < window.startPhysical
+
         if (shouldMaintainBottomToTopBottomLock()) {
-            reconcileBottomToTopToBottom(4)
+            reconcileBottomToTopToBottom(2)
+        } else if (isAboveWindow && Math.abs(heightDelta) > 0.5) {
+            // User scrolled away: anchor content by shifting scrollTop
+            syncScrollTop(heightManager.viewport.scrollTop + heightDelta)
         }
     }
 
@@ -1939,6 +1955,16 @@
 
         if (useDedicatedBottomToTopEngine) {
             isScrolling = true
+
+            // Cancel reconcile immediately (before RAF) so it can't snap back
+            if (bottomToTopMaintainingBottom) {
+                const gap = getViewportMaxScrollTop() - heightManager.viewport.scrollTop
+                if (gap > Math.max(2, Math.round(heightManager.averageHeight * 0.5))) {
+                    cancelBottomToTopReconcile()
+                    userHasScrolledAway = true
+                }
+            }
+
             if (scrollIdleTimer) {
                 clearTimeout(scrollIdleTimer)
                 scrollIdleTimer = null
@@ -1957,7 +1983,22 @@
                 heightManager.scrollTop = current
                 lastScrollTopSnapshot = current
 
-                if (programmaticScrollInProgress || bottomToTopMaintainingBottom) {
+                if (programmaticScrollInProgress) {
+                    updateDebugTailDistance()
+                    return
+                }
+
+                // If reconcile is active but user initiated a scroll, cancel it
+                if (bottomToTopMaintainingBottom) {
+                    const gapFromBottom = getViewportMaxScrollTop() - current
+                    if (
+                        gapFromBottom > Math.max(2, Math.round(heightManager.averageHeight * 0.5))
+                    ) {
+                        cancelBottomToTopReconcile()
+                        userHasScrolledAway = true
+                        updateDebugTailDistance()
+                        return
+                    }
                     updateDebugTailDistance()
                     return
                 }
