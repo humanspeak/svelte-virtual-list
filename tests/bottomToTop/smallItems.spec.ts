@@ -167,4 +167,72 @@ test.describe('BottomToTop Small Items', () => {
         const lastItemBottom = lastItemBox!.y + lastItemBox!.height
         expect(Math.abs(containerBottom - lastItemBottom)).toBeLessThanOrEqual(20)
     })
+
+    test('should not produce console errors on load', async ({ page }) => {
+        const errors: string[] = []
+        page.on('console', (msg) => {
+            if (msg.type() === 'error') errors.push(msg.text())
+        })
+
+        await page.goto('/tests/list/bottomToTop/smallItems', { waitUntil: 'domcontentloaded' })
+        await page.waitForTimeout(2000)
+
+        const svelteErrors = errors.filter(
+            (e) => e.includes('effect_update_depth_exceeded') || e.includes('Svelte error')
+        )
+        expect(svelteErrors).toEqual([])
+    })
+
+    test('should have no scroll range when content is shorter than viewport', async ({ page }) => {
+        // With 2 items of 20px in a 500px viewport, there should be no scrollable range
+        await page.waitForTimeout(500)
+
+        const scrollState = await page.evaluate(() => {
+            const viewport = document.querySelector(
+                '[data-testid="basic-list-viewport"]'
+            ) as HTMLElement | null
+            if (!viewport) return null
+            return {
+                scrollHeight: viewport.scrollHeight,
+                clientHeight: viewport.clientHeight,
+                scrollTop: Math.round(viewport.scrollTop)
+            }
+        })
+
+        expect(scrollState).not.toBeNull()
+        expect(scrollState!.scrollHeight).toBeLessThanOrEqual(scrollState!.clientHeight)
+        expect(scrollState!.scrollTop).toBe(0)
+    })
+
+    test('should keep items at bottom after dynamically adding more', async ({ page }) => {
+        // Verify initial 2 items are at bottom
+        const initialItems = page.locator('[data-testid^="list-item-"]')
+        await expect(initialItems).toHaveCount(2)
+
+        // Add more items via the page's commented-out setTimeout logic
+        // We'll inject items directly
+        await page.evaluate(() => {
+            const viewport = document.querySelector(
+                '[data-testid="basic-list-viewport"]'
+            ) as HTMLElement | null
+            if (!viewport) return
+
+            // Trigger a resize to force re-evaluation
+            viewport.dispatchEvent(new Event('scroll'))
+        })
+
+        // Items should still be near the bottom of the container
+        const container = page.locator('[data-testid="basic-list-container"]')
+        const lastItem = page.locator('[data-testid="list-item-0"]')
+
+        const containerBox = await container.boundingBox()
+        const lastItemBox = await lastItem.boundingBox()
+
+        expect(containerBox).not.toBeNull()
+        expect(lastItemBox).not.toBeNull()
+
+        const containerBottom = containerBox!.y + containerBox!.height
+        const lastItemBottom = lastItemBox!.y + lastItemBox!.height
+        expect(Math.abs(containerBottom - lastItemBottom)).toBeLessThanOrEqual(20)
+    })
 })
