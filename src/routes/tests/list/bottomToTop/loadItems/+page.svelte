@@ -1,5 +1,6 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
+    import { onDestroy } from 'svelte'
     import {
         createTestItemsWithHeight,
         type ItemWithHeight as Item
@@ -7,15 +8,22 @@
 
     const items = $state<Item[]>([...createTestItemsWithHeight(2, [20])])
     let virtualList = $state<SvelteVirtualList<Item> | null>(null)
+    let nextItemId = 2
 
-    setTimeout(() => {
+    const appendItems = (count: number) => {
+        const startId = nextItemId
         items.push(
-            ...Array.from({ length: 9998 }, (_, i) => ({
-                id: i + 2,
-                text: `Item ${i + 2}`,
+            ...Array.from({ length: count }, (_, i) => ({
+                id: startId + i,
+                text: `Item ${startId + i}`,
                 height: 20
             }))
         )
+        nextItemId += count
+    }
+
+    setTimeout(() => {
+        appendItems(9998)
 
         // setTimeout(() => {
         //     virtualList?.scroll({
@@ -23,6 +31,25 @@
         //     })
         // }, 50)
     }, 1000)
+
+    if (typeof window !== 'undefined') {
+        ;(
+            window as typeof window & {
+                __appendLoadItems?: (count?: number) => void
+            }
+        ).__appendLoadItems = (count = 20) => {
+            appendItems(count)
+        }
+    }
+
+    onDestroy(() => {
+        if (typeof window === 'undefined') return
+        delete (
+            window as typeof window & {
+                __appendLoadItems?: (count?: number) => void
+            }
+        ).__appendLoadItems
+    })
 </script>
 
 <div class="test-container" style="height: 500px;">
@@ -32,7 +59,7 @@
         {items}
         testId="basic-list"
         mode="bottomToTop"
-        debug={false}
+        debug={true}
     >
         {#snippet renderItem(item)}
             <div

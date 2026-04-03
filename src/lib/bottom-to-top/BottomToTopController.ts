@@ -80,27 +80,27 @@ export const calculateBottomToTopPhysicalWindow = ({
 export const calculateBottomToTopSpacers = ({
     window,
     heightCache,
-    averageHeight,
+    itemHeight,
     totalItems,
     totalHeight,
     blockSums
 }: {
     window: BottomToTopWindow
     heightCache: Record<number, number>
-    averageHeight: number
+    itemHeight: number
     totalItems: number
     totalHeight: number
     blockSums: number[]
 }) => {
     const topSpacer = getScrollOffsetForIndex(
         heightCache,
-        averageHeight,
+        itemHeight,
         window.startPhysical,
         blockSums
     )
     const bottomOffset = getScrollOffsetForIndex(
         heightCache,
-        averageHeight,
+        itemHeight,
         window.endPhysical,
         blockSums
     )

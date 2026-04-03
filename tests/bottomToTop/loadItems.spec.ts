@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 /**
@@ -9,6 +9,37 @@ import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
  */
 
 const PAGE_URL = '/tests/list/bottomToTop/loadItems'
+const VIEWPORT_SELECTOR = '[data-testid="basic-list-viewport"]'
+
+type LoadItemsDebugSnapshot = {
+    scrollTop: number
+    maxScrollTop: number
+    measuredCount: number
+    stagedMeasurementCount: number
+    gapFromBottomPx: number
+}
+
+async function getLoadItemsDebug(page: Page) {
+    return page.locator(VIEWPORT_SELECTOR).evaluate((element) => {
+        const el = element as HTMLElement & {
+            __svlDebug?: {
+                measuredCount?: number
+                stagedMeasurementCount?: number
+                gapFromBottomPx?: number
+            }
+        }
+
+        return {
+            scrollTop: Math.round(el.scrollTop),
+            maxScrollTop: Math.round(el.scrollHeight - el.clientHeight),
+            measuredCount: el.__svlDebug?.measuredCount ?? 0,
+            stagedMeasurementCount: el.__svlDebug?.stagedMeasurementCount ?? 0,
+            gapFromBottomPx:
+                el.__svlDebug?.gapFromBottomPx ??
+                Math.round(el.scrollHeight - el.clientHeight - el.scrollTop)
+        } satisfies LoadItemsDebugSnapshot
+    })
+}
 
 test.describe('BottomToTop LoadItems', () => {
     test.beforeEach(async ({ page }) => {
@@ -150,6 +181,53 @@ test.describe('BottomToTop LoadItems', () => {
 
         const scrollTop = await viewport.evaluate((el) => el.scrollTop)
         expect(scrollTop).toBeGreaterThan(500)
+    })
+
+    test('should preserve scroll position across append mutation while scrolled away', async ({
+        page
+    }) => {
+        test.fail(
+            true,
+            'Known bug: append mutation while scrolled away still shifts the viewport in bottomToTop mode.'
+        )
+
+        await page.waitForSelector('[data-testid="list-item-0"]')
+
+        await page.clock.fastForward(1000)
+        await page.waitForSelector('[data-testid="list-item-2"]')
+        await rafWait(page, 3)
+
+        const viewport = page.locator(VIEWPORT_SELECTOR)
+        await viewport.evaluate((el) => {
+            const maxScrollTop = el.scrollHeight - el.clientHeight
+            el.scrollTop = Math.max(0, maxScrollTop - 600)
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
+        })
+
+        const baseline = await getLoadItemsDebug(page)
+        expect(baseline.gapFromBottomPx).toBeGreaterThan(100)
+        const baselineTracked = baseline.measuredCount + baseline.stagedMeasurementCount
+
+        await page.evaluate(() => {
+            ;(
+                window as typeof window & { __appendLoadItems?: (count?: number) => void }
+            ).__appendLoadItems?.(200)
+        })
+
+        let minTracked = baselineTracked
+        let maxDrift = 0
+
+        for (let i = 0; i < 8; i++) {
+            await page.clock.fastForward(200)
+            await page.waitForTimeout(150)
+            const sample = await getLoadItemsDebug(page)
+            const trackedCount = sample.measuredCount + sample.stagedMeasurementCount
+            minTracked = Math.min(minTracked, trackedCount)
+            maxDrift = Math.max(maxDrift, Math.abs(sample.scrollTop - baseline.scrollTop))
+        }
+
+        expect(minTracked).toBeGreaterThanOrEqual(Math.max(1, baselineTracked - 2))
+        expect(maxDrift).toBeLessThan(50)
     })
 
     test('should maintain performance during item addition', async ({ page }) => {

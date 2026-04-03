@@ -280,7 +280,7 @@
         const vr = visibleItems
         const anchorIndex = Math.max(0, vr.start)
         const cache = heightManager.getHeightCache()
-        const est = heightManager.averageHeight
+        const est = offsetCalculationItemHeight
         const maxScrollTop = Math.max(0, totalHeight - (height || 0))
         // Offset from start to anchored item
         const blockSums = heightManager.getBlockSums()
@@ -308,7 +308,7 @@
         if (!anchorModeEnabled || !heightManager.viewportElement) return
         if (!pendingAnchorReconcile) return
         const cache = heightManager.getHeightCache()
-        const est = heightManager.averageHeight
+        const est = offsetCalculationItemHeight
         const blockSums = heightManager.getBlockSums()
         const offsetToIndex = getScrollOffsetForIndex(
             cache,
@@ -396,11 +396,15 @@
     const heightManager = new ReactiveListManager({
         itemLength: items.length,
         itemHeight: defaultEstimatedItemHeight,
+        useFixedEstimateForUnmeasured: useDedicatedBottomToTopEngine,
         internalDebug: INTERNAL_DEBUG
     })
+    const offsetCalculationItemHeight = $derived(
+        useDedicatedBottomToTopEngine ? heightManager.itemHeight : heightManager.averageHeight
+    )
     const instanceId = Math.random().toString(36).slice(2, 7)
     const HEIGHT_CHANGE_TOLERANCE = 0.1
-    const SCROLL_ANCHOR_TOLERANCE = 0.5
+    const BOTTOM_TO_TOP_BACKFILL_DELAY_MS = 48
     const bottomToTopStateMachine = new BottomToTopStateMachine()
     let bottomToTopModeState = $state<BottomToTopModeState>(
         useDedicatedBottomToTopEngine ? bottomToTopStateMachine.enterInitializing() : 'lockedBottom'
@@ -417,7 +421,11 @@
     const bottomToTopMeasurementQueue = new SvelteSet<number>()
     let bottomToTopReconcileRafId: number | null = null
     let bottomToTopBackfillRafId: number | null = null
+    let bottomToTopBackfillTimeoutId: number | null = null
     let bottomToTopMaintainingBottom = $state(false)
+    let bottomToTopStagedHeights = $state<Record<number, number>>({})
+    let bottomToTopStagedCount = $state(0)
+    let bottomToTopPromotionScheduled = $state(false)
 
     // Centralized debug logger gated by flags
     const log = (tag: string, payload?: unknown) => {
@@ -1089,7 +1097,7 @@
         return calculateBottomToTopPhysicalWindow({
             scrollTop: heightManager.scrollTop,
             viewportHeight,
-            itemHeight: heightManager.averageHeight,
+            itemHeight: heightManager.itemHeight,
             totalItems: items.length,
             bufferSize,
             totalContentHeight: totalHeight,
@@ -1112,7 +1120,7 @@
             if (window.endPhysical <= window.startPhysical) {
                 window = buildBottomToTopEstimatedTailWindow({
                     totalItems: items.length,
-                    estimatedItemHeight: heightManager.averageHeight,
+                    estimatedItemHeight: heightManager.itemHeight,
                     viewportHeight: height || measuredFallbackHeight || 400,
                     overscan: bufferSize
                 })
@@ -1134,7 +1142,7 @@
         return calculateBottomToTopSpacers({
             window: bottomToTopPhysicalWindow,
             heightCache: heightManager.getHeightCache(),
-            averageHeight: heightManager.averageHeight,
+            itemHeight: heightManager.itemHeight,
             totalItems: items.length,
             totalHeight,
             blockSums: heightManager.getBlockSums()
@@ -1159,6 +1167,206 @@
     const shouldMaintainBottomToTopBottomLock = () =>
         bottomToTopModeState === 'initializing' || !userHasScrolledAway
 
+    type BottomToTopPromotionAnchor = {
+        logicalIndex: number
+        offsetTop: number
+    }
+
+    const hasBottomToTopStagedHeight = (physicalIndex: number) =>
+        Number.isFinite(bottomToTopStagedHeights[physicalIndex])
+
+    const setBottomToTopStagedHeight = (physicalIndex: number, heightValue: number) => {
+        if (!Number.isFinite(heightValue) || heightValue <= 0) return false
+
+        const previous = bottomToTopStagedHeights[physicalIndex]
+        if (
+            Number.isFinite(previous) &&
+            Math.abs((previous as number) - heightValue) < HEIGHT_CHANGE_TOLERANCE
+        ) {
+            return false
+        }
+
+        bottomToTopStagedHeights[physicalIndex] = heightValue
+        bottomToTopStagedCount = Object.keys(bottomToTopStagedHeights).length
+        return true
+    }
+
+    const deleteBottomToTopStagedHeight = (physicalIndex: number) => {
+        const previous = bottomToTopStagedHeights[physicalIndex]
+        if (!Number.isFinite(previous)) return false
+        delete bottomToTopStagedHeights[physicalIndex]
+        bottomToTopStagedCount = Object.keys(bottomToTopStagedHeights).length
+        return true
+    }
+
+    const replaceBottomToTopStagedHeights = (nextHeights: Record<number, number>) => {
+        bottomToTopStagedHeights = nextHeights
+        bottomToTopStagedCount = Object.keys(nextHeights).length
+    }
+
+    const clearBottomToTopStagedHeights = () => {
+        bottomToTopStagedHeights = {}
+        bottomToTopStagedCount = 0
+    }
+
+    const getBottomToTopMeasuredIndices = () => {
+        const measuredIndices = new Set(
+            Object.keys(heightManager.getHeightCache()).map((key) => Number.parseInt(key, 10))
+        )
+
+        for (const key of Object.keys(bottomToTopStagedHeights)) {
+            const physicalIndex = Number.parseInt(key, 10)
+            if (!Number.isFinite(physicalIndex)) continue
+            measuredIndices.add(physicalIndex)
+        }
+
+        return measuredIndices
+    }
+
+    const getBottomToTopPromotionEntries = (
+        window: BottomToTopWindow,
+        includeAll = false
+    ): Array<{ index: number; height: number }> => {
+        const startPhysical = includeAll ? 0 : Math.max(0, window.startPhysical - bufferSize)
+        const endPhysical = includeAll
+            ? items.length
+            : Math.min(items.length, window.endPhysical + bufferSize)
+
+        return Object.entries(bottomToTopStagedHeights)
+            .map(([key, value]) => ({
+                index: Number.parseInt(key, 10),
+                height: value
+            }))
+            .filter(
+                (entry) =>
+                    Number.isFinite(entry.index) &&
+                    Number.isFinite(entry.height) &&
+                    entry.height > 0 &&
+                    entry.index >= startPhysical &&
+                    entry.index < endPhysical
+            )
+            .sort((a, b) => a.index - b.index)
+    }
+
+    const captureBottomToTopPromotionAnchor = (): BottomToTopPromotionAnchor | null => {
+        if (!heightManager.viewportElement) return null
+
+        const viewportRect = heightManager.viewport.getBoundingClientRect()
+        const candidateElements = Array.from(
+            heightManager.viewport.querySelectorAll('[data-original-index]')
+        ) as HTMLElement[]
+
+        let anchorElement: HTMLElement | null = null
+        let bestDistance = Infinity
+
+        for (const element of candidateElements) {
+            const rect = element.getBoundingClientRect()
+            if (rect.bottom <= viewportRect.top || rect.top >= viewportRect.bottom) continue
+
+            const distance = Math.abs(rect.top - viewportRect.top)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                anchorElement = element
+            }
+        }
+
+        if (!anchorElement) return null
+
+        const logicalIndex = Number.parseInt(anchorElement.dataset.originalIndex || '-1', 10)
+        if (logicalIndex < 0) return null
+
+        return {
+            logicalIndex,
+            offsetTop: anchorElement.getBoundingClientRect().top - viewportRect.top
+        }
+    }
+
+    const reconcileBottomToTopPromotionAnchor = (anchor: BottomToTopPromotionAnchor | null) => {
+        if (!anchor || !heightManager.viewportElement) return
+
+        const viewportRect = heightManager.viewport.getBoundingClientRect()
+        const anchorElement = heightManager.viewport.querySelector(
+            `[data-original-index="${anchor.logicalIndex}"]`
+        ) as HTMLElement | null
+
+        if (anchorElement) {
+            const currentOffsetTop = anchorElement.getBoundingClientRect().top - viewportRect.top
+            const delta = currentOffsetTop - anchor.offsetTop
+            if (Math.abs(delta) > 0.5) {
+                syncScrollTop(heightManager.viewport.scrollTop + delta)
+            }
+            return
+        }
+
+        if (anchor.logicalIndex < 0 || anchor.logicalIndex >= items.length) return
+
+        const physicalIndex = getPhysicalIndexFromLogical(anchor.logicalIndex, items.length)
+        const offsetToIndex = getScrollOffsetForIndex(
+            heightManager.getHeightCache(),
+            heightManager.itemHeight,
+            physicalIndex,
+            heightManager.getBlockSums()
+        )
+        const targetScrollTop = clampValue(
+            Math.round(offsetToIndex - anchor.offsetTop),
+            0,
+            getViewportMaxScrollTop()
+        )
+        if (Math.abs(heightManager.viewport.scrollTop - targetScrollTop) > 0.5) {
+            syncScrollTop(targetScrollTop, true)
+        }
+    }
+
+    const promoteBottomToTopStagedMeasurementsForWindow = (
+        window: BottomToTopWindow,
+        { includeAll = false }: { includeAll?: boolean } = {}
+    ) => {
+        if (
+            !useDedicatedBottomToTopEngine ||
+            bottomToTopStagedCount === 0 ||
+            bottomToTopPromotionScheduled
+        ) {
+            return
+        }
+
+        const entries = getBottomToTopPromotionEntries(window, includeAll)
+        if (entries.length === 0) return
+
+        const maintainBottomLock = shouldMaintainBottomToTopBottomLock()
+        const anchor = maintainBottomLock ? null : captureBottomToTopPromotionAnchor()
+
+        bottomToTopPromotionScheduled = true
+
+        for (const entry of entries) {
+            deleteBottomToTopStagedHeight(entry.index)
+        }
+        heightManager.mergeMeasuredHeights(entries)
+
+        tick().then(() => {
+            if (!heightManager.viewportElement) {
+                bottomToTopPromotionScheduled = false
+                return
+            }
+
+            if (shouldMaintainBottomToTopBottomLock()) {
+                syncScrollTop(getViewportMaxScrollTop(), true)
+                reconcileBottomToTopToBottom(2)
+            } else {
+                reconcileBottomToTopPromotionAnchor(anchor)
+            }
+
+            bottomToTopPromotionScheduled = false
+
+            if (bottomToTopStagedCount === 0) return
+            const nextWindow = getBottomToTopCurrentWindow()
+            if (shouldMaintainBottomToTopBottomLock()) {
+                promoteBottomToTopStagedMeasurementsForWindow(nextWindow, { includeAll: true })
+            } else {
+                promoteBottomToTopStagedMeasurementsForWindow(nextWindow)
+            }
+        })
+    }
+
     const queueBottomToTopMeasurements = (indices: number[]) => {
         if (!useDedicatedBottomToTopEngine) return
         const heightCache = heightManager.getHeightCache()
@@ -1166,11 +1374,16 @@
         for (const physicalIndex of indices) {
             if (physicalIndex < 0 || physicalIndex >= items.length) continue
             if (Number.isFinite(heightCache[physicalIndex])) continue
+            if (hasBottomToTopStagedHeight(physicalIndex)) continue
             bottomToTopMeasurementQueue.add(physicalIndex)
         }
     }
 
     const clearBottomToTopBackfill = () => {
+        if (bottomToTopBackfillTimeoutId !== null) {
+            clearTimeout(bottomToTopBackfillTimeoutId)
+            bottomToTopBackfillTimeoutId = null
+        }
         if (bottomToTopBackfillRafId !== null) {
             cancelAnimationFrame(bottomToTopBackfillRafId)
             bottomToTopBackfillRafId = null
@@ -1183,6 +1396,24 @@
             bottomToTopReconcileRafId = null
         }
         bottomToTopMaintainingBottom = false
+    }
+
+    const commitBottomToTopLiveMeasurement = (
+        physicalIndex: number,
+        measuredHeight: number,
+        { maintainBottomLock = false }: { maintainBottomLock?: boolean } = {}
+    ) => {
+        deleteBottomToTopStagedHeight(physicalIndex)
+        heightManager.setMeasuredHeight(physicalIndex, measuredHeight)
+        heightManager.flushRecompute()
+
+        if (!heightManager.viewportElement || !maintainBottomLock) return
+
+        tick().then(() => {
+            if (!heightManager.viewportElement || !shouldMaintainBottomToTopBottomLock()) return
+            syncScrollTop(getViewportMaxScrollTop(), true)
+        })
+        reconcileBottomToTopToBottom(2)
     }
 
     const measureBottomToTopVisibleItemsImmediately = () => {
@@ -1204,11 +1435,12 @@
                 Number.isFinite(cachedHeight) &&
                 Math.abs((cachedHeight as number) - measuredHeight) < HEIGHT_CHANGE_TOLERANCE
             ) {
+                deleteBottomToTopStagedHeight(physicalIndex)
                 bottomToTopMeasurementQueue.delete(physicalIndex)
                 continue
             }
 
-            heightManager.setMeasuredHeight(physicalIndex, measuredHeight)
+            commitBottomToTopLiveMeasurement(physicalIndex, measuredHeight)
             bottomToTopMeasurementQueue.delete(physicalIndex)
             changed = true
         }
@@ -1222,10 +1454,21 @@
         if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) return
 
         const cachedHeight = heightManager.getHeightCache()[physicalIndex]
+        const stagedHeight = bottomToTopStagedHeights[physicalIndex]
 
         if (
             Number.isFinite(cachedHeight) &&
             Math.abs((cachedHeight as number) - measuredHeight) < HEIGHT_CHANGE_TOLERANCE
+        ) {
+            deleteBottomToTopStagedHeight(physicalIndex)
+            bottomToTopMeasurementQueue.delete(physicalIndex)
+            return
+        }
+
+        if (
+            !Number.isFinite(cachedHeight) &&
+            Number.isFinite(stagedHeight) &&
+            Math.abs((stagedHeight as number) - measuredHeight) < HEIGHT_CHANGE_TOLERANCE
         ) {
             bottomToTopMeasurementQueue.delete(physicalIndex)
             return
@@ -1233,25 +1476,23 @@
 
         bottomToTopMeasurementQueue.delete(physicalIndex)
 
-        const oldHeight = Number.isFinite(cachedHeight)
-            ? (cachedHeight as number)
-            : heightManager.averageHeight
-        const heightDelta = measuredHeight - oldHeight
-
-        heightManager.setMeasuredHeight(physicalIndex, measuredHeight)
-        heightManager.flushRecompute()
-
-        if (!heightManager.viewportElement) return
-
         const window = getBottomToTopCurrentWindow()
-        const isAboveWindow = physicalIndex < window.startPhysical
+        const isInsideWindow =
+            physicalIndex >= window.startPhysical && physicalIndex < window.endPhysical
 
         if (shouldMaintainBottomToTopBottomLock()) {
-            reconcileBottomToTopToBottom(2)
-        } else if (isAboveWindow && Math.abs(heightDelta) > SCROLL_ANCHOR_TOLERANCE) {
-            // User scrolled away: anchor content by shifting scrollTop
-            syncScrollTop(heightManager.viewport.scrollTop + heightDelta)
+            commitBottomToTopLiveMeasurement(physicalIndex, measuredHeight, {
+                maintainBottomLock: true
+            })
+            return
         }
+
+        if (userHasScrolledAway && !isInsideWindow) {
+            setBottomToTopStagedHeight(physicalIndex, measuredHeight)
+            return
+        }
+
+        commitBottomToTopLiveMeasurement(physicalIndex, measuredHeight)
     }
 
     const reconcileBottomToTopToBottom = (frames = 3) => {
@@ -1330,6 +1571,7 @@
         if (
             !useDedicatedBottomToTopEngine ||
             bottomToTopBackfillRafId !== null ||
+            bottomToTopBackfillTimeoutId !== null ||
             bottomToTopModeState === 'initializing' ||
             isScrolling ||
             !heightManager.viewportElement
@@ -1337,21 +1579,23 @@
             return
         }
 
-        bottomToTopBackfillRafId = requestAnimationFrame(() => {
-            bottomToTopBackfillRafId = null
+        bottomToTopBackfillTimeoutId = window.setTimeout(() => {
+            bottomToTopBackfillTimeoutId = null
 
-            const measuredIndices = new Set(
-                Object.keys(heightManager.getHeightCache()).map((key) => Number.parseInt(key, 10))
-            )
-            const backfillIndices = buildBottomToTopBackfillIndices({
-                window: bottomToTopPhysicalWindow,
-                totalItems: items.length,
-                measuredIndices,
-                limit: 4
+            bottomToTopBackfillRafId = requestAnimationFrame(() => {
+                bottomToTopBackfillRafId = null
+
+                const measuredIndices = new Set(getBottomToTopMeasuredIndices())
+                const backfillIndices = buildBottomToTopBackfillIndices({
+                    window: bottomToTopPhysicalWindow,
+                    totalItems: items.length,
+                    measuredIndices,
+                    limit: 4
+                })
+
+                queueBottomToTopMeasurements(backfillIndices)
             })
-
-            queueBottomToTopMeasurements(backfillIndices)
-        })
+        }, BOTTOM_TO_TOP_BACKFILL_DELAY_MS)
     }
 
     const initializeBottomToTopWindow = () => {
@@ -1379,7 +1623,7 @@
 
         bottomToTopInitWindow = buildBottomToTopEstimatedTailWindow({
             totalItems: items.length,
-            estimatedItemHeight: heightManager.averageHeight,
+            estimatedItemHeight: heightManager.itemHeight,
             viewportHeight: nextHeight,
             overscan: bufferSize
         })
@@ -1435,6 +1679,14 @@
             if (didMeasureVisibleItems && shouldMaintainBottomToTopBottomLock()) {
                 reconcileBottomToTopToBottom(4)
             }
+
+            if (bottomToTopStagedCount > 0) {
+                if (shouldMaintainBottomToTopBottomLock()) {
+                    promoteBottomToTopStagedMeasurementsForWindow(window, { includeAll: true })
+                } else {
+                    promoteBottomToTopStagedMeasurementsForWindow(window)
+                }
+            }
         })
     })
 
@@ -1477,6 +1729,20 @@
     })
 
     $effect(() => {
+        if (!useDedicatedBottomToTopEngine || !BROWSER || !heightManager.initialized) return
+        if (bottomToTopStagedCount === 0) return
+
+        const window = getBottomToTopCurrentWindow()
+        untrack(() => {
+            if (shouldMaintainBottomToTopBottomLock()) {
+                promoteBottomToTopStagedMeasurementsForWindow(window, { includeAll: true })
+            } else {
+                promoteBottomToTopStagedMeasurementsForWindow(window)
+            }
+        })
+    })
+
+    $effect(() => {
         if (!useDedicatedBottomToTopEngine) return
         const currentItems = items
 
@@ -1497,6 +1763,7 @@
                 heightManager.updateItemLength(currentItems.length)
                 heightManager.replaceMeasurements({})
                 bottomToTopMeasurementQueue.clear()
+                clearBottomToTopStagedHeights()
                 bottomToTopPreviousItems = currentItems
                 bottomToTopModeState = bottomToTopStateMachine.enterInitializing()
                 bottomToTopScrollComplete = false
@@ -1509,8 +1776,14 @@
                 currentItems.length,
                 mutation
             )
+            const remappedStagedMeasurements = remapPhysicalMeasurementsForMutation(
+                bottomToTopStagedHeights,
+                currentItems.length,
+                mutation
+            )
             heightManager.updateItemLength(currentItems.length)
             heightManager.replaceMeasurements(remappedMeasurements)
+            replaceBottomToTopStagedHeights(remappedStagedMeasurements)
 
             const insertedIndices: number[] = []
             if (mutation.kind === 'prependLogicalStart') {
@@ -1530,16 +1803,23 @@
 
             bottomToTopPreviousItems = currentItems
 
-            tick().then(() =>
-                requestAnimationFrame(() => {
-                    if (!heightManager.viewportElement) return
+            tick().then(() => {
+                if (!heightManager.viewportElement) return
 
-                    if (wasLockedBottom && shouldMaintainBottomToTopBottomLock()) {
+                if (wasLockedBottom && shouldMaintainBottomToTopBottomLock()) {
+                    if (bottomToTopStagedCount > 0) {
+                        promoteBottomToTopStagedMeasurementsForWindow(
+                            getBottomToTopCurrentWindow(),
+                            {
+                                includeAll: true
+                            }
+                        )
+                    } else {
                         syncScrollTop(getViewportMaxScrollTop(), true)
                         reconcileBottomToTopToBottom(4)
                     }
-                })
-            )
+                }
+            })
         })
     })
 
@@ -2021,6 +2301,12 @@
                         updateDebugTailDistance()
                         return
                     }
+                    if (bottomToTopStagedCount > 0) {
+                        promoteBottomToTopStagedMeasurementsForWindow(
+                            getBottomToTopCurrentWindow(),
+                            { includeAll: true }
+                        )
+                    }
                     updateDebugTailDistance()
                     return
                 }
@@ -2030,7 +2316,16 @@
                     gapFromBottom > Math.max(2, Math.round(heightManager.averageHeight * 0.5))
 
                 if (!userHasScrolledAway) {
-                    reconcileBottomToTopToBottom(2)
+                    if (bottomToTopStagedCount > 0) {
+                        promoteBottomToTopStagedMeasurementsForWindow(
+                            getBottomToTopCurrentWindow(),
+                            { includeAll: true }
+                        )
+                    } else {
+                        reconcileBottomToTopToBottom(2)
+                    }
+                } else if (bottomToTopStagedCount > 0) {
+                    promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())
                 }
 
                 updateDebugTailDistance()
@@ -2385,10 +2680,14 @@
                     ? bottomToTopMeasurementQueue.size
                     : 0,
                 backfillPending: useDedicatedBottomToTopEngine
-                    ? bottomToTopBackfillRafId !== null
+                    ? bottomToTopBackfillRafId !== null || bottomToTopBackfillTimeoutId !== null
                     : false,
                 reconcileActive: useDedicatedBottomToTopEngine
                     ? bottomToTopMaintainingBottom
+                    : false,
+                stagedMeasurementCount: useDedicatedBottomToTopEngine ? bottomToTopStagedCount : 0,
+                stagedPromotionPending: useDedicatedBottomToTopEngine
+                    ? bottomToTopPromotionScheduled
                     : false
             }
         )
@@ -2524,7 +2823,7 @@
                 align: align || 'auto',
                 targetIndex: physicalTargetIndex,
                 itemsLength: items.length,
-                calculatedItemHeight: heightManager.averageHeight,
+                calculatedItemHeight: heightManager.itemHeight,
                 height,
                 scrollTop: heightManager.scrollTop,
                 firstVisibleIndex: bottomToTopPhysicalWindow.startPhysical,

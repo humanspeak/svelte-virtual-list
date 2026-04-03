@@ -18,6 +18,16 @@ test.describe('BottomToTop Small Items', () => {
         await expect(page.locator('[data-testid="list-item-1"]')).toContainText('Item 1')
     })
 
+    test('should expose staged and tracked debug stats on the smallItems page', async ({
+        page
+    }) => {
+        await expect(page.locator('[data-testid="bottom-to-top-small-stats"]')).toBeVisible()
+        await expect(page.locator('[data-testid="stats-measured"]')).toContainText('Measured')
+        await expect(page.locator('[data-testid="stats-measured"]')).toContainText('staged 0')
+        await expect(page.locator('[data-testid="stats-measured"]')).toContainText('tracked 2')
+        await expect(page.locator('[data-testid="stats-queue"]')).toContainText('promote false')
+    })
+
     test('should position items at the bottom of viewport in bottomToTop mode', async ({
         page
     }) => {

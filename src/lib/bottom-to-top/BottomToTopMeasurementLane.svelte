@@ -1,6 +1,6 @@
 <script lang="ts" generics="TItem = unknown">
     import type { Snippet } from 'svelte'
-    import { onMount, tick } from 'svelte'
+    import { tick } from 'svelte'
     import type { BottomToTopMeasurementTask } from './BottomToTopController.js'
 
     let {
@@ -13,8 +13,6 @@
         onMeasure: (physicalIndex: number, height: number) => void
     } = $props()
 
-    let resizeObserver: ResizeObserver | null = null
-
     const stripConflictingAttributes = (node: HTMLElement) => {
         node.removeAttribute('data-testid')
         node.removeAttribute('id')
@@ -26,40 +24,33 @@
     }
 
     const observeMeasurementItem = (node: HTMLElement) => {
-        void tick().then(() => {
+        let cancelled = false
+
+        const measure = (attempt = 0) => {
+            if (cancelled) return
             stripConflictingAttributes(node)
-            resizeObserver?.observe(node)
             const height = node.getBoundingClientRect().height
             const physicalIndex = Number.parseInt(node.dataset.measurePhysicalIndex || '-1', 10)
             if (Number.isFinite(height) && height > 0 && physicalIndex >= 0) {
                 onMeasure(physicalIndex, height)
+                return
             }
+
+            if (attempt < 2) {
+                requestAnimationFrame(() => measure(attempt + 1))
+            }
+        }
+
+        void tick().then(() => {
+            requestAnimationFrame(() => measure())
         })
 
         return {
             destroy() {
-                resizeObserver?.unobserve(node)
+                cancelled = true
             }
         }
     }
-
-    onMount(() => {
-        resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const node = entry.target as HTMLElement
-                stripConflictingAttributes(node)
-                const physicalIndex = Number.parseInt(node.dataset.measurePhysicalIndex || '-1', 10)
-                const height = node.getBoundingClientRect().height
-                if (physicalIndex >= 0 && Number.isFinite(height) && height > 0) {
-                    onMeasure(physicalIndex, height)
-                }
-            }
-        })
-
-        return () => {
-            resizeObserver?.disconnect()
-        }
-    })
 </script>
 
 <div class="bottom-to-top-measurement-lane" aria-hidden="true">

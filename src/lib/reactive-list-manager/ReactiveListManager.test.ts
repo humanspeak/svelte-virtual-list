@@ -167,6 +167,30 @@ describe('ReactiveListManager (alias)', () => {
             manager.reset()
             expect(manager.initialized).toBe(true)
         })
+
+        it('should merge measured heights in a single recompute pass', () => {
+            manager.mergeMeasuredHeights([
+                { index: 10, height: 55 },
+                { index: 11, height: 65 },
+                { index: 12, height: 75 }
+            ])
+
+            expect(manager.measuredCount).toBe(3)
+            expect(manager.totalMeasuredHeight).toBe(195)
+            expect(manager.getHeightCache()[10]).toBe(55)
+            expect(manager.getHeightCache()[11]).toBe(65)
+            expect(manager.getHeightCache()[12]).toBe(75)
+
+            manager.mergeMeasuredHeights([
+                { index: 11, height: 70 },
+                { index: 13, height: 80 }
+            ])
+
+            expect(manager.measuredCount).toBe(4)
+            expect(manager.totalMeasuredHeight).toBe(280)
+            expect(manager.getHeightCache()[11]).toBe(70)
+            expect(manager.getHeightCache()[13]).toBe(80)
+        })
     })
 
     describe('DOM References', () => {
@@ -505,6 +529,38 @@ describe('ReactiveListManager (alias)', () => {
                 { index: 2, oldHeight: undefined, newHeight: 11.75 }
             ])
             expect(manager.averageHeight).toBeCloseTo(10.5, 6)
+        })
+    })
+
+    describe('Fixed Estimate Mode', () => {
+        it('should keep totalHeight anchored to itemHeight for unmeasured items', () => {
+            const manager = new ReactiveListManager({
+                itemLength: 10000,
+                itemHeight: 22,
+                useFixedEstimateForUnmeasured: true
+            })
+
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 37 },
+                { index: 1, oldHeight: undefined, newHeight: 19 }
+            ])
+
+            expect(manager.averageHeight).toBe(28)
+            expect(manager.totalHeight).toBe(56 + 9998 * 22)
+        })
+
+        it('should rebuild block sums when fixed estimate mode is enabled', () => {
+            const manager = new ReactiveListManager({ itemLength: 2000, itemHeight: 40 })
+
+            manager.processDirtyHeights([{ index: 0, oldHeight: undefined, newHeight: 100 }])
+
+            expect(manager.getBlockSums()[0]).toBe(100000)
+            expect(manager.totalHeight).toBe(200000)
+
+            manager.useFixedEstimateForUnmeasured = true
+
+            expect(manager.getBlockSums()[0]).toBe(100 + 999 * 40)
+            expect(manager.totalHeight).toBe(100 + 1999 * 40)
         })
     })
 

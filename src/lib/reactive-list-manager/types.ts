@@ -20,6 +20,8 @@ export interface ListManagerConfig {
     itemLength: number
     /** Height to use for unmeasured items */
     itemHeight: number
+    /** Use the fixed itemHeight for unmeasured items instead of the measured average */
+    useFixedEstimateForUnmeasured?: boolean
     /** Whether to enable internal debug logging */
     internalDebug?: boolean
 }

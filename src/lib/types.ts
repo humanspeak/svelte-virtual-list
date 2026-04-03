@@ -134,6 +134,8 @@ export type SvelteVirtualListExtendedDebugInfo = SvelteVirtualListBaseDebugInfo 
     measurementQueueCount?: number
     backfillPending?: boolean
     reconcileActive?: boolean
+    stagedMeasurementCount?: number
+    stagedPromotionPending?: boolean
 }
 
 export type SvelteVirtualListDebugInfo =

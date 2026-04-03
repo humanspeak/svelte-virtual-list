@@ -607,6 +607,7 @@
             mode="bottomToTop"
             defaultEstimatedItemHeight={80}
             testId="streaming-list"
+            debug={true}
         >
             {#snippet renderItem(message)}
                 <div

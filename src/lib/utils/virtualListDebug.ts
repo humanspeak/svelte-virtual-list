@@ -136,6 +136,8 @@ export const createDebugInfo = (
         totalHeightPx: extras.totalHeightPx ?? totalHeight,
         measurementQueueCount: extras.measurementQueueCount ?? 0,
         backfillPending: extras.backfillPending ?? false,
-        reconcileActive: extras.reconcileActive ?? false
+        reconcileActive: extras.reconcileActive ?? false,
+        stagedMeasurementCount: extras.stagedMeasurementCount,
+        stagedPromotionPending: extras.stagedPromotionPending
     }
 }

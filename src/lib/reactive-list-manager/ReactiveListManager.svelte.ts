@@ -33,6 +33,7 @@ export class ReactiveListManager {
     private _itemHeight = $state(40)
     private _averageHeight = $state(40)
     private _totalHeight = $state(0)
+    private _useFixedEstimateForUnmeasured = false
     private _measuredFlags: Uint8Array | null = null
     private _initialized = $state(false)
     private _scrollTop = $state(0)
@@ -63,8 +64,16 @@ export class ReactiveListManager {
                 ? this._totalMeasuredHeight / this._measuredCount
                 : this._itemHeight
         this._averageHeight = average
-        const unmeasuredCount = this._itemLength - this._measuredCount
-        this._totalHeight = this._totalMeasuredHeight + unmeasuredCount * average
+        const unmeasuredCount = Math.max(0, this._itemLength - this._measuredCount)
+        const unmeasuredItemHeight = this._useFixedEstimateForUnmeasured
+            ? this._itemHeight
+            : average
+        this._totalHeight = this._totalMeasuredHeight + unmeasuredCount * unmeasuredItemHeight
+    }
+
+    private invalidateBlockSums(): void {
+        this._blockSums = []
+        this._blockSumsValid = false
     }
 
     /**
@@ -127,7 +136,19 @@ export class ReactiveListManager {
 
     set itemHeight(value: number) {
         this._itemHeight = value
+        this.invalidateBlockSums()
         this.scheduleRecomputeDerivedHeights()
+    }
+
+    get useFixedEstimateForUnmeasured(): boolean {
+        return this._useFixedEstimateForUnmeasured
+    }
+
+    set useFixedEstimateForUnmeasured(value: boolean) {
+        if (this._useFixedEstimateForUnmeasured === value) return
+        this._useFixedEstimateForUnmeasured = value
+        this.invalidateBlockSums()
+        this.recomputeDerivedHeights()
     }
 
     /**
@@ -416,7 +437,7 @@ export class ReactiveListManager {
         if (!this._blockSumsValid || this._blockSums.length === 0) {
             this._blockSums = buildBlockSums(
                 this._heightCache,
-                this._averageHeight,
+                this._useFixedEstimateForUnmeasured ? this._itemHeight : this._averageHeight,
                 this._itemLength,
                 this._blockSize
             )
@@ -433,6 +454,7 @@ export class ReactiveListManager {
     constructor(config: ListManagerConfig) {
         this._itemLength = config.itemLength
         this._itemHeight = config.itemHeight
+        this._useFixedEstimateForUnmeasured = config.useFixedEstimateForUnmeasured ?? false
         this._internalDebug = config.internalDebug ?? false
         this._measuredFlags = new Uint8Array(Math.max(0, this._itemLength))
         this.recomputeDerivedHeights()
@@ -518,8 +540,7 @@ export class ReactiveListManager {
         this._itemLength = newLength
         this._measuredFlags = new Uint8Array(Math.max(0, newLength))
         // Reset block sums since length changed
-        this._blockSums = []
-        this._blockSumsValid = false
+        this.invalidateBlockSums()
         // Immediate recompute so new items become visible without delay
         this.recomputeDerivedHeights()
     }
@@ -531,8 +552,7 @@ export class ReactiveListManager {
      */
     updateEstimatedHeight(newEstimatedHeight: number): void {
         // Keep a single source of truth for the estimated height
-        this._itemHeight = newEstimatedHeight
-        this.scheduleRecomputeDerivedHeights()
+        this.itemHeight = newEstimatedHeight
     }
 
     /**
@@ -553,6 +573,50 @@ export class ReactiveListManager {
             this.invalidateBlockSumsFrom(index)
             this.scheduleRecomputeDerivedHeights()
         }
+    }
+
+    /**
+     * Merge multiple measured heights in a single recompute pass.
+     *
+     * Used by the dedicated bottomToTop engine to promote staged offscreen
+     * measurements into the live geometry without repeatedly thrashing totals
+     * and block sums per item.
+     */
+    mergeMeasuredHeights(entries: Array<{ index: number; height: number }>): void {
+        if (entries.length === 0) return
+
+        let minChangedIndex = Infinity
+        let heightDelta = 0
+        let countDelta = 0
+
+        for (const entry of entries) {
+            const { index, height } = entry
+            if (index < 0 || index >= this._itemLength) continue
+            if (!Number.isFinite(height) || height <= 0) continue
+
+            minChangedIndex = Math.min(minChangedIndex, index)
+
+            const prev = this._heightCache[index]
+            if (Number.isFinite(prev) && (prev as number) > 0) {
+                heightDelta -= prev as number
+            } else {
+                countDelta += 1
+            }
+
+            this._heightCache[index] = height
+            heightDelta += height
+
+            if (this._measuredFlags && index < this._measuredFlags.length) {
+                this._measuredFlags[index] = 1
+            }
+        }
+
+        if (minChangedIndex === Infinity) return
+
+        this._totalMeasuredHeight += heightDelta
+        this._measuredCount += countDelta
+        this.invalidateBlockSumsFrom(minChangedIndex)
+        this.recomputeDerivedHeights()
     }
 
     /**
@@ -580,8 +644,7 @@ export class ReactiveListManager {
             }
         }
 
-        this._blockSums = []
-        this._blockSumsValid = false
+        this.invalidateBlockSums()
         this.recomputeDerivedHeights()
     }
 
@@ -595,8 +658,7 @@ export class ReactiveListManager {
         this._measuredCount = 0
         this._measuredFlags = this._itemLength > 0 ? new Uint8Array(this._itemLength) : null
         // Reset block sums
-        this._blockSums = []
-        this._blockSumsValid = false
+        this.invalidateBlockSums()
         // Note: Don't reset _itemLength, _itemHeight as they represent configuration, not measured state
         this.scheduleRecomputeDerivedHeights()
     }

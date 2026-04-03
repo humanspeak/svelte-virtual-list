@@ -3,6 +3,39 @@ import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 const VIEWPORT_SELECTOR = '[data-testid="basic-list-viewport"]'
 
+type BasicDebugSnapshot = {
+    scrollTop: number
+    maxScrollTop: number
+    measuredCount: number
+    stagedMeasurementCount: number
+    stagedPromotionPending: boolean
+    gapFromBottomPx: number
+}
+
+async function getBasicDebug(page: Page): Promise<BasicDebugSnapshot> {
+    return page.locator(VIEWPORT_SELECTOR).evaluate((element) => {
+        const el = element as HTMLElement & {
+            __svlDebug?: {
+                measuredCount?: number
+                stagedMeasurementCount?: number
+                stagedPromotionPending?: boolean
+                gapFromBottomPx?: number
+            }
+        }
+
+        return {
+            scrollTop: Math.round(el.scrollTop),
+            maxScrollTop: Math.round(el.scrollHeight - el.clientHeight),
+            measuredCount: el.__svlDebug?.measuredCount ?? 0,
+            stagedMeasurementCount: el.__svlDebug?.stagedMeasurementCount ?? 0,
+            stagedPromotionPending: el.__svlDebug?.stagedPromotionPending ?? false,
+            gapFromBottomPx:
+                el.__svlDebug?.gapFromBottomPx ??
+                Math.round(el.scrollHeight - el.clientHeight - el.scrollTop)
+        }
+    })
+}
+
 /**
  * Scrolls to max scroll position and waits for stabilization.
  * In bottomToTop mode, max scrollTop shows Item 0 at bottom.
@@ -89,6 +122,7 @@ test.describe('Basic BottomToTop Rendering', () => {
             const mountedText = getText('stats-mounted')
             const spacersText = getText('stats-spacers')
             const scrollText = getText('stats-scroll')
+            const queueText = getText('stats-queue')
 
             const measuredMatch = measuredText.match(/(\d+)\/(\d+)/)
             const mountedMatch = mountedText.match(/DOM\s+(\d+)/)
@@ -100,7 +134,9 @@ test.describe('Basic BottomToTop Rendering', () => {
                 totalItems: measuredMatch ? parseInt(measuredMatch[2] || '0', 10) : -1,
                 mountedCount: mountedMatch ? parseInt(mountedMatch[1] || '0', 10) : -1,
                 topSpacerPx: spacerMatch ? parseInt(spacerMatch[1] || '0', 10) : -1,
-                gapFromBottomPx: gapMatch ? parseInt(gapMatch[1] || '0', 10) : -1
+                gapFromBottomPx: gapMatch ? parseInt(gapMatch[1] || '0', 10) : -1,
+                measuredText,
+                queueText
             }
         })
 
@@ -110,6 +146,9 @@ test.describe('Basic BottomToTop Rendering', () => {
         expect(stats.mountedCount).toBeLessThan(100)
         expect(stats.topSpacerPx).toBeGreaterThanOrEqual(0)
         expect(stats.gapFromBottomPx).toBeLessThanOrEqual(2)
+        expect(stats.measuredText).toContain('staged')
+        expect(stats.measuredText).toContain('tracked')
+        expect(stats.queueText).toContain('promote')
     })
 
     test('should render correct item content for visible items', async ({ page }) => {
@@ -302,6 +341,39 @@ test.describe('Basic BottomToTop Rendering', () => {
         expect(after.total).toBe(10000)
         // Backfill should have measured significantly more than the initial visible set
         expect(after.measured).toBeGreaterThan(initial + 100)
+    })
+
+    test('should stage offscreen measurements while scrolled away', async ({ page }) => {
+        await scrollToMaxAndWait(page)
+
+        await page.evaluate((selector) => {
+            const el = document.querySelector(selector) as HTMLElement | null
+            if (!el) return
+            const maxScrollTop = el.scrollHeight - el.clientHeight
+            el.scrollTop = Math.max(0, maxScrollTop - 600)
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
+        }, VIEWPORT_SELECTOR)
+
+        await page.waitForTimeout(400)
+
+        const baseline = await getBasicDebug(page)
+        expect(baseline.gapFromBottomPx).toBeGreaterThan(100)
+
+        let maxMeasuredCount = baseline.measuredCount
+        let maxStagedCount = baseline.stagedMeasurementCount
+        let maxDrift = 0
+
+        for (let i = 0; i < 10; i++) {
+            await page.waitForTimeout(200)
+            const sample = await getBasicDebug(page)
+            maxMeasuredCount = Math.max(maxMeasuredCount, sample.measuredCount)
+            maxStagedCount = Math.max(maxStagedCount, sample.stagedMeasurementCount)
+            maxDrift = Math.max(maxDrift, Math.abs(sample.scrollTop - baseline.scrollTop))
+        }
+
+        expect(maxMeasuredCount).toBeLessThanOrEqual(baseline.measuredCount + 2)
+        expect(maxStagedCount).toBeGreaterThan(0)
+        expect(maxDrift).toBeLessThan(50)
     })
 
     test('should anchor scroll position during backfill when scrolled away', async ({

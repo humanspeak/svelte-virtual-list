@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { MULTI_ITEM_SETTLE_MS, rafWait, SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
 
 /**
@@ -11,6 +11,108 @@ import { MULTI_ITEM_SETTLE_MS, rafWait, SETTLE_MS } from '../../src/lib/test/uti
  */
 
 const PAGE_URL = '/tests/list/bottomToTop/firstItemHeightChange'
+const VIEWPORT_SELECTOR = '[data-testid="basic-list-viewport"]'
+
+type BottomToTopDebugSnapshot = {
+    scrollTop: number
+    maxScrollTop: number
+    measuredCount: number
+    stagedMeasurementCount: number
+    stagedPromotionPending: boolean
+    measurementQueueCount: number
+    backfillPending: boolean
+    gapFromBottomPx: number
+}
+
+async function waitForElementHeight(page: Page, testId: string, height: number, timeout = 2000) {
+    await page.waitForFunction(
+        ({ testId, height }) => {
+            const element = document.querySelector(
+                `[data-testid="${testId}"]`
+            ) as HTMLElement | null
+            return element?.offsetHeight === height
+        },
+        { testId, height },
+        { timeout }
+    )
+}
+
+async function getElementOffsetHeight(page: Page, testId: string) {
+    return page
+        .locator(`[data-testid="${testId}"]`)
+        .evaluate((el) => (el as HTMLElement).offsetHeight)
+}
+
+async function getBottomToTopDebug(page: Page): Promise<BottomToTopDebugSnapshot> {
+    return page.locator(VIEWPORT_SELECTOR).evaluate((element) => {
+        const el = element as HTMLElement & {
+            __svlDebug?: {
+                measuredCount?: number
+                stagedMeasurementCount?: number
+                stagedPromotionPending?: boolean
+                measurementQueueCount?: number
+                backfillPending?: boolean
+                gapFromBottomPx?: number
+            }
+        }
+        return {
+            scrollTop: Math.round(el.scrollTop),
+            maxScrollTop: Math.round(el.scrollHeight - el.clientHeight),
+            measuredCount: el.__svlDebug?.measuredCount ?? 0,
+            stagedMeasurementCount: el.__svlDebug?.stagedMeasurementCount ?? 0,
+            stagedPromotionPending: el.__svlDebug?.stagedPromotionPending ?? false,
+            measurementQueueCount: el.__svlDebug?.measurementQueueCount ?? 0,
+            backfillPending: el.__svlDebug?.backfillPending ?? false,
+            gapFromBottomPx:
+                el.__svlDebug?.gapFromBottomPx ??
+                Math.round(el.scrollHeight - el.clientHeight - el.scrollTop)
+        }
+    })
+}
+
+async function getTopVisibleAnchor(page: Page) {
+    return page.locator(VIEWPORT_SELECTOR).evaluate((element) => {
+        const viewport = element as HTMLElement
+        const viewportRect = viewport.getBoundingClientRect()
+        const candidates = Array.from(
+            viewport.querySelectorAll('[data-original-index]')
+        ) as HTMLElement[]
+
+        let anchor: { logicalIndex: number; offsetTop: number } | null = null
+        let bestDistance = Number.POSITIVE_INFINITY
+
+        for (const candidate of candidates) {
+            const rect = candidate.getBoundingClientRect()
+            if (rect.bottom <= viewportRect.top || rect.top >= viewportRect.bottom) continue
+
+            const distance = Math.abs(rect.top - viewportRect.top)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                const logicalIndex = Number.parseInt(candidate.dataset.originalIndex || '-1', 10)
+                if (logicalIndex >= 0) {
+                    anchor = {
+                        logicalIndex,
+                        offsetTop: rect.top - viewportRect.top
+                    }
+                }
+            }
+        }
+
+        return anchor
+    })
+}
+
+async function getAnchorOffset(page: Page, logicalIndex: number) {
+    return page.locator(VIEWPORT_SELECTOR).evaluate((element, currentLogicalIndex) => {
+        const viewport = element as HTMLElement
+        const viewportRect = viewport.getBoundingClientRect()
+        const anchor = viewport.querySelector(
+            `[data-original-index="${currentLogicalIndex}"]`
+        ) as HTMLElement | null
+        if (!anchor) return null
+        return anchor.getBoundingClientRect().top - viewportRect.top
+    }, logicalIndex)
+}
 
 test.describe('BottomToTop FirstItemHeightChange', () => {
     test.beforeEach(async ({ page }) => {
@@ -20,6 +122,17 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="basic-list-container"]')
     })
+
+    test('should expose staged and tracked debug stats on the height change page', async ({
+        page
+    }) => {
+        await expect(page.locator('[data-testid="bottom-to-top-height-stats"]')).toBeVisible()
+        await expect(page.locator('[data-testid="stats-measured"]')).toContainText('Measured')
+        await expect(page.locator('[data-testid="stats-measured"]')).toContainText('staged')
+        await expect(page.locator('[data-testid="stats-measured"]')).toContainText('tracked')
+        await expect(page.locator('[data-testid="stats-queue"]')).toContainText('promote')
+    })
+
     test('should render initial items with correct heights at bottom', async ({ page }) => {
         // Wait for initial render
         await page.waitForSelector('[data-testid="list-item-0"]')
@@ -74,13 +187,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         await page.clock.runFor(1000)
 
         // Wait for the height change to be applied and measured
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 100
-            },
-            { timeout: 2000 }
-        )
+        await waitForElementHeight(page, 'list-item-1', 100)
 
         // Verify the height change was applied
         const updatedHeight = await page.evaluate(() => {
@@ -100,13 +207,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         await page.clock.runFor(1000)
 
         // Wait for height change to be processed
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 100
-            },
-            { timeout: 2000 }
-        )
+        await waitForElementHeight(page, 'list-item-1', 100)
 
         // Advance fake clock so the scroll correction pipeline settles
         await page.clock.runFor(SETTLE_MS)
@@ -155,13 +256,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         await page.waitForSelector('[data-testid="basic-list-container"]')
 
         // After height change - wait for list-item-1 to have the new height
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 100
-            },
-            { timeout: 5000 }
-        )
+        await waitForElementHeight(page, 'list-item-1', 100, 5000)
 
         // Advance fake clock so the scroll correction pipeline settles
         await page.clock.runFor(SETTLE_MS)
@@ -199,42 +294,204 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         }
     })
 
+    test('should not drift back toward bottom after scrolling away post-resize', async ({
+        page
+    }) => {
+        const viewport = page.locator(VIEWPORT_SELECTOR)
+
+        await page.waitForSelector('[data-testid="list-item-1"]')
+        await page.clock.runFor(1000)
+        await waitForElementHeight(page, 'list-item-1', 100)
+        await rafWait(page, 2)
+
+        await viewport.evaluate((el) => {
+            el.scrollTop = Math.max(0, el.scrollTop - 600)
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
+        })
+        await page.waitForTimeout(200)
+
+        const initialSample = await getBottomToTopDebug(page)
+
+        expect(initialSample.maxScrollTop - initialSample.scrollTop).toBeGreaterThan(100)
+
+        let maxDrift = 0
+        let maxMeasuredCount = initialSample.measuredCount
+        let maxStagedCount = initialSample.stagedMeasurementCount
+
+        for (let i = 0; i < 10; i++) {
+            await page.waitForTimeout(200)
+            const sample = await getBottomToTopDebug(page)
+            maxDrift = Math.max(maxDrift, Math.abs(sample.scrollTop - initialSample.scrollTop))
+            maxMeasuredCount = Math.max(maxMeasuredCount, sample.measuredCount)
+            maxStagedCount = Math.max(maxStagedCount, sample.stagedMeasurementCount)
+        }
+
+        expect(maxMeasuredCount).toBe(initialSample.measuredCount)
+        expect(maxStagedCount).toBeGreaterThan(0)
+        expect(maxDrift).toBeLessThan(50)
+    })
+
+    test('should keep a visible height change stable while scrolled away', async ({ page }) => {
+        test.fail(
+            true,
+            'Known bug: a visible resize while scrolled away still moves the viewport anchor.'
+        )
+
+        await page.goto(`${PAGE_URL}?height10=140`, { waitUntil: 'domcontentloaded' })
+        await page.waitForSelector('[data-testid="basic-list-container"]')
+        await page.waitForSelector('[data-testid="list-item-10"]')
+
+        const viewport = page.locator(VIEWPORT_SELECTOR)
+        await viewport.evaluate((el) => {
+            el.scrollTop = Math.max(0, el.scrollTop - 240)
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
+        })
+        await page.waitForTimeout(200)
+
+        await expect(page.locator('[data-testid="list-item-10"]')).toBeVisible()
+
+        const anchor = await getTopVisibleAnchor(page)
+        expect(anchor).toBeTruthy()
+
+        await page.clock.runFor(1000)
+        await waitForElementHeight(page, 'list-item-10', 140)
+
+        let maxAnchorDrift = 0
+
+        for (let i = 0; i < 8; i++) {
+            await page.waitForTimeout(100)
+            await getBottomToTopDebug(page)
+
+            if (anchor) {
+                const currentOffset = await getAnchorOffset(page, anchor.logicalIndex)
+                if (currentOffset !== null) {
+                    maxAnchorDrift = Math.max(
+                        maxAnchorDrift,
+                        Math.abs(currentOffset - anchor.offsetTop)
+                    )
+                }
+            }
+        }
+
+        await expect(page.locator('[data-testid="list-item-10"]')).toBeVisible()
+        expect(maxAnchorDrift).toBeLessThan(50)
+    })
+
+    test('should promote staged measurements when they approach the visible band', async ({
+        page
+    }) => {
+        const viewport = page.locator(VIEWPORT_SELECTOR)
+
+        await page.waitForSelector('[data-testid="list-item-1"]')
+        await page.clock.runFor(1000)
+        await waitForElementHeight(page, 'list-item-1', 100)
+        await rafWait(page, 2)
+
+        await viewport.evaluate((el) => {
+            el.scrollTop = Math.max(0, el.scrollTop - 600)
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
+        })
+
+        let stagedPeak = 0
+        for (let i = 0; i < 12; i++) {
+            await page.waitForTimeout(200)
+            const sample = await getBottomToTopDebug(page)
+            stagedPeak = Math.max(stagedPeak, sample.stagedMeasurementCount)
+        }
+
+        expect(stagedPeak).toBeGreaterThan(0)
+
+        const beforePromotion = await getBottomToTopDebug(page)
+        await viewport.evaluate((el) => {
+            el.scrollTop = Math.max(0, el.scrollTop - 1800)
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
+        })
+        await page.waitForTimeout(200)
+
+        const anchor = await getTopVisibleAnchor(page)
+        expect(anchor).toBeTruthy()
+
+        let maxAnchorDrift = 0
+        let maxMeasuredCount = beforePromotion.measuredCount
+        let minStagedCount = beforePromotion.stagedMeasurementCount
+
+        for (let i = 0; i < 10; i++) {
+            await page.waitForTimeout(200)
+            const sample = await getBottomToTopDebug(page)
+            maxMeasuredCount = Math.max(maxMeasuredCount, sample.measuredCount)
+            minStagedCount = Math.min(minStagedCount, sample.stagedMeasurementCount)
+
+            if (anchor) {
+                const currentOffset = await getAnchorOffset(page, anchor.logicalIndex)
+                if (currentOffset !== null) {
+                    maxAnchorDrift = Math.max(
+                        maxAnchorDrift,
+                        Math.abs(currentOffset - anchor.offsetTop)
+                    )
+                }
+            }
+        }
+
+        expect(maxMeasuredCount).toBeGreaterThan(beforePromotion.measuredCount)
+        expect(minStagedCount).toBeLessThan(beforePromotion.stagedMeasurementCount)
+        expect(maxAnchorDrift).toBeLessThan(50)
+    })
+
+    test('should drain staged measurements when returning to bottom', async ({ page }) => {
+        const viewport = page.locator(VIEWPORT_SELECTOR)
+
+        await page.waitForSelector('[data-testid="list-item-1"]')
+        await page.clock.runFor(1000)
+        await waitForElementHeight(page, 'list-item-1', 100)
+        await rafWait(page, 2)
+
+        await viewport.evaluate((el) => {
+            el.scrollTop = Math.max(0, el.scrollTop - 600)
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
+        })
+
+        let stagedPeak = 0
+        for (let i = 0; i < 12; i++) {
+            await page.waitForTimeout(200)
+            const sample = await getBottomToTopDebug(page)
+            stagedPeak = Math.max(stagedPeak, sample.stagedMeasurementCount)
+        }
+
+        expect(stagedPeak).toBeGreaterThan(0)
+
+        const beforeReturn = await getBottomToTopDebug(page)
+        await viewport.evaluate((el) => {
+            el.scrollTop = el.scrollHeight - el.clientHeight
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
+        })
+
+        let finalSample = beforeReturn
+        for (let i = 0; i < 10; i++) {
+            await page.waitForTimeout(200)
+            finalSample = await getBottomToTopDebug(page)
+        }
+
+        expect(finalSample.stagedMeasurementCount).toBe(0)
+        expect(finalSample.measuredCount).toBeGreaterThan(beforeReturn.measuredCount)
+        expect(finalSample.gapFromBottomPx).toBeLessThanOrEqual(2)
+    })
+
     test('should handle multiple sequential height changes smoothly', async ({ page }) => {
         // Navigate with sequence: 100px → 150px → 50px (every 1 second)
         await page.goto(`${PAGE_URL}?height1=100,150,50`, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="list-item-1"]')
 
-        const item1 = page.locator('[data-testid="list-item-1"]')
-
         // Wait for first height change (100px)
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 100
-            },
-            { timeout: 2000 }
-        )
+        await waitForElementHeight(page, 'list-item-1', 100)
 
         // Wait for second height change (150px)
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 150
-            },
-            { timeout: 2000 }
-        )
+        await waitForElementHeight(page, 'list-item-1', 150)
 
         // Wait for third height change (50px)
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 50
-            },
-            { timeout: 2000 }
-        )
+        await waitForElementHeight(page, 'list-item-1', 50)
 
         // Verify final height
-        expect((await item1.boundingBox())?.height).toBe(50)
+        expect(await getElementOffsetHeight(page, 'list-item-1')).toBe(50)
 
         // In bottomToTop mode, large scroll adjustments are expected to maintain bottom anchor
         // const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)
@@ -251,30 +508,16 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
         // Wait for initial height change (100px)
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 100
-            },
-            { timeout: 2000 }
-        )
+        await waitForElementHeight(page, 'list-item-1', 100)
 
         // Wait for large height change (500px)
-        await page.waitForFunction(
-            () => {
-                const element = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                return element && element.getBoundingClientRect().height === 500
-            },
-            { timeout: 2000 }
-        )
+        await waitForElementHeight(page, 'list-item-1', 500)
 
         // Verify the large item is properly rendered
-        const finalBox = await page.locator('[data-testid="list-item-1"]').boundingBox()
-        expect(finalBox?.height).toBe(500)
+        expect(await getElementOffsetHeight(page, 'list-item-1')).toBe(500)
 
         // Verify container is still scrollable and functional
-        const containerHeight = (await container.boundingBox())?.height
-        expect(containerHeight).toBe(500) // Container should maintain its size
+        expect(await getElementOffsetHeight(page, 'basic-list-container')).toBe(500)
 
         // Verify we can still scroll within the viewport
         const scrollHeight = await viewport.evaluate((el) => el.scrollHeight)
@@ -291,30 +534,34 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         // Wait for all changes to be applied
         await page.waitForFunction(
             () => {
-                const item0 = document.querySelector('[data-testid="list-item-0"]') as HTMLElement
-                const item1 = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                const item2 = document.querySelector('[data-testid="list-item-2"]') as HTMLElement
-                const item3 = document.querySelector('[data-testid="list-item-3"]') as HTMLElement
+                const item0 = document.querySelector(
+                    '[data-testid="list-item-0"]'
+                ) as HTMLElement | null
+                const item1 = document.querySelector(
+                    '[data-testid="list-item-1"]'
+                ) as HTMLElement | null
+                const item2 = document.querySelector(
+                    '[data-testid="list-item-2"]'
+                ) as HTMLElement | null
+                const item3 = document.querySelector(
+                    '[data-testid="list-item-3"]'
+                ) as HTMLElement | null
 
                 return (
-                    item0 &&
-                    item0.getBoundingClientRect().height === 80 &&
-                    item1 &&
-                    item1.getBoundingClientRect().height === 100 &&
-                    item2 &&
-                    item2.getBoundingClientRect().height === 120 &&
-                    item3 &&
-                    item3.getBoundingClientRect().height === 60
+                    item0?.offsetHeight === 80 &&
+                    item1?.offsetHeight === 100 &&
+                    item2?.offsetHeight === 120 &&
+                    item3?.offsetHeight === 60
                 )
             },
             { timeout: 3000 }
         )
 
         // Verify all heights are correct
-        expect((await page.locator('[data-testid="list-item-0"]').boundingBox())?.height).toBe(80)
-        expect((await page.locator('[data-testid="list-item-1"]').boundingBox())?.height).toBe(100)
-        expect((await page.locator('[data-testid="list-item-2"]').boundingBox())?.height).toBe(120)
-        expect((await page.locator('[data-testid="list-item-3"]').boundingBox())?.height).toBe(60)
+        expect(await getElementOffsetHeight(page, 'list-item-0')).toBe(80)
+        expect(await getElementOffsetHeight(page, 'list-item-1')).toBe(100)
+        expect(await getElementOffsetHeight(page, 'list-item-2')).toBe(120)
+        expect(await getElementOffsetHeight(page, 'list-item-3')).toBe(60)
         await page.clock.runFor(MULTI_ITEM_SETTLE_MS)
         // Flush real browser callbacks (ResizeObserver) not controlled by fake clocks
         await rafWait(page, 2)
@@ -353,14 +600,13 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         // Wait for both height changes to be applied
         await page.waitForFunction(
             () => {
-                const item1 = document.querySelector('[data-testid="list-item-1"]') as HTMLElement
-                const item3 = document.querySelector('[data-testid="list-item-3"]') as HTMLElement
-                return (
-                    item1 &&
-                    item1.getBoundingClientRect().height === 100 &&
-                    item3 &&
-                    item3.getBoundingClientRect().height === 150
-                )
+                const item1 = document.querySelector(
+                    '[data-testid="list-item-1"]'
+                ) as HTMLElement | null
+                const item3 = document.querySelector(
+                    '[data-testid="list-item-3"]'
+                ) as HTMLElement | null
+                return item1?.offsetHeight === 100 && item3?.offsetHeight === 150
             },
             { timeout: 2000 }
         )

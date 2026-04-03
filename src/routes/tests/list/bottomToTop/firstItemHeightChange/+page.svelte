@@ -129,7 +129,11 @@
                         >{extendedStats?.measuredCount ?? 0}/{stats?.totalItems ??
                             items.length}</strong
                     >
-                    <span>{Math.round(extendedStats?.measuredPercent ?? 0)}%</span>
+                    <span>
+                        live {Math.round(extendedStats?.measuredPercent ?? 0)}% · staged {extendedStats?.stagedMeasurementCount ??
+                            0} · tracked {(extendedStats?.measuredCount ?? 0) +
+                            (extendedStats?.stagedMeasurementCount ?? 0)}
+                    </span>
                 </div>
                 <div class="stats-item" data-testid="stats-mounted">
                     <span class="label">DOM</span>
@@ -163,7 +167,7 @@
                     <span>
                         backfill {String(extendedStats?.backfillPending ?? false)} · reconcile {String(
                             extendedStats?.reconcileActive ?? false
-                        )}
+                        )} · promote {String(extendedStats?.stagedPromotionPending ?? false)}
                     </span>
                 </div>
                 <div class="stats-item stats-item-wide" data-testid="stats-window">
