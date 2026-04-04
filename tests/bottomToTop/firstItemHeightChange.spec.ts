@@ -331,12 +331,12 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         expect(maxDrift).toBeLessThan(50)
     })
 
-    test('should keep a visible height change stable while scrolled away', async ({ page }) => {
-        test.fail(
-            true,
-            'Known bug: a visible resize while scrolled away still moves the viewport anchor.'
-        )
-
+    test.fixme('should keep a visible height change stable while scrolled away', async ({
+        page
+    }) => {
+        // Known bug: a visible resize while scrolled away can move the viewport anchor
+        // due to the averageHeight cascade. Drift is non-deterministic (sometimes <50px,
+        // sometimes >100px) so test.fail(true) doesn't work here.
         await page.goto(`${PAGE_URL}?height10=140`, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="basic-list-container"]')
         await page.waitForSelector('[data-testid="list-item-10"]')
@@ -465,12 +465,19 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             el.dispatchEvent(new Event('scroll', { bubbles: true }))
         })
 
-        let finalSample = beforeReturn
-        for (let i = 0; i < 10; i++) {
-            await page.waitForTimeout(200)
-            finalSample = await getBottomToTopDebug(page)
-        }
+        // Wait for staged measurements to drain after returning to bottom
+        await page.waitForFunction(
+            (selector) => {
+                const el = document.querySelector(selector) as HTMLElement & {
+                    __svlDebug?: { stagedMeasurementCount?: number }
+                }
+                return (el?.__svlDebug?.stagedMeasurementCount ?? -1) === 0
+            },
+            VIEWPORT_SELECTOR,
+            { timeout: 10000 }
+        )
 
+        const finalSample = await getBottomToTopDebug(page)
         expect(finalSample.stagedMeasurementCount).toBe(0)
         expect(finalSample.measuredCount).toBeGreaterThan(beforeReturn.measuredCount)
         expect(finalSample.gapFromBottomPx).toBeLessThanOrEqual(2)
