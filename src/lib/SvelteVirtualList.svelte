@@ -188,6 +188,7 @@
         type BottomToTopModeState
     } from '$lib/bottom-to-top/BottomToTopStateMachine.js'
     import {
+        type BottomToTopMutation,
         detectBottomToTopMutation,
         getLogicalIndexFromPhysical,
         getPhysicalIndexFromLogical,
@@ -417,7 +418,8 @@
             overscan: bufferSize
         })
     )
-    let bottomToTopPreviousItems = $state<TItem[]>(items)
+    const snapshotBottomToTopItems = (source: TItem[]) => source.slice()
+    let bottomToTopPreviousItems = $state<TItem[]>(snapshotBottomToTopItems(items))
     const bottomToTopMeasurementQueue = new SvelteSet<number>()
     let bottomToTopReconcileRafId: number | null = null
     let bottomToTopBackfillRafId: number | null = null
@@ -1172,6 +1174,12 @@
         offsetTop: number
     }
 
+    type BottomToTopMutationAnchor = {
+        item: TItem
+        fallbackLogicalIndex: number
+        offsetTop: number
+    }
+
     const hasBottomToTopStagedHeight = (physicalIndex: number) =>
         Number.isFinite(bottomToTopStagedHeights[physicalIndex])
 
@@ -1248,7 +1256,7 @@
             .sort((a, b) => a.index - b.index)
     }
 
-    const captureBottomToTopPromotionAnchor = (): BottomToTopPromotionAnchor | null => {
+    const getBottomToTopViewportAnchorCandidate = () => {
         if (!heightManager.viewportElement) return null
 
         const viewportRect = heightManager.viewport.getBoundingClientRect()
@@ -1272,6 +1280,18 @@
 
         if (!anchorElement) return null
 
+        return {
+            anchorElement,
+            viewportRect
+        }
+    }
+
+    const captureBottomToTopPromotionAnchor = (): BottomToTopPromotionAnchor | null => {
+        const anchorCandidate = getBottomToTopViewportAnchorCandidate()
+        if (!anchorCandidate) return null
+
+        const { anchorElement, viewportRect } = anchorCandidate
+
         const logicalIndex = Number.parseInt(anchorElement.dataset.originalIndex || '-1', 10)
         if (logicalIndex < 0) return null
 
@@ -1281,26 +1301,25 @@
         }
     }
 
-    const reconcileBottomToTopPromotionAnchor = (anchor: BottomToTopPromotionAnchor | null) => {
-        if (!anchor || !heightManager.viewportElement) return
+    const reconcileBottomToTopLogicalAnchor = (logicalIndex: number, offsetTop: number) => {
+        if (!heightManager.viewportElement) return
+        if (logicalIndex < 0 || logicalIndex >= items.length) return
 
         const viewportRect = heightManager.viewport.getBoundingClientRect()
         const anchorElement = heightManager.viewport.querySelector(
-            `[data-original-index="${anchor.logicalIndex}"]`
+            `[data-original-index="${logicalIndex}"]`
         ) as HTMLElement | null
 
         if (anchorElement) {
             const currentOffsetTop = anchorElement.getBoundingClientRect().top - viewportRect.top
-            const delta = currentOffsetTop - anchor.offsetTop
+            const delta = currentOffsetTop - offsetTop
             if (Math.abs(delta) > 0.5) {
                 syncScrollTop(heightManager.viewport.scrollTop + delta)
             }
             return
         }
 
-        if (anchor.logicalIndex < 0 || anchor.logicalIndex >= items.length) return
-
-        const physicalIndex = getPhysicalIndexFromLogical(anchor.logicalIndex, items.length)
+        const physicalIndex = getPhysicalIndexFromLogical(logicalIndex, items.length)
         const offsetToIndex = getScrollOffsetForIndex(
             heightManager.getHeightCache(),
             heightManager.itemHeight,
@@ -1308,13 +1327,89 @@
             heightManager.getBlockSums()
         )
         const targetScrollTop = clampValue(
-            Math.round(offsetToIndex - anchor.offsetTop),
+            Math.round(offsetToIndex - offsetTop),
             0,
             getViewportMaxScrollTop()
         )
         if (Math.abs(heightManager.viewport.scrollTop - targetScrollTop) > 0.5) {
             syncScrollTop(targetScrollTop, true)
         }
+    }
+
+    const reconcileBottomToTopPromotionAnchor = (anchor: BottomToTopPromotionAnchor | null) => {
+        if (!anchor) return
+        reconcileBottomToTopLogicalAnchor(anchor.logicalIndex, anchor.offsetTop)
+    }
+
+    const captureBottomToTopMutationAnchor = (
+        previousItems: TItem[]
+    ): BottomToTopMutationAnchor | null => {
+        const anchorCandidate = getBottomToTopViewportAnchorCandidate()
+        if (!anchorCandidate) return null
+
+        const { anchorElement, viewportRect } = anchorCandidate
+        const logicalIndex = Number.parseInt(anchorElement.dataset.originalIndex || '-1', 10)
+        if (logicalIndex < 0 || logicalIndex >= previousItems.length) return null
+
+        return {
+            item: previousItems[logicalIndex],
+            fallbackLogicalIndex: logicalIndex,
+            offsetTop: anchorElement.getBoundingClientRect().top - viewportRect.top
+        }
+    }
+
+    const reconcileBottomToTopMutationAnchor = (
+        anchor: BottomToTopMutationAnchor | null,
+        currentItems: TItem[]
+    ) => {
+        if (!anchor) return
+
+        let logicalIndex = currentItems.indexOf(anchor.item)
+        if (
+            logicalIndex === -1 &&
+            anchor.fallbackLogicalIndex >= 0 &&
+            anchor.fallbackLogicalIndex < currentItems.length
+        ) {
+            logicalIndex = anchor.fallbackLogicalIndex
+        }
+        if (logicalIndex < 0) return
+
+        reconcileBottomToTopLogicalAnchor(logicalIndex, anchor.offsetTop)
+    }
+
+    const remapBottomToTopMeasurementQueue = (
+        nextLength: number,
+        mutation: BottomToTopMutation
+    ) => {
+        if (!useDedicatedBottomToTopEngine || bottomToTopMeasurementQueue.size === 0) return
+
+        const queuedIndices: Record<number, number> = {}
+        for (const physicalIndex of bottomToTopMeasurementQueue) {
+            queuedIndices[physicalIndex] = 1
+        }
+
+        const remappedQueuedIndices = remapPhysicalMeasurementsForMutation(
+            queuedIndices,
+            nextLength,
+            mutation
+        )
+
+        bottomToTopMeasurementQueue.clear()
+        for (const key of Object.keys(remappedQueuedIndices)) {
+            const physicalIndex = Number.parseInt(key, 10)
+            if (!Number.isFinite(physicalIndex)) continue
+            bottomToTopMeasurementQueue.add(physicalIndex)
+        }
+    }
+
+    const getBottomToTopMutationEstimatedScrollDelta = (mutation: BottomToTopMutation) => {
+        if (mutation.kind === 'appendLogicalEnd') {
+            return mutation.delta * heightManager.itemHeight
+        }
+        if (mutation.kind === 'removeLogicalEnd') {
+            return mutation.delta * heightManager.itemHeight * -1
+        }
+        return 0
     }
 
     const promoteBottomToTopStagedMeasurementsForWindow = (
@@ -1398,28 +1493,61 @@
         bottomToTopMaintainingBottom = false
     }
 
+    const commitBottomToTopLiveMeasurements = (
+        entries: Array<{ index: number; height: number }>,
+        {
+            maintainBottomLock = false,
+            preserveAnchor = false
+        }: { maintainBottomLock?: boolean; preserveAnchor?: boolean } = {}
+    ) => {
+        if (entries.length === 0) return false
+
+        const anchor = preserveAnchor ? captureBottomToTopPromotionAnchor() : null
+
+        for (const entry of entries) {
+            deleteBottomToTopStagedHeight(entry.index)
+        }
+
+        heightManager.mergeMeasuredHeights(entries)
+
+        if (!heightManager.viewportElement) return true
+
+        if (maintainBottomLock) {
+            tick().then(() => {
+                if (!heightManager.viewportElement || !shouldMaintainBottomToTopBottomLock()) return
+                syncScrollTop(getViewportMaxScrollTop(), true)
+            })
+            reconcileBottomToTopToBottom(2)
+            return true
+        }
+
+        if (anchor) {
+            tick().then(() => {
+                if (!heightManager.viewportElement || shouldMaintainBottomToTopBottomLock()) return
+                reconcileBottomToTopPromotionAnchor(anchor)
+            })
+        }
+
+        return true
+    }
+
     const commitBottomToTopLiveMeasurement = (
         physicalIndex: number,
         measuredHeight: number,
-        { maintainBottomLock = false }: { maintainBottomLock?: boolean } = {}
-    ) => {
-        deleteBottomToTopStagedHeight(physicalIndex)
-        heightManager.setMeasuredHeight(physicalIndex, measuredHeight)
-        heightManager.flushRecompute()
-
-        if (!heightManager.viewportElement || !maintainBottomLock) return
-
-        tick().then(() => {
-            if (!heightManager.viewportElement || !shouldMaintainBottomToTopBottomLock()) return
-            syncScrollTop(getViewportMaxScrollTop(), true)
+        {
+            maintainBottomLock = false,
+            preserveAnchor = false
+        }: { maintainBottomLock?: boolean; preserveAnchor?: boolean } = {}
+    ) =>
+        commitBottomToTopLiveMeasurements([{ index: physicalIndex, height: measuredHeight }], {
+            maintainBottomLock,
+            preserveAnchor
         })
-        reconcileBottomToTopToBottom(2)
-    }
 
     const measureBottomToTopVisibleItemsImmediately = () => {
         if (!useDedicatedBottomToTopEngine) return false
 
-        let changed = false
+        const pendingEntries: Array<{ index: number; height: number }> = []
         for (const element of itemElements) {
             if (!element) continue
 
@@ -1440,12 +1568,14 @@
                 continue
             }
 
-            commitBottomToTopLiveMeasurement(physicalIndex, measuredHeight)
+            pendingEntries.push({ index: physicalIndex, height: measuredHeight })
             bottomToTopMeasurementQueue.delete(physicalIndex)
-            changed = true
         }
 
-        return changed
+        return commitBottomToTopLiveMeasurements(pendingEntries, {
+            maintainBottomLock: shouldMaintainBottomToTopBottomLock(),
+            preserveAnchor: userHasScrolledAway
+        })
     }
 
     const handleBottomToTopMeasurement = (physicalIndex: number, measuredHeight: number) => {
@@ -1492,7 +1622,9 @@
             return
         }
 
-        commitBottomToTopLiveMeasurement(physicalIndex, measuredHeight)
+        commitBottomToTopLiveMeasurement(physicalIndex, measuredHeight, {
+            preserveAnchor: userHasScrolledAway
+        })
     }
 
     const reconcileBottomToTopToBottom = (frames = 3) => {
@@ -1745,12 +1877,17 @@
     $effect(() => {
         if (!useDedicatedBottomToTopEngine) return
         const currentItems = items
+        const currentItemsLength = items.length
 
         untrack(() => {
             const previousItems = bottomToTopPreviousItems
+            const maintainBottomLock = shouldMaintainBottomToTopBottomLock()
+            const mutationAnchor = maintainBottomLock
+                ? null
+                : captureBottomToTopMutationAnchor(previousItems)
 
-            if (previousItems.length === currentItems.length) {
-                bottomToTopPreviousItems = currentItems
+            if (previousItems.length === currentItemsLength) {
+                bottomToTopPreviousItems = snapshotBottomToTopItems(currentItems)
                 return
             }
 
@@ -1760,11 +1897,11 @@
                 bottomToTopModeState === 'lockedBottom' || bottomToTopModeState === 'initializing'
 
             if (mutation.kind === 'replace') {
-                heightManager.updateItemLength(currentItems.length)
+                heightManager.updateItemLength(currentItemsLength)
                 heightManager.replaceMeasurements({})
                 bottomToTopMeasurementQueue.clear()
                 clearBottomToTopStagedHeights()
-                bottomToTopPreviousItems = currentItems
+                bottomToTopPreviousItems = snapshotBottomToTopItems(currentItems)
                 bottomToTopModeState = bottomToTopStateMachine.enterInitializing()
                 bottomToTopScrollComplete = false
                 initializeBottomToTopWindow()
@@ -1773,23 +1910,36 @@
 
             const remappedMeasurements = remapPhysicalMeasurementsForMutation(
                 heightManager.getHeightCache(),
-                currentItems.length,
+                currentItemsLength,
                 mutation
             )
             const remappedStagedMeasurements = remapPhysicalMeasurementsForMutation(
                 bottomToTopStagedHeights,
-                currentItems.length,
+                currentItemsLength,
                 mutation
             )
-            heightManager.updateItemLength(currentItems.length)
+            heightManager.updateItemLength(currentItemsLength)
             heightManager.replaceMeasurements(remappedMeasurements)
             replaceBottomToTopStagedHeights(remappedStagedMeasurements)
+            remapBottomToTopMeasurementQueue(currentItemsLength, mutation)
+
+            if (!maintainBottomLock) {
+                const estimatedMutationDelta = getBottomToTopMutationEstimatedScrollDelta(mutation)
+                if (estimatedMutationDelta !== 0) {
+                    const viewportHeight = heightManager.viewportElement?.clientHeight ?? height
+                    heightManager.scrollTop = clampValue(
+                        heightManager.scrollTop + estimatedMutationDelta,
+                        0,
+                        Math.max(0, heightManager.totalHeight - viewportHeight)
+                    )
+                }
+            }
 
             const insertedIndices: number[] = []
             if (mutation.kind === 'prependLogicalStart') {
                 for (
-                    let index = currentItems.length - mutation.delta;
-                    index < currentItems.length;
+                    let index = currentItemsLength - mutation.delta;
+                    index < currentItemsLength;
                     index += 1
                 ) {
                     insertedIndices.push(index)
@@ -1801,7 +1951,7 @@
             }
             queueBottomToTopMeasurements(insertedIndices)
 
-            bottomToTopPreviousItems = currentItems
+            bottomToTopPreviousItems = snapshotBottomToTopItems(currentItems)
 
             tick().then(() => {
                 if (!heightManager.viewportElement) return
@@ -1818,6 +1968,8 @@
                         syncScrollTop(getViewportMaxScrollTop(), true)
                         reconcileBottomToTopToBottom(4)
                     }
+                } else if (mutationAnchor) {
+                    reconcileBottomToTopMutationAnchor(mutationAnchor, currentItems)
                 }
             })
         })
@@ -2460,7 +2612,7 @@
                 void visibleItems // Cache once to avoid reactive loops
 
                 if (useDedicatedBottomToTopEngine) {
-                    let didUpdatePhysicalHeights = false
+                    const pendingEntries: Array<{ index: number; height: number }> = []
 
                     for (const entry of entries) {
                         const element = entry.target as HTMLElement
@@ -2486,20 +2638,21 @@
                             continue
                         }
 
-                        heightManager.setMeasuredHeight(physicalIndex, currentHeight)
+                        pendingEntries.push({ index: physicalIndex, height: currentHeight })
+                        deleteBottomToTopStagedHeight(physicalIndex)
                         bottomToTopMeasurementQueue.delete(physicalIndex)
-                        didUpdatePhysicalHeights = true
                     }
 
-                    if (didUpdatePhysicalHeights) {
+                    if (pendingEntries.length > 0) {
+                        const maintainBottomLock = shouldMaintainBottomToTopBottomLock()
+                        const anchor = maintainBottomLock
+                            ? null
+                            : captureBottomToTopPromotionAnchor()
                         const oldTotal = heightManager.totalHeight
 
-                        heightManager.flushRecompute()
+                        heightManager.mergeMeasuredHeights(pendingEntries)
 
-                        if (
-                            bottomToTopModeState === 'lockedBottom' ||
-                            bottomToTopModeState === 'initializing'
-                        ) {
+                        if (maintainBottomLock) {
                             userHasScrolledAway = false
 
                             // A single item resize shifts averageHeight, cascading through
@@ -2519,6 +2672,16 @@
                                 syncScrollTop(heightManager.viewport.scrollTop + totalDelta, true)
                             }
                             reconcileBottomToTopToBottom(4)
+                        } else if (anchor) {
+                            tick().then(() => {
+                                if (
+                                    !heightManager.viewportElement ||
+                                    shouldMaintainBottomToTopBottomLock()
+                                ) {
+                                    return
+                                }
+                                reconcileBottomToTopPromotionAnchor(anchor)
+                            })
                         }
                     }
                     return

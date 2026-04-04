@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { rafWait, scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
+import { scrollByWheel } from '../../src/lib/test/utils/rafWait.js'
 
 /**
  * Comprehensive test suite for bottomToTop mode with dynamic item loading.
@@ -39,6 +39,19 @@ async function getLoadItemsDebug(page: Page) {
                 Math.round(el.scrollHeight - el.clientHeight - el.scrollTop)
         } satisfies LoadItemsDebugSnapshot
     })
+}
+
+async function waitForLoadItemsAppendSettle(page: Page) {
+    await page.waitForFunction(
+        (selector) => {
+            const viewport = document.querySelector(selector) as HTMLElement | null
+            if (!viewport) return false
+            return viewport.scrollHeight - viewport.clientHeight > 100000
+        },
+        VIEWPORT_SELECTOR,
+        { timeout: 5000 }
+    )
+    await page.waitForTimeout(100)
 }
 
 test.describe('BottomToTop LoadItems', () => {
@@ -195,7 +208,7 @@ test.describe('BottomToTop LoadItems', () => {
 
         await page.clock.fastForward(1000)
         await page.waitForSelector('[data-testid="list-item-2"]')
-        await rafWait(page, 3)
+        await waitForLoadItemsAppendSettle(page)
 
         const viewport = page.locator(VIEWPORT_SELECTOR)
         await viewport.evaluate((el) => {
@@ -258,9 +271,7 @@ test.describe('BottomToTop LoadItems', () => {
         // Advance timers to trigger setTimeout and then allow frames to settle
         await page.clock.fastForward(1000)
         await page.waitForSelector('[data-testid="list-item-2"]')
-
-        // Extra rafWait for slower browsers (webkit)
-        await rafWait(page, 3)
+        await waitForLoadItemsAppendSettle(page)
 
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
@@ -268,39 +279,15 @@ test.describe('BottomToTop LoadItems', () => {
         await viewport.evaluate((el) => {
             el.scrollTo({ top: 0, behavior: 'auto' })
             ;(el as HTMLElement).scrollTop = 0
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
         })
-        // Wait for a stable scrollTop near 0 across consecutive frames (handles engine timing)
         await page.waitForFunction(
-            () => {
-                const el = document.querySelector(
-                    '[data-testid="basic-list-viewport"]'
-                ) as HTMLElement | null
-                if (!el) return false
-                const w = window as unknown as {
-                    __svlStableCountTop?: number
-                    __svlLastTop?: number
-                    __svlRetriesTop?: number
-                }
-                const current = el.scrollTop
-                if (typeof w.__svlStableCountTop !== 'number') {
-                    w.__svlStableCountTop = 0
-                    w.__svlLastTop = current
-                    w.__svlRetriesTop = 0
-                }
-                const nearTop = current < 100
-                if (nearTop && current === w.__svlLastTop) {
-                    w.__svlStableCountTop += 1
-                } else {
-                    w.__svlStableCountTop = 0
-                    if ((w.__svlRetriesTop ?? 0) < 3) {
-                        el.scrollTop = 0
-                        w.__svlRetriesTop = (w.__svlRetriesTop ?? 0) + 1
-                    }
-                }
-                w.__svlLastTop = current
-                return w.__svlStableCountTop >= 3
+            (selector) => {
+                const el = document.querySelector(selector) as HTMLElement | null
+                return !!el && el.scrollTop < 100
             },
-            { timeout: 8000 }
+            '[data-testid="basic-list-viewport"]',
+            { timeout: 3000 }
         )
 
         // In bottomToTop mode, scrollTop=0 shows the HIGHEST indexed items (top of content)
@@ -308,8 +295,9 @@ test.describe('BottomToTop LoadItems', () => {
         await page.waitForSelector('[data-testid="list-item-9999"]', { timeout: 3000 })
         await expect(page.locator('[data-testid="list-item-9999"]')).toBeVisible()
 
-        // Extra wait before scrolling back (webkit needs more time)
-        await rafWait(page, 2)
+        // Let the DOM settle using a real runner-side wait; requestAnimationFrame
+        // is controlled by Playwright fake clocks in this file.
+        await page.waitForTimeout(100)
 
         // Should be able to scroll back to bottom
         await viewport.evaluate((el) => {
@@ -317,41 +305,17 @@ test.describe('BottomToTop LoadItems', () => {
             const maxScroll = el.scrollHeight - el.clientHeight
             el.scrollTo({ top: maxScroll, behavior: 'auto' })
             ;(el as HTMLElement).scrollTop = maxScroll
+            el.dispatchEvent(new Event('scroll', { bubbles: true }))
         })
-        // Wait for scrollTop to stabilize at max position
         await page.waitForFunction(
-            () => {
-                const el = document.querySelector(
-                    '[data-testid="basic-list-viewport"]'
-                ) as HTMLElement | null
+            (selector) => {
+                const el = document.querySelector(selector) as HTMLElement | null
                 if (!el) return false
-                const w = window as unknown as {
-                    __svlStableCountBottom?: number
-                    __svlLastBottom?: number
-                    __svlRetriesBottom?: number
-                }
-                const current = el.scrollTop
                 const maxScroll = el.scrollHeight - el.clientHeight
-                if (typeof w.__svlStableCountBottom !== 'number') {
-                    w.__svlStableCountBottom = 0
-                    w.__svlLastBottom = current
-                    w.__svlRetriesBottom = 0
-                }
-                // Check if we're near the max scroll position
-                const nearMax = Math.abs(current - maxScroll) < 100
-                if (nearMax && current === w.__svlLastBottom) {
-                    w.__svlStableCountBottom += 1
-                } else {
-                    w.__svlStableCountBottom = 0
-                    if ((w.__svlRetriesBottom ?? 0) < 3) {
-                        el.scrollTop = maxScroll
-                        w.__svlRetriesBottom = (w.__svlRetriesBottom ?? 0) + 1
-                    }
-                }
-                w.__svlLastBottom = current
-                return w.__svlStableCountBottom >= 3
+                return Math.abs(maxScroll - el.scrollTop) < 100
             },
-            { timeout: 8000 }
+            '[data-testid="basic-list-viewport"]',
+            { timeout: 3000 }
         )
 
         const finalScrollTop = await viewport.evaluate((el) => el.scrollTop)
