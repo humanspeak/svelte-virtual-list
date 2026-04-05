@@ -114,6 +114,20 @@ async function getAnchorOffset(page: Page, logicalIndex: number) {
     }, logicalIndex)
 }
 
+async function getDistanceFromViewportBottom(page: Page, testId: string) {
+    return page.locator(VIEWPORT_SELECTOR).evaluate((element, currentTestId) => {
+        const viewport = element as HTMLElement
+        const viewportRect = viewport.getBoundingClientRect()
+        const item = viewport.querySelector(
+            `[data-testid="${currentTestId}"]`
+        ) as HTMLElement | null
+        if (!item) return null
+
+        const itemRect = item.getBoundingClientRect()
+        return viewportRect.bottom - itemRect.bottom
+    }, testId)
+}
+
 test.describe('BottomToTop FirstItemHeightChange', () => {
     test.beforeEach(async ({ page }) => {
         // Install fake timers for page.clock.runFor usage in tests
@@ -228,6 +242,48 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
             // Item 0 should still be near the bottom, indicating no unwanted scroll jumping
             expect(distanceFromBottom).toBeLessThan(50)
         }
+    })
+
+    test('should keep the bottom anchor visually stable while item 1 grows', async ({ page }) => {
+        await page.waitForSelector('[data-testid="list-item-1"]')
+
+        await page.clock.runFor(1000)
+        await waitForElementHeight(page, 'list-item-1', 100)
+
+        const bottomOffsets: number[] = []
+
+        for (let i = 0; i < 10; i++) {
+            await rafWait(page, 1)
+            const offset = await getDistanceFromViewportBottom(page, 'list-item-0')
+            expect(offset).not.toBeNull()
+            bottomOffsets.push(offset ?? 0)
+            await page.waitForTimeout(100)
+        }
+
+        const minOffset = Math.min(...bottomOffsets)
+        const maxOffset = Math.max(...bottomOffsets)
+        expect(maxOffset - minOffset).toBeLessThanOrEqual(5)
+    })
+
+    test('should keep the bottom gap stable after the height change settles', async ({ page }) => {
+        await page.waitForSelector('[data-testid="list-item-1"]')
+
+        await page.clock.runFor(1000)
+        await waitForElementHeight(page, 'list-item-1', 100)
+        await page.clock.runFor(SETTLE_MS)
+        await rafWait(page, 2)
+
+        const gapSamples: number[] = []
+
+        for (let i = 0; i < 10; i++) {
+            const sample = await getBottomToTopDebug(page)
+            gapSamples.push(sample.gapFromBottomPx)
+            await page.waitForTimeout(100)
+        }
+
+        const gapOscillation = Math.max(...gapSamples) - Math.min(...gapSamples)
+
+        expect(gapOscillation).toBeLessThanOrEqual(2)
     })
 
     test('should not cause scroll jumping when height changes', async ({ page }) => {

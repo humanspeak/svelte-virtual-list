@@ -405,6 +405,7 @@
     )
     const instanceId = Math.random().toString(36).slice(2, 7)
     const HEIGHT_CHANGE_TOLERANCE = 0.1
+    const DEDICATED_HEIGHT_CHANGE_TOLERANCE_PX = 1
     const BOTTOM_TO_TOP_BACKFILL_DELAY_MS = 48
     const bottomToTopStateMachine = new BottomToTopStateMachine()
     let bottomToTopModeState = $state<BottomToTopModeState>(
@@ -457,9 +458,30 @@
         heightManager.scrollTop = scrollValue
     }
 
+    const normalizeDedicatedMeasuredHeight = (heightValue: number) => {
+        if (!Number.isFinite(heightValue) || heightValue <= 0) return 0
+        return Math.max(1, Math.round(heightValue))
+    }
+
+    const isDedicatedHeightWithinTolerance = (previous: number | undefined, next: number) =>
+        Number.isFinite(previous) &&
+        Number.isFinite(next) &&
+        Math.abs((previous as number) - next) < DEDICATED_HEIGHT_CHANGE_TOLERANCE_PX
+
+    const getRoundedViewportScrollTop = () => {
+        if (!heightManager.viewportElement) {
+            return Math.round(heightManager.scrollTop)
+        }
+
+        return Math.round(heightManager.viewport.scrollTop)
+    }
+
     const getViewportMaxScrollTop = () => {
         if (!heightManager.viewportElement) {
-            return Math.max(0, totalHeight - height)
+            const estimatedMaxScrollTop = Math.max(0, totalHeight - height)
+            return useDedicatedBottomToTopEngine
+                ? Math.round(estimatedMaxScrollTop)
+                : estimatedMaxScrollTop
         }
 
         const clientHeight = heightManager.viewport.clientHeight
@@ -470,17 +492,28 @@
         // The DOM can report a small phantom scroll range from min-height/layout rounding, which
         // incorrectly nudges the viewport away from the static bottom-aligned state.
         if (mode === 'bottomToTop' && totalHeight <= clientHeight + 1) {
-            return estimatedMaxScrollTop
+            return useDedicatedBottomToTopEngine
+                ? Math.round(estimatedMaxScrollTop)
+                : estimatedMaxScrollTop
         }
 
-        return Math.max(estimatedMaxScrollTop, domMaxScrollTop)
+        const maxScrollTop = Math.max(estimatedMaxScrollTop, domMaxScrollTop)
+        return useDedicatedBottomToTopEngine ? Math.round(maxScrollTop) : maxScrollTop
     }
+
+    const getRoundedViewportMaxScrollTop = () => Math.round(getViewportMaxScrollTop())
+
+    const getRoundedGapFromBottomPx = () =>
+        getRoundedViewportMaxScrollTop() - getRoundedViewportScrollTop()
 
     const isViewportNearBottom = (
         tolerance = Math.max(2, Math.round(heightManager.averageHeight))
     ) => {
         if (!heightManager.viewportElement) return false
-        return getViewportMaxScrollTop() - heightManager.viewport.scrollTop <= tolerance
+        const gapFromBottom = useDedicatedBottomToTopEngine
+            ? getRoundedGapFromBottomPx()
+            : getViewportMaxScrollTop() - heightManager.viewport.scrollTop
+        return gapFromBottom <= tolerance
     }
 
     let bottomPinRafId: number | null = null
@@ -633,7 +666,8 @@
 
         const viewportRect = heightManager.viewport.getBoundingClientRect()
         const anchorRect = anchorElement.getBoundingClientRect()
-        return anchorRect.bottom - viewportRect.bottom
+        const delta = anchorRect.bottom - viewportRect.bottom
+        return useDedicatedBottomToTopEngine ? Math.round(delta) : delta
     }
 
     const scheduleBottomLockGeometryReconcile = (frames = 3) => {
@@ -1141,7 +1175,7 @@
             return { topSpacer: 0, bottomSpacer: 0 }
         }
 
-        return calculateBottomToTopSpacers({
+        const spacers = calculateBottomToTopSpacers({
             window: bottomToTopPhysicalWindow,
             heightCache: heightManager.getHeightCache(),
             itemHeight: heightManager.itemHeight,
@@ -1149,6 +1183,15 @@
             totalHeight,
             blockSums: heightManager.getBlockSums()
         })
+
+        if (!shouldMaintainBottomToTopBottomLock()) {
+            return spacers
+        }
+
+        return {
+            topSpacer: Math.round(spacers.topSpacer),
+            bottomSpacer: Math.round(spacers.bottomSpacer)
+        }
     })
 
     const bottomToTopMeasurementTasks = $derived.by(() => {
@@ -1184,17 +1227,15 @@
         Number.isFinite(bottomToTopStagedHeights[physicalIndex])
 
     const setBottomToTopStagedHeight = (physicalIndex: number, heightValue: number) => {
-        if (!Number.isFinite(heightValue) || heightValue <= 0) return false
+        const normalizedHeight = normalizeDedicatedMeasuredHeight(heightValue)
+        if (normalizedHeight <= 0) return false
 
         const previous = bottomToTopStagedHeights[physicalIndex]
-        if (
-            Number.isFinite(previous) &&
-            Math.abs((previous as number) - heightValue) < HEIGHT_CHANGE_TOLERANCE
-        ) {
+        if (isDedicatedHeightWithinTolerance(previous, normalizedHeight)) {
             return false
         }
 
-        bottomToTopStagedHeights[physicalIndex] = heightValue
+        bottomToTopStagedHeights[physicalIndex] = normalizedHeight
         bottomToTopStagedCount = Object.keys(bottomToTopStagedHeights).length
         return true
     }
@@ -1424,7 +1465,17 @@
             return
         }
 
+        const heightCache = heightManager.getHeightCache()
         const entries = getBottomToTopPromotionEntries(window, includeAll)
+            .map((entry) => ({
+                index: entry.index,
+                height: normalizeDedicatedMeasuredHeight(entry.height)
+            }))
+            .filter(
+                (entry) =>
+                    entry.height > 0 &&
+                    !isDedicatedHeightWithinTolerance(heightCache[entry.index], entry.height)
+            )
         if (entries.length === 0) return
 
         const maintainBottomLock = shouldMaintainBottomToTopBottomLock()
@@ -1502,13 +1553,35 @@
     ) => {
         if (entries.length === 0) return false
 
-        const anchor = preserveAnchor ? captureBottomToTopPromotionAnchor() : null
+        const heightCache = heightManager.getHeightCache()
+        const normalizedEntriesByIndex = new Map<number, number>()
 
         for (const entry of entries) {
+            if (entry.index < 0 || entry.index >= items.length) continue
+
+            const normalizedHeight = normalizeDedicatedMeasuredHeight(entry.height)
+            if (normalizedHeight <= 0) continue
+            if (isDedicatedHeightWithinTolerance(heightCache[entry.index], normalizedHeight)) {
+                deleteBottomToTopStagedHeight(entry.index)
+                continue
+            }
+
+            normalizedEntriesByIndex.set(entry.index, normalizedHeight)
+        }
+
+        const normalizedEntries = Array.from(normalizedEntriesByIndex, ([index, height]) => ({
+            index,
+            height
+        }))
+        if (normalizedEntries.length === 0) return false
+
+        const anchor = preserveAnchor ? captureBottomToTopPromotionAnchor() : null
+
+        for (const entry of normalizedEntries) {
             deleteBottomToTopStagedHeight(entry.index)
         }
 
-        heightManager.mergeMeasuredHeights(entries)
+        heightManager.mergeMeasuredHeights(normalizedEntries)
 
         if (!heightManager.viewportElement) return true
 
@@ -1555,14 +1628,13 @@
             if (logicalIndex < 0) continue
 
             const physicalIndex = getPhysicalIndexFromLogical(logicalIndex, items.length)
-            const measuredHeight = element.getBoundingClientRect().height
+            const measuredHeight = normalizeDedicatedMeasuredHeight(
+                element.getBoundingClientRect().height
+            )
             const cachedHeight = heightManager.getHeightCache()[physicalIndex]
 
-            if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) continue
-            if (
-                Number.isFinite(cachedHeight) &&
-                Math.abs((cachedHeight as number) - measuredHeight) < HEIGHT_CHANGE_TOLERANCE
-            ) {
+            if (measuredHeight <= 0) continue
+            if (isDedicatedHeightWithinTolerance(cachedHeight, measuredHeight)) {
                 deleteBottomToTopStagedHeight(physicalIndex)
                 bottomToTopMeasurementQueue.delete(physicalIndex)
                 continue
@@ -1581,15 +1653,14 @@
     const handleBottomToTopMeasurement = (physicalIndex: number, measuredHeight: number) => {
         if (!useDedicatedBottomToTopEngine) return
         if (physicalIndex < 0 || physicalIndex >= items.length) return
-        if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) return
+
+        const normalizedHeight = normalizeDedicatedMeasuredHeight(measuredHeight)
+        if (normalizedHeight <= 0) return
 
         const cachedHeight = heightManager.getHeightCache()[physicalIndex]
         const stagedHeight = bottomToTopStagedHeights[physicalIndex]
 
-        if (
-            Number.isFinite(cachedHeight) &&
-            Math.abs((cachedHeight as number) - measuredHeight) < HEIGHT_CHANGE_TOLERANCE
-        ) {
+        if (isDedicatedHeightWithinTolerance(cachedHeight, normalizedHeight)) {
             deleteBottomToTopStagedHeight(physicalIndex)
             bottomToTopMeasurementQueue.delete(physicalIndex)
             return
@@ -1597,8 +1668,7 @@
 
         if (
             !Number.isFinite(cachedHeight) &&
-            Number.isFinite(stagedHeight) &&
-            Math.abs((stagedHeight as number) - measuredHeight) < HEIGHT_CHANGE_TOLERANCE
+            isDedicatedHeightWithinTolerance(stagedHeight, normalizedHeight)
         ) {
             bottomToTopMeasurementQueue.delete(physicalIndex)
             return
@@ -1611,18 +1681,18 @@
             physicalIndex >= window.startPhysical && physicalIndex < window.endPhysical
 
         if (shouldMaintainBottomToTopBottomLock()) {
-            commitBottomToTopLiveMeasurement(physicalIndex, measuredHeight, {
+            commitBottomToTopLiveMeasurement(physicalIndex, normalizedHeight, {
                 maintainBottomLock: true
             })
             return
         }
 
         if (userHasScrolledAway && !isInsideWindow) {
-            setBottomToTopStagedHeight(physicalIndex, measuredHeight)
+            setBottomToTopStagedHeight(physicalIndex, normalizedHeight)
             return
         }
 
-        commitBottomToTopLiveMeasurement(physicalIndex, measuredHeight, {
+        commitBottomToTopLiveMeasurement(physicalIndex, normalizedHeight, {
             preserveAnchor: userHasScrolledAway
         })
     }
@@ -1654,11 +1724,8 @@
                 return
             }
 
-            const domMaxScrollTop = Math.max(
-                0,
-                heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
-            )
-            const domGap = domMaxScrollTop - heightManager.viewport.scrollTop
+            const domMaxScrollTop = getRoundedViewportMaxScrollTop()
+            const domGap = getRoundedGapFromBottomPx()
             if (domGap > 1) {
                 syncScrollTop(domMaxScrollTop, true)
             }
@@ -1666,7 +1733,7 @@
             const delta = getBottomAnchorDelta()
             if (delta !== null && Math.abs(delta) > 1) {
                 syncScrollTop(
-                    clampValue(heightManager.viewport.scrollTop + delta, 0, domMaxScrollTop),
+                    clampValue(getRoundedViewportScrollTop() + delta, 0, domMaxScrollTop),
                     true
                 )
                 stableFrames = 0
@@ -2409,14 +2476,20 @@
 
         if (useDedicatedBottomToTopEngine) {
             isScrolling = true
+            const bottomLockTolerance = Math.max(2, Math.round(heightManager.averageHeight * 0.5))
+            const currentScrollTop = heightManager.viewport.scrollTop
+            const gapFromBottom = getRoundedGapFromBottomPx()
 
-            // Cancel reconcile immediately (before RAF) so it can't snap back
-            if (bottomToTopMaintainingBottom) {
-                const gap = getViewportMaxScrollTop() - heightManager.viewport.scrollTop
-                if (gap > Math.max(2, Math.round(heightManager.averageHeight * 0.5))) {
-                    cancelBottomToTopReconcile()
-                    userHasScrolledAway = true
-                }
+            heightManager.scrollTop = currentScrollTop
+            lastScrollTopSnapshot = currentScrollTop
+
+            // Capture scroll-away intent immediately so live measurements cannot
+            // observe a stale "locked bottom" state and snap the viewport back down.
+            if (gapFromBottom > bottomLockTolerance) {
+                userHasScrolledAway = true
+                cancelBottomToTopReconcile()
+            } else if (bottomToTopMaintainingBottom) {
+                userHasScrolledAway = false
             }
 
             if (scrollIdleTimer) {
@@ -2425,9 +2498,7 @@
             }
             scrollIdleTimer = window.setTimeout(() => {
                 isScrolling = false
-                if (
-                    isViewportNearBottom(Math.max(2, Math.round(heightManager.averageHeight * 0.5)))
-                ) {
+                if (isViewportNearBottom(bottomLockTolerance)) {
                     scheduleBottomToTopBackfill()
                 }
             }, SCROLL_IDLE_DELAY_MS)
@@ -2444,10 +2515,8 @@
 
                 // If reconcile is active but user initiated a scroll, cancel it
                 if (bottomToTopMaintainingBottom) {
-                    const gapFromBottom = getViewportMaxScrollTop() - current
-                    if (
-                        gapFromBottom > Math.max(2, Math.round(heightManager.averageHeight * 0.5))
-                    ) {
+                    const gapFromBottom = getRoundedGapFromBottomPx()
+                    if (gapFromBottom > bottomLockTolerance) {
                         cancelBottomToTopReconcile()
                         userHasScrolledAway = true
                         updateDebugTailDistance()
@@ -2463,9 +2532,8 @@
                     return
                 }
 
-                const gapFromBottom = getViewportMaxScrollTop() - current
-                userHasScrolledAway =
-                    gapFromBottom > Math.max(2, Math.round(heightManager.averageHeight * 0.5))
+                const gapFromBottom = getRoundedGapFromBottomPx()
+                userHasScrolledAway = gapFromBottom > bottomLockTolerance
 
                 if (!userHasScrolledAway) {
                     if (bottomToTopStagedCount > 0) {
@@ -2624,17 +2692,15 @@
                             logicalIndex,
                             items.length
                         )
-                        const currentHeight = element.getBoundingClientRect().height
+                        const currentHeight = normalizeDedicatedMeasuredHeight(
+                            element.getBoundingClientRect().height
+                        )
                         const cachedHeight = heightManager.getHeightCache()[physicalIndex]
                         const isSignificant =
                             !Number.isFinite(cachedHeight) ||
-                            Math.abs((cachedHeight as number) - currentHeight) >= 0.5
+                            !isDedicatedHeightWithinTolerance(cachedHeight, currentHeight)
 
-                        if (
-                            !Number.isFinite(currentHeight) ||
-                            currentHeight <= 0 ||
-                            !isSignificant
-                        ) {
+                        if (currentHeight <= 0 || !isSignificant) {
                             continue
                         }
 
@@ -2660,14 +2726,14 @@
                             // delta. We must update the spacer DOM directly and adjust
                             // scrollTop BEFORE Svelte re-renders, or the browser clamps
                             // scrollTop to the old (stale) scrollHeight.
-                            const totalDelta = heightManager.totalHeight - oldTotal
-                            if (Math.abs(totalDelta) > 1) {
+                            const totalDelta = Math.round(heightManager.totalHeight - oldTotal)
+                            if (Math.abs(totalDelta) > 0) {
                                 const topSpacerEl = heightManager.viewport.querySelector(
                                     '.virtual-list-spacer'
                                 ) as HTMLElement | null
                                 if (topSpacerEl) {
                                     const currentSpacerH = topSpacerEl.offsetHeight
-                                    topSpacerEl.style.height = `${currentSpacerH + totalDelta}px`
+                                    topSpacerEl.style.height = `${Math.max(0, currentSpacerH + totalDelta)}px`
                                 }
                                 syncScrollTop(heightManager.viewport.scrollTop + totalDelta, true)
                             }
