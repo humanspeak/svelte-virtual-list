@@ -429,6 +429,7 @@
     let bottomToTopStagedHeights = $state<Record<number, number>>({})
     let bottomToTopStagedCount = $state(0)
     let bottomToTopPromotionScheduled = $state(false)
+    let bottomToTopProgrammaticScrollRafId: number | null = null
 
     // Centralized debug logger gated by flags
     const log = (tag: string, payload?: unknown) => {
@@ -506,6 +507,13 @@
     const getRoundedGapFromBottomPx = () =>
         getRoundedViewportMaxScrollTop() - getRoundedViewportScrollTop()
 
+    const getBottomToTopBottomLockTolerancePx = () =>
+        Math.max(2, Math.round(heightManager.averageHeight * 0.5))
+
+    const isBottomToTopProgrammaticTargetNearBottom = (targetScrollTop: number) =>
+        Math.abs(Math.round(targetScrollTop) - getRoundedViewportMaxScrollTop()) <=
+        getBottomToTopBottomLockTolerancePx()
+
     const isViewportNearBottom = (
         tolerance = Math.max(2, Math.round(heightManager.averageHeight))
     ) => {
@@ -514,6 +522,64 @@
             ? getRoundedGapFromBottomPx()
             : getViewportMaxScrollTop() - heightManager.viewport.scrollTop
         return gapFromBottom <= tolerance
+    }
+
+    const cancelBottomToTopProgrammaticScroll = () => {
+        if (bottomToTopProgrammaticScrollRafId === null) return
+        cancelAnimationFrame(bottomToTopProgrammaticScrollRafId)
+        bottomToTopProgrammaticScrollRafId = null
+    }
+
+    const performDedicatedBottomToTopScroll = (targetScrollTop: number, smoothScroll: boolean) => {
+        if (!heightManager.viewportElement) return
+
+        cancelBottomToTopProgrammaticScroll()
+
+        const clampedTargetScrollTop = clampValue(
+            Math.round(targetScrollTop),
+            0,
+            getViewportMaxScrollTop()
+        )
+
+        if (!smoothScroll) {
+            syncScrollTop(clampedTargetScrollTop, true)
+            return
+        }
+
+        const startScrollTop = heightManager.viewport.scrollTop
+        const delta = clampedTargetScrollTop - startScrollTop
+        if (Math.abs(delta) <= 1) {
+            syncScrollTop(clampedTargetScrollTop, true)
+            return
+        }
+
+        const durationMs = 500
+        const startTime = performance.now()
+        const easeInOutCubic = (progress: number) =>
+            progress < 0.5
+                ? 4 * progress * progress * progress
+                : 1 - Math.pow(-2 * progress + 2, 3) / 2
+
+        const step = (now: number) => {
+            if (!heightManager.viewportElement || !programmaticScrollInProgress) {
+                bottomToTopProgrammaticScrollRafId = null
+                return
+            }
+
+            const progress = clampValue((now - startTime) / durationMs, 0, 1)
+            const easedProgress = easeInOutCubic(progress)
+            syncScrollTop(startScrollTop + delta * easedProgress, true)
+
+            if (progress < 1) {
+                bottomToTopProgrammaticScrollRafId = requestAnimationFrame(step)
+                return
+            }
+
+            syncScrollTop(clampedTargetScrollTop, true)
+            bottomToTopProgrammaticScrollRafId = null
+        }
+
+        bottomToTopProgrammaticScrollRafId = requestAnimationFrame(step)
     }
 
     let bottomPinRafId: number | null = null
@@ -1075,6 +1141,8 @@
     let userHasScrolledAway = $state(false)
     let pendingBottomPin = $state(false)
     let programmaticScrollInProgress = $state(false) // Prevent bottom-anchoring during programmatic scrolls
+    type BottomToTopProgrammaticIntent = 'none' | 'towardBottom' | 'awayFromBottom'
+    let bottomToTopProgrammaticIntent = $state<BottomToTopProgrammaticIntent>('none')
     let lastCalculatedHeight = $state(0)
     let lastItemsLength = $state(0)
     // Track last observed total height to compute precise deltas on item count changes
@@ -1210,7 +1278,13 @@
         bottomToTopModeState === 'initializing' ? bottomToTopInitWindow : bottomToTopPhysicalWindow
 
     const shouldMaintainBottomToTopBottomLock = () =>
-        bottomToTopModeState === 'initializing' || !userHasScrolledAway
+        bottomToTopModeState === 'initializing' ||
+        (!userHasScrolledAway && bottomToTopProgrammaticIntent !== 'awayFromBottom')
+
+    const shouldPreserveBottomToTopAnchor = () =>
+        userHasScrolledAway &&
+        bottomToTopProgrammaticIntent === 'none' &&
+        !programmaticScrollInProgress
 
     type BottomToTopPromotionAnchor = {
         logicalIndex: number
@@ -1479,7 +1553,9 @@
         if (entries.length === 0) return
 
         const maintainBottomLock = shouldMaintainBottomToTopBottomLock()
-        const anchor = maintainBottomLock ? null : captureBottomToTopPromotionAnchor()
+        const preserveAnchor = shouldPreserveBottomToTopAnchor()
+        const anchor =
+            !maintainBottomLock && preserveAnchor ? captureBottomToTopPromotionAnchor() : null
 
         bottomToTopPromotionScheduled = true
 
@@ -1497,7 +1573,7 @@
             if (shouldMaintainBottomToTopBottomLock()) {
                 syncScrollTop(getViewportMaxScrollTop(), true)
                 reconcileBottomToTopToBottom(2)
-            } else {
+            } else if (anchor) {
                 reconcileBottomToTopPromotionAnchor(anchor)
             }
 
@@ -1575,7 +1651,9 @@
         }))
         if (normalizedEntries.length === 0) return false
 
-        const anchor = preserveAnchor ? captureBottomToTopPromotionAnchor() : null
+        const maintainBottomLockNow = maintainBottomLock && shouldMaintainBottomToTopBottomLock()
+        const preserveAnchorNow = preserveAnchor && shouldPreserveBottomToTopAnchor()
+        const anchor = preserveAnchorNow ? captureBottomToTopPromotionAnchor() : null
 
         for (const entry of normalizedEntries) {
             deleteBottomToTopStagedHeight(entry.index)
@@ -1585,7 +1663,7 @@
 
         if (!heightManager.viewportElement) return true
 
-        if (maintainBottomLock) {
+        if (maintainBottomLockNow) {
             tick().then(() => {
                 if (!heightManager.viewportElement || !shouldMaintainBottomToTopBottomLock()) return
                 syncScrollTop(getViewportMaxScrollTop(), true)
@@ -1646,7 +1724,7 @@
 
         return commitBottomToTopLiveMeasurements(pendingEntries, {
             maintainBottomLock: shouldMaintainBottomToTopBottomLock(),
-            preserveAnchor: userHasScrolledAway
+            preserveAnchor: shouldPreserveBottomToTopAnchor()
         })
     }
 
@@ -1693,7 +1771,7 @@
         }
 
         commitBottomToTopLiveMeasurement(physicalIndex, normalizedHeight, {
-            preserveAnchor: userHasScrolledAway
+            preserveAnchor: shouldPreserveBottomToTopAnchor()
         })
     }
 
@@ -2476,7 +2554,7 @@
 
         if (useDedicatedBottomToTopEngine) {
             isScrolling = true
-            const bottomLockTolerance = Math.max(2, Math.round(heightManager.averageHeight * 0.5))
+            const bottomLockTolerance = getBottomToTopBottomLockTolerancePx()
             const currentScrollTop = heightManager.viewport.scrollTop
             const gapFromBottom = getRoundedGapFromBottomPx()
 
@@ -2711,9 +2789,11 @@
 
                     if (pendingEntries.length > 0) {
                         const maintainBottomLock = shouldMaintainBottomToTopBottomLock()
-                        const anchor = maintainBottomLock
-                            ? null
-                            : captureBottomToTopPromotionAnchor()
+                        const preserveAnchor = shouldPreserveBottomToTopAnchor()
+                        const anchor =
+                            !maintainBottomLock && preserveAnchor
+                                ? captureBottomToTopPromotionAnchor()
+                                : null
                         const oldTotal = heightManager.totalHeight
 
                         heightManager.mergeMeasuredHeights(pendingEntries)
@@ -2840,6 +2920,7 @@
                 cancelRenderedItemsBottomExtentMeasure()
                 cancelBottomPin()
                 cancelBottomToTopReconcile()
+                cancelBottomToTopProgrammaticScroll()
                 clearBottomToTopBackfill()
             }
         }
@@ -3064,29 +3145,30 @@
                 return
             }
 
+            const targetNearBottom = isBottomToTopProgrammaticTargetNearBottom(scrollTarget)
+            bottomToTopProgrammaticIntent = targetNearBottom ? 'towardBottom' : 'awayFromBottom'
             cancelBottomPin()
             cancelBottomToTopReconcile()
             clearBottomToTopBackfill()
+            if (!targetNearBottom) {
+                userHasScrolledAway = true
+            }
             programmaticScrollInProgress = true
 
-            heightManager.viewport.scrollTo({
-                top: scrollTarget,
-                behavior: smoothScroll ? 'smooth' : 'auto'
-            })
-
-            requestAnimationFrame(() => {
-                heightManager.scrollTop = scrollTarget
-            })
+            performDedicatedBottomToTopScroll(scrollTarget, smoothScroll ?? true)
 
             window.setTimeout(
                 () => {
-                    programmaticScrollInProgress = false
+                    cancelBottomToTopProgrammaticScroll()
                     if (!heightManager.viewportElement) return
-                    userHasScrolledAway = !isViewportNearBottom(
-                        Math.max(2, Math.round(heightManager.averageHeight * 0.5))
-                    )
-                    if (!userHasScrolledAway) {
+                    const nearBottom = isViewportNearBottom(getBottomToTopBottomLockTolerancePx())
+                    userHasScrolledAway = !nearBottom
+                    bottomToTopProgrammaticIntent = 'none'
+                    programmaticScrollInProgress = false
+                    if (nearBottom) {
                         reconcileBottomToTopToBottom(4)
+                    } else if (bottomToTopStagedCount > 0) {
+                        promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())
                     }
                 },
                 smoothScroll ? 500 : 100

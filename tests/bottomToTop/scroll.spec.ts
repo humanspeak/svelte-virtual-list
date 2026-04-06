@@ -13,6 +13,13 @@ test.describe('bottomToTop scroll', () => {
         await page.locator('select').selectOption(value)
     }
 
+    async function getViewportScrollState(page: Page) {
+        return page.locator('[data-testid="basic-list-viewport"]').evaluate((viewport) => ({
+            scrollTop: Math.round(viewport.scrollTop),
+            maxScrollTop: Math.round(viewport.scrollHeight - viewport.clientHeight)
+        }))
+    }
+
     for (const align of ['auto', 'top', 'bottom']) {
         test(`should scroll to the correct item with align=${align}`, async ({ page }) => {
             await setAlign(page, align)
@@ -97,5 +104,26 @@ test.describe('bottomToTop scroll', () => {
         const item2 = page.locator('[data-testid="list-item-501"]')
         await item2.waitFor({ state: 'visible', timeout: 10000 })
         await expect(item2).toBeVisible()
+    })
+
+    test('should leave bottom instead of snapping back to max during programmatic off-bottom scroll', async ({
+        page
+    }) => {
+        await setAlign(page, 'auto')
+        await page.locator('input[type=range]').fill('1234')
+
+        const baseline = await getViewportScrollState(page)
+        expect(baseline.maxScrollTop - baseline.scrollTop).toBeLessThanOrEqual(2)
+
+        await page.locator('button').click()
+
+        let maxObservedGap = 0
+        for (let i = 0; i < 10; i++) {
+            await page.waitForTimeout(100)
+            const sample = await getViewportScrollState(page)
+            maxObservedGap = Math.max(maxObservedGap, sample.maxScrollTop - sample.scrollTop)
+        }
+
+        expect(maxObservedGap).toBeGreaterThan(1000)
     })
 })
