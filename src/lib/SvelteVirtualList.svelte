@@ -407,6 +407,11 @@
     const HEIGHT_CHANGE_TOLERANCE = 0.1
     const DEDICATED_HEIGHT_CHANGE_TOLERANCE_PX = 1
     const BOTTOM_TO_TOP_BACKFILL_DELAY_MS = 48
+    const BOTTOM_TO_TOP_SCROLL_AWAY_SUPPRESSION_MS = 250
+    const BOTTOM_TO_TOP_FORCED_SCROLL_AWAY_PX = 96
+    const BOTTOM_TO_TOP_LOCKED_BOTTOM_DRAIN_MAX_ITEMS = 4
+    const BOTTOM_TO_TOP_LOCKED_BOTTOM_DRAIN_MAX_DELTA_PX = 64
+    const BOTTOM_TO_TOP_LOCKED_BOTTOM_DRAIN_SETTLE_FRAMES = 2
     const bottomToTopStateMachine = new BottomToTopStateMachine()
     let bottomToTopModeState = $state<BottomToTopModeState>(
         useDedicatedBottomToTopEngine ? bottomToTopStateMachine.enterInitializing() : 'lockedBottom'
@@ -429,7 +434,12 @@
     let bottomToTopStagedHeights = $state<Record<number, number>>({})
     let bottomToTopStagedCount = $state(0)
     let bottomToTopPromotionScheduled = $state(false)
+    let bottomToTopLockedBottomDrainRafId: number | null = null
+    let bottomToTopLockedBottomDrainScheduled = $state(false)
+    let bottomToTopLockedBottomDrainActive = $state(false)
+    let bottomToTopLockedBottomDrainSettleFramesRemaining = $state(0)
     let bottomToTopProgrammaticScrollRafId: number | null = null
+    let bottomToTopSuppressScrollAwayUntilMs = $state(0)
 
     // Centralized debug logger gated by flags
     const log = (tag: string, payload?: unknown) => {
@@ -457,6 +467,7 @@
         const scrollValue = round ? Math.round(value) : value
         heightManager.viewport.scrollTop = scrollValue
         heightManager.scrollTop = scrollValue
+        lastScrollTopSnapshot = scrollValue
     }
 
     const normalizeDedicatedMeasuredHeight = (heightValue: number) => {
@@ -509,6 +520,23 @@
 
     const getBottomToTopBottomLockTolerancePx = () =>
         Math.max(2, Math.round(heightManager.averageHeight * 0.5))
+
+    const suppressBottomToTopScrollAway = (
+        durationMs = BOTTOM_TO_TOP_SCROLL_AWAY_SUPPRESSION_MS
+    ) => {
+        bottomToTopSuppressScrollAwayUntilMs = performance.now() + durationMs
+    }
+
+    const shouldIgnoreDedicatedBottomToTopScrollAway = (
+        currentScrollTop: number,
+        previousScrollTop: number
+    ) =>
+        performance.now() < bottomToTopSuppressScrollAwayUntilMs &&
+        currentScrollTop >= previousScrollTop - 2
+
+    const shouldForceDedicatedBottomToTopScrollAway = (gapFromBottom: number) =>
+        gapFromBottom >
+        Math.max(BOTTOM_TO_TOP_FORCED_SCROLL_AWAY_PX, getBottomToTopBottomLockTolerancePx())
 
     const isBottomToTopProgrammaticTargetNearBottom = (targetScrollTop: number) =>
         Math.abs(Math.round(targetScrollTop) - getRoundedViewportMaxScrollTop()) <=
@@ -1346,6 +1374,79 @@
         return measuredIndices
     }
 
+    const clearBottomToTopLockedBottomDrainSchedule = () => {
+        if (bottomToTopLockedBottomDrainRafId !== null) {
+            cancelAnimationFrame(bottomToTopLockedBottomDrainRafId)
+            bottomToTopLockedBottomDrainRafId = null
+        }
+        bottomToTopLockedBottomDrainScheduled = false
+    }
+
+    const armBottomToTopLockedBottomDrainSettle = (
+        frames = BOTTOM_TO_TOP_LOCKED_BOTTOM_DRAIN_SETTLE_FRAMES
+    ) => {
+        bottomToTopLockedBottomDrainSettleFramesRemaining = Math.max(
+            bottomToTopLockedBottomDrainSettleFramesRemaining,
+            frames
+        )
+    }
+
+    const canDrainBottomToTopLockedBottomStaged = () =>
+        useDedicatedBottomToTopEngine &&
+        bottomToTopModeState === 'lockedBottom' &&
+        !userHasScrolledAway &&
+        !programmaticScrollInProgress &&
+        !isScrolling &&
+        bottomToTopMeasurementQueue.size === 0 &&
+        bottomToTopBackfillRafId === null &&
+        bottomToTopBackfillTimeoutId === null &&
+        !bottomToTopPromotionScheduled &&
+        bottomToTopStagedCount > 0
+
+    const getBottomToTopLockedBottomDrainEntries = (
+        window: BottomToTopWindow
+    ): Array<{ index: number; height: number }> => {
+        const sortedEntries = Object.entries(bottomToTopStagedHeights)
+            .map(([key, value]) => ({
+                index: Number.parseInt(key, 10),
+                height: value
+            }))
+            .filter(
+                (entry) =>
+                    Number.isFinite(entry.index) &&
+                    Number.isFinite(entry.height) &&
+                    entry.height > 0 &&
+                    entry.index >= 0 &&
+                    entry.index < window.startPhysical
+            )
+            .sort((a, b) => b.index - a.index)
+
+        const entries: Array<{ index: number; height: number }> = []
+        let totalDeltaPx = 0
+
+        for (const entry of sortedEntries) {
+            const estimatedDeltaPx = Math.abs(entry.height - heightManager.itemHeight)
+            if (entries.length > 0) {
+                if (entries.length >= BOTTOM_TO_TOP_LOCKED_BOTTOM_DRAIN_MAX_ITEMS) break
+                if (
+                    totalDeltaPx + estimatedDeltaPx >
+                    BOTTOM_TO_TOP_LOCKED_BOTTOM_DRAIN_MAX_DELTA_PX
+                ) {
+                    break
+                }
+            }
+
+            entries.push(entry)
+            totalDeltaPx += estimatedDeltaPx
+
+            if (entries.length >= BOTTOM_TO_TOP_LOCKED_BOTTOM_DRAIN_MAX_ITEMS) {
+                break
+            }
+        }
+
+        return entries
+    }
+
     const getBottomToTopPromotionEntries = (
         window: BottomToTopWindow,
         includeAll = false
@@ -1571,8 +1672,9 @@
             }
 
             if (shouldMaintainBottomToTopBottomLock()) {
+                armBottomToTopLockedBottomDrainSettle()
                 syncScrollTop(getViewportMaxScrollTop(), true)
-                reconcileBottomToTopToBottom(2)
+                scheduleBottomToTopLockedBottomDrain()
             } else if (anchor) {
                 reconcileBottomToTopPromotionAnchor(anchor)
             }
@@ -1581,9 +1683,7 @@
 
             if (bottomToTopStagedCount === 0) return
             const nextWindow = getBottomToTopCurrentWindow()
-            if (shouldMaintainBottomToTopBottomLock()) {
-                promoteBottomToTopStagedMeasurementsForWindow(nextWindow, { includeAll: true })
-            } else {
+            if (!shouldMaintainBottomToTopBottomLock()) {
                 promoteBottomToTopStagedMeasurementsForWindow(nextWindow)
             }
         })
@@ -1610,6 +1710,82 @@
             cancelAnimationFrame(bottomToTopBackfillRafId)
             bottomToTopBackfillRafId = null
         }
+    }
+
+    const drainBottomToTopLockedBottomStagedChunk = () => {
+        if (!canDrainBottomToTopLockedBottomStaged()) {
+            bottomToTopLockedBottomDrainActive = false
+            bottomToTopLockedBottomDrainScheduled = false
+            return
+        }
+
+        const window = getBottomToTopCurrentWindow()
+        const entries = getBottomToTopLockedBottomDrainEntries(window)
+        if (entries.length === 0) {
+            bottomToTopLockedBottomDrainActive = false
+            bottomToTopLockedBottomDrainScheduled = false
+            return
+        }
+
+        bottomToTopLockedBottomDrainScheduled = false
+        bottomToTopLockedBottomDrainActive = true
+
+        for (const entry of entries) {
+            deleteBottomToTopStagedHeight(entry.index)
+        }
+
+        heightManager.mergeMeasuredHeights(entries)
+        suppressBottomToTopScrollAway()
+
+        tick().then(() => {
+            if (
+                heightManager.viewportElement &&
+                bottomToTopModeState === 'lockedBottom' &&
+                shouldMaintainBottomToTopBottomLock()
+            ) {
+                syncScrollTop(getViewportMaxScrollTop(), true)
+            }
+
+            bottomToTopLockedBottomDrainActive = false
+
+            if (canDrainBottomToTopLockedBottomStaged()) {
+                scheduleBottomToTopLockedBottomDrain()
+            }
+        })
+    }
+
+    const scheduleBottomToTopLockedBottomDrain = () => {
+        if (
+            !useDedicatedBottomToTopEngine ||
+            bottomToTopLockedBottomDrainRafId !== null ||
+            bottomToTopLockedBottomDrainActive
+        ) {
+            return
+        }
+
+        bottomToTopLockedBottomDrainScheduled = true
+
+        const step = () => {
+            bottomToTopLockedBottomDrainRafId = null
+
+            if (!canDrainBottomToTopLockedBottomStaged()) {
+                bottomToTopLockedBottomDrainScheduled = false
+                return
+            }
+
+            if (bottomToTopLockedBottomDrainSettleFramesRemaining > 0) {
+                bottomToTopLockedBottomDrainSettleFramesRemaining = Math.max(
+                    0,
+                    bottomToTopLockedBottomDrainSettleFramesRemaining - 1
+                )
+                bottomToTopLockedBottomDrainRafId = requestAnimationFrame(step)
+                return
+            }
+
+            drainBottomToTopLockedBottomStagedChunk()
+        }
+
+        bottomToTopLockedBottomDrainRafId = requestAnimationFrame(step)
     }
 
     const cancelBottomToTopReconcile = () => {
@@ -1664,9 +1840,12 @@
         if (!heightManager.viewportElement) return true
 
         if (maintainBottomLockNow) {
+            armBottomToTopLockedBottomDrainSettle()
+            suppressBottomToTopScrollAway()
             tick().then(() => {
                 if (!heightManager.viewportElement || !shouldMaintainBottomToTopBottomLock()) return
                 syncScrollTop(getViewportMaxScrollTop(), true)
+                scheduleBottomToTopLockedBottomDrain()
             })
             reconcileBottomToTopToBottom(2)
             return true
@@ -1758,6 +1937,19 @@
         const isInsideWindow =
             physicalIndex >= window.startPhysical && physicalIndex < window.endPhysical
 
+        if (bottomToTopModeState === 'lockedBottom' && shouldMaintainBottomToTopBottomLock()) {
+            if (!isInsideWindow) {
+                setBottomToTopStagedHeight(physicalIndex, normalizedHeight)
+                scheduleBottomToTopLockedBottomDrain()
+                return
+            }
+
+            commitBottomToTopLiveMeasurement(physicalIndex, normalizedHeight, {
+                maintainBottomLock: true
+            })
+            return
+        }
+
         if (shouldMaintainBottomToTopBottomLock()) {
             commitBottomToTopLiveMeasurement(physicalIndex, normalizedHeight, {
                 maintainBottomLock: true
@@ -1777,6 +1969,10 @@
 
     const reconcileBottomToTopToBottom = (frames = 3) => {
         if (!useDedicatedBottomToTopEngine || !heightManager.viewportElement) return
+        if (userHasScrolledAway) {
+            bottomToTopMaintainingBottom = false
+            return
+        }
 
         // When content is shorter than viewport, flexbox handles positioning — no scroll reconcile needed
         if (totalHeight < (height || 0)) {
@@ -1797,7 +1993,11 @@
         const step = () => {
             bottomToTopReconcileRafId = null
 
-            if (!heightManager.viewportElement || programmaticScrollInProgress) {
+            if (
+                !heightManager.viewportElement ||
+                programmaticScrollInProgress ||
+                userHasScrolledAway
+            ) {
                 bottomToTopMaintainingBottom = false
                 return
             }
@@ -1808,15 +2008,26 @@
                 syncScrollTop(domMaxScrollTop, true)
             }
 
-            const delta = getBottomAnchorDelta()
-            if (delta !== null && Math.abs(delta) > 1) {
-                syncScrollTop(
-                    clampValue(getRoundedViewportScrollTop() + delta, 0, domMaxScrollTop),
-                    true
-                )
-                stableFrames = 0
-            } else if (domGap <= 1) {
-                stableFrames += 1
+            if (bottomToTopModeState === 'lockedBottom') {
+                // Once the dedicated engine is already locked to bottom, exact bottom wins.
+                // Applying an additional anchor delta here creates a second writer fighting
+                // the max-scroll snap and shows up as visible bounce in Firefox.
+                if (domGap <= 1) {
+                    stableFrames += 1
+                } else {
+                    stableFrames = 0
+                }
+            } else {
+                const delta = getBottomAnchorDelta()
+                if (delta !== null && Math.abs(delta) > 1) {
+                    syncScrollTop(
+                        clampValue(getRoundedViewportScrollTop() + delta, 0, domMaxScrollTop),
+                        true
+                    )
+                    stableFrames = 0
+                } else if (domGap <= 1) {
+                    stableFrames += 1
+                }
             }
 
             remainingFrames -= 1
@@ -1940,6 +2151,7 @@
         if (!useDedicatedBottomToTopEngine || !BROWSER || !heightManager.isReady || !items.length)
             return
 
+        void displayItems
         const window = getBottomToTopCurrentWindow()
         const indices: number[] = []
         for (
@@ -1954,12 +2166,15 @@
             const didMeasureVisibleItems = measureBottomToTopVisibleItemsImmediately()
 
             if (didMeasureVisibleItems && shouldMaintainBottomToTopBottomLock()) {
+                suppressBottomToTopScrollAway()
+                syncScrollTop(getViewportMaxScrollTop(), true)
                 reconcileBottomToTopToBottom(4)
             }
 
             if (bottomToTopStagedCount > 0) {
                 if (shouldMaintainBottomToTopBottomLock()) {
-                    promoteBottomToTopStagedMeasurementsForWindow(window, { includeAll: true })
+                    promoteBottomToTopStagedMeasurementsForWindow(window)
+                    scheduleBottomToTopLockedBottomDrain()
                 } else {
                     promoteBottomToTopStagedMeasurementsForWindow(window)
                 }
@@ -1999,6 +2214,18 @@
 
         if (isScrolling || bottomToTopMeasurementQueue.size > 0) {
             clearBottomToTopBackfill()
+            clearBottomToTopLockedBottomDrainSchedule()
+            return
+        }
+
+        if (
+            bottomToTopModeState === 'lockedBottom' &&
+            !userHasScrolledAway &&
+            !programmaticScrollInProgress &&
+            bottomToTopStagedCount > 0
+        ) {
+            clearBottomToTopBackfill()
+            scheduleBottomToTopLockedBottomDrain()
             return
         }
 
@@ -2012,11 +2239,26 @@
         const window = getBottomToTopCurrentWindow()
         untrack(() => {
             if (shouldMaintainBottomToTopBottomLock()) {
-                promoteBottomToTopStagedMeasurementsForWindow(window, { includeAll: true })
+                promoteBottomToTopStagedMeasurementsForWindow(window)
+                scheduleBottomToTopLockedBottomDrain()
             } else {
                 promoteBottomToTopStagedMeasurementsForWindow(window)
             }
         })
+    })
+
+    $effect(() => {
+        if (!useDedicatedBottomToTopEngine || !BROWSER || !heightManager.initialized) {
+            clearBottomToTopLockedBottomDrainSchedule()
+            return
+        }
+
+        if (!canDrainBottomToTopLockedBottomStaged()) {
+            clearBottomToTopLockedBottomDrainSchedule()
+            return
+        }
+
+        scheduleBottomToTopLockedBottomDrain()
     })
 
     $effect(() => {
@@ -2030,6 +2272,7 @@
             const mutationAnchor = maintainBottomLock
                 ? null
                 : captureBottomToTopMutationAnchor(previousItems)
+            clearBottomToTopLockedBottomDrainSchedule()
 
             if (previousItems.length === currentItemsLength) {
                 bottomToTopPreviousItems = snapshotBottomToTopItems(currentItems)
@@ -2102,17 +2345,18 @@
                 if (!heightManager.viewportElement) return
 
                 if (wasLockedBottom && shouldMaintainBottomToTopBottomLock()) {
-                    if (bottomToTopStagedCount > 0) {
-                        promoteBottomToTopStagedMeasurementsForWindow(
-                            getBottomToTopCurrentWindow(),
-                            {
-                                includeAll: true
-                            }
-                        )
-                    } else {
+                    armBottomToTopLockedBottomDrainSettle()
+                    suppressBottomToTopScrollAway()
+                    syncScrollTop(getViewportMaxScrollTop(), true)
+                    const didMeasureVisibleItems = measureBottomToTopVisibleItemsImmediately()
+                    if (didMeasureVisibleItems) {
                         syncScrollTop(getViewportMaxScrollTop(), true)
-                        reconcileBottomToTopToBottom(4)
                     }
+                    if (bottomToTopStagedCount > 0) {
+                        promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())
+                        scheduleBottomToTopLockedBottomDrain()
+                    }
+                    reconcileBottomToTopToBottom(4)
                 } else if (mutationAnchor) {
                     reconcileBottomToTopMutationAnchor(mutationAnchor, currentItems)
                 }
@@ -2557,6 +2801,7 @@
             const bottomLockTolerance = getBottomToTopBottomLockTolerancePx()
             const currentScrollTop = heightManager.viewport.scrollTop
             const gapFromBottom = getRoundedGapFromBottomPx()
+            const previousScrollTop = lastScrollTopSnapshot
 
             heightManager.scrollTop = currentScrollTop
             lastScrollTopSnapshot = currentScrollTop
@@ -2564,8 +2809,18 @@
             // Capture scroll-away intent immediately so live measurements cannot
             // observe a stale "locked bottom" state and snap the viewport back down.
             if (gapFromBottom > bottomLockTolerance) {
-                userHasScrolledAway = true
-                cancelBottomToTopReconcile()
+                if (shouldForceDedicatedBottomToTopScrollAway(gapFromBottom)) {
+                    userHasScrolledAway = true
+                    cancelBottomToTopReconcile()
+                } else if (
+                    shouldIgnoreDedicatedBottomToTopScrollAway(currentScrollTop, previousScrollTop)
+                ) {
+                    userHasScrolledAway = false
+                    reconcileBottomToTopToBottom(4)
+                } else {
+                    userHasScrolledAway = true
+                    cancelBottomToTopReconcile()
+                }
             } else if (bottomToTopMaintainingBottom) {
                 userHasScrolledAway = false
             }
@@ -2583,6 +2838,7 @@
 
             rafSchedule(() => {
                 const current = heightManager.viewport.scrollTop
+                const previous = previousScrollTop
                 heightManager.scrollTop = current
                 lastScrollTopSnapshot = current
 
@@ -2595,30 +2851,43 @@
                 if (bottomToTopMaintainingBottom) {
                     const gapFromBottom = getRoundedGapFromBottomPx()
                     if (gapFromBottom > bottomLockTolerance) {
+                        if (shouldForceDedicatedBottomToTopScrollAway(gapFromBottom)) {
+                            cancelBottomToTopReconcile()
+                            userHasScrolledAway = true
+                            updateDebugTailDistance()
+                            return
+                        }
+
+                        if (shouldIgnoreDedicatedBottomToTopScrollAway(current, previous)) {
+                            userHasScrolledAway = false
+                            reconcileBottomToTopToBottom(4)
+                            updateDebugTailDistance()
+                            return
+                        }
+
                         cancelBottomToTopReconcile()
                         userHasScrolledAway = true
                         updateDebugTailDistance()
                         return
                     }
                     if (bottomToTopStagedCount > 0) {
-                        promoteBottomToTopStagedMeasurementsForWindow(
-                            getBottomToTopCurrentWindow(),
-                            { includeAll: true }
-                        )
+                        promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())
+                        scheduleBottomToTopLockedBottomDrain()
                     }
                     updateDebugTailDistance()
                     return
                 }
 
                 const gapFromBottom = getRoundedGapFromBottomPx()
-                userHasScrolledAway = gapFromBottom > bottomLockTolerance
+                userHasScrolledAway =
+                    gapFromBottom > bottomLockTolerance &&
+                    (shouldForceDedicatedBottomToTopScrollAway(gapFromBottom) ||
+                        !shouldIgnoreDedicatedBottomToTopScrollAway(current, previous))
 
                 if (!userHasScrolledAway) {
                     if (bottomToTopStagedCount > 0) {
-                        promoteBottomToTopStagedMeasurementsForWindow(
-                            getBottomToTopCurrentWindow(),
-                            { includeAll: true }
-                        )
+                        promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())
+                        scheduleBottomToTopLockedBottomDrain()
                     } else {
                         reconcileBottomToTopToBottom(2)
                     }
@@ -2798,8 +3067,9 @@
 
                         heightManager.mergeMeasuredHeights(pendingEntries)
 
-                        if (maintainBottomLock) {
-                            userHasScrolledAway = false
+                        if (maintainBottomLock && shouldMaintainBottomToTopBottomLock()) {
+                            armBottomToTopLockedBottomDrainSettle()
+                            suppressBottomToTopScrollAway()
 
                             // A single item resize shifts averageHeight, cascading through
                             // all unmeasured items — often a thousands-of-pixels totalHeight
@@ -2817,7 +3087,18 @@
                                 }
                                 syncScrollTop(heightManager.viewport.scrollTop + totalDelta, true)
                             }
+                            syncScrollTop(getViewportMaxScrollTop(), true)
+                            tick().then(() => {
+                                if (
+                                    heightManager.viewportElement &&
+                                    shouldMaintainBottomToTopBottomLock()
+                                ) {
+                                    suppressBottomToTopScrollAway()
+                                    syncScrollTop(getViewportMaxScrollTop(), true)
+                                }
+                            })
                             reconcileBottomToTopToBottom(4)
+                            scheduleBottomToTopLockedBottomDrain()
                         } else if (anchor) {
                             tick().then(() => {
                                 if (
@@ -2998,6 +3279,12 @@
                 stagedMeasurementCount: useDedicatedBottomToTopEngine ? bottomToTopStagedCount : 0,
                 stagedPromotionPending: useDedicatedBottomToTopEngine
                     ? bottomToTopPromotionScheduled
+                    : false,
+                stagedDrainActive: useDedicatedBottomToTopEngine
+                    ? bottomToTopLockedBottomDrainActive
+                    : false,
+                stagedDrainScheduled: useDedicatedBottomToTopEngine
+                    ? bottomToTopLockedBottomDrainScheduled
                     : false
             }
         )
@@ -3166,6 +3453,8 @@
                     bottomToTopProgrammaticIntent = 'none'
                     programmaticScrollInProgress = false
                     if (nearBottom) {
+                        promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())
+                        scheduleBottomToTopLockedBottomDrain()
                         reconcileBottomToTopToBottom(4)
                     } else if (bottomToTopStagedCount > 0) {
                         promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())

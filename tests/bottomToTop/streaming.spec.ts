@@ -9,7 +9,13 @@ const getStreamingDebugState = (selector: string) => {
               __svlDebug?: {
                   measuredCount?: number
                   stagedMeasurementCount?: number
+                  stagedDrainActive?: boolean
+                  stagedDrainScheduled?: boolean
                   gapFromBottomPx?: number
+                  scrollHeightPx?: number
+                  clientHeightPx?: number
+                  totalHeightPx?: number
+                  maxScrollTopPx?: number
               }
           })
         | null
@@ -19,9 +25,43 @@ const getStreamingDebugState = (selector: string) => {
         scrollTop: Math.round(viewport.scrollTop),
         maxScroll: Math.round(maxScroll),
         gap: viewport.__svlDebug?.gapFromBottomPx ?? Math.round(maxScroll - viewport.scrollTop),
+        scrollHeightPx: viewport.__svlDebug?.scrollHeightPx ?? Math.round(viewport.scrollHeight),
+        clientHeightPx: viewport.__svlDebug?.clientHeightPx ?? Math.round(viewport.clientHeight),
+        totalHeightPx: viewport.__svlDebug?.totalHeightPx ?? Math.round(viewport.scrollHeight),
+        maxScrollTopPx: viewport.__svlDebug?.maxScrollTopPx ?? Math.round(maxScroll),
         measuredCount: viewport.__svlDebug?.measuredCount ?? 0,
-        stagedMeasurementCount: viewport.__svlDebug?.stagedMeasurementCount ?? 0
+        stagedMeasurementCount: viewport.__svlDebug?.stagedMeasurementCount ?? 0,
+        stagedDrainActive: viewport.__svlDebug?.stagedDrainActive ?? false,
+        stagedDrainScheduled: viewport.__svlDebug?.stagedDrainScheduled ?? false
     }
+}
+
+const waitForStreamingLockedBottom = async (page: import('@playwright/test').Page) => {
+    await page.waitForFunction(
+        (selector) => {
+            const viewport = document.querySelector(selector) as
+                | (HTMLElement & {
+                      __svlDebug?: {
+                          bottomToTopState?: string
+                          gapFromBottomPx?: number
+                          measuredCount?: number
+                      }
+                  })
+                | null
+            if (!viewport) return false
+
+            const debug = viewport.__svlDebug
+            if (!debug) return false
+
+            return (
+                debug.bottomToTopState === 'lockedBottom' &&
+                (debug.gapFromBottomPx ?? Number.POSITIVE_INFINITY) <= 2 &&
+                (debug.measuredCount ?? 0) > 0
+            )
+        },
+        VIEWPORT_SELECTOR,
+        { timeout: 10000 }
+    )
 }
 
 const getScrollState = (selector: string) => {
@@ -33,6 +73,57 @@ const getScrollState = (selector: string) => {
         maxScroll: Math.round(maxScroll),
         gap: Math.round(maxScroll - viewport.scrollTop)
     }
+}
+
+const getNewestMessageDistanceFromBottom = (selector: string) => {
+    const viewport = document.querySelector(selector) as HTMLElement | null
+    if (!viewport) return null
+
+    const viewportRect = viewport.getBoundingClientRect()
+    const newestMessage = viewport.querySelector('[data-original-index="0"]') as HTMLElement | null
+    if (!newestMessage) return null
+
+    const messageRect = newestMessage.getBoundingClientRect()
+    return viewportRect.bottom - messageRect.bottom
+}
+
+const getTopVisibleAnchor = (selector: string) => {
+    const viewport = document.querySelector(selector) as HTMLElement | null
+    if (!viewport) return null
+
+    const viewportRect = viewport.getBoundingClientRect()
+    const candidates = Array.from(
+        viewport.querySelectorAll('[data-original-index]')
+    ) as HTMLElement[]
+
+    let anchor: { logicalIndex: number; offsetTop: number } | null = null
+    let bestDistance = Number.POSITIVE_INFINITY
+
+    for (const candidate of candidates) {
+        const rect = candidate.getBoundingClientRect()
+        if (rect.bottom <= viewportRect.top || rect.top >= viewportRect.bottom) continue
+
+        const logicalIndex = Number.parseInt(candidate.dataset.originalIndex || '-1', 10)
+        if (logicalIndex < 0) continue
+
+        const distance = Math.abs(rect.top - viewportRect.top)
+        if (distance < bestDistance) {
+            bestDistance = distance
+            anchor = {
+                logicalIndex,
+                offsetTop: rect.top - viewportRect.top
+            }
+        }
+    }
+
+    return anchor
+}
+
+const expectBottomGeometryAligned = (
+    state: NonNullable<ReturnType<typeof getStreamingDebugState>>
+) => {
+    expect(state.gap).toBeLessThanOrEqual(2)
+    expect(Math.abs(state.scrollHeightPx - state.totalHeightPx)).toBeLessThanOrEqual(2)
 }
 
 test.describe('BottomToTop Streaming Chat', () => {
@@ -56,6 +147,192 @@ test.describe('BottomToTop Streaming Chat', () => {
         expect(scrollState!.gap).toBeLessThanOrEqual(2)
     })
 
+    test('should keep DOM scroll height aligned with list geometry at bottom', async ({ page }) => {
+        await page.waitForTimeout(500)
+
+        const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
+
+        expect(debugState).not.toBeNull()
+        expectBottomGeometryAligned(debugState!)
+    })
+
+    test('should stage offscreen backfill while bottom-locked on initial load', async ({
+        page
+    }) => {
+        await page.goto('/tests/list/bottomToTop/streaming', {
+            waitUntil: 'domcontentloaded'
+        })
+        await page.waitForSelector(VIEWPORT_SELECTOR)
+        await waitForStreamingLockedBottom(page)
+
+        const measuredCounts: number[] = []
+        const stagedCounts: number[] = []
+        const gaps: number[] = []
+
+        for (let i = 0; i < 16; i++) {
+            const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
+            expect(debugState).not.toBeNull()
+
+            measuredCounts.push(debugState!.measuredCount)
+            stagedCounts.push(debugState!.stagedMeasurementCount)
+            gaps.push(debugState!.gap)
+
+            await page.waitForTimeout(75)
+        }
+
+        expect(Math.max(...measuredCounts)).toBeGreaterThan(Math.min(...measuredCounts))
+        expect(Math.max(...stagedCounts)).toBeGreaterThan(0)
+        expect(Math.max(...gaps)).toBeLessThanOrEqual(2)
+    })
+
+    test('should keep the newest message visually stable while bottom-locked backfill runs', async ({
+        page
+    }) => {
+        await page.goto('/tests/list/bottomToTop/streaming', {
+            waitUntil: 'domcontentloaded'
+        })
+        await page.waitForSelector(VIEWPORT_SELECTOR)
+        await waitForStreamingLockedBottom(page)
+
+        const offsets: number[] = []
+        const measuredCounts: number[] = []
+
+        for (let i = 0; i < 10; i++) {
+            const offset = await page.evaluate(
+                getNewestMessageDistanceFromBottom,
+                VIEWPORT_SELECTOR
+            )
+            expect(offset).not.toBeNull()
+            offsets.push(offset ?? 0)
+
+            const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
+            expect(debugState).not.toBeNull()
+            measuredCounts.push(debugState!.measuredCount)
+            expect(debugState!.gap).toBeLessThanOrEqual(2)
+
+            await page.waitForTimeout(100)
+        }
+
+        const oscillation = Math.max(...offsets) - Math.min(...offsets)
+        expect(oscillation).toBeLessThanOrEqual(5)
+        expect(Math.max(...measuredCounts)).toBeGreaterThan(Math.min(...measuredCounts))
+    })
+
+    test('should keep the top visible anchor stable during initial backfill', async ({ page }) => {
+        await page.goto('/tests/list/bottomToTop/streaming', {
+            waitUntil: 'domcontentloaded'
+        })
+        await page.waitForSelector(VIEWPORT_SELECTOR)
+        await waitForStreamingLockedBottom(page)
+
+        const initialAnchor = await page.evaluate(getTopVisibleAnchor, VIEWPORT_SELECTOR)
+        expect(initialAnchor).not.toBeNull()
+
+        const offsetSamples: number[] = []
+        const measuredCounts: number[] = []
+
+        for (let i = 0; i < 12; i++) {
+            const currentOffset = await page.evaluate(
+                ({ selector, logicalIndex }) => {
+                    const viewport = document.querySelector(selector) as HTMLElement | null
+                    if (!viewport) return null
+
+                    const viewportRect = viewport.getBoundingClientRect()
+                    const anchor = viewport.querySelector(
+                        `[data-original-index="${logicalIndex}"]`
+                    ) as HTMLElement | null
+                    if (!anchor) return null
+
+                    return anchor.getBoundingClientRect().top - viewportRect.top
+                },
+                {
+                    selector: VIEWPORT_SELECTOR,
+                    logicalIndex: initialAnchor!.logicalIndex
+                }
+            )
+
+            expect(currentOffset).not.toBeNull()
+            offsetSamples.push(currentOffset ?? 0)
+
+            const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
+            expect(debugState).not.toBeNull()
+            measuredCounts.push(debugState!.measuredCount)
+
+            await page.waitForTimeout(100)
+        }
+
+        const oscillation = Math.max(...offsetSamples) - Math.min(...offsetSamples)
+        expect(oscillation).toBeLessThanOrEqual(5)
+        expect(Math.max(...measuredCounts)).toBeGreaterThan(Math.min(...measuredCounts))
+    })
+
+    test('should drain staged measurements in chunks while bottom-locked', async ({ page }) => {
+        await page.goto('/tests/list/bottomToTop/streaming', {
+            waitUntil: 'domcontentloaded'
+        })
+        await page.waitForSelector(VIEWPORT_SELECTOR)
+        await waitForStreamingLockedBottom(page)
+
+        const stagedCounts: number[] = []
+        const gaps: number[] = []
+        let sawDrainActivity = false
+
+        for (let i = 0; i < 28; i++) {
+            const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
+            expect(debugState).not.toBeNull()
+
+            stagedCounts.push(debugState!.stagedMeasurementCount)
+            gaps.push(debugState!.gap)
+            sawDrainActivity =
+                sawDrainActivity ||
+                debugState!.stagedDrainActive ||
+                debugState!.stagedDrainScheduled
+
+            await page.waitForTimeout(100)
+        }
+
+        const peakStaged = Math.max(...stagedCounts)
+        const finalStaged = stagedCounts.at(-1) ?? 0
+
+        expect(peakStaged).toBeGreaterThan(0)
+        expect(sawDrainActivity).toBe(true)
+        expect(finalStaged).toBeLessThan(peakStaged)
+        expect(Math.max(...gaps)).toBeLessThanOrEqual(2)
+    })
+
+    test('should keep DOM scroll height aligned with list geometry during bottom-locked chunk drain', async ({
+        page
+    }) => {
+        await page.goto('/tests/list/bottomToTop/streaming', {
+            waitUntil: 'domcontentloaded'
+        })
+        await page.waitForSelector(VIEWPORT_SELECTOR)
+        await waitForStreamingLockedBottom(page)
+
+        const heightDeltas: number[] = []
+        const gaps: number[] = []
+        let sawChunkDrain = false
+
+        for (let i = 0; i < 24; i++) {
+            const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
+            expect(debugState).not.toBeNull()
+
+            heightDeltas.push(Math.abs(debugState!.scrollHeightPx - debugState!.totalHeightPx))
+            gaps.push(debugState!.gap)
+            sawChunkDrain =
+                sawChunkDrain ||
+                debugState!.stagedMeasurementCount > 0 ||
+                debugState!.stagedDrainActive ||
+                debugState!.stagedDrainScheduled
+
+            await page.waitForTimeout(100)
+        }
+
+        expect(sawChunkDrain).toBe(true)
+        expect(Math.max(...heightDeltas)).toBeLessThanOrEqual(2)
+        expect(Math.max(...gaps)).toBeLessThanOrEqual(2)
+    })
+
     test('should stay locked to bottom after sending a message', async ({ page }) => {
         await page.waitForTimeout(500)
         await page.getByTestId('send-button').click()
@@ -68,6 +345,10 @@ test.describe('BottomToTop Streaming Chat', () => {
             const scrollState = await page.evaluate(getScrollState, VIEWPORT_SELECTOR)
             expect(scrollState).not.toBeNull()
             expect(scrollState!.gap).toBeLessThanOrEqual(2)
+
+            const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
+            expect(debugState).not.toBeNull()
+            expectBottomGeometryAligned(debugState!)
         }
     })
 
@@ -163,7 +444,7 @@ test.describe('BottomToTop Streaming Chat', () => {
         const finalState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
         expect(finalState).not.toBeNull()
         expect(finalState!.stagedMeasurementCount).toBe(0)
-        expect(finalState!.gap).toBeLessThanOrEqual(3)
+        expect(finalState!.gap).toBeLessThanOrEqual(2)
     })
 
     test('should allow multiple assistant streams concurrently during stress test', async ({

@@ -149,6 +149,7 @@ test.describe('Basic BottomToTop Rendering', () => {
         expect(stats.measuredText).toContain('staged')
         expect(stats.measuredText).toContain('tracked')
         expect(stats.queueText).toContain('promote')
+        expect(stats.queueText).toContain('drain')
     })
 
     test('should render correct item content for visible items', async ({ page }) => {

@@ -145,6 +145,7 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         await expect(page.locator('[data-testid="stats-measured"]')).toContainText('staged')
         await expect(page.locator('[data-testid="stats-measured"]')).toContainText('tracked')
         await expect(page.locator('[data-testid="stats-queue"]')).toContainText('promote')
+        await expect(page.locator('[data-testid="stats-queue"]')).toContainText('drain')
     })
 
     test('should render initial items with correct heights at bottom', async ({ page }) => {

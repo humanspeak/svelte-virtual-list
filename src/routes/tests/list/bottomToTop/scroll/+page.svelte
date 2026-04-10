@@ -110,7 +110,10 @@
                     <span>
                         backfill {String(extendedStats?.backfillPending ?? false)} · reconcile {String(
                             extendedStats?.reconcileActive ?? false
-                        )} · promote {String(extendedStats?.stagedPromotionPending ?? false)}
+                        )} · promote {String(extendedStats?.stagedPromotionPending ?? false)} · drain
+                        {String(extendedStats?.stagedDrainActive ?? false)}/{String(
+                            extendedStats?.stagedDrainScheduled ?? false
+                        )}
                     </span>
                 </div>
                 <div class="stats-item stats-item-wide" data-testid="stats-window">

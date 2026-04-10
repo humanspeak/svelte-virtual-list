@@ -133,5 +133,25 @@ describe('virtualListDebug utilities', () => {
 
             expect(result.atTop).toBe(true) // Should still be considered at top due to tolerance
         })
+
+        it('should preserve dedicated bottom-to-top staged drain extras', () => {
+            const result = createDebugInfo({ start: 0, end: 10 }, 100, 10, 50, 4600, 400, 5000, {
+                mode: 'bottomToTop',
+                engine: 'dedicated-bottom-to-top',
+                stagedMeasurementCount: 12,
+                stagedPromotionPending: true,
+                stagedDrainActive: true,
+                stagedDrainScheduled: false
+            })
+
+            expect(result).toMatchObject({
+                mode: 'bottomToTop',
+                engine: 'dedicated-bottom-to-top',
+                stagedMeasurementCount: 12,
+                stagedPromotionPending: true,
+                stagedDrainActive: true,
+                stagedDrainScheduled: false
+            })
+        })
     })
 })

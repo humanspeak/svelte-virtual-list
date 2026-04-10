@@ -1,6 +1,10 @@
 <script lang="ts">
     import SvelteVirtualList from '$lib/index.js'
-    import { onDestroy } from 'svelte'
+    import type {
+        SvelteVirtualListDebugInfo,
+        SvelteVirtualListExtendedDebugInfo
+    } from '$lib/types.js'
+    import { onDestroy, onMount, tick } from 'svelte'
     import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
     type ChatMessage = {
@@ -401,6 +405,7 @@
     let streamVariantIndex = 0
 
     // --- Initial messages ---
+    const INITIAL_MESSAGE_COUNT = 1000
     const INITIAL_MESSAGES: ChatMessage[] = (() => {
         const msgs: ChatMessage[] = []
         const userTexts = [
@@ -427,7 +432,7 @@
             'Absolutely. A ResizeObserver watches each mounted item. When an item resizes, the height cache updates and scroll corrections fire automatically.',
             'Buffer zones render extra items above and below the viewport. This prevents blank flashes during fast scrolling by having content ready before it scrolls into view.'
         ]
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < INITIAL_MESSAGE_COUNT; i++) {
             const isUser = i % 2 === 0
             msgs.push({
                 id: `server-${i}`,
@@ -453,6 +458,86 @@
     let inputText = $state('')
     const activeIntervalIds = new SvelteMap<string, ReturnType<typeof setInterval>>()
     const pendingStreamStartIds = new SvelteSet<ReturnType<typeof setTimeout>>()
+    let stats = $state<SvelteVirtualListDebugInfo | null>(null)
+    const extendedStats = $derived.by((): SvelteVirtualListExtendedDebugInfo | null =>
+        stats && 'engine' in stats ? stats : null
+    )
+    const STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX = 2
+    const STREAMING_AUTO_FOLLOW_RELEASE_PX = 96
+    let streamAutoFollowBottom = $state(true)
+    let lastDebugSignature = ''
+    let bottomFollowRafId: number | null = null
+    let bottomFollowFramesRemaining = 0
+    let stopViewportTracking: (() => void) | null = null
+    let viewportMutationObserver: MutationObserver | null = null
+
+    const handleDebugInfo = (_info: SvelteVirtualListDebugInfo) => {}
+
+    const getStreamingViewport = () =>
+        document.querySelector('[data-testid="streaming-list-viewport"]') as HTMLElement | null
+
+    const getStreamingViewportGap = (viewport: HTMLElement) =>
+        Math.max(0, Math.round(viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop))
+
+    const syncStreamAutoFollowBottom = () => {
+        const viewport = getStreamingViewport()
+        if (!viewport) return
+
+        const gap = getStreamingViewportGap(viewport)
+        if (gap <= STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX) {
+            streamAutoFollowBottom = true
+            return
+        }
+
+        if (gap >= STREAMING_AUTO_FOLLOW_RELEASE_PX) {
+            streamAutoFollowBottom = false
+        }
+    }
+
+    const cancelBottomFollow = () => {
+        bottomFollowFramesRemaining = 0
+        if (bottomFollowRafId === null) return
+        cancelAnimationFrame(bottomFollowRafId)
+        bottomFollowRafId = null
+    }
+
+    const scheduleBottomFollow = () => {
+        if (typeof window === 'undefined' || !streamAutoFollowBottom) return
+
+        bottomFollowFramesRemaining = Math.max(bottomFollowFramesRemaining, 3)
+        if (bottomFollowRafId !== null) return
+
+        bottomFollowRafId = requestAnimationFrame(() => {
+            bottomFollowRafId = null
+            void tick().then(() => {
+                const viewport = getStreamingViewport()
+                if (!viewport) return
+
+                const gap = getStreamingViewportGap(viewport)
+                if (gap >= STREAMING_AUTO_FOLLOW_RELEASE_PX) {
+                    streamAutoFollowBottom = false
+                    return
+                }
+
+                if (!streamAutoFollowBottom && gap > STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX) {
+                    return
+                }
+
+                viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight
+                syncStreamAutoFollowBottom()
+
+                bottomFollowFramesRemaining = Math.max(0, bottomFollowFramesRemaining - 1)
+                const gapAfterFollow = getStreamingViewportGap(viewport)
+                if (
+                    streamAutoFollowBottom &&
+                    (bottomFollowFramesRemaining > 0 ||
+                        gapAfterFollow > STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX)
+                ) {
+                    scheduleBottomFollow()
+                }
+            })
+        })
+    }
 
     // --- Streaming ---
     function streamResponse(messageId: string) {
@@ -468,6 +553,7 @@
             isStreaming: true
         }
         messages = [assistantMsg, ...messages]
+        scheduleBottomFollow()
         activeStreamingMessageIds = [...activeStreamingMessageIds, messageId]
 
         const intervalId = setInterval(() => {
@@ -477,7 +563,8 @@
                 activeIntervalIds.delete(messageId)
                 const idx = messages.findIndex((m) => m.id === messageId)
                 if (idx !== -1) {
-                    messages[idx] = { ...messages[idx], isStreaming: false }
+                    messages[idx].isStreaming = false
+                    scheduleBottomFollow()
                 }
                 activeStreamingMessageIds = activeStreamingMessageIds.filter(
                     (id) => id !== messageId
@@ -487,18 +574,17 @@
 
             const idx = messages.findIndex((m) => m.id === messageId)
             if (idx !== -1) {
-                messages[idx] = {
-                    ...messages[idx],
-                    content: messages[idx].content + chunks[chunkIndex]
-                }
+                messages[idx].content += chunks[chunkIndex]
+                scheduleBottomFollow()
             }
             chunkIndex++
-        }, 40)
+        }, 80)
 
         activeIntervalIds.set(messageId, intervalId)
     }
 
     function scheduleStreamResponse() {
+        const streamStartOffsetMs = pendingStreamStarts * 24
         pendingStreamStarts++
         // Small delay before assistant starts responding
         const timeoutId = setTimeout(() => {
@@ -506,7 +592,7 @@
             pendingStreamStarts = Math.max(0, pendingStreamStarts - 1)
             const assistantId = `assistant-${crypto.randomUUID()}`
             streamResponse(assistantId)
-        }, 200)
+        }, 200 + streamStartOffsetMs)
 
         pendingStreamStartIds.add(timeoutId)
     }
@@ -525,15 +611,13 @@
             isOptimistic: true
         }
         messages = [optimisticMsg, ...messages]
+        scheduleBottomFollow()
 
         // Simulate server confirmation after 500ms
         const tid = setTimeout(() => {
             pendingStreamStartIds.delete(tid)
-            // Remove optimistic
-            messages = messages.filter((m) => m.id !== `opt-${nonce}`)
-            totalDropped++
-
-            // Insert confirmed version at position 0
+            // Confirm in place so concurrent optimistic sends do not create
+            // interior remove/reinsert mutations that force a full bottomToTop reinit.
             const confirmedMsg: ChatMessage = {
                 id: `confirmed-${nonce}`,
                 nonce,
@@ -541,7 +625,17 @@
                 content: text,
                 isOptimistic: false
             }
-            messages = [confirmedMsg, ...messages]
+            const optimisticIndex = messages.findIndex((m) => m.id === `opt-${nonce}`)
+            if (optimisticIndex !== -1) {
+                messages[optimisticIndex].id = confirmedMsg.id
+                messages[optimisticIndex].nonce = confirmedMsg.nonce
+                messages[optimisticIndex].role = confirmedMsg.role
+                messages[optimisticIndex].content = confirmedMsg.content
+                messages[optimisticIndex].isOptimistic = false
+            } else {
+                messages = [confirmedMsg, ...messages]
+            }
+            scheduleBottomFollow()
             totalConfirmed++
 
             // Start the assistant response independently so bursts stream concurrently.
@@ -574,7 +668,85 @@
         })
     }
 
+    onMount(() => {
+        let rafId = 0
+        let viewportLookupRafId = 0
+
+        const syncStats = () => {
+            const viewport = document.querySelector('[data-testid="streaming-list-viewport"]') as
+                | (HTMLElement & { __svlDebug?: SvelteVirtualListDebugInfo })
+                | null
+            const nextStats = viewport?.__svlDebug ?? null
+            if (nextStats) {
+                const nextSignature = JSON.stringify(nextStats)
+                if (nextSignature !== lastDebugSignature) {
+                    lastDebugSignature = nextSignature
+                    stats = nextStats
+                }
+            }
+
+            rafId = requestAnimationFrame(syncStats)
+        }
+
+        rafId = requestAnimationFrame(syncStats)
+
+        const attachViewportTracking = () => {
+            const viewport = getStreamingViewport()
+            if (!viewport) {
+                viewportLookupRafId = requestAnimationFrame(attachViewportTracking)
+                return
+            }
+
+            const handleViewportScroll = () => {
+                syncStreamAutoFollowBottom()
+            }
+
+            syncStreamAutoFollowBottom()
+            scheduleBottomFollow()
+            viewport.addEventListener('scroll', handleViewportScroll, { passive: true })
+            viewportMutationObserver = new MutationObserver(() => {
+                if (!streamAutoFollowBottom) return
+
+                const gap = getStreamingViewportGap(viewport)
+                if (gap >= STREAMING_AUTO_FOLLOW_RELEASE_PX) {
+                    streamAutoFollowBottom = false
+                    return
+                }
+
+                viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight
+                scheduleBottomFollow()
+            })
+            viewportMutationObserver.observe(viewport, {
+                subtree: true,
+                childList: true,
+                characterData: true
+            })
+            stopViewportTracking = () => {
+                viewport.removeEventListener('scroll', handleViewportScroll)
+                viewportMutationObserver?.disconnect()
+                viewportMutationObserver = null
+            }
+        }
+
+        viewportLookupRafId = requestAnimationFrame(attachViewportTracking)
+
+        return () => {
+            cancelAnimationFrame(rafId)
+            cancelAnimationFrame(viewportLookupRafId)
+            cancelBottomFollow()
+            stopViewportTracking?.()
+            stopViewportTracking = null
+            viewportMutationObserver?.disconnect()
+            viewportMutationObserver = null
+        }
+    })
+
     onDestroy(() => {
+        cancelBottomFollow()
+        stopViewportTracking?.()
+        stopViewportTracking = null
+        viewportMutationObserver?.disconnect()
+        viewportMutationObserver = null
         for (const intervalId of activeIntervalIds.values()) {
             clearInterval(intervalId)
         }
@@ -582,94 +754,326 @@
             clearTimeout(timeoutId)
         }
     })
+
+    $effect(() => {
+        if (typeof window === 'undefined' || !isStreaming || !streamAutoFollowBottom) return
+
+        let rafId = 0
+        let cancelled = false
+
+        const step = () => {
+            if (cancelled) return
+
+            const viewport = getStreamingViewport()
+            if (!viewport) {
+                rafId = requestAnimationFrame(step)
+                return
+            }
+
+            const gap = getStreamingViewportGap(viewport)
+            if (gap >= STREAMING_AUTO_FOLLOW_RELEASE_PX) {
+                streamAutoFollowBottom = false
+                return
+            }
+
+            if (gap > STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX) {
+                viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight
+            }
+
+            rafId = requestAnimationFrame(step)
+        }
+
+        rafId = requestAnimationFrame(step)
+
+        return () => {
+            cancelled = true
+            cancelAnimationFrame(rafId)
+        }
+    })
 </script>
 
-<div class="page-container">
-    <div class="status" data-testid="stream-status">
-        Messages: {messages.length} | Streaming: {isStreaming} | Sent: {totalSent} | Confirmed: {totalConfirmed}
-        | Dropped: {totalDropped} | Active streams: {activeStreamingMessageIds.length} | Pending starts:
-        {pendingStreamStarts}
-    </div>
-    <div class="controls" data-testid="controls">
-        <input
-            bind:value={inputText}
-            onkeydown={handleKeydown}
-            placeholder="Type a message..."
-            data-testid="message-input"
-        />
-        <button onclick={handleSend} data-testid="send-button">Send</button>
-        <button onclick={stressTest} data-testid="stress-button">Stress Test (5x)</button>
-    </div>
-    <div class="list-wrapper" style="height: 500px;">
-        <SvelteVirtualList
-            bind:this={listRef}
-            items={messages}
-            mode="bottomToTop"
-            defaultEstimatedItemHeight={80}
-            testId="streaming-list"
-            debug={true}
-        >
-            {#snippet renderItem(message)}
-                <div
-                    class="message"
-                    class:user={message.role === 'user'}
-                    class:assistant={message.role === 'assistant'}
-                    class:optimistic={message.isOptimistic}
-                    class:streaming={message.isStreaming}
-                    data-testid="message-{message.id}"
-                    data-role={message.role}
-                    data-nonce={message.nonce ?? ''}
-                >
-                    <div class="message-meta">
-                        <span class="role-badge">{message.role}</span>
-                        {#if message.isOptimistic}<span class="tag optimistic-tag">pending...</span
-                            >{/if}
-                        {#if message.isStreaming}<span class="tag streaming-tag">streaming...</span
-                            >{/if}
-                    </div>
-                    <div class="message-content">
-                        {message.content || '\u00A0'}
-                    </div>
+<div class="page">
+    <div class="demo-shell">
+        <div class="stats-panel" data-testid="bottom-to-top-streaming-stats">
+            <div class="stats-header">
+                <div>
+                    <div class="eyebrow">BottomToTop Streaming</div>
+                    <h1>Optimistic sends, streaming growth, and burst concurrency.</h1>
                 </div>
-            {/snippet}
-        </SvelteVirtualList>
+                <div class="state-pill" data-testid="stats-state">
+                    {extendedStats?.engine ?? 'n/a'} · {extendedStats?.mode ?? 'n/a'} · {extendedStats?.bottomToTopState ??
+                        'n/a'}
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stats-item" data-testid="stats-measured">
+                    <span class="label">Measured</span>
+                    <strong
+                        >{extendedStats?.measuredCount ?? 0}/{stats?.totalItems ??
+                            messages.length}</strong
+                    >
+                    <span>
+                        live {Math.round(extendedStats?.measuredPercent ?? 0)}% · staged {extendedStats?.stagedMeasurementCount ??
+                            0} · tracked {(extendedStats?.measuredCount ?? 0) +
+                            (extendedStats?.stagedMeasurementCount ?? 0)}
+                    </span>
+                </div>
+                <div class="stats-item" data-testid="stats-mounted">
+                    <span class="label">DOM</span>
+                    <strong>{extendedStats?.mountedCount ?? 0}</strong>
+                    <span>
+                        visible {extendedStats?.renderedVisibleCount ?? 0} · lane {extendedStats?.measurementLaneCount ??
+                            0}
+                    </span>
+                </div>
+                <div class="stats-item" data-testid="stats-scroll">
+                    <span class="label">Bottom Gap</span>
+                    <strong>{extendedStats?.gapFromBottomPx ?? 0}px</strong>
+                    <span>
+                        scroll {extendedStats?.scrollTopPx ?? 0}/{extendedStats?.maxScrollTopPx ??
+                            0}
+                    </span>
+                </div>
+                <div class="stats-item" data-testid="stats-spacers">
+                    <span class="label">Spacers</span>
+                    <strong>{extendedStats?.topSpacerPx ?? 0}px</strong>
+                    <span>top · {extendedStats?.bottomSpacerPx ?? 0}px bottom</span>
+                </div>
+                <div class="stats-item" data-testid="stats-heights">
+                    <span class="label">Heights</span>
+                    <strong>{Math.round(extendedStats?.averageItemHeightPx ?? 0)}px</strong>
+                    <span>avg · {Math.round(extendedStats?.totalHeightPx ?? 0)}px total</span>
+                </div>
+                <div class="stats-item" data-testid="stats-queue">
+                    <span class="label">Queue</span>
+                    <strong>{extendedStats?.measurementQueueCount ?? 0}</strong>
+                    <span>
+                        backfill {String(extendedStats?.backfillPending ?? false)} · reconcile {String(
+                            extendedStats?.reconcileActive ?? false
+                        )} · promote {String(extendedStats?.stagedPromotionPending ?? false)} · drain
+                        {String(extendedStats?.stagedDrainActive ?? false)}/{String(
+                            extendedStats?.stagedDrainScheduled ?? false
+                        )}
+                    </span>
+                </div>
+                <div class="stats-item stats-item-wide" data-testid="stats-window">
+                    <span class="label">Window</span>
+                    <strong>
+                        logical {extendedStats?.logicalWindowStart ??
+                            0}..{extendedStats?.logicalWindowEnd ?? 0}
+                    </strong>
+                    <span>
+                        physical {extendedStats?.physicalWindowStart ??
+                            0}..{extendedStats?.physicalWindowEnd ?? 0} · viewport {extendedStats?.clientHeightPx ??
+                            0}px · scrollHeight {extendedStats?.scrollHeightPx ?? 0}px
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="list-stage">
+            <div class="status" data-testid="stream-status">
+                Messages: {messages.length} | Streaming: {isStreaming} | Sent: {totalSent} | Confirmed:
+                {totalConfirmed} | Dropped: {totalDropped} | Active streams:
+                {activeStreamingMessageIds.length} | Pending starts: {pendingStreamStarts}
+            </div>
+            <div class="controls" data-testid="controls">
+                <input
+                    bind:value={inputText}
+                    onkeydown={handleKeydown}
+                    placeholder="Type a message..."
+                    data-testid="message-input"
+                />
+                <button onclick={handleSend} data-testid="send-button">Send</button>
+                <button onclick={stressTest} data-testid="stress-button">Stress Test (5x)</button>
+            </div>
+            <div class="list-wrapper" style="height: 500px;">
+                <SvelteVirtualList
+                    bind:this={listRef}
+                    items={messages}
+                    mode="bottomToTop"
+                    defaultEstimatedItemHeight={80}
+                    testId="streaming-list"
+                    debug={true}
+                    debugFunction={handleDebugInfo}
+                >
+                    {#snippet renderItem(message)}
+                        <div
+                            class="message-slot"
+                            class:user={message.role === 'user'}
+                            class:assistant={message.role === 'assistant'}
+                            data-testid="message-{message.id}"
+                            data-role={message.role}
+                            data-nonce={message.nonce ?? ''}
+                        >
+                            <div
+                                class="message-card"
+                                class:optimistic={message.isOptimistic}
+                                class:streaming={message.isStreaming}
+                            >
+                                <div class="message-meta">
+                                    <span class="role-badge">{message.role}</span>
+                                    {#if message.isOptimistic}<span class="tag optimistic-tag"
+                                            >pending...</span
+                                        >{/if}
+                                    {#if message.isStreaming}<span class="tag streaming-tag"
+                                            >streaming...</span
+                                        >{/if}
+                                </div>
+                                <div class="message-content">
+                                    {message.content || '\u00A0'}
+                                </div>
+                            </div>
+                        </div>
+                    {/snippet}
+                </SvelteVirtualList>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
-    .page-container {
+    .page {
+        min-height: 100vh;
+        padding: 24px;
+        background:
+            radial-gradient(circle at top left, rgba(18, 87, 64, 0.08), transparent 38%),
+            linear-gradient(180deg, #f5f7f4 0%, #eef2ec 100%);
+        color: #17211c;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .demo-shell {
+        width: min(980px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: 18px;
+    }
+
+    .stats-panel {
+        padding: 18px;
+        border: 1px solid rgba(23, 33, 28, 0.1);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 12px 35px rgba(18, 28, 22, 0.08);
+    }
+
+    .stats-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .eyebrow {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #3d6b59;
+        margin-bottom: 6px;
+    }
+
+    h1 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.15;
+        font-weight: 650;
+    }
+
+    .state-pill {
+        font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #17211c;
+        color: #f5f7f4;
+        white-space: nowrap;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .stats-item {
+        min-width: 0;
+        display: grid;
+        gap: 4px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #f7faf7;
+        border: 1px solid rgba(61, 107, 89, 0.12);
+    }
+
+    .stats-item-wide {
+        grid-column: span 2;
+    }
+
+    .label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #587a6d;
+    }
+
+    .stats-item strong {
+        font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
+        font-size: 15px;
+        font-weight: 700;
+        color: #17211c;
+    }
+
+    .stats-item span:last-child {
+        font-size: 12px;
+        color: #4f6359;
+        line-height: 1.4;
+    }
+
+    .list-stage {
+        border-radius: 24px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 18px 50px rgba(18, 28, 22, 0.12);
     }
 
     .status {
         padding: 8px;
-        background: #f0f0f0;
-        font-family: monospace;
+        background: #f7faf7;
+        font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
         font-size: 12px;
-        border-bottom: 1px solid #ddd;
+        border-bottom: 1px solid rgba(61, 107, 89, 0.12);
         flex-shrink: 0;
     }
 
     .controls {
         display: flex;
         gap: 8px;
-        padding: 8px;
-        border-bottom: 1px solid #ddd;
+        padding: 14px 18px;
+        border-bottom: 1px solid rgba(61, 107, 89, 0.12);
+        background: rgba(245, 247, 244, 0.8);
         flex-shrink: 0;
     }
 
     .controls input {
         flex: 1;
-        padding: 6px 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
+        padding: 10px 12px;
+        border: 1px solid rgba(61, 107, 89, 0.18);
+        border-radius: 12px;
         font-size: 14px;
+        background: white;
     }
 
     .controls button {
-        padding: 6px 14px;
+        padding: 10px 14px;
         border: none;
-        border-radius: 4px;
+        border-radius: 12px;
         background: #4a90d9;
         color: white;
         font-size: 13px;
@@ -684,35 +1088,50 @@
     .list-wrapper {
         flex: 1;
         min-height: 0;
+        padding: 18px;
     }
 
-    .message {
+    /* Bottom-to-top spacing must live inside the measured root box; external vertical
+       margins or wrapper gap create model-vs-DOM scroll height drift. */
+    .message-slot {
+        padding: 3px 8px 0;
+        box-sizing: border-box;
+        display: flex;
+        width: 100%;
+    }
+
+    .message-slot.user {
+        justify-content: flex-end;
+    }
+
+    .message-slot.assistant {
+        justify-content: flex-start;
+    }
+
+    .message-card {
+        margin: 0;
         padding: 10px 14px;
-        margin: 3px 8px;
         border-radius: 12px;
         max-width: 500px;
         word-break: break-word;
+        width: fit-content;
     }
 
-    .message.user {
-        margin-left: auto;
+    .message-slot.user .message-card {
         background: #dcf8c6;
         border-bottom-right-radius: 4px;
-        width: fit-content;
     }
 
-    .message.assistant {
-        margin-right: auto;
+    .message-slot.assistant .message-card {
         background: #f0f0f0;
         border-bottom-left-radius: 4px;
-        width: fit-content;
     }
 
-    .message.optimistic {
+    .message-card.optimistic {
         opacity: 0.6;
     }
 
-    .message.streaming {
+    .message-card.streaming {
         border-left: 3px solid #4a90d9;
     }
 
@@ -751,5 +1170,41 @@
         white-space: pre-wrap;
         font-size: 14px;
         line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .stats-item-wide {
+            grid-column: span 2;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .page {
+            padding: 16px;
+        }
+
+        .stats-header {
+            flex-direction: column;
+        }
+
+        .state-pill {
+            white-space: normal;
+        }
+
+        .controls {
+            flex-direction: column;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stats-item-wide {
+            grid-column: auto;
+        }
     }
 </style>

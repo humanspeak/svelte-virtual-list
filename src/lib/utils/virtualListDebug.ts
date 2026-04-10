@@ -138,6 +138,8 @@ export const createDebugInfo = (
         backfillPending: extras.backfillPending ?? false,
         reconcileActive: extras.reconcileActive ?? false,
         stagedMeasurementCount: extras.stagedMeasurementCount,
-        stagedPromotionPending: extras.stagedPromotionPending
+        stagedPromotionPending: extras.stagedPromotionPending,
+        stagedDrainActive: extras.stagedDrainActive,
+        stagedDrainScheduled: extras.stagedDrainScheduled
     }
 }
