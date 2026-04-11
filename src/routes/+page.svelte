@@ -13,9 +13,14 @@
             title: 'Tests — Top to bottom',
             links: [
                 { href: resolve('/tests/list/topToBottom/basic'), label: 'Basic' },
+                { href: resolve('/tests/list/topToBottom/emptyList'), label: 'Empty list' },
+                {
+                    href: resolve('/tests/list/topToBottom/infiniteScroll'),
+                    label: 'Infinite scroll'
+                },
+                { href: resolve('/tests/list/topToBottom/itemResize'), label: 'Item resize' },
                 { href: resolve('/tests/list/topToBottom/performance'), label: 'Performance' },
                 { href: resolve('/tests/list/topToBottom/scroll'), label: 'Scroll' },
-                { href: resolve('/tests/list/topToBottom/itemResize'), label: 'Item resize' },
                 { href: resolve('/tests/list/topToBottom/wrongItemSize'), label: 'Wrong item size' }
             ]
         },
@@ -23,14 +28,20 @@
             title: 'Tests — Bottom to top',
             links: [
                 { href: resolve('/tests/list/bottomToTop/basic'), label: 'Basic' },
-                { href: resolve('/tests/list/bottomToTop/performance'), label: 'Performance' },
-                { href: resolve('/tests/list/bottomToTop/scroll'), label: 'Scroll' },
-                { href: resolve('/tests/list/bottomToTop/smallItems'), label: 'Small items' },
-                { href: resolve('/tests/list/bottomToTop/loadItems'), label: 'Load items' },
+                { href: resolve('/tests/list/bottomToTop/emptyList'), label: 'Empty list' },
                 {
                     href: resolve('/tests/list/bottomToTop/firstItemHeightChange'),
                     label: 'First item height change'
                 },
+                {
+                    href: resolve('/tests/list/bottomToTop/infiniteScroll'),
+                    label: 'Infinite scroll'
+                },
+                { href: resolve('/tests/list/bottomToTop/loadItems'), label: 'Load items' },
+                { href: resolve('/tests/list/bottomToTop/performance'), label: 'Performance' },
+                { href: resolve('/tests/list/bottomToTop/scroll'), label: 'Scroll' },
+                { href: resolve('/tests/list/bottomToTop/smallItems'), label: 'Small items' },
+                { href: resolve('/tests/list/bottomToTop/streaming'), label: 'Streaming' },
                 { href: resolve('/tests/list/bottomToTop/wrongItemSize'), label: 'Wrong item size' }
             ]
         },
@@ -49,6 +60,8 @@
                 { href: resolve('/tests/issues/issue-263'), label: 'Issue 263' },
                 { href: resolve('/tests/issues/issue-298'), label: 'Issue 298' },
                 { href: resolve('/tests/issues/issue-300'), label: 'Issue 300' },
+                { href: resolve('/tests/issues/issue-327'), label: 'Issue 327' },
+                { href: resolve('/tests/issues/issue-341'), label: 'Issue 341' },
                 { href: resolve('/tests/issues/layout'), label: 'Layout' },
                 // Example dynamic route under layout
                 { href: resolve('/tests/issues/layout/123'), label: 'Layout (id = 123)' }

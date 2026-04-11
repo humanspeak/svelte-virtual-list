@@ -166,6 +166,7 @@ test.describe('BottomToTop Streaming Chat', () => {
         await waitForStreamingLockedBottom(page)
 
         const measuredCounts: number[] = []
+        const trackedCounts: number[] = []
         const stagedCounts: number[] = []
         const gaps: number[] = []
 
@@ -174,13 +175,15 @@ test.describe('BottomToTop Streaming Chat', () => {
             expect(debugState).not.toBeNull()
 
             measuredCounts.push(debugState!.measuredCount)
+            trackedCounts.push(debugState!.measuredCount + debugState!.stagedMeasurementCount)
             stagedCounts.push(debugState!.stagedMeasurementCount)
             gaps.push(debugState!.gap)
 
             await page.waitForTimeout(75)
         }
 
-        expect(Math.max(...measuredCounts)).toBeGreaterThan(Math.min(...measuredCounts))
+        expect(Math.max(...trackedCounts)).toBeGreaterThan(Math.min(...trackedCounts))
+        expect(Math.max(...measuredCounts)).toBeGreaterThan(0)
         expect(Math.max(...stagedCounts)).toBeGreaterThan(0)
         expect(Math.max(...gaps)).toBeLessThanOrEqual(2)
     })
@@ -195,7 +198,6 @@ test.describe('BottomToTop Streaming Chat', () => {
         await waitForStreamingLockedBottom(page)
 
         const offsets: number[] = []
-        const measuredCounts: number[] = []
 
         for (let i = 0; i < 10; i++) {
             const offset = await page.evaluate(
@@ -207,7 +209,6 @@ test.describe('BottomToTop Streaming Chat', () => {
 
             const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
             expect(debugState).not.toBeNull()
-            measuredCounts.push(debugState!.measuredCount)
             expect(debugState!.gap).toBeLessThanOrEqual(2)
 
             await page.waitForTimeout(100)
@@ -215,7 +216,6 @@ test.describe('BottomToTop Streaming Chat', () => {
 
         const oscillation = Math.max(...offsets) - Math.min(...offsets)
         expect(oscillation).toBeLessThanOrEqual(5)
-        expect(Math.max(...measuredCounts)).toBeGreaterThan(Math.min(...measuredCounts))
     })
 
     test('should keep the top visible anchor stable during initial backfill', async ({ page }) => {
@@ -229,7 +229,6 @@ test.describe('BottomToTop Streaming Chat', () => {
         expect(initialAnchor).not.toBeNull()
 
         const offsetSamples: number[] = []
-        const measuredCounts: number[] = []
 
         for (let i = 0; i < 12; i++) {
             const currentOffset = await page.evaluate(
@@ -256,17 +255,15 @@ test.describe('BottomToTop Streaming Chat', () => {
 
             const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
             expect(debugState).not.toBeNull()
-            measuredCounts.push(debugState!.measuredCount)
 
             await page.waitForTimeout(100)
         }
 
         const oscillation = Math.max(...offsetSamples) - Math.min(...offsetSamples)
         expect(oscillation).toBeLessThanOrEqual(5)
-        expect(Math.max(...measuredCounts)).toBeGreaterThan(Math.min(...measuredCounts))
     })
 
-    test('should drain staged measurements in chunks while bottom-locked', async ({ page }) => {
+    test('should keep offscreen measurements staged while bottom-locked', async ({ page }) => {
         await page.goto('/tests/list/bottomToTop/streaming', {
             waitUntil: 'domcontentloaded'
         })
@@ -275,7 +272,7 @@ test.describe('BottomToTop Streaming Chat', () => {
 
         const stagedCounts: number[] = []
         const gaps: number[] = []
-        let sawDrainActivity = false
+        const scrollTops: number[] = []
 
         for (let i = 0; i < 28; i++) {
             const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
@@ -283,10 +280,9 @@ test.describe('BottomToTop Streaming Chat', () => {
 
             stagedCounts.push(debugState!.stagedMeasurementCount)
             gaps.push(debugState!.gap)
-            sawDrainActivity =
-                sawDrainActivity ||
-                debugState!.stagedDrainActive ||
-                debugState!.stagedDrainScheduled
+            scrollTops.push(debugState!.scrollTop)
+            expect(debugState!.stagedDrainActive).toBe(false)
+            expect(debugState!.stagedDrainScheduled).toBe(false)
 
             await page.waitForTimeout(100)
         }
@@ -295,12 +291,12 @@ test.describe('BottomToTop Streaming Chat', () => {
         const finalStaged = stagedCounts.at(-1) ?? 0
 
         expect(peakStaged).toBeGreaterThan(0)
-        expect(sawDrainActivity).toBe(true)
-        expect(finalStaged).toBeLessThan(peakStaged)
+        expect(finalStaged).toBeGreaterThan(0)
         expect(Math.max(...gaps)).toBeLessThanOrEqual(2)
+        expect(Math.max(...scrollTops) - Math.min(...scrollTops)).toBeLessThanOrEqual(1)
     })
 
-    test('should keep DOM scroll height aligned with list geometry during bottom-locked chunk drain', async ({
+    test('should keep DOM scroll height aligned with list geometry during bottom-locked staged backfill', async ({
         page
     }) => {
         await page.goto('/tests/list/bottomToTop/streaming', {
@@ -311,7 +307,7 @@ test.describe('BottomToTop Streaming Chat', () => {
 
         const heightDeltas: number[] = []
         const gaps: number[] = []
-        let sawChunkDrain = false
+        let sawStagedWork = false
 
         for (let i = 0; i < 24; i++) {
             const debugState = await page.evaluate(getStreamingDebugState, VIEWPORT_SELECTOR)
@@ -319,16 +315,12 @@ test.describe('BottomToTop Streaming Chat', () => {
 
             heightDeltas.push(Math.abs(debugState!.scrollHeightPx - debugState!.totalHeightPx))
             gaps.push(debugState!.gap)
-            sawChunkDrain =
-                sawChunkDrain ||
-                debugState!.stagedMeasurementCount > 0 ||
-                debugState!.stagedDrainActive ||
-                debugState!.stagedDrainScheduled
+            sawStagedWork = sawStagedWork || debugState!.stagedMeasurementCount > 0
 
             await page.waitForTimeout(100)
         }
 
-        expect(sawChunkDrain).toBe(true)
+        expect(sawStagedWork).toBe(true)
         expect(Math.max(...heightDeltas)).toBeLessThanOrEqual(2)
         expect(Math.max(...gaps)).toBeLessThanOrEqual(2)
     })

@@ -4,7 +4,7 @@
         SvelteVirtualListDebugInfo,
         SvelteVirtualListExtendedDebugInfo
     } from '$lib/types.js'
-    import { onDestroy, onMount, tick } from 'svelte'
+    import { onDestroy, onMount } from 'svelte'
     import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
     type ChatMessage = {
@@ -462,82 +462,9 @@
     const extendedStats = $derived.by((): SvelteVirtualListExtendedDebugInfo | null =>
         stats && 'engine' in stats ? stats : null
     )
-    const STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX = 2
-    const STREAMING_AUTO_FOLLOW_RELEASE_PX = 96
-    let streamAutoFollowBottom = $state(true)
     let lastDebugSignature = ''
-    let bottomFollowRafId: number | null = null
-    let bottomFollowFramesRemaining = 0
-    let stopViewportTracking: (() => void) | null = null
-    let viewportMutationObserver: MutationObserver | null = null
 
     const handleDebugInfo = (_info: SvelteVirtualListDebugInfo) => {}
-
-    const getStreamingViewport = () =>
-        document.querySelector('[data-testid="streaming-list-viewport"]') as HTMLElement | null
-
-    const getStreamingViewportGap = (viewport: HTMLElement) =>
-        Math.max(0, Math.round(viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop))
-
-    const syncStreamAutoFollowBottom = () => {
-        const viewport = getStreamingViewport()
-        if (!viewport) return
-
-        const gap = getStreamingViewportGap(viewport)
-        if (gap <= STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX) {
-            streamAutoFollowBottom = true
-            return
-        }
-
-        if (gap >= STREAMING_AUTO_FOLLOW_RELEASE_PX) {
-            streamAutoFollowBottom = false
-        }
-    }
-
-    const cancelBottomFollow = () => {
-        bottomFollowFramesRemaining = 0
-        if (bottomFollowRafId === null) return
-        cancelAnimationFrame(bottomFollowRafId)
-        bottomFollowRafId = null
-    }
-
-    const scheduleBottomFollow = () => {
-        if (typeof window === 'undefined' || !streamAutoFollowBottom) return
-
-        bottomFollowFramesRemaining = Math.max(bottomFollowFramesRemaining, 3)
-        if (bottomFollowRafId !== null) return
-
-        bottomFollowRafId = requestAnimationFrame(() => {
-            bottomFollowRafId = null
-            void tick().then(() => {
-                const viewport = getStreamingViewport()
-                if (!viewport) return
-
-                const gap = getStreamingViewportGap(viewport)
-                if (gap >= STREAMING_AUTO_FOLLOW_RELEASE_PX) {
-                    streamAutoFollowBottom = false
-                    return
-                }
-
-                if (!streamAutoFollowBottom && gap > STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX) {
-                    return
-                }
-
-                viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight
-                syncStreamAutoFollowBottom()
-
-                bottomFollowFramesRemaining = Math.max(0, bottomFollowFramesRemaining - 1)
-                const gapAfterFollow = getStreamingViewportGap(viewport)
-                if (
-                    streamAutoFollowBottom &&
-                    (bottomFollowFramesRemaining > 0 ||
-                        gapAfterFollow > STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX)
-                ) {
-                    scheduleBottomFollow()
-                }
-            })
-        })
-    }
 
     // --- Streaming ---
     function streamResponse(messageId: string) {
@@ -553,7 +480,6 @@
             isStreaming: true
         }
         messages = [assistantMsg, ...messages]
-        scheduleBottomFollow()
         activeStreamingMessageIds = [...activeStreamingMessageIds, messageId]
 
         const intervalId = setInterval(() => {
@@ -564,7 +490,6 @@
                 const idx = messages.findIndex((m) => m.id === messageId)
                 if (idx !== -1) {
                     messages[idx].isStreaming = false
-                    scheduleBottomFollow()
                 }
                 activeStreamingMessageIds = activeStreamingMessageIds.filter(
                     (id) => id !== messageId
@@ -575,7 +500,6 @@
             const idx = messages.findIndex((m) => m.id === messageId)
             if (idx !== -1) {
                 messages[idx].content += chunks[chunkIndex]
-                scheduleBottomFollow()
             }
             chunkIndex++
         }, 80)
@@ -611,7 +535,6 @@
             isOptimistic: true
         }
         messages = [optimisticMsg, ...messages]
-        scheduleBottomFollow()
 
         // Simulate server confirmation after 500ms
         const tid = setTimeout(() => {
@@ -635,7 +558,6 @@
             } else {
                 messages = [confirmedMsg, ...messages]
             }
-            scheduleBottomFollow()
             totalConfirmed++
 
             // Start the assistant response independently so bursts stream concurrently.
@@ -670,7 +592,6 @@
 
     onMount(() => {
         let rafId = 0
-        let viewportLookupRafId = 0
 
         const syncStats = () => {
             const viewport = document.querySelector('[data-testid="streaming-list-viewport"]') as
@@ -690,104 +611,17 @@
 
         rafId = requestAnimationFrame(syncStats)
 
-        const attachViewportTracking = () => {
-            const viewport = getStreamingViewport()
-            if (!viewport) {
-                viewportLookupRafId = requestAnimationFrame(attachViewportTracking)
-                return
-            }
-
-            const handleViewportScroll = () => {
-                syncStreamAutoFollowBottom()
-            }
-
-            syncStreamAutoFollowBottom()
-            scheduleBottomFollow()
-            viewport.addEventListener('scroll', handleViewportScroll, { passive: true })
-            viewportMutationObserver = new MutationObserver(() => {
-                if (!streamAutoFollowBottom) return
-
-                const gap = getStreamingViewportGap(viewport)
-                if (gap >= STREAMING_AUTO_FOLLOW_RELEASE_PX) {
-                    streamAutoFollowBottom = false
-                    return
-                }
-
-                viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight
-                scheduleBottomFollow()
-            })
-            viewportMutationObserver.observe(viewport, {
-                subtree: true,
-                childList: true,
-                characterData: true
-            })
-            stopViewportTracking = () => {
-                viewport.removeEventListener('scroll', handleViewportScroll)
-                viewportMutationObserver?.disconnect()
-                viewportMutationObserver = null
-            }
-        }
-
-        viewportLookupRafId = requestAnimationFrame(attachViewportTracking)
-
         return () => {
             cancelAnimationFrame(rafId)
-            cancelAnimationFrame(viewportLookupRafId)
-            cancelBottomFollow()
-            stopViewportTracking?.()
-            stopViewportTracking = null
-            viewportMutationObserver?.disconnect()
-            viewportMutationObserver = null
         }
     })
 
     onDestroy(() => {
-        cancelBottomFollow()
-        stopViewportTracking?.()
-        stopViewportTracking = null
-        viewportMutationObserver?.disconnect()
-        viewportMutationObserver = null
         for (const intervalId of activeIntervalIds.values()) {
             clearInterval(intervalId)
         }
         for (const timeoutId of pendingStreamStartIds.values()) {
             clearTimeout(timeoutId)
-        }
-    })
-
-    $effect(() => {
-        if (typeof window === 'undefined' || !isStreaming || !streamAutoFollowBottom) return
-
-        let rafId = 0
-        let cancelled = false
-
-        const step = () => {
-            if (cancelled) return
-
-            const viewport = getStreamingViewport()
-            if (!viewport) {
-                rafId = requestAnimationFrame(step)
-                return
-            }
-
-            const gap = getStreamingViewportGap(viewport)
-            if (gap >= STREAMING_AUTO_FOLLOW_RELEASE_PX) {
-                streamAutoFollowBottom = false
-                return
-            }
-
-            if (gap > STREAMING_AUTO_FOLLOW_BOTTOM_TOLERANCE_PX) {
-                viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight
-            }
-
-            rafId = requestAnimationFrame(step)
-        }
-
-        rafId = requestAnimationFrame(step)
-
-        return () => {
-            cancelled = true
-            cancelAnimationFrame(rafId)
         }
     })
 </script>
