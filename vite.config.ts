@@ -30,6 +30,6 @@ export default defineConfig({
         reporters: ['verbose', ['junit', { outputFile: './junit-vitest.xml' }]]
     },
     build: {
-        sourcemap: true
+        sourcemap: false
     }
 })
