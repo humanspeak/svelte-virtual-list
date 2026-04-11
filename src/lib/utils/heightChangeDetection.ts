@@ -35,6 +35,30 @@
  * isSignificantHeightChange(0, 40.5, heightCache); // false
  * ```
  */
+/**
+ * Normalizes a raw measured height for the dedicated bottom-to-top engine.
+ * Returns 0 for non-finite or non-positive values, otherwise rounds to the nearest integer
+ * with a minimum of 1px.
+ */
+export const normalizeDedicatedMeasuredHeight = (heightValue: number): number => {
+    if (!Number.isFinite(heightValue) || heightValue <= 0) return 0
+    return Math.max(1, Math.round(heightValue))
+}
+
+/**
+ * Checks whether two height values are within a tolerance threshold of each other.
+ * Used by the dedicated bottom-to-top engine to avoid unnecessary updates for
+ * sub-pixel or rounding-level height variations.
+ */
+export const isDedicatedHeightWithinTolerance = (
+    previous: number | undefined,
+    next: number,
+    tolerance: number = 1
+): boolean =>
+    Number.isFinite(previous) &&
+    Number.isFinite(next) &&
+    Math.abs((previous as number) - next) < tolerance
+
 export const isSignificantHeightChange = (
     itemIndex: number,
     newHeight: number,

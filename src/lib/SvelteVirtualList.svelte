@@ -161,7 +161,11 @@
     } from '$lib/types.js'
     import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
-    import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
+    import {
+        isDedicatedHeightWithinTolerance,
+        isSignificantHeightChange,
+        normalizeDedicatedMeasuredHeight
+    } from '$lib/utils/heightChangeDetection.js'
     import {
         calculateTransformY,
         calculateAverageHeight,
@@ -399,7 +403,6 @@
         useDedicatedBottomToTopEngine ? heightManager.itemHeight : heightManager.averageHeight
     )
     const instanceId = Math.random().toString(36).slice(2, 7)
-    const DEDICATED_HEIGHT_CHANGE_TOLERANCE_PX = 1
     const BOTTOM_TO_TOP_BACKFILL_DELAY_MS = 48
     const BOTTOM_TO_TOP_SCROLL_AWAY_SUPPRESSION_MS = 250
     const BOTTOM_TO_TOP_FORCED_SCROLL_AWAY_PX = 96
@@ -465,16 +468,6 @@
         heightManager.scrollTop = scrollValue
         lastScrollTopSnapshot = scrollValue
     }
-
-    const normalizeDedicatedMeasuredHeight = (heightValue: number) => {
-        if (!Number.isFinite(heightValue) || heightValue <= 0) return 0
-        return Math.max(1, Math.round(heightValue))
-    }
-
-    const isDedicatedHeightWithinTolerance = (previous: number | undefined, next: number) =>
-        Number.isFinite(previous) &&
-        Number.isFinite(next) &&
-        Math.abs((previous as number) - next) < DEDICATED_HEIGHT_CHANGE_TOLERANCE_PX
 
     const getRoundedViewportScrollTop = () => {
         if (!heightManager.viewportElement) {
