@@ -197,7 +197,7 @@
     } from '$lib/bottom-to-top/bottomToTopMapping.js'
     import { BROWSER } from 'esm-env'
     import { flushSync, onMount, tick, untrack } from 'svelte'
-    import { SvelteMap, SvelteSet } from 'svelte/reactivity'
+    import { SvelteSet } from 'svelte/reactivity'
 
     const rafSchedule = createRafScheduler()
     // Timing constants
@@ -432,6 +432,8 @@
     let bottomToTopLockedBottomDrainScheduled = $state(false)
     let bottomToTopLockedBottomDrainActive = $state(false)
     let bottomToTopLockedBottomDrainSettleFramesRemaining = $state(0)
+    let bottomToTopVisibleMutationObserver: MutationObserver | null = null
+    let bottomToTopVisibleMutationRafId: number | null = null
     let bottomToTopProgrammaticScrollRafId: number | null = null
     let bottomToTopSuppressScrollAwayUntilMs = $state(0)
 
@@ -607,9 +609,6 @@
     let bottomPinRafId: number | null = null
     let bottomPinFramesRemaining = 0
     let bottomLockGeometryReconcileRafId: number | null = null
-    let renderedItemsBottomExtentRafId: number | null = null
-    let renderedItemsBottomExtentFramesRemaining = $state(0)
-
     const cancelBottomPin = () => {
         pendingBottomPin = false
         bottomPinFramesRemaining = 0
@@ -622,43 +621,6 @@
             cancelAnimationFrame(bottomPinRafId)
             bottomPinRafId = null
         }
-    }
-
-    const cancelRenderedItemsBottomExtentMeasure = () => {
-        if (renderedItemsBottomExtentRafId !== null) {
-            cancelAnimationFrame(renderedItemsBottomExtentRafId)
-            renderedItemsBottomExtentRafId = null
-        }
-    }
-
-    const scheduleRenderedItemsBottomExtentMeasure = () => {
-        if (
-            !BROWSER ||
-            mode !== 'bottomToTop' ||
-            renderedItemsBottomExtentFramesRemaining <= 0 ||
-            !itemsWrapperElement
-        ) {
-            cancelRenderedItemsBottomExtentMeasure()
-            return
-        }
-
-        if (renderedItemsBottomExtentRafId !== null) return
-
-        renderedItemsBottomExtentRafId = requestAnimationFrame(() => {
-            renderedItemsBottomExtentRafId = null
-
-            if (!itemsWrapperElement) {
-                return
-            }
-
-            renderedItemsBottomExtentFramesRemaining = Math.max(
-                0,
-                renderedItemsBottomExtentFramesRemaining - 1
-            )
-            if (renderedItemsBottomExtentFramesRemaining > 0) {
-                scheduleRenderedItemsBottomExtentMeasure()
-            }
-        })
     }
 
     const scheduleBottomPin = (frames = 8) => {
@@ -800,9 +762,6 @@
         bottomLockGeometryReconcileRafId = requestAnimationFrame(step)
     }
 
-    // Dynamic update coordination to avoid UA scroll anchoring interference
-    let suppressBottomAnchoringUntilMs = $state(0)
-
     // Height update function - removed throttling to fix race condition on initial load
     // Create throttled height update function with trailing execution to ensure measurement always happens
     const triggerHeightUpdate = createAdvancedThrottledCallback(
@@ -925,7 +884,8 @@
     const measureVisibleItemsImmediately = () => {
         const currentVisibleRange = visibleItems
         const heightCache = heightManager.getHeightCache()
-        const dirtyVisibleItems = new SvelteSet<number>()
+        // trunk-ignore(eslint/svelte/prefer-svelte-reactivity): ephemeral local variable, not reactive state
+        const dirtyVisibleItems = new Set<number>()
 
         for (const element of itemElements) {
             if (!element) continue
@@ -987,6 +947,9 @@
     // For bottomToTop mode: keep init path active until scroll positioning is complete
     // This ensures Item 0 stays in the DOM throughout initialization
     let bottomToTopScrollComplete = $state(false)
+    let previousBottomToTopModeState: BottomToTopModeState = useDedicatedBottomToTopEngine
+        ? 'initializing'
+        : 'lockedBottom'
 
     /**
      * CRITICAL: O(1) Reactive Total Height Calculation
@@ -1082,7 +1045,6 @@
             window: bottomToTopPhysicalWindow,
             heightCache: heightManager.getHeightCache(),
             itemHeight: heightManager.itemHeight,
-            totalItems: items.length,
             totalHeight,
             blockSums: heightManager.getBlockSums()
         })
@@ -1168,7 +1130,8 @@
     }
 
     const getBottomToTopMeasuredIndices = () => {
-        const measuredIndices = new SvelteSet(
+        // trunk-ignore(eslint/svelte/prefer-svelte-reactivity): ephemeral local variable, not reactive state
+        const measuredIndices = new Set(
             Object.keys(heightManager.getHeightCache()).map((key) => Number.parseInt(key, 10))
         )
 
@@ -1189,6 +1152,13 @@
         bottomToTopLockedBottomDrainScheduled = false
     }
 
+    const cancelBottomToTopVisibleMutationSync = () => {
+        if (bottomToTopVisibleMutationRafId !== null) {
+            cancelAnimationFrame(bottomToTopVisibleMutationRafId)
+            bottomToTopVisibleMutationRafId = null
+        }
+    }
+
     const armBottomToTopLockedBottomDrainSettle = (
         frames = BOTTOM_TO_TOP_LOCKED_BOTTOM_DRAIN_SETTLE_FRAMES
     ) => {
@@ -1198,7 +1168,13 @@
         )
     }
 
+    // Keep offscreen measurements staged while locked to bottom. Draining them
+    // live keeps the visible rows anchored, but it still rewrites scrollTop/max
+    // on every batch and shows up as micro up/down motion in the viewport.
+    const shouldDrainBottomToTopLockedBottomStaged = () => false
+
     const canDrainBottomToTopLockedBottomStaged = () =>
+        shouldDrainBottomToTopLockedBottomStaged() &&
         useDedicatedBottomToTopEngine &&
         bottomToTopModeState === 'lockedBottom' &&
         !userHasScrolledAway &&
@@ -1564,6 +1540,7 @@
     const scheduleBottomToTopLockedBottomDrain = () => {
         if (
             !useDedicatedBottomToTopEngine ||
+            !canDrainBottomToTopLockedBottomStaged() ||
             bottomToTopLockedBottomDrainRafId !== null ||
             bottomToTopLockedBottomDrainActive
         ) {
@@ -1595,6 +1572,52 @@
         bottomToTopLockedBottomDrainRafId = requestAnimationFrame(step)
     }
 
+    const flushBottomToTopVisibleMutation = () => {
+        bottomToTopVisibleMutationRafId = null
+
+        if (!useDedicatedBottomToTopEngine || !heightManager.viewportElement) return
+
+        const maintainBottomLock = shouldMaintainBottomToTopBottomLock()
+        if (maintainBottomLock) {
+            armBottomToTopLockedBottomDrainSettle()
+            suppressBottomToTopScrollAway()
+            syncScrollTop(getViewportMaxScrollTop(), true)
+        }
+
+        const didMeasureVisibleItems = measureBottomToTopVisibleItemsImmediately()
+        const window = getBottomToTopCurrentWindow()
+
+        if (shouldMaintainBottomToTopBottomLock()) {
+            suppressBottomToTopScrollAway()
+            syncScrollTop(getViewportMaxScrollTop(), true)
+
+            if (bottomToTopStagedCount > 0) {
+                promoteBottomToTopStagedMeasurementsForWindow(window)
+                scheduleBottomToTopLockedBottomDrain()
+            } else {
+                reconcileBottomToTopToBottom(didMeasureVisibleItems ? 4 : 2)
+            }
+            return
+        }
+
+        if (bottomToTopStagedCount > 0) {
+            promoteBottomToTopStagedMeasurementsForWindow(window)
+        }
+    }
+
+    const scheduleBottomToTopVisibleMutationSync = () => {
+        if (!useDedicatedBottomToTopEngine || !heightManager.viewportElement) return
+
+        if (shouldMaintainBottomToTopBottomLock()) {
+            armBottomToTopLockedBottomDrainSettle()
+            suppressBottomToTopScrollAway()
+            syncScrollTop(getViewportMaxScrollTop(), true)
+        }
+
+        if (bottomToTopVisibleMutationRafId !== null) return
+        bottomToTopVisibleMutationRafId = requestAnimationFrame(flushBottomToTopVisibleMutation)
+    }
+
     const cancelBottomToTopReconcile = () => {
         if (bottomToTopReconcileRafId !== null) {
             cancelAnimationFrame(bottomToTopReconcileRafId)
@@ -1613,7 +1636,8 @@
         if (entries.length === 0) return false
 
         const heightCache = heightManager.getHeightCache()
-        const normalizedEntriesByIndex = new SvelteMap<number, number>()
+        // trunk-ignore(eslint/svelte/prefer-svelte-reactivity): ephemeral local variable, not reactive state
+        const normalizedEntriesByIndex = new Map<number, number>()
 
         for (const entry of entries) {
             if (entry.index < 0 || entry.index >= items.length) continue
@@ -1880,7 +1904,7 @@
             bottomToTopBackfillRafId = requestAnimationFrame(() => {
                 bottomToTopBackfillRafId = null
 
-                const measuredIndices = new SvelteSet(getBottomToTopMeasuredIndices())
+                const measuredIndices = new Set(getBottomToTopMeasuredIndices())
                 const backfillIndices = buildBottomToTopBackfillIndices({
                     window: bottomToTopPhysicalWindow,
                     totalItems: items.length,
@@ -1987,6 +2011,100 @@
                 }
             }
         })
+    })
+
+    $effect(() => {
+        if (!useDedicatedBottomToTopEngine || !BROWSER) return
+
+        const currentState = bottomToTopModeState
+        const previousState = previousBottomToTopModeState
+        previousBottomToTopModeState = currentState
+
+        if (currentState !== 'lockedBottom' || previousState === 'lockedBottom') return
+
+        tick().then(() =>
+            requestAnimationFrame(() => {
+                if (
+                    !heightManager.viewportElement ||
+                    bottomToTopModeState !== 'lockedBottom' ||
+                    !shouldMaintainBottomToTopBottomLock() ||
+                    programmaticScrollInProgress
+                ) {
+                    return
+                }
+
+                suppressBottomToTopScrollAway(64)
+                syncScrollTop(getViewportMaxScrollTop(), true)
+                const didMeasureVisibleItems = measureBottomToTopVisibleItemsImmediately()
+                if (didMeasureVisibleItems) {
+                    syncScrollTop(getViewportMaxScrollTop(), true)
+                }
+                if (bottomToTopStagedCount > 0) {
+                    scheduleBottomToTopLockedBottomDrain()
+                }
+            })
+        )
+    })
+
+    $effect(() => {
+        if (
+            !BROWSER ||
+            !useDedicatedBottomToTopEngine ||
+            bottomToTopModeState !== 'lockedBottom' ||
+            !itemsWrapperElement
+        ) {
+            cancelBottomToTopVisibleMutationSync()
+            bottomToTopVisibleMutationObserver?.disconnect()
+            bottomToTopVisibleMutationObserver = null
+            return
+        }
+
+        bottomToTopVisibleMutationObserver?.disconnect()
+
+        // Visible content mutations can land before ResizeObserver delivers the new
+        // height. While locked to bottom we snap to the DOM bottom immediately, then
+        // measure visible rows on the next frame so streaming/demo pages do not need
+        // their own follow-bottom loop.
+        const observer = new MutationObserver((records) => {
+            if (
+                !records.some((record) => {
+                    if (record.type === 'characterData') {
+                        return true
+                    }
+
+                    if (record.type !== 'childList') {
+                        return false
+                    }
+
+                    const targetElement =
+                        record.target instanceof Element
+                            ? record.target
+                            : record.target.parentElement
+
+                    return Boolean(targetElement?.closest('[data-original-index]'))
+                })
+            ) {
+                return
+            }
+
+            scheduleBottomToTopVisibleMutationSync()
+        })
+
+        observer.observe(itemsWrapperElement, {
+            childList: true,
+            characterData: true,
+            subtree: true
+        })
+
+        bottomToTopVisibleMutationObserver = observer
+
+        return () => {
+            if (bottomToTopVisibleMutationObserver === observer) {
+                bottomToTopVisibleMutationObserver = null
+            }
+            observer.disconnect()
+            cancelBottomToTopVisibleMutationSync()
+        }
     })
 
     $effect(() => {
@@ -2218,7 +2336,6 @@
                 !isAtBottom && // Don't apply aggressive correction when at bottom
                 !isScrolling && // Skip aggressive corrections during active scroll
                 !programmaticScrollInProgress && // Don't interfere with programmatic scrolls
-                performance.now() >= suppressBottomAnchoringUntilMs &&
                 !heightManager.isDynamicUpdateInProgress &&
                 scrollDifference > heightManager.averageHeight * 3
 
@@ -2269,23 +2386,6 @@
             syncScrollTop(maxScrollTop, true)
             return
         }
-    })
-
-    $effect(() => {
-        if (
-            !BROWSER ||
-            mode !== 'bottomToTop' ||
-            useDedicatedBottomToTopEngine ||
-            renderedItemsBottomExtentFramesRemaining <= 0 ||
-            !itemsWrapperElement
-        ) {
-            cancelRenderedItemsBottomExtentMeasure()
-            return
-        }
-
-        void visibleItems
-        void transformY
-        scheduleRenderedItemsBottomExtentMeasure()
     })
 
     // Handle items being added/removed in bottomToTop mode
@@ -2994,7 +3094,6 @@
                 if (itemResizeObserver) {
                     itemResizeObserver.disconnect()
                 }
-                cancelRenderedItemsBottomExtentMeasure()
                 cancelBottomPin()
                 cancelBottomToTopReconcile()
                 cancelBottomToTopProgrammaticScroll()

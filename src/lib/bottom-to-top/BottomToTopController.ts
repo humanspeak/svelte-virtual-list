@@ -81,14 +81,12 @@ export const calculateBottomToTopSpacers = ({
     window,
     heightCache,
     itemHeight,
-    totalItems: _totalItems,
     totalHeight,
     blockSums
 }: {
     window: BottomToTopWindow
     heightCache: Record<number, number>
     itemHeight: number
-    totalItems: number
     totalHeight: number
     blockSums: number[]
 }) => {
