@@ -1,13 +1,14 @@
 {
     "name": "docs",
     "version": "0.0.1",
+    "private": true,
     "type": "module",
     "scripts": {
         "build": "tsx ./scripts/fetch-github-stats.ts && node ./scripts/generate-sitemap-manifest.mjs && tsx ./scripts/generate-social-cards.ts && vite build",
         "cf-typegen": "wrangler types && mv worker-configuration.d.ts src/",
         "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
         "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-        "deploy": "pnpm run build && wrangler pages deploy",
+        "deploy": "pnpm run build && wrangler deploy",
         "dev": "vite dev",
         "format": "prettier --write .",
         "generate-social": "tsx scripts/generate-social-cards.ts",
@@ -41,7 +42,6 @@
         "@lucide/svelte": "^1.7.0",
         "@playwright/test": "^1.59.0",
         "@sentry/sveltekit": "^10.47.0",
-        "@sveltejs/adapter-auto": "^7.0.1",
         "@sveltejs/adapter-cloudflare": "^7.2.8",
         "@sveltejs/kit": "^2.55.0",
         "@sveltejs/vite-plugin-svelte": "^7.0.0",
