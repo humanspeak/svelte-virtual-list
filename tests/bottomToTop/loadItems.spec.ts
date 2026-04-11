@@ -223,7 +223,7 @@ test.describe('BottomToTop LoadItems', () => {
 
         await page.evaluate(() => {
             ;(
-                window as typeof window & { __appendLoadItems?: (count?: number) => void }
+                window as typeof window & { __appendLoadItems?: (_count?: number) => void }
             ).__appendLoadItems?.(200)
         })
 

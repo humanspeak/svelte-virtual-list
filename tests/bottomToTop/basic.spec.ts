@@ -479,7 +479,7 @@ test.describe('Basic BottomToTop Rendering', () => {
 
     test('should re-engage bottom lock when scrolling back to bottom', async ({
         page
-    }, testInfo) => {
+    }, _testInfo) => {
         await scrollToMaxAndWait(page)
 
         // Scroll away from bottom using direct scrollTop manipulation for reliability

@@ -35,7 +35,7 @@
     if (typeof window !== 'undefined') {
         ;(
             window as typeof window & {
-                __appendLoadItems?: (count?: number) => void
+                __appendLoadItems?: (_count?: number) => void
             }
         ).__appendLoadItems = (count = 20) => {
             appendItems(count)
@@ -46,7 +46,7 @@
         if (typeof window === 'undefined') return
         delete (
             window as typeof window & {
-                __appendLoadItems?: (count?: number) => void
+                __appendLoadItems?: (_count?: number) => void
             }
         ).__appendLoadItems
     })

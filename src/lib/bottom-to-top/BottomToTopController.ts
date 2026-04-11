@@ -81,7 +81,7 @@ export const calculateBottomToTopSpacers = ({
     window,
     heightCache,
     itemHeight,
-    totalItems,
+    totalItems: _totalItems,
     totalHeight,
     blockSums
 }: {
@@ -118,7 +118,7 @@ export const buildBottomToTopMeasurementTasks = <TItem>({
 }: {
     indices: number[]
     items: TItem[]
-    getLogicalIndexFromPhysical: (physicalIndex: number) => number
+    getLogicalIndexFromPhysical: (_physicalIndex: number) => number
 }): Array<BottomToTopMeasurementTask<TItem>> => {
     const tasks: Array<BottomToTopMeasurementTask<TItem>> = []
     const seen = new Set<number>()

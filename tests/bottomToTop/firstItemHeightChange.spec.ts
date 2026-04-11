@@ -568,7 +568,6 @@ test.describe('BottomToTop FirstItemHeightChange', () => {
         await page.goto(`${PAGE_URL}?height1=100,500`, { waitUntil: 'domcontentloaded' })
         await page.waitForSelector('[data-testid="list-item-1"]')
 
-        const container = page.locator('[data-testid="basic-list-container"]')
         const viewport = page.locator('[data-testid="basic-list-viewport"]')
 
         // Wait for initial height change (100px)

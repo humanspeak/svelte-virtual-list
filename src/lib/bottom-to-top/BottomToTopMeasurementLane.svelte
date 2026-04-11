@@ -1,6 +1,5 @@
 <script lang="ts" generics="TItem = unknown">
-    import type { Snippet } from 'svelte'
-    import { tick } from 'svelte'
+    import { tick, type Snippet } from 'svelte'
     import type { BottomToTopMeasurementTask } from './BottomToTopController.js'
 
     let {
@@ -10,7 +9,7 @@
     }: {
         tasks: Array<BottomToTopMeasurementTask<TItem>>
         renderItem: Snippet<[item: TItem, index: number]>
-        onMeasure: (physicalIndex: number, height: number) => void
+        onMeasure: (_physicalIndex: number, _height: number) => void
     } = $props()
 
     const stripConflictingAttributes = (node: HTMLElement) => {
