@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { waitForLockedBottom } from '../../src/lib/test/utils/bottomToTopHelpers.js'
 import { rafWait, SETTLE_MS } from '../../src/lib/test/utils/rafWait.js'
 
 const VIEWPORT_SELECTOR = '[data-testid="streaming-list-viewport"]'
@@ -36,33 +37,8 @@ const getStreamingDebugState = (selector: string) => {
     }
 }
 
-const waitForStreamingLockedBottom = async (page: import('@playwright/test').Page) => {
-    await page.waitForFunction(
-        (selector) => {
-            const viewport = document.querySelector(selector) as
-                | (HTMLElement & {
-                      __svlDebug?: {
-                          bottomToTopState?: string
-                          gapFromBottomPx?: number
-                          measuredCount?: number
-                      }
-                  })
-                | null
-            if (!viewport) return false
-
-            const debug = viewport.__svlDebug
-            if (!debug) return false
-
-            return (
-                debug.bottomToTopState === 'lockedBottom' &&
-                (debug.gapFromBottomPx ?? Number.POSITIVE_INFINITY) <= 2 &&
-                (debug.measuredCount ?? 0) > 0
-            )
-        },
-        VIEWPORT_SELECTOR,
-        { timeout: 10000 }
-    )
-}
+const waitForStreamingLockedBottom = (page: import('@playwright/test').Page) =>
+    waitForLockedBottom(page, VIEWPORT_SELECTOR)
 
 const getScrollState = (selector: string) => {
     const viewport = document.querySelector(selector) as HTMLElement | null

@@ -1,12 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
-import { rafWait } from '../../src/lib/test/utils/rafWait.js'
+import { waitForLockedBottom } from '../../src/lib/test/utils/bottomToTopHelpers.js'
+
+const VIEWPORT_SELECTOR = '[data-testid="basic-list-viewport"]'
 
 test.describe('bottomToTop scroll', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/list/bottomToTop/scroll', { waitUntil: 'domcontentloaded' })
-        // Wait for initial render to complete
         await page.waitForSelector('[data-testid^="list-item-"]')
-        await rafWait(page, 2)
+        await waitForLockedBottom(page, VIEWPORT_SELECTOR)
     })
 
     async function setAlign(page: Page, value: string) {

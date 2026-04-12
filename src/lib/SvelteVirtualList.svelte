@@ -157,6 +157,7 @@
         DEFAULT_SCROLL_OPTIONS,
         type SvelteVirtualListPreviousVisibleRange,
         type SvelteVirtualListProps,
+        type SvelteVirtualListScrollAlign,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
     import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
@@ -438,6 +439,7 @@
     let bottomToTopVisibleMutationObserver: MutationObserver | null = null
     let bottomToTopVisibleMutationRafId: number | null = null
     let bottomToTopProgrammaticScrollRafId: number | null = null
+    let bottomToTopProgrammaticScrollToken = 0
     let bottomToTopSuppressScrollAwayUntilMs = $state(0)
 
     // Centralized debug logger gated by flags
@@ -1066,6 +1068,44 @@
 
     const getBottomToTopCurrentWindow = (): BottomToTopWindow =>
         bottomToTopModeState === 'initializing' ? bottomToTopInitWindow : bottomToTopPhysicalWindow
+
+    const getDedicatedBottomToTopScrollTarget = (
+        targetLogicalIndex: number,
+        align: SvelteVirtualListScrollAlign
+    ) => {
+        const physicalTargetIndex = getPhysicalIndexFromLogical(targetLogicalIndex, items.length)
+
+        // Compute visible (unbuffered) window on-demand rather than as a $derived,
+        // since this function is only called imperatively from scrollToIndex
+        const visibleWindow =
+            !useDedicatedBottomToTopEngine || !items.length
+                ? { startPhysical: 0, endPhysical: 0 }
+                : bottomToTopModeState === 'initializing'
+                  ? bottomToTopInitWindow
+                  : calculateBottomToTopPhysicalWindow({
+                        scrollTop: heightManager.scrollTop,
+                        viewportHeight: height || measuredFallbackHeight || 0,
+                        itemHeight: heightManager.itemHeight,
+                        totalItems: items.length,
+                        bufferSize: 0,
+                        totalContentHeight: totalHeight,
+                        heightCache: heightManager.getHeightCache(),
+                        blockSums: heightManager.getBlockSums()
+                    })
+
+        return calculateScrollTarget({
+            mode: 'topToBottom',
+            align,
+            targetIndex: physicalTargetIndex,
+            itemsLength: items.length,
+            calculatedItemHeight: heightManager.itemHeight,
+            height,
+            scrollTop: heightManager.scrollTop,
+            firstVisibleIndex: visibleWindow.startPhysical,
+            lastVisibleIndex: visibleWindow.endPhysical,
+            heightCache: heightManager.getHeightCache()
+        })
+    }
 
     const shouldMaintainBottomToTopBottomLock = () =>
         bottomToTopModeState === 'initializing' ||
@@ -3090,6 +3130,7 @@
                 cancelBottomPin()
                 cancelBottomToTopReconcile()
                 cancelBottomToTopProgrammaticScroll()
+                bottomToTopProgrammaticScrollToken++
                 clearBottomToTopBackfill()
             }
         }
@@ -3302,25 +3343,15 @@
         }
 
         if (useDedicatedBottomToTopEngine) {
-            const physicalTargetIndex = getPhysicalIndexFromLogical(targetIndex, items.length)
-            const scrollTarget = calculateScrollTarget({
-                mode: 'topToBottom',
-                align: align || 'auto',
-                targetIndex: physicalTargetIndex,
-                itemsLength: items.length,
-                calculatedItemHeight: heightManager.itemHeight,
-                height,
-                scrollTop: heightManager.scrollTop,
-                firstVisibleIndex: bottomToTopPhysicalWindow.startPhysical,
-                lastVisibleIndex: bottomToTopPhysicalWindow.endPhysical,
-                heightCache: heightManager.getHeightCache()
-            })
+            const targetAlign = align || 'auto'
+            const scrollTarget = getDedicatedBottomToTopScrollTarget(targetIndex, targetAlign)
 
             if (scrollTarget === null) {
                 return
             }
 
             const targetNearBottom = isBottomToTopProgrammaticTargetNearBottom(scrollTarget)
+            const scrollToken = ++bottomToTopProgrammaticScrollToken
             bottomToTopProgrammaticIntent = targetNearBottom ? 'towardBottom' : 'awayFromBottom'
             cancelBottomPin()
             cancelBottomToTopReconcile()
@@ -3334,19 +3365,53 @@
 
             window.setTimeout(
                 () => {
+                    if (scrollToken !== bottomToTopProgrammaticScrollToken) return
                     cancelBottomToTopProgrammaticScroll()
                     if (!heightManager.viewportElement) return
-                    const nearBottom = isViewportNearBottom(getBottomToTopBottomLockTolerancePx())
-                    userHasScrolledAway = !nearBottom
-                    bottomToTopProgrammaticIntent = 'none'
-                    programmaticScrollInProgress = false
-                    if (nearBottom) {
-                        promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())
-                        scheduleBottomToTopLockedBottomDrain()
-                        reconcileBottomToTopToBottom(4)
-                    } else if (bottomToTopStagedCount > 0) {
-                        promoteBottomToTopStagedMeasurementsForWindow(getBottomToTopCurrentWindow())
+
+                    if (!targetNearBottom) {
+                        measureBottomToTopVisibleItemsImmediately()
                     }
+
+                    tick().then(() => {
+                        if (
+                            scrollToken !== bottomToTopProgrammaticScrollToken ||
+                            !heightManager.viewportElement
+                        ) {
+                            return
+                        }
+
+                        const correctedTarget = getDedicatedBottomToTopScrollTarget(
+                            targetIndex,
+                            targetAlign
+                        )
+
+                        if (
+                            correctedTarget !== null &&
+                            Math.abs(Math.round(correctedTarget) - getRoundedViewportScrollTop()) >
+                                1
+                        ) {
+                            syncScrollTop(correctedTarget, true)
+                        }
+
+                        const nearBottom = isViewportNearBottom(
+                            getBottomToTopBottomLockTolerancePx()
+                        )
+                        userHasScrolledAway = !nearBottom
+                        bottomToTopProgrammaticIntent = 'none'
+                        programmaticScrollInProgress = false
+                        if (nearBottom) {
+                            promoteBottomToTopStagedMeasurementsForWindow(
+                                getBottomToTopCurrentWindow()
+                            )
+                            scheduleBottomToTopLockedBottomDrain()
+                            reconcileBottomToTopToBottom(4)
+                        } else if (bottomToTopStagedCount > 0) {
+                            promoteBottomToTopStagedMeasurementsForWindow(
+                                getBottomToTopCurrentWindow()
+                            )
+                        }
+                    })
                 },
                 smoothScroll ? 500 : 100
             )
