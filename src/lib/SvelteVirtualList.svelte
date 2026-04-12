@@ -432,10 +432,12 @@
     let bottomToTopStagedHeights = $state<Record<number, number>>({})
     let bottomToTopStagedCount = $state(0)
     let bottomToTopPromotionScheduled = $state(false)
+    let bottomToTopDrainStagedOnBottomReturn = $state(false)
     let bottomToTopLockedBottomDrainRafId: number | null = null
     let bottomToTopLockedBottomDrainScheduled = $state(false)
     let bottomToTopLockedBottomDrainActive = $state(false)
     let bottomToTopLockedBottomDrainSettleFramesRemaining = $state(0)
+    let previousBottomToTopUserHasScrolledAway = false
     let bottomToTopVisibleMutationObserver: MutationObserver | null = null
     let bottomToTopVisibleMutationRafId: number | null = null
     let bottomToTopProgrammaticScrollRafId: number | null = null
@@ -1201,10 +1203,10 @@
         )
     }
 
-    // Keep offscreen measurements staged while locked to bottom. Draining them
-    // live keeps the visible rows anchored, but it still rewrites scrollTop/max
-    // on every batch and shows up as micro up/down motion in the viewport.
-    const shouldDrainBottomToTopLockedBottomStaged = () => false
+    // Keep offscreen measurements staged during initial locked-bottom warmup to
+    // avoid visible jitter. Only drain them after the user has actually scrolled
+    // away and returned to bottom, where staged work must be reconciled again.
+    const shouldDrainBottomToTopLockedBottomStaged = () => bottomToTopDrainStagedOnBottomReturn
 
     const canDrainBottomToTopLockedBottomStaged = () =>
         shouldDrainBottomToTopLockedBottomStaged() &&
@@ -2179,15 +2181,37 @@
         if (
             bottomToTopModeState === 'lockedBottom' &&
             !userHasScrolledAway &&
-            !programmaticScrollInProgress &&
-            bottomToTopStagedCount > 0
+            !programmaticScrollInProgress
         ) {
             clearBottomToTopBackfill()
-            scheduleBottomToTopLockedBottomDrain()
-            return
+
+            if (bottomToTopStagedCount > 0) {
+                scheduleBottomToTopLockedBottomDrain()
+                return
+            }
+            // When drain flag is set, suppress backfill until all staged work is drained
+            if (bottomToTopDrainStagedOnBottomReturn) return
         }
 
         scheduleBottomToTopBackfill()
+    })
+
+    $effect(() => {
+        if (!useDedicatedBottomToTopEngine) {
+            previousBottomToTopUserHasScrolledAway = false
+            bottomToTopDrainStagedOnBottomReturn = false
+            return
+        }
+
+        const isAway = userHasScrolledAway
+
+        if (isAway) {
+            bottomToTopDrainStagedOnBottomReturn = false
+        } else if (previousBottomToTopUserHasScrolledAway) {
+            bottomToTopDrainStagedOnBottomReturn = true
+        }
+
+        previousBottomToTopUserHasScrolledAway = isAway
     })
 
     $effect(() => {
