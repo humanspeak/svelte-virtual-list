@@ -76,32 +76,13 @@ describe('SvelteVirtualList Component', () => {
             expect(itemsContainer).toBeInTheDocument()
         })
 
-        test('renders with items in topToBottom mode', async () => {
+        test('renders with items', async () => {
             const items = createMockItems(10)
 
             render(TestWrapper, {
                 props: {
                     testId: 'test-list',
-                    items,
-                    mode: 'topToBottom'
-                }
-            })
-
-            await vi.runAllTimersAsync()
-            await tick()
-
-            const viewport = screen.getByTestId('test-list-viewport')
-            expect(viewport).toBeInTheDocument()
-        })
-
-        test('renders with items in bottomToTop mode', async () => {
-            const items = createMockItems(10)
-
-            render(TestWrapper, {
-                props: {
-                    testId: 'test-list',
-                    items,
-                    mode: 'bottomToTop'
+                    items
                 }
             })
 

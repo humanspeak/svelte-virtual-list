@@ -1,7 +1,6 @@
 import SvelteVirtualList from '$lib/SvelteVirtualList.svelte'
 import type {
     SvelteVirtualListDebugInfo,
-    SvelteVirtualListMode,
     SvelteVirtualListProps,
     SvelteVirtualListScrollAlign,
     SvelteVirtualListScrollOptions
@@ -9,7 +8,6 @@ import type {
 // cleaned: no extra exports for debugging UI
 export type {
     SvelteVirtualListDebugInfo,
-    SvelteVirtualListMode,
     SvelteVirtualListProps,
     SvelteVirtualListScrollAlign,
     SvelteVirtualListScrollOptions

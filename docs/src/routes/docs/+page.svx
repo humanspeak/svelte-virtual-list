@@ -6,7 +6,6 @@ description: "A high-performance virtual list component for Svelte 5 that effici
 <script>
   import Example from '$lib/components/general/Example.svelte'
   import BasicList from '$lib/examples/BasicList.svelte'
-  import BottomToTopExample from '$lib/examples/BottomToTopExample.svelte'
   import VariableHeightExample from '$lib/examples/VariableHeightExample.svelte'
   import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
 
@@ -28,7 +27,6 @@ description: "A high-performance virtual list component for Svelte 5 that effici
 ## Features
 
 - **Dynamic item height handling** - no fixed height required
-- **Bi-directional scrolling** - support for top-to-bottom and bottom-to-top modes
 - **Automatic resize handling** for dynamic content
 - **TypeScript support** with full type safety
 - **SSR compatible** with hydration support
@@ -85,29 +83,12 @@ One of the key features is automatic handling of variable item heights. Items ar
   <VariableHeightExample />
 </Example>
 
-## Chat-Style Lists (Bottom to Top)
-
-For chat applications and similar interfaces, use `mode="bottomToTop"` to anchor the list at the bottom:
-
-```svelte
-<VirtualList items={messages} mode="bottomToTop">
-    {#snippet renderItem(message)}
-        <div class="message">{message.text}</div>
-    {/snippet}
-</VirtualList>
-```
-
-<Example isSmall>
-  <BottomToTopExample />
-</Example>
-
 ## Props Reference
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `items` | `T[]` | Required | Array of items to render |
 | `defaultEstimatedItemHeight` | `number` | `40` | Initial height estimate used until items are measured |
-| `mode` | `'topToBottom' \| 'bottomToTop'` | `'topToBottom'` | Scroll direction and anchoring behavior |
 | `bufferSize` | `number` | `20` | Number of items rendered outside the viewport |
 | `debug` | `boolean` | `false` | Enable debug logging and visualizations |
 | `containerClass` | `string` | `''` | Class for outer container |

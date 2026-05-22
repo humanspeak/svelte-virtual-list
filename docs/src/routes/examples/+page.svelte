@@ -31,7 +31,7 @@
             'Explore interactive examples showcasing virtual list features including basic lists, infinite scroll, variable heights, and more.'
         seo.ogTitle = 'Examples'
         seo.ogTagline = 'Interactive demos of every virtual list feature.'
-        seo.ogFeatures = ['Basic List', 'Infinite Scroll', 'Variable Heights', 'Bottom to Top']
+        seo.ogFeatures = ['Basic List', 'Infinite Scroll', 'Variable Heights']
         seo.ogSlug = 'examples'
     }
 

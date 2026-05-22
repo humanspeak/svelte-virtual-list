@@ -16,11 +16,11 @@ import type { Locator, Page, TestInfo } from '@playwright/test'
  * 1. Programmatic scroll adjustment (immediate)
  * 2. ResizeObserver callback (browser-scheduled, typically next frame)
  * 3. Height recalculation + reconciliation RAF (1-2 additional frames)
- * 4. Bottom-anchoring suppression window (up to 200ms)
+ * 4. Scroll reconciliation after measured heights settle
  *
  * `rafWait()` (2 RAF frames / ~33ms) is insufficient for slower browsers
  * (WebKit, Firefox, mobile-safari) where these layers take longer to complete.
- * 200ms covers the full pipeline including the suppression window and matches
+ * 200ms covers the full pipeline including scroll reconciliation and matches
  * human-perceptible timing — no real user would observe state changes faster
  * than this.
  *

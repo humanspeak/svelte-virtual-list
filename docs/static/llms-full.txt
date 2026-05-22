@@ -9,12 +9,11 @@
 
 ## Overview
 
-Svelte Virtual List efficiently renders large datasets (10,000+ items) by only mounting DOM elements for items visible in the viewport, plus a configurable buffer. It features automatic height detection, bi-directional scrolling, infinite scroll, and programmatic scroll control. Built for Svelte 5 using runes and snippets. Zero dependencies.
+Svelte Virtual List efficiently renders large datasets (10,000+ items) by only mounting DOM elements for items visible in the viewport, plus a configurable buffer. It features automatic height detection, infinite scroll, and programmatic scroll control. Built for Svelte 5 using runes and snippets. Zero dependencies.
 
 ## Features
 
 - Dynamic item height handling (no fixed height required)
-- Bi-directional scrolling (topToBottom and bottomToTop modes)
 - Automatic resize handling for dynamic content
 - Full TypeScript support with generics
 - SSR compatible with hydration support
@@ -68,7 +67,6 @@ Requires Svelte 5 and Node 18+.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| mode | 'topToBottom' \| 'bottomToTop' | 'topToBottom' | Scroll direction. Use 'bottomToTop' for chat-style interfaces. |
 | bufferSize | number | 20 | Number of extra items rendered outside the visible viewport for smooth scrolling. |
 | defaultEstimatedItemHeight | number | 40 | Initial pixel height estimate per item before actual measurement. |
 | onLoadMore | () => void \| Promise<void> | undefined | Callback triggered when scrolling near the end of the list. Used for infinite scroll. |
@@ -199,17 +197,10 @@ All types are exported from the package:
 ```typescript
 import type {
     SvelteVirtualListProps,
-    SvelteVirtualListMode,
     SvelteVirtualListScrollOptions,
     SvelteVirtualListScrollAlign,
     SvelteVirtualListDebugInfo
 } from '@humanspeak/svelte-virtual-list'
-```
-
-#### SvelteVirtualListMode
-
-```typescript
-type SvelteVirtualListMode = 'topToBottom' | 'bottomToTop'
 ```
 
 #### SvelteVirtualListScrollAlign
@@ -249,28 +240,6 @@ const users: User[] = [...]
 ```
 
 ## Examples
-
-### Bottom-to-Top (Chat Mode)
-
-```svelte
-<script lang="ts">
-    import VirtualList from '@humanspeak/svelte-virtual-list'
-
-    const messages = Array.from({ length: 1000 }, (_, i) => ({
-        id: i,
-        text: `Message ${i}`,
-        sender: i % 2 === 0 ? 'user' : 'bot'
-    }))
-</script>
-
-<VirtualList items={messages} mode="bottomToTop">
-    {#snippet renderItem(message)}
-        <div class={message.sender}>
-            {message.text}
-        </div>
-    {/snippet}
-</VirtualList>
-```
 
 ### Infinite Scroll
 
@@ -417,7 +386,6 @@ The component uses a four-layer DOM structure:
 
 - All examples: https://virtuallist.svelte.page/examples
 - Basic list: https://virtuallist.svelte.page/examples/basic-list
-- Bottom to top: https://virtuallist.svelte.page/examples/bottom-to-top
 - Infinite scroll: https://virtuallist.svelte.page/examples/infinite-scroll
 - Scroll to item: https://virtuallist.svelte.page/examples/scroll-to-item
 - Variable height: https://virtuallist.svelte.page/examples/variable-height

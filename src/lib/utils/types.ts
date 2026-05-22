@@ -1,5 +1,3 @@
-import type { SvelteVirtualListMode } from '$lib/types.js'
-
 /**
  * Represents the internal state of a virtual list component.
  *
@@ -8,7 +6,6 @@ import type { SvelteVirtualListMode } from '$lib/types.js'
  * the DOM elements involved and the current scroll metrics.
  *
  * @property {boolean} initialized - Indicates whether the virtual list has completed its initial setup
- * @property {SvelteVirtualListMode} mode - Defines the scrolling behavior ('topToBottom' or 'bottomToTop')
  * @property {HTMLElement | null} containerElement - Reference to the outer container DOM element
  * @property {HTMLElement | null} viewportElement - Reference to the viewport DOM element that clips visible content
  * @property {number} calculatedItemHeight - The computed height of each list item in pixels
@@ -17,7 +14,6 @@ import type { SvelteVirtualListMode } from '$lib/types.js'
  */
 export type VirtualListState = {
     initialized: boolean
-    mode: SvelteVirtualListMode
     containerElement: HTMLElement | null
     viewportElement: HTMLElement | null
     calculatedItemHeight: number

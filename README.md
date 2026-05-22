@@ -17,7 +17,6 @@ A high-performance virtual list component for Svelte 5 applications that efficie
 ## Features
 
 - 📏 Dynamic item height handling - no fixed height required
-- 🔄 Bi-directional scrolling support (top-to-bottom and bottom-to-top)
 - 🔄 Automatic resize handling for dynamic content
 - 📝 TypeScript support with full type safety
 - 🚀 SSR compatible with hydration support
@@ -70,60 +69,24 @@ yarn add @humanspeak/svelte-virtual-list
 
 ## Props
 
-| Prop                         | Type                             | Default         | Description                                                                   |
-| ---------------------------- | -------------------------------- | --------------- | ----------------------------------------------------------------------------- |
-| `items`                      | `T[]`                            | Required        | Array of items to render                                                      |
-| `defaultEstimatedItemHeight` | `number`                         | `40`            | Initial height estimate used until items are measured                         |
-| `mode`                       | `'topToBottom' \| 'bottomToTop'` | `'topToBottom'` | Scroll direction and anchoring behavior                                       |
-| `bufferSize`                 | `number`                         | `20`            | Number of items rendered outside the viewport                                 |
-| `debug`                      | `boolean`                        | `false`         | Enable debug logging and visualizations                                       |
-| `containerClass`             | `string`                         | `''`            | Class for outer container                                                     |
-| `viewportClass`              | `string`                         | `''`            | Class for scrollable viewport                                                 |
-| `contentClass`               | `string`                         | `''`            | Class for content wrapper                                                     |
-| `itemsClass`                 | `string`                         | `''`            | Class for items container                                                     |
-| `testId`                     | `string`                         | `''`            | Base test id used in internal test hooks (useful for E2E/tests and debugging) |
-| `onLoadMore`                 | `() => void \| Promise<void>`    | -               | Callback when more data is needed for infinite scroll                         |
-| `loadMoreThreshold`          | `number`                         | `20`            | Items from end to trigger `onLoadMore`                                        |
-| `hasMore`                    | `boolean`                        | `true`          | Set to `false` when all data has been loaded                                  |
-
-## Bottom-to-Top Mode
-
-Use `mode="bottomToTop"` for chat-like lists anchored to the bottom:
-
-```svelte
-<script lang="ts">
-    import SvelteVirtualList from '@humanspeak/svelte-virtual-list'
-
-    type Message = {
-        id: number
-        text: string
-        timestamp: Date
-    }
-
-    const messages: Message[] = Array.from({ length: 100 }, (_, i) => ({
-        id: i,
-        text: `Message ${i}`,
-        timestamp: new Date()
-    }))
-</script>
-
-<div style="height: 500px;">
-    <SvelteVirtualList items={messages} mode="bottomToTop">
-        {#snippet renderItem(message)}
-            <div class="message-container">
-                <p>{message.text}</p>
-                <span class="timestamp">
-                    {message.timestamp.toLocaleString()}
-                </span>
-            </div>
-        {/snippet}
-    </SvelteVirtualList>
-</div>
-```
+| Prop                         | Type                          | Default  | Description                                                                   |
+| ---------------------------- | ----------------------------- | -------- | ----------------------------------------------------------------------------- |
+| `items`                      | `T[]`                         | Required | Array of items to render                                                      |
+| `defaultEstimatedItemHeight` | `number`                      | `40`     | Initial height estimate used until items are measured                         |
+| `bufferSize`                 | `number`                      | `20`     | Number of items rendered outside the viewport                                 |
+| `debug`                      | `boolean`                     | `false`  | Enable debug logging and visualizations                                       |
+| `containerClass`             | `string`                      | `''`     | Class for outer container                                                     |
+| `viewportClass`              | `string`                      | `''`     | Class for scrollable viewport                                                 |
+| `contentClass`               | `string`                      | `''`     | Class for content wrapper                                                     |
+| `itemsClass`                 | `string`                      | `''`     | Class for items container                                                     |
+| `testId`                     | `string`                      | `''`     | Base test id used in internal test hooks (useful for E2E/tests and debugging) |
+| `onLoadMore`                 | `() => void \| Promise<void>` | -        | Callback when more data is needed for infinite scroll                         |
+| `loadMoreThreshold`          | `number`                      | `20`     | Items from end to trigger `onLoadMore`                                        |
+| `hasMore`                    | `boolean`                     | `true`   | Set to `false` when all data has been loaded                                  |
 
 ## Programmatic Scrolling
 
-Scroll to any item in the list using the `scroll` method. Useful for chat apps, jump-to-item navigation, and more.
+Scroll to any item in the list using the `scroll` method. Useful for jump-to-item navigation, search results, and more.
 
 ```svelte
 <script lang="ts">
@@ -160,18 +123,9 @@ Alignment options:
 - `'bottom'` - Always align to the bottom
 - `'nearest'` - Scroll as little as possible to bring the item into view
 
-Works with both `topToBottom` and `bottomToTop` modes:
-
-```svelte
-<SvelteVirtualList items={messages} mode="bottomToTop" bind:this={listRef} />
-<button onclick={() => listRef.scroll({ index: messages.length - 1, align: 'bottom' })}>
-    Jump to latest
-</button>
-```
-
 ## Infinite Scroll
 
-Load more data automatically as users scroll near the end of the list. Perfect for paginated APIs, infinite feeds, and chat applications.
+Load more data automatically as users scroll near the end of the list. Perfect for paginated APIs, infinite feeds, and activity logs.
 
 ```svelte
 <script lang="ts">
@@ -202,7 +156,6 @@ Load more data automatically as users scroll near the end of the list. Perfect f
 - Automatically triggers on mount if initial items are below threshold
 - Prevents concurrent `onLoadMore` calls while loading
 - Works with both sync and async callbacks
-- Supports both `topToBottom` and `bottomToTop` modes
 
 ### Integration Guides
 

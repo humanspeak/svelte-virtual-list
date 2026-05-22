@@ -1,4 +1,3 @@
-import type { SvelteVirtualListMode } from '$lib/types.js'
 import { calculateAverageHeight } from '$lib/utils/virtualList.js'
 import { BROWSER } from 'esm-env'
 
@@ -92,8 +91,7 @@ export const calculateAverageHeightDebounced = (
     debounceTime: number,
     dirtyItems: Set<number>,
     currentTotalHeight: number = 0,
-    currentValidCount: number = 0,
-    mode: SvelteVirtualListMode = 'topToBottom'
+    currentValidCount: number = 0
 ): NodeJS.Timeout | null => {
     if (!BROWSER || isCalculatingHeight) return null
 
@@ -117,8 +115,7 @@ export const calculateAverageHeightDebounced = (
             calculatedItemHeight,
             dirtyItems,
             currentTotalHeight,
-            currentValidCount,
-            mode
+            currentValidCount
         )
 
         if (Math.abs(newHeight - calculatedItemHeight) > 1 || dirtyItems.size > 0) {

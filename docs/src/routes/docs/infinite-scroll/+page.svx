@@ -14,14 +14,14 @@ description: "Load more data automatically as users scroll near the end of the l
     seo.description = 'Load more data automatically as users scroll near the end of the list.'
     seo.ogTitle = 'Infinite Scroll'
     seo.ogTagline = 'Auto-load data as users scroll.'
-    seo.ogFeatures = ['Auto Loading', 'Threshold Config', 'Loading States', 'Both Directions']
+    seo.ogFeatures = ['Auto Loading', 'Threshold Config', 'Loading States']
     seo.ogSlug = 'docs-infinite-scroll'
   }
 </script>
 
 # Infinite Scroll
 
-Load more data automatically as users scroll near the end of the list. Perfect for paginated APIs, infinite feeds, and chat applications.
+Load more data automatically as users scroll near the end of the list. Perfect for paginated APIs, infinite feeds, and activity logs.
 
 ## Interactive Demo
 
@@ -73,8 +73,6 @@ Load more data automatically as users scroll near the end of the list. Perfect f
 - **Triggers when scrolling near the end** - The callback fires when the user scrolls within `loadMoreThreshold` items of the end.
 - **Automatic initial trigger** - If the initial items are below the threshold, `onLoadMore` is called automatically on mount.
 - **Prevents concurrent calls** - While `onLoadMore` is running (for async functions), additional calls are prevented.
-- **Works in both modes** - Supports both `topToBottom` and `bottomToTop` scroll modes.
-
 ## Complete Example
 
 Here's a more complete example with loading states and error handling:
@@ -186,43 +184,6 @@ For APIs that use cursor-based pagination:
 <VirtualList {items} onLoadMore={loadMore} {hasMore}>
     {#snippet renderItem(item)}
         <div>{item.text}</div>
-    {/snippet}
-</VirtualList>
-```
-
-## Bottom-to-Top with Infinite Scroll
-
-For chat-style interfaces that load older messages:
-
-```svelte
-<script lang="ts">
-    import VirtualList from '@humanspeak/svelte-virtual-list'
-
-    let messages = $state<Message[]>([])
-    let hasMoreOlder = $state(true)
-
-    async function loadOlderMessages() {
-        const oldestId = messages[0]?.id
-        const older = await fetchMessagesBefore(oldestId)
-
-        // Prepend older messages
-        messages = [...older, ...messages]
-
-        if (older.length === 0) {
-            hasMoreOlder = false
-        }
-    }
-</script>
-
-<VirtualList
-    items={messages}
-    mode="bottomToTop"
-    onLoadMore={loadOlderMessages}
-    hasMore={hasMoreOlder}
-    loadMoreThreshold={15}
->
-    {#snippet renderItem(message)}
-        <div class="message">{message.text}</div>
     {/snippet}
 </VirtualList>
 ```

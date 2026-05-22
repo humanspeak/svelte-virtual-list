@@ -52,7 +52,6 @@
         defaultEstimatedItemHeight={22}
         {items}
         testId="basic-list"
-        mode="topToBottom"
         bind:this={virtualList}
         debug={false}
     >

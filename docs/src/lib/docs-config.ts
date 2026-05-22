@@ -7,7 +7,7 @@ export const docsConfig: DocsKitConfig = {
     repo: 'humanspeak/svelte-virtual-list',
     url: 'https://virtuallist.svelte.page',
     description:
-        'A lightweight, high-performance virtual list component for Svelte 5. Efficiently render large datasets with dynamic heights, bidirectional scrolling, and TypeScript support.',
+        'A lightweight, high-performance virtual list component for Svelte 5. Efficiently render large datasets with dynamic heights, infinite scrolling, and TypeScript support.',
     keywords: [
         'svelte',
         'virtual list',
@@ -16,11 +16,6 @@ export const docsConfig: DocsKitConfig = {
         'performance',
         'typescript'
     ],
-    defaultFeatures: [
-        'Dynamic Heights',
-        'Bidirectional Scrolling',
-        'TypeScript Support',
-        '5kb Gzipped'
-    ],
+    defaultFeatures: ['Dynamic Heights', 'Infinite Scrolling', 'TypeScript Support', '5kb Gzipped'],
     fallbackStars: 100
 }

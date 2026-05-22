@@ -21,7 +21,6 @@ TypeScript types exported by the package.
 ```typescript
 import type {
     SvelteVirtualListProps,
-    SvelteVirtualListMode,
     SvelteVirtualListScrollOptions,
     SvelteVirtualListScrollAlign,
     SvelteVirtualListDebugInfo
@@ -36,7 +35,6 @@ Configuration props for the component.
 type SvelteVirtualListProps<TItem = any> = {
     items: TItem[]
     renderItem: Snippet<[item: TItem, index: number]>
-    mode?: SvelteVirtualListMode
     bufferSize?: number
     defaultEstimatedItemHeight?: number
     debug?: boolean
@@ -50,14 +48,6 @@ type SvelteVirtualListProps<TItem = any> = {
     loadMoreThreshold?: number
     hasMore?: boolean
 }
-```
-
-## SvelteVirtualListMode
-
-Scroll direction mode.
-
-```typescript
-type SvelteVirtualListMode = 'topToBottom' | 'bottomToTop'
 ```
 
 ## SvelteVirtualListScrollOptions
