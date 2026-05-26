@@ -7,7 +7,6 @@
     const {
         items,
         testId,
-        mode = 'topToBottom',
         debug = false,
         debugFunction,
         viewportClass,
@@ -21,7 +20,6 @@
 <SvelteVirtualList
     {items}
     {testId}
-    {mode}
     {debug}
     {debugFunction}
     {viewportClass}

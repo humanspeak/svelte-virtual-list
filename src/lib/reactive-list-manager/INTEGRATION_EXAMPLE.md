@@ -56,11 +56,6 @@ const updateHeight = () => {
             // }))
             // heightManager.processDirtyHeights(heightChanges)
 
-            // Handle scroll correction (bottomToTop mode)
-            if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
-                handleHeightChangesScrollCorrection(result.heightChanges)
-            }
-
             // ... rest of callback logic
         }
     )

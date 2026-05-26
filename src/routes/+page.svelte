@@ -6,10 +6,6 @@
 
     const sections: Section[] = [
         {
-            title: 'Message',
-            links: [{ href: resolve('/message'), label: 'Message' }]
-        },
-        {
             title: 'Tests — Top to bottom',
             links: [
                 { href: resolve('/tests/list/topToBottom/basic'), label: 'Basic' },
@@ -20,34 +16,11 @@
             ]
         },
         {
-            title: 'Tests — Bottom to top',
-            links: [
-                { href: resolve('/tests/list/bottomToTop/basic'), label: 'Basic' },
-                { href: resolve('/tests/list/bottomToTop/performance'), label: 'Performance' },
-                { href: resolve('/tests/list/bottomToTop/scroll'), label: 'Scroll' },
-                { href: resolve('/tests/list/bottomToTop/smallItems'), label: 'Small items' },
-                { href: resolve('/tests/list/bottomToTop/loadItems'), label: 'Load items' },
-                {
-                    href: resolve('/tests/list/bottomToTop/firstItemHeightChange'),
-                    label: 'First item height change'
-                },
-                { href: resolve('/tests/list/bottomToTop/wrongItemSize'), label: 'Wrong item size' }
-            ]
-        },
-        {
-            title: 'Tests — Other',
-            links: [
-                { href: resolve('/tests/other/bidirectional'), label: 'Bidirectional' },
-                { href: resolve('/tests/other/both'), label: 'Both (two lists)' }
-            ]
-        },
-        {
             title: 'Tests — Issues',
             links: [
                 { href: resolve('/tests/issues/generics'), label: 'Generics' },
                 { href: resolve('/tests/issues/issue-215'), label: 'Issue 215' },
                 { href: resolve('/tests/issues/issue-263'), label: 'Issue 263' },
-                { href: resolve('/tests/issues/issue-298'), label: 'Issue 298' },
                 { href: resolve('/tests/issues/issue-300'), label: 'Issue 300' },
                 { href: resolve('/tests/issues/layout'), label: 'Layout' },
                 // Example dynamic route under layout

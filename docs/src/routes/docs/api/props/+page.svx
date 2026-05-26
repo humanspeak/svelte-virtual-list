@@ -14,7 +14,7 @@ description: "All available props for the SvelteVirtualList component"
     seo.description = 'All available props for the SvelteVirtualList component'
     seo.ogTitle = 'Props API'
     seo.ogTagline = 'All available component props.'
-    seo.ogFeatures = ['items', 'itemHeight', 'bottomToTop', 'overScan']
+    seo.ogFeatures = ['items', 'itemHeight', 'overScan']
     seo.ogSlug = 'api-props'
   }
 </script>
@@ -48,20 +48,6 @@ A Svelte snippet that defines how each item is rendered.
 ```
 
 ## Optional Props
-
-### mode
-
-Scroll direction mode.
-
-| Value | Description |
-|-------|-------------|
-| `'topToBottom'` | Standard scrolling (default) |
-| `'bottomToTop'` | Chat-style, anchored at bottom |
-
-```typescript
-mode?: 'topToBottom' | 'bottomToTop'
-// Default: 'topToBottom'
-```
 
 ### bufferSize
 

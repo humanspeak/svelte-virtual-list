@@ -4,7 +4,7 @@ Project context for Claude Code sessions.
 
 ## Project Overview
 
-`@humanspeak/svelte-virtual-list` — A high-performance virtual list component for Svelte 5. Renders large datasets (10k+ items) with dynamic item heights, bi-directional scrolling, and minimal memory usage.
+`@humanspeak/svelte-virtual-list` — A high-performance virtual list component for Svelte 5. Renders large datasets (10k+ items) with dynamic item heights and minimal memory usage.
 
 - **Package**: `@humanspeak/svelte-virtual-list`
 - **Homepage**: <https://virtuallist.svelte.page>
@@ -55,7 +55,7 @@ pnpm run check        # svelte-check (TypeScript validation)
 
 ### Core Component
 
-- `src/lib/SvelteVirtualList.svelte` — Main component. Handles virtualization, scroll events, height measurement, bottomToTop mode, infinite scroll, and programmatic scrolling.
+- `src/lib/SvelteVirtualList.svelte` — Main component. Handles virtualization, scroll events, height measurement, infinite scroll, and programmatic scrolling.
 
 ### Key Subsystems
 
@@ -63,14 +63,9 @@ pnpm run check        # svelte-check (TypeScript validation)
 - `src/lib/utils/virtualList.ts` — Pure functions for visible range calculation, transform positioning, and scroll offset computation.
 - `src/lib/utils/throttle.ts` — Throttle utilities for scroll event handling.
 
-### Scroll Modes
-
-- **topToBottom** (default) — Standard list, scrollTop = 0 at top
-- **bottomToTop** — Chat-style, items anchored to bottom. Uses content height ratcheting during active scroll to prevent jitter from averageHeight oscillation.
-
 ### Test Pages
 
-Test routes live at `src/routes/tests/` with pages for both modes covering basic rendering, scrolling, wrong item sizes, infinite scroll, performance, and more.
+Test routes live at `src/routes/tests/` with pages covering basic rendering, scrolling, wrong item sizes, infinite scroll, performance, and more.
 
 ## Conventions
 

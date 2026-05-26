@@ -21,7 +21,7 @@ description: "Programmatically scroll to any item in the virtual list with confi
 
 # Scroll Methods
 
-You can programmatically scroll to any item in the list using the `scroll` method. This is useful for chat apps, jump-to-item navigation, search results, and more.
+You can programmatically scroll to any item in the list using the `scroll` method. This is useful for jump-to-item navigation, search results, and more.
 
 ## Interactive Demo
 
@@ -126,43 +126,6 @@ scroll(options: {
 ```svelte
 <button onclick={() => listRef.scroll({ index: 500, align: 'nearest' })}>
     Scroll to item 500 (nearest)
-</button>
-```
-
-## Bottom-to-Top Mode
-
-The scroll API works the same way in bottom-to-top mode:
-
-```svelte
-<script lang="ts">
-    import VirtualList from '@humanspeak/svelte-virtual-list'
-
-    let listRef
-    const messages = Array.from({ length: 2000 }, (_, i) => ({
-        id: i,
-        text: `Message ${i}`
-    }))
-</script>
-
-<VirtualList
-    items={messages}
-    mode="bottomToTop"
-    bind:this={listRef}
->
-    {#snippet renderItem(message)}
-        <div>{message.text}</div>
-    {/snippet}
-</VirtualList>
-
-<button onclick={() => listRef.scroll({ index: 0, align: 'top' })}>
-    Jump to oldest
-</button>
-
-<button onclick={() => listRef.scroll({
-    index: messages.length - 1,
-    align: 'bottom'
-})}>
-    Jump to latest
 </button>
 ```
 

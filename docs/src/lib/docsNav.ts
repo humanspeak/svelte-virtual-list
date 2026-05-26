@@ -7,7 +7,6 @@ import Crosshair from '@lucide/svelte/icons/crosshair'
 import Database from '@lucide/svelte/icons/database'
 import InfinityIcon from '@lucide/svelte/icons/infinity'
 import List from '@lucide/svelte/icons/list'
-import MessageCircle from '@lucide/svelte/icons/message-circle'
 import Newspaper from '@lucide/svelte/icons/newspaper'
 import Play from '@lucide/svelte/icons/play'
 import Rocket from '@lucide/svelte/icons/rocket'
@@ -37,7 +36,6 @@ export const docsSections: NavSection[] = [
         icon: Code,
         items: [
             { title: 'Variable Heights', href: '/docs/variable-heights', icon: ArrowUpDown },
-            { title: 'Bottom to Top', href: '/docs/bottom-to-top', icon: MessageCircle },
             { title: 'Infinite Scroll', href: '/docs/infinite-scroll', icon: InfinityIcon },
             { title: 'Scroll Methods', href: '/docs/scroll-methods', icon: Crosshair },
             { title: 'SSR Support', href: '/docs/ssr', icon: Server },
@@ -63,7 +61,6 @@ export const docsSections: NavSection[] = [
         items: [
             { title: 'All Examples', href: '/examples', icon: Play },
             { title: 'Basic List', href: '/examples/basic-list', icon: List },
-            { title: 'Bottom to Top', href: '/examples/bottom-to-top', icon: MessageCircle },
             { title: 'Infinite Scroll', href: '/examples/infinite-scroll', icon: InfinityIcon },
             { title: 'Scroll to Item', href: '/examples/scroll-to-item', icon: Crosshair },
             { title: 'Variable Height', href: '/examples/variable-height', icon: ArrowUpDown }

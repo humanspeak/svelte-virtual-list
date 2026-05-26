@@ -9,11 +9,6 @@ export const load: PageLoad = async () => {
             description: 'Interactive basic list animation example using Svelte Motion.',
             sourceUrl: null
         },
-        'bottom-to-top': {
-            title: 'Bottom To Top',
-            description: 'Interactive bottom to top animation example using Svelte Motion.',
-            sourceUrl: null
-        },
         'infinite-scroll': {
             title: 'Infinite Scroll',
             description: 'Interactive infinite scroll animation example using Svelte Motion.',

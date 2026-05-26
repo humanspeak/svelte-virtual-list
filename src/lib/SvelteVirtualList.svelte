@@ -2,14 +2,13 @@
     @component SvelteVirtualList
 
     A high-performance, memory-efficient virtualized list component for Svelte 5.
-    Renders only visible items plus a buffer, supporting dynamic item heights,
-    bi-directional (top-to-bottom and bottom-to-top) scrolling, and programmatic control.
+    Renders only visible items plus a buffer, supporting dynamic item heights
+    and programmatic control.
 
     =============================
     ==  Key Features           ==
     =============================
     - Dynamic item height support (no fixed height required)
-    - Top-to-bottom and bottom-to-top (chat-style) scrolling
     - Programmatic scrolling with flexible alignment (top, bottom, auto)
     - Smooth scrolling and buffer size configuration
     - SSR compatible and hydration-friendly
@@ -25,7 +24,6 @@
     ```svelte
     <SvelteVirtualList
         items={data}
-        mode="bottomToTop"
         bind:this={listRef}
     >
         {#snippet renderItem(item)}
@@ -43,7 +41,6 @@
     - Handles resize events and dynamic content changes
     - Optimized for very large lists through virtualization
     - Modular architecture with extracted utility functions
-    - Bi-directional support: mode="topToBottom" or "bottomToTop"
     - Designed for extensibility and easy debugging
 
     =============================
@@ -76,49 +73,44 @@
      *    - Implemented debounced measurements
      *    - Created height averaging mechanism for performance
      *
-     * 3. Bidirectional Scrolling ✓
-     *    - Added bottomToTop mode
-     *    - Solved complex initialization issues with flexbox
-     *    - Implemented careful scroll position management
-     *
-     * 4. Performance Optimizations ✓
+     * 3. Performance Optimizations ✓
      *    - Added element recycling through keyed each blocks
      *    - Implemented RAF for smooth animations
      *    - Optimized DOM updates with transform translations
      *
-     * 5. Stability Improvements ✓
+     * 4. Stability Improvements ✓
      *    - Added ResizeObserver for responsive updates
      *    - Implemented proper cleanup on component destruction
      *    - Added debug mode for development assistance
      *
-     * 6. Large Dataset Optimizations ✓
+     * 5. Large Dataset Optimizations ✓
      *    - Implemented chunked processing for 10k+ items
      *    - Added progressive initialization system
      *    - Deferred height calculations for better initial load
      *    - Optimized memory usage for large lists
      *    - Added progress tracking for initialization
      *
-     * 7. Size Management Improvements ✓
+     * 6. Size Management Improvements ✓
      *    - Implemented height caching system for measured items
      *    - Added smart height estimation for unmeasured items
      *    - Optimized resize handling with debouncing
      *    - Added height recalculation on content changes
      *    - Implemented progressive height adjustments
      *
-     * 8. Code Quality & Maintainability ✓
+     * 7. Code Quality & Maintainability ✓
      *    - Extracted debug utilities for better testing
      *    - Improved type safety throughout
      *    - Added comprehensive documentation
      *    - Optimized debug output to reduce noise
      *
-     * 9. Architecture Refactoring ✓
+     * 8. Architecture Refactoring ✓
      *    - Extracted scroll calculation logic to scrollCalculation.ts utility
      *    - Extracted ResizeObserver utilities to resizeObserver.ts
      *    - Added comprehensive test coverage for extracted utilities
      *    - Improved separation of concerns and maintainability
      *    - Simplified initialization (removed unnecessary chunked processing)
      *
-     * 10. Future Improvements (Planned)
+     * 9. Future Improvements (Planned)
      *    - Add horizontal scrolling support
      *    - Implement variable-sized item caching
      *    - Add keyboard navigation support
@@ -126,7 +118,6 @@
      *    - Add accessibility enhancements
      *
      * Technical Challenges Solved:
-     * - Bottom-to-top scrolling in flexbox layouts
      * - Dynamic height calculations without layout thrashing
      * - Smooth scrolling on various devices
      * - Memory management for large lists
@@ -166,8 +157,7 @@
         calculateTransformY,
         calculateVisibleRange,
         clampValue,
-        updateHeightAndScroll as utilsUpdateHeightAndScroll,
-        getScrollOffsetForIndex
+        updateHeightAndScroll as utilsUpdateHeightAndScroll
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
@@ -178,11 +168,7 @@
 
     const rafSchedule = createRafScheduler()
     // Timing constants
-    const GLOBAL_CORRECTION_COOLDOWN_MS = 16
-    const SCROLL_IDLE_DELAY_MS = 250
-    const SUPPRESSION_WINDOW_MS = 450
     const HEIGHT_DEBOUNCE_MS = 100
-    const lastCorrectionTimestampByViewport = new WeakMap<HTMLElement, number>()
     // Package-specific debug flag - safe for library distribution
     // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
     // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
@@ -190,20 +176,6 @@
         typeof process !== 'undefined' &&
         (process?.env?.PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG === 'true' ||
             process?.env?.SVELTE_VIRTUAL_LIST_DEBUG === 'true')
-    )
-    // Feature flags - default off; enable via env for incremental rollout
-    const anchorModeEnabled = Boolean(
-        typeof process !== 'undefined' &&
-        (process?.env?.PUBLIC_SVL_ANCHOR_MODE === 'true' ||
-            process?.env?.SVL_ANCHOR_MODE === 'true')
-    )
-    const idleCorrectionsOnly = Boolean(
-        typeof process !== 'undefined' &&
-        (process?.env?.PUBLIC_SVL_IDLE_ONLY === 'true' || process?.env?.SVL_IDLE_ONLY === 'true')
-    )
-    const batchUpdatesEnabled = Boolean(
-        typeof process !== 'undefined' &&
-        (process?.env?.PUBLIC_SVL_BATCH === 'true' || process?.env?.SVL_BATCH === 'true')
     )
     /**
      * Core configuration props with default values
@@ -219,7 +191,6 @@
         contentClass, // Custom class for the content wrapper
         itemsClass, // Custom class for the items wrapper
         debugFunction, // Custom debug logging function
-        mode = 'topToBottom', // Scroll direction mode
         bufferSize = 20, // Number of items to render outside visible area
         testId, // Base test ID for component elements (undefined = no data-testid attributes)
         onLoadMore, // Callback when more data needed (supports sync and async)
@@ -243,102 +214,7 @@
 
     const isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isLoadingMore = $state(false) // Prevents concurrent onLoadMore calls
-    let isScrolling = $state(false) // Tracks active scrolling state
-    let scrollIdleTimer: number | null = null
-    // Anchor state (read-only capture; used when anchorModeEnabled)
-    let lastAnchorIndex = $state(0)
-    let lastAnchorOffset = $state(0) // offset within anchored item (px)
-    let pendingAnchorReconcile = $state(false)
-    let batchDepth = $state(0)
-
-    const captureAnchor = () => {
-        if (!heightManager.viewportElement) return
-        const vr = visibleItems
-        const anchorIndex = Math.max(0, vr.start)
-        const cache = heightManager.getHeightCache()
-        const est = heightManager.averageHeight
-        const maxScrollTop = Math.max(0, totalHeight - (height || 0))
-        // Offset from start to anchored item
-        const blockSums = heightManager.getBlockSums()
-        const offsetToIndex = getScrollOffsetForIndex(cache, est, anchorIndex, blockSums)
-        const currentTop = heightManager.viewport.scrollTop
-        let offsetWithin: number
-        if (mode === 'bottomToTop') {
-            // Convert distance-from-end to distance-from-start
-            const distanceFromStart = maxScrollTop - currentTop
-            offsetWithin = distanceFromStart - offsetToIndex
-        } else {
-            offsetWithin = currentTop - offsetToIndex
-        }
-        lastAnchorIndex = anchorIndex
-        lastAnchorOffset = Math.max(0, Math.round(offsetWithin))
-        // Expose for tests
-        ;(heightManager.viewport as unknown as Record<string, unknown>).__svlAnchor = {
-            index: lastAnchorIndex,
-            offset: lastAnchorOffset
-        }
-        pendingAnchorReconcile = true
-    }
-
-    const reconcileToAnchorIfEnabled = () => {
-        if (!anchorModeEnabled || !heightManager.viewportElement) return
-        if (!pendingAnchorReconcile) return
-        const cache = heightManager.getHeightCache()
-        const est = heightManager.averageHeight
-        const blockSums = heightManager.getBlockSums()
-        const offsetToIndex = getScrollOffsetForIndex(
-            cache,
-            est,
-            Math.max(0, lastAnchorIndex),
-            blockSums
-        )
-        const maxScrollTop = clampValue(totalHeight - (height || 0), 0, Infinity)
-        let targetTop: number
-        if (mode === 'bottomToTop') {
-            const distanceFromStart = clampValue(offsetToIndex + lastAnchorOffset, 0, Infinity)
-            targetTop = clampValue(Math.round(maxScrollTop - distanceFromStart), 0, maxScrollTop)
-        } else {
-            targetTop = clampValue(Math.round(offsetToIndex + lastAnchorOffset), 0, maxScrollTop)
-        }
-        if (Math.abs(heightManager.viewport.scrollTop - targetTop) >= 2) {
-            syncScrollTop(targetTop)
-        }
-        pendingAnchorReconcile = false
-    }
-
-    /**
-     * Runs a batch of updates with scroll corrections coalesced until the batch completes.
-     *
-     * Use this method when making multiple changes to the items array to prevent
-     * intermediate scroll corrections. The scroll position reconciliation is deferred
-     * until the batch exits, ensuring smooth visual updates.
-     *
-     * @param {() => void} fn - The function containing batch updates to execute.
-     * @returns {void}
-     *
-     * @example
-     * ```typescript
-     * // Add multiple items without intermediate scroll corrections
-     * list.runInBatch(() => {
-     *     items.push(newItem1);
-     *     items.push(newItem2);
-     *     items.push(newItem3);
-     * });
-     * ```
-     */
-    export const runInBatch = (fn: () => void): void => {
-        batchDepth += 1
-        try {
-            fn()
-        } finally {
-            batchDepth = Math.max(0, batchDepth - 1)
-            if (batchUpdatesEnabled && batchDepth === 0) {
-                reconcileToAnchorIfEnabled()
-            }
-        }
-    }
     let lastMeasuredIndex = $state(-1) // Index of last measured item
-    let lastScrollTopSnapshot = $state(0) // Previous scroll position snapshot
 
     /**
      * Timers and Observers
@@ -352,15 +228,12 @@
      */
     const dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
     let dirtyItemsCount = $state(0) // Reactive count of dirty items
-    // Fallback measurement used only when height has not been established yet
-    let measuredFallbackHeight = $state(0)
     // Scroll delta threshold optimization - track last scroll position used for range calculation
     let lastProcessedScrollTop = $state(0)
 
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
     let prevTotalHeightForScrollCorrection = $state<number>(0)
-    let lastBottomDistance = $state<number | null>(null)
 
     /**
      * Reactive Height Manager - O(1) height calculation system
@@ -401,187 +274,11 @@
         heightManager.scrollTop = scrollValue
     }
 
-    // Dynamic update coordination to avoid UA scroll anchoring interference
-    let suppressBottomAnchoringUntilMs = $state(0)
-
-    /**
-     * Handles scroll position corrections when item heights change, ensuring proper positioning
-     * relative to the user's scroll context. This function calculates the cumulative impact of
-     * height changes above the current viewport and adjusts the scroll position accordingly.
-     *
-     * The correction logic considers:
-     * - Height changes occurring above the visible area (which would shift content)
-     * - The current scroll position and visible range
-     * - Whether height changes warrant a scroll adjustment
-     *
-     * This prevents jarring jumps when items resize, maintaining the user's visual context
-     * and where they are positioned relative to the current scroll position.
-     */
-    const handleHeightChangesScrollCorrection = (
-        heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
-    ) => {
-        if (!heightManager.viewportElement || !heightManager.initialized || userHasScrolledAway) {
-            return
-        }
-        // Coalesce adjustments during active scroll; apply on idle
-        if (isScrolling) {
-            // Accumulate net change above viewport and defer application
-            let pending = 0
-            const currentVisibleRange = visibleItems
-            for (const change of heightChanges) {
-                if (change.index < currentVisibleRange.start) pending += change.delta
-            }
-            if (pending !== 0) {
-                // Store on the viewport element to avoid extra module globals
-                const key = '__svl_pendingHeightAdj__' as unknown as keyof HTMLElement
-                const prev = (heightManager.viewport as unknown as Record<string, number>)[
-                    key as string
-                ] as number | undefined
-                ;(heightManager.viewport as unknown as Record<string, number>)[key as string] =
-                    (prev ?? 0) + pending
-            }
-            return
-        }
-
-        /**
-         * CRITICAL: BottomToTop Mode Height Change Fix
-         * ============================================
-         *
-         * Problem: In bottomToTop mode, when items change height while user is at bottom,
-         * the list would jump to middle positions (e.g. items 1032-1096) instead of
-         * staying anchored at bottom showing Item 0.
-         *
-         * Root Cause: Height calculations using simple averages (items.length * calculatedItemHeight)
-         * were drastically skewed by single item changes. Example:
-         * - 1 item changes from 20px to 100px (+80px actual change)
-         * - Average jumps from 20px to 22.35px (+2.35px per item)
-         * - Across 10,000 items: 2.35px × 10,000 = 23,500px total height error!
-         * - This caused massive scroll position overshoots and incorrect positioning
-         *
-         * Solution: Two-step native scrollIntoView approach
-         * 1. Fixed skewed height calculations using actual heightCache measurements (see totalHeight)
-         * 2. When wasAtBottomBeforeHeightChange=true (captured before any height processing):
-         *    a) First scroll to approximate bottom position to render Item 0 in virtual viewport
-         *    b) Use native scrollIntoView() with block:'end' for precise bottom alignment
-         *
-         * Why This Works:
-         * - Uses browser's native scroll logic instead of error-prone manual calculations
-         * - Two-step ensures Item 0 exists in DOM before attempting to scroll to it
-         * - Native scrollIntoView handles all edge cases (subpixel precision, browser differences)
-         * - Eliminates complex math that was accumulating rounding errors
-         * - Smooth behavior provides better UX than instant jumps
-         *
-         * Dependencies:
-         * - wasAtBottomBeforeHeightChange: Set to true when first item marked dirty, prevents cascading corrections
-         * - totalHeight: Uses actual heightCache measurements instead of skewed averages
-         * - Aggressive scroll correction: Blocked when wasAtBottomBeforeHeightChange=true
-         *
-         * ⚠️  DO NOT MODIFY WITHOUT EXTENSIVE TESTING ⚠️
-         * This fix resolves a complex interaction between:
-         * - Virtual list rendering (only ~20 items visible, rest virtualized)
-         * - Height change calculations (prone to average skewing with large datasets)
-         * - Multiple scroll correction mechanisms (specific vs aggressive)
-         * - Bottom anchor positioning in reversed list mode (bottomToTop)
-         *
-         * Test coverage: tests/bottomToTop/firstItemHeightChange.spec.ts (45 comprehensive tests)
-         * Related fixes: See aggressive scroll correction logic ~line 410 with !wasAtBottomBeforeHeightChange
-         */
-        if (
-            mode === 'bottomToTop' &&
-            wasAtBottomBeforeHeightChange &&
-            !programmaticScrollInProgress &&
-            performance.now() >= suppressBottomAnchoringUntilMs
-        ) {
-            // Prevent same-frame corrections; defer if this viewport just corrected
-            const now = performance.now()
-            const viewportEl = heightManager.viewport
-            const lastCorrectionMs = lastCorrectionTimestampByViewport.get(viewportEl) ?? 0
-            if (now - lastCorrectionMs < GLOBAL_CORRECTION_COOLDOWN_MS) {
-                suppressBottomAnchoringUntilMs = now + 50
-                return
-            }
-            lastCorrectionTimestampByViewport.set(viewportEl, now)
-
-            // Step 1: Scroll to approximate position to ensure Item 0 gets rendered in virtual viewport
-            const approximateScrollTop = Math.max(0, totalHeight - height)
-            log('[SVL] b2t-correction-approx', { approximateScrollTop })
-            syncScrollTop(approximateScrollTop)
-
-            // Step 2: Use native scrollIntoView for precise bottom-edge positioning after DOM updates
-            tick().then(() => {
-                const item0Element = heightManager.viewport.querySelector(
-                    '[data-original-index="0"]'
-                )
-                if (item0Element) {
-                    // Verify alignment via rects; if off, perform one-time scrollIntoView
-                    const contRect = heightManager.viewport.getBoundingClientRect()
-                    const itemRect = (item0Element as HTMLElement).getBoundingClientRect()
-                    const tol = 4
-                    const aligned =
-                        Math.abs(contRect.y + contRect.height - (itemRect.y + itemRect.height)) <=
-                        tol
-                    if (!aligned) {
-                        // Use manual scrollTop instead of scrollIntoView to prevent parent scroll
-                        // (scrollIntoView scrolls all ancestor containers, not just the viewport)
-                        // Note: `container: 'nearest'` option could replace this once browser support improves
-                        const currentScrollTop = heightManager.viewport.scrollTop
-                        const offset = itemRect.bottom - contRect.bottom
-                        syncScrollTop(currentScrollTop + offset)
-                        log('[SVL] b2t-correction-manual', { offset })
-                    } else {
-                        // Sync our internal scroll state with actual DOM position
-                        heightManager.scrollTop = heightManager.viewport.scrollTop
-                    }
-                    // After peer correction, delay further corrections briefly
-                    suppressBottomAnchoringUntilMs = performance.now() + 200
-                }
-            })
-
-            return // Skip remaining scroll correction logic - we've handled bottomToTop case
-        }
-
-        const currentScrollTop = heightManager.viewport.scrollTop
-        const maxScrollTop = Math.max(0, totalHeight - height)
-
-        // Calculate total height change impact above current visible area
-        let heightChangeAboveViewport = 0
-        const currentVisibleRange = visibleItems
-
-        for (const change of heightChanges) {
-            // Only consider items that are above the current visible range
-            if (change.index < currentVisibleRange.start) {
-                heightChangeAboveViewport += change.delta
-            }
-        }
-
-        // If there are height changes above the viewport, adjust scroll to maintain position
-        // Include any pending coalesced delta (when scrolling)
-        {
-            const key = '__svl_pendingHeightAdj__' as unknown as keyof HTMLElement
-            const pending =
-                (heightManager.viewport as unknown as Record<string, number>)[key as string] ?? 0
-            if (pending) {
-                heightChangeAboveViewport += pending
-                ;(heightManager.viewport as unknown as Record<string, number>)[key as string] = 0
-            }
-        }
-        if (Math.abs(heightChangeAboveViewport) > 2) {
-            const newScrollTop = clampValue(
-                currentScrollTop + heightChangeAboveViewport,
-                0,
-                maxScrollTop
-            )
-            syncScrollTop(newScrollTop)
-        }
-    }
-
     // Height update function - removed throttling to fix race condition on initial load
     // Create throttled height update function with trailing execution to ensure measurement always happens
     const triggerHeightUpdate = createAdvancedThrottledCallback(
         () => {
             if (BROWSER && dirtyItemsCount > 0) {
-                // Capture bottom state before any height processing to prevent cascading corrections
-                wasAtBottomBeforeHeightChange = atBottom
                 heightManager.startDynamicUpdate()
                 updateHeight()
             }
@@ -601,14 +298,11 @@
     // Keep height manager synchronized with items length
     $effect(() => {
         heightManager.updateItemLength(items.length)
-        stabilizedContentHeight = 0
     })
 
     // Infinite scroll: trigger onLoadMore when approaching end of list
     $effect(() => {
         if (!BROWSER || !onLoadMore || !hasMore || isLoadingMore) return
-        // Skip loading during bottomToTop initialization (init path renders all items artificially)
-        if (mode === 'bottomToTop' && !bottomToTopScrollComplete) return
 
         const range = visibleItems
         const atLoadingEdge = range.end >= items.length - loadMoreThreshold
@@ -623,7 +317,7 @@
     })
 
     const updateHeight = () => {
-        // Capture previous total height for scroll correction (topToBottom anchoring)
+        // Capture previous total height for scroll correction.
         prevTotalHeightForScrollCorrection = heightManager.totalHeight
         heightUpdateTimeout = calculateAverageHeightDebounced(
             isCalculatingHeight,
@@ -650,15 +344,8 @@
                     heightManager.processDirtyHeights(result.heightChanges)
                 }
 
-                // Handle height changes for scroll correction (manager totals already updated)
-                if (result.heightChanges.length > 0 && mode === 'bottomToTop') {
-                    // Run correction after dynamic update finishes to avoid blocking conditions
-                    const changes = result.heightChanges
-                    queueMicrotask(() => handleHeightChangesScrollCorrection(changes))
-                }
-
-                // TopToBottom: maintain bottom anchoring when total height changes
-                if (mode === 'topToBottom' && heightManager.isReady && heightManager.initialized) {
+                // Keep the end item visually stable when total height changes at the end.
+                if (heightManager.isReady && heightManager.initialized) {
                     const oldTotal = prevTotalHeightForScrollCorrection
                     const newTotal = heightManager.totalHeight
                     const deltaTotal = newTotal - oldTotal
@@ -669,7 +356,7 @@
                         const currentScrollTop = heightManager.viewport.scrollTop
                         const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) <= tolerance
                         if (isAtBottom) {
-                            // Adjust scrollTop by total height delta to hold bottom anchor
+                            // Adjust scrollTop by total height delta to keep the same end position.
                             const adjusted = clampValue(
                                 currentScrollTop + deltaTotal,
                                 0,
@@ -685,38 +372,21 @@
                     // Clear processed dirty items (all dirty items were processed)
                     dirtyItems.clear()
                     dirtyItemsCount = 0
-
-                    // Reset bottom state flag
-                    wasAtBottomBeforeHeightChange = false
                 })
                 heightManager.endDynamicUpdate()
             },
             lastMeasuredIndex < 0 || dirtyItems.size > 0 ? 0 : HEIGHT_DEBOUNCE_MS,
             dirtyItems, // Pass dirty items for processing
             0, // Don't pass ReactiveListManager state - let each system manage its own totals
-            0, // Don't pass ReactiveListManager state - let each system manage its own totals
-            mode // Pass mode for correct element indexing
+            0 // Don't pass ReactiveListManager state - let each system manage its own totals
         )
     }
-
-    // Add new effect to handle height changes
-    // Track if user has scrolled away from bottom to prevent snap-back
-    let userHasScrolledAway = $state(false)
-    let programmaticScrollInProgress = $state(false) // Prevent bottom-anchoring during programmatic scrolls
-    let lastCalculatedHeight = $state(0)
-    let lastItemsLength = $state(0)
-    // Track last observed total height to compute precise deltas on item count changes
-    let lastTotalHeightObserved = $state(0)
-    // For bottomToTop mode: keep init path active until scroll positioning is complete
-    // This ensures Item 0 stays in the DOM throughout initialization
-    let bottomToTopScrollComplete = $state(false)
 
     /**
      * CRITICAL: O(1) Reactive Total Height Calculation
      * ===============================================
      *
      * Uses ReactiveListManager for O(1) height calculations instead of O(n) loops.
-     * This fixes the root cause of massive scroll jumps in bottomToTop mode.
      *
      * Problem with Previous O(n) Approach:
      * - Looped through ALL items on every reactive update
@@ -740,12 +410,10 @@
      * - Updates incrementally using processDirtyHeights() instead of recalculating all
      *
      * This getter is reactive and updates whenever heightManager's internal state changes.
-     * Used by: atBottom calculation, scroll corrections, maxScrollTop calculations
+     * Used by scroll corrections and maxScrollTop calculations.
      */
     const totalHeight = $derived(heightManager.totalHeight)
 
-    const atBottom = $derived(heightManager.scrollTop >= totalHeight - height - 1)
-    let wasAtBottomBeforeHeightChange = false
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
     function updateDebugTailDistance() {
@@ -756,173 +424,13 @@
         if (!last) return
         const v = heightManager.viewport.getBoundingClientRect()
         const r = last.getBoundingClientRect()
-        lastBottomDistance = Math.round(Math.abs(r.bottom - v.bottom))
+        const bottomDistance = Math.round(Math.abs(r.bottom - v.bottom))
         if (INTERNAL_DEBUG) {
-            console.info('[SVL] bottomDistance(px):', lastBottomDistance)
+            console.info('[SVL] bottomDistance(px):', bottomDistance)
         }
     }
 
     // no UI export; rely on console logs when debug=true
-
-    // $inspect('scrollState: atTop', atTop)
-    // $inspect('scrollState: atBottom', atBottom)
-
-    $effect(() => {
-        if (
-            BROWSER &&
-            heightManager.initialized &&
-            mode === 'bottomToTop' &&
-            heightManager.viewportElement
-        ) {
-            const targetScrollTop = Math.max(0, totalHeight - height)
-            const currentScrollTop = heightManager.viewport.scrollTop
-            const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
-
-            // Only correct scroll if:
-            // 1. Item height changed significantly (not just user scrolling)
-            // 2. User hasn't intentionally scrolled away from bottom
-            // 3. We're significantly off target
-            // 4. We're not at the bottom (where height changes should be handled more carefully)
-            const heightChanged = Math.abs(heightManager.averageHeight - lastCalculatedHeight) > 1
-            const maxScrollTop = Math.max(0, totalHeight - height)
-
-            // In bottomToTop mode, we're "at bottom" when scroll is at max position
-            const isAtBottom =
-                Math.abs(currentScrollTop - maxScrollTop) < heightManager.averageHeight
-            const shouldCorrect =
-                heightChanged &&
-                !userHasScrolledAway &&
-                !isAtBottom && // Don't apply aggressive correction when at bottom
-                !isScrolling && // Skip aggressive corrections during active scroll
-                !programmaticScrollInProgress && // Don't interfere with programmatic scrolls
-                performance.now() >= suppressBottomAnchoringUntilMs &&
-                !heightManager.isDynamicUpdateInProgress &&
-                scrollDifference > heightManager.averageHeight * 3
-
-            if (shouldCorrect) {
-                // Round to avoid subpixel positioning issues in bottomToTop mode
-                syncScrollTop(targetScrollTop, true)
-            }
-
-            // Track if user has scrolled significantly away from bottom
-            if (scrollDifference > heightManager.averageHeight * 5) {
-                userHasScrolledAway = true
-            }
-
-            lastCalculatedHeight = heightManager.averageHeight
-        }
-    })
-
-    // Handle items being added/removed in bottomToTop mode
-    $effect(() => {
-        // Only track items.length to prevent re-runs on other reactive changes
-        const currentItemsLength = items.length
-
-        if (
-            BROWSER &&
-            heightManager.initialized &&
-            mode === 'bottomToTop' &&
-            heightManager.isReady &&
-            lastItemsLength > 0
-        ) {
-            const itemsAdded = currentItemsLength - lastItemsLength
-
-            if (itemsAdded !== 0) {
-                // Capture all reactive values immediately to prevent re-triggering
-                const currentScrollTop = heightManager.viewport.scrollTop
-                const currentCalculatedItemHeight = heightManager.averageHeight
-                const currentHeight = height
-                const currentTotalHeight = totalHeight
-                const prevTotalHeight =
-                    lastTotalHeightObserved ||
-                    currentTotalHeight - itemsAdded * currentCalculatedItemHeight
-                const prevMaxScrollTop = Math.max(0, prevTotalHeight - currentHeight)
-                const nextMaxScrollTop = Math.max(0, currentTotalHeight - currentHeight)
-                const deltaMax = nextMaxScrollTop - prevMaxScrollTop
-                log('[SVL] items-length-change:before', {
-                    instanceId,
-                    itemsAdded,
-                    lastItemsLength,
-                    currentItemsLength,
-                    currentScrollTop,
-                    prevTotalHeight,
-                    currentTotalHeight,
-                    prevMaxScrollTop,
-                    nextMaxScrollTop,
-                    deltaMax,
-                    averageItemHeight: currentCalculatedItemHeight
-                })
-
-                // Maintain visual position for ALL cases by advancing scrollTop by deltaMax.
-                // If near the bottom, this naturally pins to the new max; otherwise it preserves the current content.
-                programmaticScrollInProgress = true
-                void heightManager.runDynamicUpdate(() => {
-                    const newScrollTop = clampValue(
-                        currentScrollTop + deltaMax,
-                        0,
-                        nextMaxScrollTop
-                    )
-                    syncScrollTop(newScrollTop)
-                    log('[SVL] items-length-change:applied', {
-                        instanceId,
-                        previousScrollTop: currentScrollTop,
-                        appliedScrollTop: newScrollTop,
-                        prevMaxScrollTop,
-                        nextMaxScrollTop,
-                        deltaMax
-                    })
-
-                    // We are explicitly managing position; consider this a programmatic action.
-                    // Do not flip userHasScrolledAway here; it should reflect user intent only.
-
-                    // Reconcile on next frame in case measured heights adjust totals
-                    requestAnimationFrame(() => {
-                        const beforeReconcileScrollTop = heightManager.viewport.scrollTop
-                        const reconciledNextMax = clampValue(totalHeight - height, 0, Infinity)
-                        const reconciledDeltaMaxChange = reconciledNextMax - nextMaxScrollTop
-                        // Desired position is to maintain distance-from-end; equivalently keep (max - scrollTop) constant.
-                        const desiredScrollTop = clampValue(
-                            newScrollTop + reconciledDeltaMaxChange,
-                            0,
-                            reconciledNextMax
-                        )
-                        // Snap to integer pixels to prevent oscillation due to subpixel rounding
-                        const desiredRounded = Math.round(desiredScrollTop)
-                        const diffToDesired = desiredRounded - heightManager.viewport.scrollTop
-                        if (Math.abs(diffToDesired) >= 2) {
-                            const adjusted = clampValue(desiredRounded, 0, reconciledNextMax)
-                            syncScrollTop(adjusted)
-                            log('[SVL] items-length-change:reconciled', {
-                                instanceId,
-                                beforeReconcileScrollTop,
-                                adjustedScrollTop: adjusted,
-                                reconciledNextMax,
-                                reconciledDeltaMaxChange,
-                                desiredScrollTop,
-                                desiredRounded,
-                                diffToDesired
-                            })
-                        } else {
-                            log('[SVL] items-length-change:reconciled-skip', {
-                                instanceId,
-                                beforeReconcileScrollTop,
-                                reconciledNextMax,
-                                reconciledDeltaMaxChange,
-                                desiredScrollTop,
-                                desiredRounded,
-                                diffToDesired
-                            })
-                        }
-                        programmaticScrollInProgress = false
-                    })
-                })
-            }
-        }
-
-        lastItemsLength = currentItemsLength
-        // Update last observed total height at the end of the effect
-        lastTotalHeightObserved = totalHeight
-    })
 
     // Update container height continuously to reflect layout changes that
     // may occur outside ResizeObserver timing (keeps buffers correct across engines)
@@ -930,17 +438,6 @@
         if (BROWSER && heightManager.isReady) {
             const h = heightManager.container.getBoundingClientRect().height
             if (Number.isFinite(h) && h > 0) height = h
-        }
-    })
-
-    // One-time fallback measurement when height hasn't been established yet
-
-    // Provide a one-time synchronous measurement only when height is still 0,
-    // to avoid DOM reads inside render-time expressions.
-    $effect(() => {
-        if (BROWSER && height === 0 && heightManager.isReady) {
-            const h = heightManager.container.getBoundingClientRect().height
-            if (Number.isFinite(h) && h > 0) measuredFallbackHeight = h
         }
     })
 
@@ -953,7 +450,6 @@
      * - Viewport height
      * - Item height estimates
      * - Buffer size
-     * - Scroll direction mode
      *
      * @example
      * ```typescript
@@ -967,29 +463,11 @@
         if (!items.length) return { start: 0, end: 0 } as SvelteVirtualListPreviousVisibleRange
         const viewportHeight = height || 0
 
-        // For bottomToTop mode, always render items starting from index 0 during initialization
-        // This ensures Item 0 is in the DOM so we can use scrollIntoView for precise positioning
-        // The scrollIntoView in updateHeightAndScroll will handle correct alignment after heights are measured
-        // Use bottomToTopScrollComplete (not just initialized) to keep init path active until scroll is done
-        if (mode === 'bottomToTop' && !bottomToTopScrollComplete) {
-            // Use a reasonable default if viewport height isn't measured yet
-            const effectiveViewport = viewportHeight || 400
-            const visibleCount = Math.ceil(effectiveViewport / heightManager.averageHeight) + 1
-            lastVisibleRange = {
-                start: 0,
-                end: Math.min(items.length, visibleCount + bufferSize * 2)
-            } as SvelteVirtualListPreviousVisibleRange
-
-            return lastVisibleRange
-        }
-
         // Scroll delta threshold optimization: skip recalculation if scroll delta is less than
         // half the average item height and we have a cached range. This reduces unnecessary
         // calculations during smooth scrolling.
-        // Note: Only applied in topToBottom mode - bottomToTop has complex scroll correction
-        // logic that requires precise visible range calculations.
         // Note: We use lastProcessedScrollTop read-only here; it's updated in the scroll handler
-        if (mode === 'topToBottom') {
+        {
             const scrollDelta = Math.abs(heightManager.scrollTop - lastProcessedScrollTop)
             const threshold = heightManager.averageHeight * 0.5
             if (lastVisibleRange && scrollDelta < threshold && scrollDelta > 0) {
@@ -1004,7 +482,6 @@
             itemHeight: heightManager.averageHeight,
             totalItems: items.length,
             bufferSize,
-            mode,
             totalContentHeight: totalHeight,
             heightCache: heightManager.getHeightCache()
         })
@@ -1016,74 +493,34 @@
      * Computed content height for the virtual list.
      * Uses the maximum of container height and total content height to ensure
      * proper scrolling behavior.
-     *
-     * In bottomToTop mode during active scroll, contentHeight is "ratcheted" —
-     * it can grow but never shrink. This prevents a feedback loop where
-     * averageHeight oscillation causes scrollHeight to bounce, triggering
-     * browser scrollTop adjustments that fire new scroll events.
-     * When scrolling stops (isScrolling goes false), it snaps to the true value.
      */
-    let stabilizedContentHeight = 0
-
-    const contentHeight = $derived.by(() => {
-        const raw = Math.max(height, totalHeight)
-
-        if (mode !== 'bottomToTop' || !isScrolling) {
-            stabilizedContentHeight = raw
-            return raw
-        }
-
-        // During active scroll in bottomToTop: only allow growth (ratchet)
-        // Prevents shrink → scrollTop adjust → new scroll event feedback loop
-        if (raw > stabilizedContentHeight) {
-            stabilizedContentHeight = raw
-        }
-
-        return stabilizedContentHeight
-    })
+    const contentHeight = $derived(Math.max(height, totalHeight))
 
     /**
      * Computed transform Y value for positioning the visible items.
      * Extracted from inline IIFE for better performance and readability.
      */
     const transformY = $derived.by(() => {
-        const viewportHeight = height || measuredFallbackHeight || 0
         const visibleRange = visibleItems
 
-        // Avoid synchronous DOM reads here; fall back once if height is 0
-        const effectiveHeight = viewportHeight === 0 ? 400 : viewportHeight
-
         // Use precise offset using measured heights when available.
-        // For bottomToTop, pass ratcheted contentHeight so the transform stays
-        // stable while scrollHeight is stabilized (prevents visual shift).
         return Math.round(
             calculateTransformY(
-                mode,
                 items.length,
-                visibleRange.end,
                 visibleRange.start,
                 heightManager.averageHeight,
-                effectiveHeight,
-                mode === 'bottomToTop' ? contentHeight : totalHeight,
-                heightManager.getHeightCache(),
-                measuredFallbackHeight
+                heightManager.getHeightCache()
             )
         )
     })
 
     const displayItems = $derived.by(() => {
         const visibleRange = visibleItems
-        const slice =
-            mode === 'bottomToTop'
-                ? items.slice(visibleRange.start, visibleRange.end).reverse()
-                : items.slice(visibleRange.start, visibleRange.end)
+        const slice = items.slice(visibleRange.start, visibleRange.end)
 
         return slice.map((item, sliceIndex) => ({
             item,
-            originalIndex:
-                mode === 'bottomToTop'
-                    ? visibleRange.end - 1 - sliceIndex
-                    : visibleRange.start + sliceIndex,
+            originalIndex: visibleRange.start + sliceIndex,
             sliceIndex
         }))
     })
@@ -1096,8 +533,7 @@
      * smooth scrolling performance.
      *
      * Implementation details:
-     * - Uses isScrolling flag to prevent multiple RAF calls
-     * - Updates scrollTop state only when scrolling has settled
+     * - Updates scrollTop state through RAF scheduling
      * - Browser-only functionality
      *
      * @example
@@ -1112,31 +548,8 @@
     const handleScroll = () => {
         if (!BROWSER || !heightManager.viewportElement) return
 
-        // Mark active scrolling and debounce idle transition (~120ms)
-        isScrolling = true
-        if (scrollIdleTimer) {
-            clearTimeout(scrollIdleTimer)
-            scrollIdleTimer = null
-        }
-        scrollIdleTimer = window.setTimeout(() => {
-            isScrolling = false
-            // Apply deferred anchor correction on idle
-            if (idleCorrectionsOnly || anchorModeEnabled) {
-                reconcileToAnchorIfEnabled()
-            }
-        }, SCROLL_IDLE_DELAY_MS)
-
         rafSchedule(() => {
             const current = heightManager.viewport.scrollTop
-            if (mode === 'bottomToTop') {
-                const delta = lastScrollTopSnapshot - current
-                if (delta > 0.5) {
-                    // Widen suppression to avoid fighting peer instance corrections
-                    suppressBottomAnchoringUntilMs = performance.now() + SUPPRESSION_WINDOW_MS
-                    userHasScrolledAway = true
-                }
-            }
-            lastScrollTopSnapshot = current
             heightManager.scrollTop = current
             // Update last processed scroll position for delta threshold optimization
             // Only update when we actually process a scroll (i.e., recalculate visible range)
@@ -1146,13 +559,9 @@
                 lastProcessedScrollTop = current
             }
             updateDebugTailDistance()
-            if (anchorModeEnabled) {
-                captureAnchor()
-            }
             if (INTERNAL_DEBUG) {
                 const vr = visibleItems
                 log('[SVL] scroll', {
-                    mode,
                     scrollTop: heightManager.scrollTop,
                     height,
                     totalHeight: totalHeight,
@@ -1160,109 +569,23 @@
                     visibleRange: vr
                 })
             }
-            // isScrolling cleared by idle timer
         })
     }
 
     /**
      * Updates the height and scroll position of the virtual list.
      *
-     * This function handles two scenarios:
-     * 1. Initial setup (critical for bottomToTop mode in flexbox layouts)
-     * 2. Subsequent resize events
-     *
-     * For bottomToTop mode, we need to ensure:
-     * - The flexbox layout is fully calculated
-     * - The height measurements are accurate
-     * - The scroll position starts at the bottom
-     *
      * @param immediate - Whether to skip the delay (used for resize events)
      */
     const updateHeightAndScroll = (immediate = false) => {
         log('updateHeightAndScroll-enter', {
             immediate,
-            initialized: heightManager.initialized,
-            mode
+            initialized: heightManager.initialized
         })
-        if (!heightManager.initialized && mode === 'bottomToTop') {
-            // bottomToTop initialization: use scrollIntoView on Item 0 for precise positioning
-            // visibleItems guarantees Item 0 is rendered during initialization
-            tick().then(() => {
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        if (!heightManager.isReady) return
-                        const measuredHeight =
-                            heightManager.container.getBoundingClientRect().height
-                        height = measuredHeight
-
-                        // Instance jitter to avoid same-frame collisions when two lists init together
-                        const cleanedId = String(instanceId)
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]/g, '')
-                        const suffix = cleanedId.slice(-4)
-                        const parsed = parseInt(suffix, 36)
-                        const jitterMs = Number.isNaN(parsed)
-                            ? Math.floor(Math.random() * 3)
-                            : parsed % 3
-
-                        setTimeout(() => {
-                            // Step 1: Set initialized (for other purposes like scroll event handling)
-                            // The init path in visibleItems stays active until bottomToTopScrollComplete
-                            if (!heightManager.initialized) {
-                                heightManager.initialized = true
-                            }
-
-                            // Step 2: Use scrollIntoView on Item 0 for precise positioning
-                            // Use double RAF to ensure heights are measured and layout is stable
-                            requestAnimationFrame(() => {
-                                requestAnimationFrame(() => {
-                                    // Item 0 is guaranteed to be in DOM due to init path
-                                    // Skip if user has already scrolled (scrollTop significantly != 0)
-                                    const currentScroll = heightManager.viewport.scrollTop
-                                    const userHasScrolled =
-                                        currentScroll > heightManager.averageHeight
-                                    const el = heightManager.viewport.querySelector(
-                                        '[data-original-index="0"]'
-                                    ) as HTMLElement | null
-
-                                    if (el && !userHasScrolled) {
-                                        // Use manual scrollTop instead of scrollIntoView to prevent parent scroll
-                                        // (scrollIntoView scrolls all ancestor containers, not just the viewport)
-                                        // Note: `container: 'nearest'` option could replace this once browser support improves
-                                        const viewportRect =
-                                            heightManager.viewport.getBoundingClientRect()
-                                        const elRect = el.getBoundingClientRect()
-                                        const offset = elRect.bottom - viewportRect.bottom
-                                        heightManager.viewport.scrollTop += offset
-                                        heightManager.scrollTop = heightManager.viewport.scrollTop
-                                    } else if (userHasScrolled) {
-                                        // Sync internal state with current scroll
-                                        heightManager.scrollTop = currentScroll
-                                    }
-
-                                    // Step 3: Mark scroll complete - switches visibleItems to normal mode
-                                    requestAnimationFrame(() => {
-                                        bottomToTopScrollComplete = true
-                                        // Reset bottom-anchoring flag to prevent stale state from init
-                                        // affecting later operations (e.g., adding items while scrolled away)
-                                        wasAtBottomBeforeHeightChange = false
-                                        // Suppress bottom-anchoring briefly to let heights stabilize
-                                        // after switching to normal mode
-                                        suppressBottomAnchoringUntilMs = performance.now() + 200
-                                    })
-                                })
-                            })
-                        }, jitterMs)
-                    })
-                })
-            })
-            return
-        }
 
         utilsUpdateHeightAndScroll(
             {
                 initialized: heightManager.initialized,
-                mode,
                 containerElement: heightManager.containerElement,
                 viewportElement: heightManager.viewportElement,
                 calculatedItemHeight: heightManager.averageHeight,
@@ -1309,11 +632,6 @@
 
                             // Only mark as dirty if height change is significant
                             if (isSignificant) {
-                                // Capture bottom state when FIRST item gets marked dirty
-                                if (dirtyItemsCount === 0) {
-                                    wasAtBottomBeforeHeightChange = atBottom
-                                }
-
                                 dirtyItems.add(actualIndex)
                                 dirtyItemsCount = dirtyItems.size
                                 shouldRecalculate = true
@@ -1334,7 +652,7 @@
     onMount(() => {
         if (BROWSER) {
             // Initial setup of heights and scroll position
-            log('onMount-enter', { mode, items: items.length })
+            log('onMount-enter', { items: items.length })
             updateHeightAndScroll()
             // Ensure one initial measurement pass even if no ResizeObserver fires
             tick().then(() =>
@@ -1514,7 +832,6 @@
 
         // Use extracted scroll calculation utility
         const scrollTarget = calculateScrollTarget({
-            mode,
             align: align || 'auto',
             targetIndex,
             itemsLength: items.length,
@@ -1531,9 +848,6 @@
             return
         }
 
-        // Prevent bottom-anchoring logic from interfering with programmatic scroll
-        programmaticScrollInProgress = true
-
         if (INTERNAL_DEBUG && heightManager.viewportElement) {
             const domMax = Math.max(
                 0,
@@ -1548,32 +862,6 @@
                 scrollTarget,
                 domMaxScrollTop: domMax
             })
-        }
-
-        // CROSS-BROWSER COMPATIBILITY FIX:
-        // All major browsers (Chrome, Firefox, Safari) have inconsistent behavior with scrollTo()
-        // in bottomToTop mode when using smooth scrolling. Using scrollIntoView() on the highest
-        // visible element provides consistent cross-browser smooth scrolling behavior.
-        // This approach works universally and maintains the user's expected smooth scroll experience.
-        if (mode === 'bottomToTop' && smoothScroll) {
-            // Find the element with the highest original-index in the current viewport
-            const visibleElements = heightManager.viewport.querySelectorAll('[data-original-index]')
-            let maxIndex = -1
-            let maxElement: HTMLElement | null = null
-            for (const el of visibleElements) {
-                const index = parseInt(el.getAttribute('data-original-index') || '-1')
-                if (index > maxIndex) {
-                    maxIndex = index
-                    maxElement = el as HTMLElement
-                }
-            }
-
-            maxElement?.scrollIntoView({
-                behavior: 'smooth'
-            })
-            await tick()
-            await new Promise((resolve) => setTimeout(resolve, 100))
-            await tick()
         }
 
         heightManager.viewport.scrollTo({
@@ -1597,14 +885,6 @@
         })
 
         // No extra alignment step here; allow native smooth scroll to reach DOM max scrollTop
-
-        // Clear the flag after scroll completes
-        setTimeout(
-            () => {
-                programmaticScrollInProgress = false
-            },
-            smoothScroll ? 500 : 100
-        )
     }
 
     /**

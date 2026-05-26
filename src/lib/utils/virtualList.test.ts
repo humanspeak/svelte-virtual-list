@@ -286,61 +286,11 @@ describe('calculateVisibleRange', () => {
             viewportHeight: 300,
             itemHeight: 30,
             totalItems: 100,
-            bufferSize: 2,
-            mode: 'topToBottom'
+            bufferSize: 2
         })
         expect(result).toEqual({
             start: 1, // (100/30 - 2) rounded down
             end: 16 // (floor(100/30) + ceil(300/30) + 1 + 2) = 3 + 10 + 1 + 2
-        })
-    })
-
-    it('should calculate correct range for bottom-to-top mode', () => {
-        // scrollTop = 100 in bottomToTop means 100px from content end
-        const result = calculateVisibleRange({
-            scrollTop: 100,
-            viewportHeight: 300,
-            itemHeight: 30,
-            totalItems: 100,
-            bufferSize: 2,
-            mode: 'bottomToTop'
-        })
-        expect(result).toEqual({
-            start: 84, // Items near the end for bottomToTop when scrollTop = 100
-            end: 99
-        })
-    })
-
-    it('should show first items when scrollTop = 0 in bottomToTop mode', () => {
-        // When scrollTop = 0, bottomToTop should show first items (0, 1, 2...)
-        const result = calculateVisibleRange({
-            scrollTop: 0,
-            viewportHeight: 300,
-            itemHeight: 30,
-            totalItems: 100,
-            bufferSize: 2,
-            mode: 'bottomToTop'
-        })
-        expect(result).toEqual({
-            start: 88, // Near the end items when at scrollTop = 0
-            end: 100
-        })
-    })
-
-    it('should show last items when at maxScrollTop in bottomToTop mode', () => {
-        // When at maxScrollTop, bottomToTop should show last items
-        const maxScrollTop = 100 * 30 - 300 // totalHeight - viewportHeight = 2700
-        const result = calculateVisibleRange({
-            scrollTop: maxScrollTop,
-            viewportHeight: 300,
-            itemHeight: 30,
-            totalItems: 100,
-            bufferSize: 2,
-            mode: 'bottomToTop'
-        })
-        expect(result).toEqual({
-            start: 0, // First items when at max scroll
-            end: 13
         })
     })
 
@@ -350,8 +300,7 @@ describe('calculateVisibleRange', () => {
             viewportHeight: 300,
             itemHeight: 30,
             totalItems: 10,
-            bufferSize: 5,
-            mode: 'topToBottom'
+            bufferSize: 5
         })
         expect(result).toEqual({
             start: 0,
@@ -370,7 +319,6 @@ describe('calculateVisibleRange', () => {
             itemHeight: 30,
             totalItems: 100,
             bufferSize: 2,
-            mode: 'topToBottom',
             heightCache: cache
         })
         expect(result.start).toBe(0) // start=2 minus buffer=2
@@ -385,8 +333,7 @@ describe('calculateVisibleRange', () => {
             viewportHeight: 100,
             itemHeight: 30,
             totalItems: 20,
-            bufferSize: 1,
-            mode: 'topToBottom'
+            bufferSize: 1
         })
         expect(result.end).toBe(6)
     })
@@ -405,7 +352,6 @@ describe('calculateVisibleRange', () => {
             itemHeight: 40,
             totalItems: 5,
             bufferSize: 0,
-            mode: 'topToBottom',
             heightCache: cache
         })
         expect(result).toEqual({ start: 1, end: 4 })
@@ -422,7 +368,6 @@ describe('calculateVisibleRange', () => {
             itemHeight: 30,
             totalItems: 100,
             bufferSize: 0,
-            mode: 'topToBottom',
             heightCache: cache
         })
         expect(result.start).toBe(2)
@@ -439,7 +384,6 @@ describe('calculateVisibleRange', () => {
             itemHeight: 40,
             totalItems: 50,
             bufferSize: 2,
-            mode: 'topToBottom',
             heightCache: cache
         })
         const withoutCache = calculateVisibleRange({
@@ -447,50 +391,25 @@ describe('calculateVisibleRange', () => {
             viewportHeight: 400,
             itemHeight: 40,
             totalItems: 50,
-            bufferSize: 2,
-            mode: 'topToBottom'
+            bufferSize: 2
         })
         expect(withCache).toEqual(withoutCache)
     })
 })
 
 describe('calculateTransformY', () => {
-    it('should calculate transform for top-to-bottom mode (estimated)', () => {
-        expect(calculateTransformY('topToBottom', 100, 20, 5, 30, 400)).toBe(150)
+    it('should calculate transform using estimated heights', () => {
+        expect(calculateTransformY(100, 5, 30)).toBe(150)
     })
 
-    it('should calculate transform for top-to-bottom mode using heightCache when provided', () => {
+    it('should calculate transform using heightCache when provided', () => {
         const heightCache = { 0: 35, 1: 45, 2: 25, 3: 50, 4: 60 }
         // visibleStart = 5 → offset = sum(0..4) = 35+45+25+50+60 = 215
-        expect(
-            calculateTransformY('topToBottom', 100, 20, 5, 30, 0, undefined, heightCache, 400)
-        ).toBe(215)
-    })
-
-    it('should calculate transform for bottom-to-top mode', () => {
-        expect(calculateTransformY('bottomToTop', 100, 20, 5, 30, 400)).toBe(2400)
+        expect(calculateTransformY(100, 5, 30, heightCache)).toBe(215)
     })
 
     it('should handle edge case with zero visible items', () => {
-        expect(calculateTransformY('topToBottom', 100, 0, 0, 30, 400)).toBe(0)
-    })
-
-    it('should position few items at bottom in bottomToTop mode', () => {
-        // 2 items, each 30px high = 60px total content
-        // Viewport is 400px high, so items should be pushed down by 340px
-        expect(calculateTransformY('bottomToTop', 2, 2, 0, 30, 400)).toBe(340)
-    })
-
-    it('should not add bottom offset when content fills viewport in bottomToTop mode', () => {
-        // 20 items, each 30px high = 600px total content
-        // Viewport is 400px high, so no bottom offset needed (content > viewport)
-        expect(calculateTransformY('bottomToTop', 20, 20, 0, 30, 400)).toBe(0)
-    })
-
-    it('should handle exact content height match in bottomToTop mode', () => {
-        // 10 items, each 40px high = 400px total content
-        // Viewport is 400px high, so no bottom offset needed (content = viewport)
-        expect(calculateTransformY('bottomToTop', 10, 10, 0, 40, 400)).toBe(0)
+        expect(calculateTransformY(100, 0, 30)).toBe(0)
     })
 })
 
@@ -498,7 +417,6 @@ describe('updateHeightAndScroll', () => {
     it('should not update when immediate is false', () => {
         const state: VirtualListState = {
             initialized: true,
-            mode: 'topToBottom',
             containerElement: null,
             viewportElement: null,
             calculatedItemHeight: 30,
@@ -514,36 +432,6 @@ describe('updateHeightAndScroll', () => {
         updateHeightAndScroll(state, setters, false)
         expect(setters.setHeight).not.toHaveBeenCalled()
         expect(setters.setScrollTop).not.toHaveBeenCalled()
-        expect(setters.setInitialized).not.toHaveBeenCalled()
-    })
-
-    it('should update height and scroll for bottom-to-top mode when immediate is true', () => {
-        const mockContainerElement = {
-            getBoundingClientRect: () => ({ height: 500 })
-        }
-        const mockViewportElement = {
-            scrollTop: 0
-        }
-
-        const state: VirtualListState = {
-            initialized: true,
-            mode: 'bottomToTop',
-            containerElement: mockContainerElement as any,
-            viewportElement: mockViewportElement as any,
-            calculatedItemHeight: 30,
-            scrollTop: 90,
-            height: 0
-        }
-
-        const setters: VirtualListSetters = {
-            setHeight: vi.fn(),
-            setScrollTop: vi.fn(),
-            setInitialized: vi.fn()
-        }
-
-        updateHeightAndScroll(state, setters, true)
-        expect(setters.setHeight).toHaveBeenCalledWith(500)
-        expect(setters.setScrollTop).toHaveBeenCalledWith(90)
         expect(setters.setInitialized).not.toHaveBeenCalled()
     })
 })

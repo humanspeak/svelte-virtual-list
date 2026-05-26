@@ -30,7 +30,7 @@
         seo.ogTagline = 'High-performance virtual scrolling for Svelte 5.'
         seo.ogFeatures = [
             'Dynamic Heights',
-            'Bidirectional Scrolling',
+            'Infinite Scrolling',
             'TypeScript Support',
             '5kb Gzipped'
         ]

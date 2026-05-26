@@ -2,7 +2,6 @@ import type { Snippet } from 'svelte'
 import { describe, expect, test } from 'vitest'
 import SvelteVirtualListDefault, {
     type SvelteVirtualListDebugInfo,
-    type SvelteVirtualListMode,
     type SvelteVirtualListProps,
     type SvelteVirtualListScrollAlign,
     type SvelteVirtualListScrollOptions
@@ -29,8 +28,6 @@ describe('index.ts exports', () => {
             totalHeight: 3000
         }
 
-        const mode: SvelteVirtualListMode = 'topToBottom'
-
         // Use a mock Snippet for renderItem
         const mockSnippet: Snippet = (() => {}) as unknown as Snippet
         const props: SvelteVirtualListProps<any> = {
@@ -48,7 +45,6 @@ describe('index.ts exports', () => {
         const align: SvelteVirtualListScrollAlign = 'bottom'
 
         expect(debugInfo).toBeDefined()
-        expect(mode).toBeDefined()
         expect(props).toBeDefined()
         expect(scrollOptions).toBeDefined()
         expect(align).toBeDefined()

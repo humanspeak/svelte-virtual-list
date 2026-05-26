@@ -1,13 +1,6 @@
 import type { Snippet } from 'svelte'
 
 /**
- * Defines the scroll direction and rendering mode for the virtual list.
- *
- * @typedef {'topToBottom' | 'bottomToTop'} SvelteVirtualListMode
- */
-export type SvelteVirtualListMode = 'topToBottom' | 'bottomToTop'
-
-/**
  * Configuration properties for the SvelteVirtualList component.
  *
  * @typedef {Object} SvelteVirtualListProps
@@ -49,11 +42,6 @@ export type SvelteVirtualListProps<TItem = any> = {
      * CSS class to apply to individual item containers.
      */
     itemsClass?: string
-    /**
-     * Determines the scroll and render direction.
-     * @default 'topToBottom'
-     */
-    mode?: SvelteVirtualListMode
     /**
      * Svelte snippet function that defines how each item should be rendered. Receives the item and its index as arguments.
      */

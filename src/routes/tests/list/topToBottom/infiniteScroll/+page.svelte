@@ -46,7 +46,6 @@
         defaultEstimatedItemHeight={40}
         {items}
         testId="infinite-list"
-        mode="topToBottom"
         onLoadMore={loadMore}
         loadMoreThreshold={20}
         {hasMore}

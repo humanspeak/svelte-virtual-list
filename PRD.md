@@ -16,9 +16,8 @@
 - Height averaging for performance
 - Status: **Completed**
 
-### Phase 3: Bidirectional Scrolling ✓
+### Phase 3: Scroll Position Management ✓
 
-- Bottom-to-top mode for chat applications
 - Flexbox layout optimization
 - Scroll position management
 - Status: **Completed**
@@ -66,7 +65,7 @@
 ### Phase 9: Programmatic Scrolling ✓
 
 - Added `scroll`/`scrollToIndex` for programmatic scroll targeting
-- Supports `align: 'auto' | 'top' | 'bottom' | 'nearest'` and works in `bottomToTop`
+- Supports `align: 'auto' | 'top' | 'bottom' | 'nearest'`
 - Status: **Completed**
 
 ### Phase 10: Infrastructure & Testing Excellence ✓
@@ -81,7 +80,7 @@
 ### Phase 11: Infinite Scrolling (Next)
 
 - Goal: Seamless load-on-demand when the user approaches the start/end of the list
-- Target scenarios: chat history (prepend at top), feed/pagination (append at bottom), `bottomToTop` anchoring
+- Target scenarios: feed/pagination (append at bottom)
 - Status: **Planned**
 
 Planned API (subject to refinement):
@@ -94,20 +93,18 @@ Planned API (subject to refinement):
     - `reached:start`, `reached:end`, `near:start`, `near:end`
 - Behavior
     - Debounced invocation; no re-entrant calls while a previous load is in-flight
-    - Preserve scroll anchor on prepend/append; no visible jumps (esp. `bottomToTop`)
+    - Preserve scroll position when appending; no visible jumps
     - Works with dynamic heights/reactive height manager
 
 Acceptance criteria:
 
 1. Appending at bottom triggers only once per threshold crossing; maintains position if user is not at the edge
-2. Prepending at top in `bottomToTop` keeps the last item anchored (no jump)
-3. Works across Chromium/Firefox/WebKit and mobile profiles
-4. E2E tests cover both directions, both modes, and loading while scrolling
+2. Works across Chromium/Firefox/WebKit and mobile profiles
+3. E2E tests cover loading while scrolling
 
 Test plan (E2E additions):
 
 - `tests/infinite/append.spec.ts`: triggers `onReachEnd` and verifies items rendered + no jump
-- `tests/infinite/prepend-bottomToTop.spec.ts`: triggers `onReachStart` with `mode='bottomToTop'` and validates anchor
 - Perf guardrails similar to existing performance tests
 
 ## Current Implementation
@@ -188,8 +185,8 @@ Test plan (E2E additions):
 
 1. **Feature: Infinite Scrolling (Phase 10)**
     - Implement near-edge detection + load hooks/events (top/bottom)
-    - Preserve anchor on prepend/append (esp. `bottomToTop`)
-    - Add E2E coverage for both directions and mobile profiles
+    - Preserve position when appending
+    - Add E2E coverage for infinite loading and mobile profiles
 
 2. **Performance Optimization**
     - Mobile performance enhancements
@@ -197,7 +194,7 @@ Test plan (E2E additions):
     - Horizontal scrolling exploration
 
 3. **Developer Experience**
-    - Examples: infinite append/prepend demos in `src/routes/tests`
+    - Examples: infinite append demos in `src/routes/tests`
     - README docs for infinite scrolling API and usage
 
 ### Medium Term
@@ -222,7 +219,7 @@ Test plan (E2E additions):
 ## Technical Challenges Solved
 
 1. **Scroll Management**
-    - Bidirectional scrolling
+    - Programmatic scroll alignment
     - Dynamic height handling
     - Smooth animations
     - Large dataset support

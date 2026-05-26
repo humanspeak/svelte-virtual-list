@@ -1,11 +1,8 @@
-import type { SvelteVirtualListMode, SvelteVirtualListScrollAlign } from '$lib/types.js'
+import type { SvelteVirtualListScrollAlign } from '$lib/types.js'
 import { clampValue, getScrollOffsetForIndex } from './virtualList.js'
 
 /**
  * Calculates the scroll target for aligning an item to a specific edge.
- *
- * This helper consolidates the shared alignment logic between bottomToTop
- * and topToBottom scroll calculations, reducing code duplication.
  *
  * @param {number} itemTop - The top position of the item in pixels
  * @param {number} itemBottom - The bottom position of the item in pixels
@@ -86,7 +83,6 @@ export const alignVisibleToNearestEdge = (
  * Parameters for calculating scroll target position
  */
 export interface ScrollTargetParams {
-    mode: SvelteVirtualListMode
     align: SvelteVirtualListScrollAlign
     targetIndex: number
     itemsLength: number
@@ -101,9 +97,8 @@ export interface ScrollTargetParams {
 /**
  * Calculates the target scroll position for scrolling to a specific item index.
  *
- * This function handles both topToBottom and bottomToTop scroll modes with different
- * alignment options (auto, top, bottom, nearest). It takes into account the current
- * viewport state and calculates the optimal scroll position.
+ * This function handles different alignment options (auto, top, bottom, nearest)
+ * and calculates the optimal scroll position based on the current viewport state.
  *
  * @param params - Parameters for scroll target calculation
  * @returns The target scroll position in pixels, or null if no scroll is needed
@@ -111,7 +106,6 @@ export interface ScrollTargetParams {
  * @example
  * ```typescript
  * const scrollTarget = calculateScrollTarget({
- *     mode: 'topToBottom',
  *     align: 'auto',
  *     targetIndex: 100,
  *     itemsLength: 1000,
@@ -130,10 +124,8 @@ export interface ScrollTargetParams {
  */
 export const calculateScrollTarget = (params: ScrollTargetParams): number | null => {
     const {
-        mode,
         align,
         targetIndex,
-        itemsLength,
         calculatedItemHeight,
         height,
         scrollTop,
@@ -142,113 +134,20 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
         heightCache
     } = params
 
-    if (mode === 'bottomToTop') {
-        return calculateBottomToTopScrollTarget({
-            align,
-            targetIndex,
-            itemsLength,
-            calculatedItemHeight,
-            height,
-            scrollTop,
-            firstVisibleIndex,
-            lastVisibleIndex,
-            heightCache
-        })
-    } else {
-        return calculateTopToBottomScrollTarget({
-            align,
-            targetIndex,
-            calculatedItemHeight,
-            height,
-            scrollTop,
-            firstVisibleIndex,
-            lastVisibleIndex,
-            heightCache
-        })
-    }
-}
-
-/**
- * Parameters for bottom-to-top scroll calculation.
- *
- * @interface BottomToTopScrollParams
- */
-interface BottomToTopScrollParams {
-    /** Alignment mode for the target item. */
-    align: SvelteVirtualListScrollAlign
-    /** Index of the item to scroll to. */
-    targetIndex: number
-    /** Total number of items in the list. */
-    itemsLength: number
-    /** Calculated average height of items in pixels. */
-    calculatedItemHeight: number
-    /** Height of the viewport in pixels. */
-    height: number
-    /** Current scroll position in pixels. */
-    scrollTop: number
-    /** Index of the first visible item. */
-    firstVisibleIndex: number
-    /** Index of the last visible item. */
-    lastVisibleIndex: number
-    /** Cache of measured item heights. */
-    heightCache: Record<number, number>
-}
-
-/**
- * Calculates the target scroll position for bottom-to-top mode.
- *
- * In bottom-to-top mode, items are rendered from the bottom of the viewport upward,
- * which requires different scroll calculations than the standard top-to-bottom mode.
- * This function handles the coordinate system translation and alignment logic.
- *
- * @param {BottomToTopScrollParams} params - Parameters for scroll calculation.
- * @returns {number | null} The target scroll position in pixels, or null if no
- *     scroll is needed (item already visible with 'nearest' alignment).
- */
-const calculateBottomToTopScrollTarget = (params: BottomToTopScrollParams): number | null => {
-    const {
+    return calculateTopToBottomScrollTarget({
         align,
         targetIndex,
-        itemsLength,
         calculatedItemHeight,
         height,
         scrollTop,
         firstVisibleIndex,
         lastVisibleIndex,
         heightCache
-    } = params
-
-    // Use getScrollOffsetForIndex for accurate positioning with height cache
-    const totalHeight = getScrollOffsetForIndex(heightCache, calculatedItemHeight, itemsLength)
-    const itemOffset = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex)
-    const itemHeight = calculatedItemHeight
-
-    // Calculate item boundaries in bottomToTop coordinate space
-    const itemTop = totalHeight - (itemOffset + itemHeight)
-    const itemBottom = totalHeight - itemOffset
-
-    if (align === 'auto') {
-        // If item is above the viewport, align to top
-        if (targetIndex < firstVisibleIndex) {
-            return alignToEdge(itemTop, itemBottom, scrollTop, height, 'top')
-        } else if (targetIndex > lastVisibleIndex - 1) {
-            // In bottomToTop, "below" means higher indices that need HIGHER scrollTop
-            return alignToEdge(itemTop, itemBottom, scrollTop, height, 'bottom')
-        } else {
-            // Item is visible - align to nearest edge (always returns a value)
-            return alignVisibleToNearestEdge(itemTop, itemBottom, scrollTop, height)
-        }
-    }
-
-    if (align === 'top' || align === 'bottom' || align === 'nearest') {
-        return alignToEdge(itemTop, itemBottom, scrollTop, height, align)
-    }
-
-    return null
+    })
 }
 
 /**
- * Parameters for top-to-bottom scroll calculation.
+ * Parameters for scroll calculation.
  *
  * @interface TopToBottomScrollParams
  */
