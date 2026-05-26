@@ -134,7 +134,7 @@ export const calculateVisibleRange = ({
     // Safeguard: ensure last item is fully visible when at max scroll
     const totalHeight = totalContentHeight ?? totalItems * itemHeight
     const maxScrollTop = Math.max(0, totalHeight - viewportHeight)
-    // Use strict tolerance to avoid premature bottom anchoring that leaves a visible gap
+    // Use strict tolerance to avoid prematurely treating the list as scrolled to the end.
     const tolerance = Math.max(1, Math.floor(itemHeight * BOTTOM_TOLERANCE_FACTOR))
     const isAtBottom = Math.abs(scrollTop - maxScrollTop) <= tolerance
 
