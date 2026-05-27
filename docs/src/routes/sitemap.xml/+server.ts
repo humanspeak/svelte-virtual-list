@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/public'
+import { competitors } from '$lib/compare-data'
 import manifest from '$lib/sitemap-manifest.json'
 import type { RequestHandler } from '@sveltejs/kit'
 
@@ -15,17 +16,18 @@ function toPath(file: string): string {
 
 export const GET: RequestHandler = async ({ url }) => {
     const base = (env.PUBLIC_SITE_URL || `${url.origin}`).replace(/\/$/, '')
+    const compareRoutes = competitors.map((competitor) => `/compare/${competitor.slug}`)
 
     // Unique, sorted, and exclude private/underscore folders
-    const routes = [...new Set(pageFiles.map(toPath))]
-        .filter((p) => !/\/_(?:.*)|\/(?:\+|__)/.test(p))
+    const routes = [...new Set([...pageFiles.map(toPath), ...compareRoutes])]
+        .filter((p) => !/\/_(?:.*)|\/(?:\+|__)|\[/.test(p))
         .sort()
 
     const today = new Date().toISOString().slice(0, 10)
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${routes
         .map(
             (p) =>
-                `  <url>\n    <loc>${base}${p}</loc>\n    <lastmod>${manifest[p] || today}</lastmod>\n  </url>`
+                `  <url>\n    <loc>${base}${p}</loc>\n    <lastmod>${manifest[p] || (p.startsWith('/compare/') ? manifest['/compare/[slug]'] : undefined) || today}</lastmod>\n  </url>`
         )
         .join('\n')}\n</urlset>`
 

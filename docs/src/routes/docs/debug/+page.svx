@@ -23,7 +23,7 @@ description: "Debug mode for development and troubleshooting Svelte Virtual List
 
 Debug mode provides detailed information about the virtual list's internal state, useful for development and troubleshooting.
 
-<Example isSmall>
+<Example isSmall file="DebugExample.svelte" title="Debug mode">
   <DebugExample />
 </Example>
 

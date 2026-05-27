@@ -1,5 +1,6 @@
 test-results
 node_modules
+.wrangler
 
 # Output
 .output
@@ -20,6 +21,19 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Generated social card images
+static/social-cards/
+static/og-default.png
+static/twitter-default.png
+
+# Generated docs-kit manifests and LLM surfaces
+src/lib/sitemap-manifest.json
+src/lib/demo-manifest.json
+src/lib/github-stats.json
+static/docs/
+static/llms.txt
+static/llms-full.txt
 
 # Sentry Config File
 .env.sentry-build-plugin

@@ -25,7 +25,7 @@ You can programmatically scroll to any item in the list using the `scroll` metho
 
 ## Interactive Demo
 
-<Example isSmall>
+<Example isSmall file="ScrollToItemExample.svelte" exampleUrl="/examples/scroll-to-item" title="Scroll methods">
   <ScrollToItemExample />
 </Example>
 

@@ -69,7 +69,7 @@ The simplest way to use Svelte Virtual List is to pass an array of items and a r
 </VirtualList>
 ```
 
-<Example isSmall>
+<Example isSmall file="BasicList.svelte" exampleUrl="/examples/basic-list" title="Basic list">
   <BasicList />
 </Example>
 
@@ -79,7 +79,7 @@ The component only renders items that are visible in the viewport, plus a config
 
 One of the key features is automatic handling of variable item heights. Items are measured after rendering and the list automatically adjusts:
 
-<Example isSmall>
+<Example isSmall file="VariableHeightExample.svelte" exampleUrl="/examples/variable-height" title="Variable height list">
   <VariableHeightExample />
 </Example>
 

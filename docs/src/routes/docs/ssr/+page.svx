@@ -23,7 +23,7 @@ description: "Server-side rendering support for Svelte Virtual List in SvelteKit
 
 Svelte Virtual List is fully compatible with server-side rendering (SSR) and SvelteKit.
 
-<Example isSmall>
+<Example isSmall file="SSRExample.svelte" title="SSR support">
   <SSRExample />
 </Example>
 

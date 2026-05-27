@@ -1,34 +1,36 @@
 <script lang="ts">
     import VirtualList from '@humanspeak/svelte-virtual-list'
 
-    type Item = {
-        id: number
-        text: string
-        meta: string
+    type ListRef = {
+        scroll: (_options: {
+            index: number
+            smoothScroll?: boolean
+            align?: 'auto' | 'top' | 'bottom' | 'nearest'
+        }) => void
     }
 
-    const makeItems = (start: number, count: number) =>
-        Array.from({ length: count }, (_, i) => {
-            const id = start + i
-            return {
-                id,
-                text: `Item ${id}`,
-                meta:
-                    id % 3 === 0 ? 'loaded page' : id % 3 === 1 ? 'windowed dom' : 'threshold ready'
-            }
-        })
+    type Align = 'auto' | 'top' | 'bottom' | 'nearest'
 
-    let items = $state<Item[]>(makeItems(0, 50))
-    let hasMore = $state(true)
-    let loadingCount = $state(0)
-    let isLoading = $state(false)
+    let listRef: ListRef | undefined = $state(undefined)
+    let targetIndex = $state(5000)
+    let align = $state<Align>('auto')
+
+    const items = Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        text: `Item ${i}`,
+        highlighted: i === 0 || i === 5000 || i === 9999,
+        meta: i === 0 ? 'first' : i === 5000 ? 'middle' : i === 9999 ? 'last' : 'scroll target'
+    }))
+
     let demoFrame: HTMLDivElement | undefined = $state(undefined)
     let domRows = $state(0)
     let domNodes = $state(0)
     let firstIndex = $state(0)
     let lastIndex = $state(0)
 
-    function updateStats() {
+    const clampIndex = (index: number) => Math.max(0, Math.min(9999, Math.round(index)))
+
+    const updateStats = () => {
         if (!demoFrame) return
 
         const rows = Array.from(demoFrame.querySelectorAll<HTMLElement>('.demo-row'))
@@ -46,24 +48,9 @@
         }
     }
 
-    async function loadMore() {
-        if (isLoading || !hasMore) return
-
-        isLoading = true
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        loadingCount++
-        const start = items.length
-        items = [...items, ...makeItems(start, 50)]
-        if (items.length >= 500) hasMore = false
-        isLoading = false
-    }
-
-    function reset() {
-        items = makeItems(0, 50)
-        hasMore = true
-        loadingCount = 0
-        isLoading = false
+    function scrollToTarget(index = targetIndex, nextAlign = align) {
+        targetIndex = clampIndex(index)
+        listRef?.scroll({ index: targetIndex, smoothScroll: true, align: nextAlign })
     }
 
     $effect(() => {
@@ -76,45 +63,55 @@
 
 <div class="demo-shell">
     <div class="demo-telemetry">
-        <div>loaded · <span>{items.length}</span></div>
-        <div>loads · <span>{loadingCount}</span></div>
-        <div>range · <span>{firstIndex}-{lastIndex}</span></div>
-        <div>dom rows · <span>{domRows}</span></div>
-        <div>
-            status · <span class:accent={hasMore}
-                >{isLoading ? 'loading' : hasMore ? 'ready' : 'complete'}</span
-            >
-        </div>
-        <button type="button" onclick={reset}>reset</button>
+        <label>
+            <span>index</span>
+            <input
+                type="number"
+                bind:value={targetIndex}
+                min="0"
+                max="9999"
+                aria-label="Target item index"
+            />
+        </label>
+        <label>
+            <span>align</span>
+            <select bind:value={align} aria-label="Scroll alignment">
+                <option value="auto">auto</option>
+                <option value="top">top</option>
+                <option value="bottom">bottom</option>
+                <option value="nearest">nearest</option>
+            </select>
+        </label>
+        <button type="button" class="run" onclick={() => scrollToTarget()}>run</button>
+        <button type="button" onclick={() => scrollToTarget(0, 'top')}>first</button>
+        <button type="button" onclick={() => scrollToTarget(5000, 'auto')}>middle</button>
+        <button type="button" onclick={() => scrollToTarget(9999, 'bottom')}>last</button>
     </div>
-
     <div class="demo-frame" bind:this={demoFrame}>
-        <VirtualList {items} onLoadMore={loadMore} {hasMore} loadMoreThreshold={10}>
+        <VirtualList {items} bind:this={listRef}>
             {#snippet renderItem(item)}
-                <div class="demo-row" data-index={item.id}>
+                <div class:highlighted={item.highlighted} class="demo-row" data-index={item.id}>
                     <strong>{item.text}</strong>
                     <span>{item.meta}</span>
                 </div>
             {/snippet}
         </VirtualList>
     </div>
-
     <div class="demo-foot">
-        <div>threshold · <span>10 rows</span></div>
-        <div>batch · <span>50 rows</span></div>
+        <div>target · <span>{targetIndex}</span></div>
+        <div>align · <span>{align}</span></div>
+        <div>range · <span>{firstIndex}-{lastIndex}</span></div>
+        <div>dom rows · <span>{domRows}</span></div>
         <div>dom nodes · <span>{domNodes}</span></div>
-        <div>cap · <span>500 rows</span></div>
-        <div>mode · <span>append</span></div>
     </div>
 </div>
 
 <style>
     .demo-shell {
         display: flex;
-        height: 340px;
+        min-height: 560px;
         width: 100%;
         flex-direction: column;
-        border: 1px solid var(--brut-rule);
         background: var(--brut-bg);
         color: var(--brut-ink);
         font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
@@ -123,27 +120,31 @@
     .demo-telemetry,
     .demo-foot {
         display: grid;
+        grid-template-columns: repeat(6, minmax(0, auto)) 1fr;
+        border-bottom: 1px solid var(--brut-rule);
         background: var(--brut-bg-2);
         color: var(--brut-ink-3);
         font-size: 11px;
     }
 
-    .demo-telemetry {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        border-bottom: 1px solid var(--brut-rule);
-    }
-
     .demo-foot {
         grid-template-columns: repeat(5, minmax(0, 1fr));
         border-top: 1px solid var(--brut-rule);
+        border-bottom: 0;
     }
 
-    .demo-telemetry div,
+    .demo-telemetry label,
     .demo-telemetry button,
     .demo-foot div {
         border-right: 1px solid var(--brut-rule);
         padding: 8px 14px;
         white-space: nowrap;
+    }
+
+    .demo-telemetry label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .demo-telemetry button {
@@ -157,18 +158,27 @@
         text-align: left;
     }
 
-    .demo-telemetry button,
+    .demo-telemetry .run {
+        background: var(--brut-accent);
+        color: var(--brut-accent-ink);
+    }
+
+    .demo-telemetry input,
+    .demo-telemetry select {
+        width: 76px;
+        border: 1px solid var(--brut-rule);
+        background: var(--brut-bg);
+        color: var(--brut-ink);
+        padding: 3px 8px;
+        font: inherit;
+    }
+
     .demo-foot div:last-child {
         border-right: 0;
     }
 
-    .demo-telemetry span,
     .demo-foot span {
         color: var(--brut-ink);
-    }
-
-    .demo-telemetry .accent {
-        color: var(--brut-accent);
     }
 
     .demo-frame {
@@ -182,12 +192,13 @@
         justify-content: space-between;
         gap: 18px;
         border-bottom: 1px solid var(--brut-rule);
-        padding: 15px 18px;
+        padding: 16px 18px;
         font-size: 13px;
     }
 
-    .demo-row:hover {
-        background: var(--brut-bg-2);
+    .demo-row:hover,
+    .demo-row.highlighted {
+        background: var(--brut-accent-soft);
     }
 
     .demo-row strong {
@@ -204,8 +215,7 @@
 
     @media (max-width: 720px) {
         .demo-shell {
-            height: auto;
-            min-height: 420px;
+            min-height: 460px;
         }
 
         .demo-telemetry,
@@ -213,7 +223,8 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .demo-telemetry div:nth-child(2n),
+        .demo-telemetry label:nth-child(2n),
+        .demo-telemetry button:nth-child(2n),
         .demo-foot div:nth-child(2n) {
             border-right: 0;
         }
