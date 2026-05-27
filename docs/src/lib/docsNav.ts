@@ -76,7 +76,7 @@ export const docsSections: NavSection[] = [
     {
         title: 'Get Started',
         icon: Rocket,
-        items: [{ title: 'Introduction', href: '/docs', icon: Rocket }]
+        items: [{ title: 'Introduction', href: '/docs', icon: Rocket, exact: true }]
     },
     {
         title: 'API Reference',
@@ -104,7 +104,7 @@ export const docsSections: NavSection[] = [
         title: 'Blog',
         icon: Newspaper,
         items: [
-            { title: 'All Posts', href: '/blog', icon: Newspaper },
+            { title: 'All Posts', href: '/blog', icon: Newspaper, exact: true },
             {
                 title: 'Cursor Pagination with Convex',
                 href: '/blog/cursor-pagination-infinite-scroll-convex-svelte',
@@ -116,7 +116,7 @@ export const docsSections: NavSection[] = [
         title: 'Interactive Demos',
         icon: Play,
         items: [
-            { title: 'All Examples', href: '/examples', icon: Play },
+            { title: 'All Examples', href: '/examples', icon: Play, exact: true },
             { title: 'Basic List', href: '/examples/basic-list', icon: List },
             { title: 'Infinite Scroll', href: '/examples/infinite-scroll', icon: InfinityIcon },
             { title: 'Scroll to Item', href: '/examples/scroll-to-item', icon: Crosshair },
@@ -127,7 +127,7 @@ export const docsSections: NavSection[] = [
         title: 'Compare',
         icon: Swords,
         items: [
-            { title: 'All Comparisons', href: '/compare', icon: Swords },
+            { title: 'All Comparisons', href: '/compare', icon: Swords, exact: true },
             { title: 'vs TanStack Virtual', href: '/compare/tanstack-virtual', icon: Swords },
             { title: 'vs virtua', href: '/compare/virtua', icon: Swords },
             {
