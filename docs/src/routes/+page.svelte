@@ -97,7 +97,7 @@
         '        id: i,',
         '        title: `Virtual row ${i.toLocaleString()}`',
         '    }))',
-        '<\/script>',
+        '</' + 'script>',
         '',
         '<VirtualList {items}>',
         '    {#snippet renderItem(item)}',
@@ -105,6 +105,8 @@
         '    {/snippet}',
         '</VirtualList>'
     ].join('\n')
+
+    const coordinateRows = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
 
     const items = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
@@ -183,7 +185,7 @@
             '            align',
             '        })',
             '    }',
-            '<\/script>',
+            '</' + 'script>',
             '',
             '<VirtualList items={items} bind:this={listRef}>',
             '    {#snippet renderItem(item)}',
@@ -313,8 +315,8 @@
 
     <main class="brut">
         <div class="brut-coord" aria-hidden="true">
-            {#each Array(12) as _, i (i)}
-                <div>{String(i + 1).padStart(2, '0')}</div>
+            {#each coordinateRows as coord (coord)}
+                <div>{coord}</div>
             {/each}
         </div>
 
