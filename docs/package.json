@@ -27,7 +27,7 @@
         "@fontsource-variable/jetbrains-mono": "^5.2.8",
         "@humanspeak/docs-kit": "github:humanspeak/docs-kit#2026.5.43",
         "@humanspeak/svelte-markdown": "^1.5.2",
-        "@humanspeak/svelte-motion": "^0.5.1",
+        "@humanspeak/svelte-motion": "^0.5.4",
         "@humanspeak/svelte-virtual-list": "workspace:*",
         "runed": "^0.37.1"
     },

@@ -281,33 +281,35 @@
 
     const installCmd = $derived(`npm i ${PKG_NAME}`)
     let copied = $state(false)
-    let heroInstallButton = $state<HTMLButtonElement | null>(null)
-    let footerInstallButton = $state<HTMLButtonElement | null>(null)
+    let copyResetTimer: ReturnType<typeof setTimeout> | undefined
 
-    const copyInstall = async () => {
-        if (typeof navigator === 'undefined') return
-        try {
-            await navigator.clipboard.writeText(installCmd)
-            copied = true
-            setTimeout(() => (copied = false), 1500)
-        } catch {
-            /* clipboard can be blocked in previews */
-        }
+    const showCopied = () => {
+        copied = true
+        if (copyResetTimer) clearTimeout(copyResetTimer)
+        copyResetTimer = setTimeout(() => (copied = false), 1500)
     }
 
-    $effect(() => {
-        const buttons = [heroInstallButton, footerInstallButton].filter(
-            (button): button is HTMLButtonElement => button !== null
-        )
-        for (const button of buttons) {
-            button.addEventListener('click', copyInstall)
+    const fallbackCopy = () => {
+        const textarea = document.createElement('textarea')
+        textarea.value = installCmd
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'fixed'
+        textarea.style.left = '-9999px'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        textarea.remove()
+    }
+
+    const copyInstall = async () => {
+        if (typeof navigator === 'undefined' || typeof document === 'undefined') return
+        showCopied()
+        try {
+            await navigator.clipboard.writeText(installCmd)
+        } catch {
+            fallbackCopy()
         }
-        return () => {
-            for (const button of buttons) {
-                button.removeEventListener('click', copyInstall)
-            }
-        }
-    })
+    }
 </script>
 
 <div class="brut-wrap flex min-h-svh flex-col">
@@ -358,8 +360,7 @@
                     <MotionButton
                         class="inst"
                         type="button"
-                        bind:ref={heroInstallButton}
-                        onclick={copyInstall}
+                        onTap={copyInstall}
                         aria-label="Copy install command"
                         whileTap={{ scale: 0.97 }}
                         whileHover={{ scale: 1.01 }}
@@ -689,8 +690,7 @@
             <MotionButton
                 class="big"
                 type="button"
-                bind:ref={footerInstallButton}
-                onclick={copyInstall}
+                onTap={copyInstall}
                 aria-label="Copy install command"
                 whileTap={{ scale: 0.985 }}
                 whileHover={{ scale: 1.005 }}
