@@ -3,13 +3,15 @@ import {
     docMirrorsPlugin,
     llmsFullPlugin,
     llmsPlugin,
-    sitemapManifestPlugin
+    sitemapManifestPlugin,
+    socialCardsPlugin
 } from '@humanspeak/docs-kit/vite'
 import { svelteMotionOptimize } from '@humanspeak/svelte-motion/vite'
 import { sentrySvelteKit } from '@sentry/sveltekit'
 import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vitest/config'
+import { competitors } from './src/lib/compare-data'
 import { docsConfig } from './src/lib/docs-config'
 
 export default defineConfig({
@@ -27,6 +29,23 @@ export default defineConfig({
             siteUrl: docsConfig.url,
             pkgName: docsConfig.name,
             prepend: 'llms-positioning.md'
+        }),
+        socialCardsPlugin({
+            npmPackage: docsConfig.npmPackage,
+            defaultTitle: docsConfig.name,
+            defaultDescription: docsConfig.description,
+            defaultFeatures: docsConfig.defaultFeatures,
+            extraPages: competitors.map((competitor) => ({
+                ogSlug: `compare-${competitor.slug}`,
+                ogTitle: `vs ${competitor.name}`,
+                ogTagline: competitor.tagline,
+                ogFeatures: [
+                    'Feature Comparison',
+                    'Pros & Cons',
+                    'Migration Guide',
+                    'Honest Verdict'
+                ]
+            }))
         }),
         svelteMotionOptimize(),
         tailwindcss(),

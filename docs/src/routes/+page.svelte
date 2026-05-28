@@ -308,14 +308,6 @@
     })
 </script>
 
-<svelte:head>
-    <title>svelte-virtual-list · dynamic virtual scrolling for Svelte 5</title>
-    <meta
-        name="description"
-        content="A dependency-free virtual list component for Svelte 5 with dynamic height measurement, infinite loading, scroll methods, TypeScript, and SSR support."
-    />
-</svelte:head>
-
 <div class="brut-wrap flex min-h-svh flex-col">
     <HeaderV2 config={docsConfig} {favicon} version={PKG_VERSION} nav={headerNav} />
 
