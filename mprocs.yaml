@@ -3,11 +3,10 @@ procs:
         shell: node --no-warnings scripts/dev-urls.mjs
         autostart: true
         autorestart: false
+    # `rm -rf` runs before each dev start so the vite optimizer + svelte-kit
+    # sync never serve stale generated bundles after docs-kit/font/dependency
+    # changes. Vite rebuilds these caches on the next request.
     pkg:
-        shell: pnpm -w -r --filter @humanspeak/svelte-virtual-list run dev:pkg
+        shell: rm -rf .svelte-kit node_modules/.vite && pnpm -w -r --filter @humanspeak/svelte-virtual-list run dev:pkg
     docs:
-        shell: pnpm --filter docs run dev
-    sitemap:
-        shell: pnpm --filter docs run sitemap:watch
-    social:
-        shell: pnpm --filter docs run social:watch
+        shell: rm -rf docs/.svelte-kit docs/node_modules/.vite && pnpm --filter docs run dev

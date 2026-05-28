@@ -12,7 +12,7 @@
             const id = start + i
             return {
                 id,
-                text: `Item ${id}`,
+                text: `Feed row ${id}`,
                 meta:
                     id % 3 === 0 ? 'loaded page' : id % 3 === 1 ? 'windowed dom' : 'threshold ready'
             }
@@ -22,13 +22,14 @@
     let hasMore = $state(true)
     let loadingCount = $state(0)
     let isLoading = $state(false)
+
     let demoFrame: HTMLDivElement | undefined = $state(undefined)
     let domRows = $state(0)
     let domNodes = $state(0)
     let firstIndex = $state(0)
     let lastIndex = $state(0)
 
-    function updateStats() {
+    const updateStats = () => {
         if (!demoFrame) return
 
         const rows = Array.from(demoFrame.querySelectorAll<HTMLElement>('.demo-row'))
@@ -48,7 +49,6 @@
 
     async function loadMore() {
         if (isLoading || !hasMore) return
-
         isLoading = true
         await new Promise((resolve) => setTimeout(resolve, 500))
 
@@ -87,7 +87,6 @@
         </div>
         <button type="button" onclick={reset}>reset</button>
     </div>
-
     <div class="demo-frame" bind:this={demoFrame}>
         <VirtualList {items} onLoadMore={loadMore} {hasMore} loadMoreThreshold={10}>
             {#snippet renderItem(item)}
@@ -98,7 +97,6 @@
             {/snippet}
         </VirtualList>
     </div>
-
     <div class="demo-foot">
         <div>threshold · <span>10 rows</span></div>
         <div>batch · <span>50 rows</span></div>
@@ -111,10 +109,9 @@
 <style>
     .demo-shell {
         display: flex;
-        height: 340px;
+        min-height: 560px;
         width: 100%;
         flex-direction: column;
-        border: 1px solid var(--brut-rule);
         background: var(--brut-bg);
         color: var(--brut-ink);
         font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
@@ -123,13 +120,13 @@
     .demo-telemetry,
     .demo-foot {
         display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
         background: var(--brut-bg-2);
         color: var(--brut-ink-3);
         font-size: 11px;
     }
 
     .demo-telemetry {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
         border-bottom: 1px solid var(--brut-rule);
     }
 
@@ -157,6 +154,7 @@
         text-align: left;
     }
 
+    .demo-telemetry div:nth-last-child(2),
     .demo-telemetry button,
     .demo-foot div:last-child {
         border-right: 0;
@@ -182,7 +180,7 @@
         justify-content: space-between;
         gap: 18px;
         border-bottom: 1px solid var(--brut-rule);
-        padding: 15px 18px;
+        padding: 16px 18px;
         font-size: 13px;
     }
 
@@ -204,8 +202,7 @@
 
     @media (max-width: 720px) {
         .demo-shell {
-            height: auto;
-            min-height: 420px;
+            min-height: 460px;
         }
 
         .demo-telemetry,

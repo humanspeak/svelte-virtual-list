@@ -23,7 +23,7 @@ description: "All available props for the SvelteVirtualList component"
 
 All available props for the SvelteVirtualList component.
 
-<Example isSmall>
+<Example isSmall file="PropsExample.svelte" title="Props API">
   <PropsExample />
 </Example>
 

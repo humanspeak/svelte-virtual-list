@@ -1,25 +1,31 @@
 <script lang="ts">
-    import { enhanceCodeBlocks } from '@humanspeak/docs-kit'
-    import { BlogLayoutV2 } from '@humanspeak/docs-kit/blog'
+    import {
+        CompareLayoutV2,
+        buildCompareBreadcrumbs,
+        enhanceCodeBlocks
+    } from '@humanspeak/docs-kit'
     import { docsConfig } from '$lib/docs-config'
     import favicon from '$lib/assets/logo.svg'
-    import { buildBreadcrumbs, headerNav } from '$lib/docsNav'
+    import { getCompetitor } from '$lib/compare-data'
+    import { headerNav } from '$lib/docsNav'
     import rootPkg from '../../../../package.json'
     import '@fontsource-variable/inter/index.css'
     import '@fontsource-variable/jetbrains-mono/index.css'
 
     const { children } = $props()
     const PKG_VERSION = rootPkg.version
+    const breadcrumbResolver = (pathname: string) =>
+        buildCompareBreadcrumbs(pathname, { getCompetitor })
 </script>
 
-<BlogLayoutV2
+<CompareLayoutV2
     config={docsConfig}
     {favicon}
     version={PKG_VERSION}
     nav={headerNav}
-    breadcrumbResolver={buildBreadcrumbs}
+    {breadcrumbResolver}
 >
     <div class="flex flex-1 flex-col" use:enhanceCodeBlocks>
-        {@render children()}
+        {@render children?.()}
     </div>
-</BlogLayoutV2>
+</CompareLayoutV2>

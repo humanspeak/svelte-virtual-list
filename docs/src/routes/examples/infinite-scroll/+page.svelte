@@ -1,16 +1,14 @@
 <script lang="ts">
-    import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
-    import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
-    import Example from '$lib/components/general/Example.svelte'
-    import InfiniteScrollExample from '$lib/examples/InfiniteScrollExample.svelte'
-
-    const breadcrumbs = getBreadcrumbContext()
-    if (breadcrumbs) {
-        breadcrumbs.breadcrumbs = [
-            { title: 'Examples', href: '/examples' },
-            { title: 'Infinite Scroll' }
-        ]
-    }
+    import {
+        CodeReferenceV2,
+        ExampleV2,
+        formatSheetLabel,
+        getSeoContext,
+        type DemoManifestEntry,
+        type ExampleSection
+    } from '@humanspeak/docs-kit'
+    import InfiniteScrollDemo from '$lib/examples/infinite-scroll/demos/Default.svelte'
+    import demoManifest from '$lib/demo-manifest.json'
 
     const seo = getSeoContext()
     if (seo) {
@@ -22,8 +20,49 @@
         seo.ogFeatures = ['Auto Loading', 'Pagination', 'Loading States', 'Threshold Config']
         seo.ogSlug = 'examples-infinite-scroll'
     }
+
+    const SOURCE_URL =
+        'https://github.com/humanspeak/svelte-virtual-list/blob/main/docs/src/lib/examples/infinite-scroll/demos/Default.svelte'
+    const manifest = demoManifest as Record<string, DemoManifestEntry>
+
+    const sections: ExampleSection[] = [
+        {
+            figId: 'FIG-001',
+            tag: 'PAGINATION',
+            title: { prefix: 'load ', accent: 'on demand', end: '.' },
+            description:
+                '`onLoadMore`, `hasMore`, and `loadMoreThreshold` cover the common feed pattern without rendering pages the user has not reached yet.',
+            snippet: demo,
+            codeSnippet: code,
+            barCells: [
+                { k: 'batch', v: '50 rows' },
+                { k: 'threshold', v: '10 rows' },
+                { k: 'cap', v: '500 rows' }
+            ],
+            sourceUrl: SOURCE_URL
+        }
+    ]
 </script>
 
-<Example>
-    <InfiniteScrollExample />
-</Example>
+{#snippet demo()}
+    <InfiniteScrollDemo />
+{/snippet}
+
+{#snippet code()}
+    <CodeReferenceV2
+        samples={[
+            {
+                id: 'infinite-scroll',
+                label: 'Default.svelte',
+                ...manifest['infinite-scroll/demos/Default.svelte']
+            }
+        ]}
+        columns={1}
+    />
+{/snippet}
+
+{#each sections as section, i (section.figId)}
+    <ExampleV2 {...section} sheetLabel={formatSheetLabel(i, sections.length)} codeLabel="show code">
+        {@render section.snippet()}
+    </ExampleV2>
+{/each}

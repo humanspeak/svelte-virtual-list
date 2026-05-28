@@ -1,4 +1,4 @@
-import { createClientSentryInit } from '@humanspeak/docs-kit/hooks'
+import { createClientSentryInit } from '$lib/client-sentry'
 import type { HandleClientError } from '@sveltejs/kit'
 
 export const handleError: HandleClientError = ({ error }) => {

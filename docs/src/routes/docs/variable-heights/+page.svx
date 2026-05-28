@@ -23,7 +23,7 @@ description: "Automatic handling of variable item heights in Svelte Virtual List
 
 Svelte Virtual List automatically handles items with different heights. No configuration needed - heights are measured after render and cached for optimal performance.
 
-<Example isSmall>
+<Example isSmall file="VariableHeightExample.svelte" exampleUrl="/examples/variable-height" title="Variable heights">
   <VariableHeightExample />
 </Example>
 

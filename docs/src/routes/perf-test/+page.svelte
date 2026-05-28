@@ -1,6 +1,5 @@
 <script lang="ts">
-    import { getBreadcrumbContext } from '$lib/components/contexts/Breadcrumb/Breadcrumb.context'
-    import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+    import { getBreadcrumbContext, getSeoContext } from '@humanspeak/docs-kit'
     import SvelteVirtualList, {
         perfMetrics,
         startFpsTracking,

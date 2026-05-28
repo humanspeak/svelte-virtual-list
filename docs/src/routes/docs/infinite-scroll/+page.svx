@@ -25,7 +25,7 @@ Load more data automatically as users scroll near the end of the list. Perfect f
 
 ## Interactive Demo
 
-<Example isSmall>
+<Example isSmall file="InfiniteScrollExample.svelte" exampleUrl="/examples/infinite-scroll" title="Infinite scroll">
   <InfiniteScrollExample />
 </Example>
 

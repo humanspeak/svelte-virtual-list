@@ -1,34 +1,48 @@
 <script lang="ts">
     import VirtualList from '@humanspeak/svelte-virtual-list'
+    import ChevronDown from '@lucide/svelte/icons/chevron-down'
 
     type Item = {
         id: number
-        text: string
-        meta: string
+        title: string
+        description: string
+        expanded: boolean
     }
 
-    const makeItems = (start: number, count: number) =>
-        Array.from({ length: count }, (_, i) => {
-            const id = start + i
-            return {
-                id,
-                text: `Item ${id}`,
-                meta:
-                    id % 3 === 0 ? 'loaded page' : id % 3 === 1 ? 'windowed dom' : 'threshold ready'
-            }
-        })
+    const loremSentences = [
+        'Measured content can grow after initial render.',
+        'ResizeObserver reports the new height and the list updates offsets.',
+        'Scroll position stays coherent while rows open and close.',
+        'Mixed row sizes stay virtualized instead of forcing all nodes into the DOM.',
+        'This mirrors cards, messages, audit logs, and search result snippets.'
+    ]
 
-    let items = $state<Item[]>(makeItems(0, 50))
-    let hasMore = $state(true)
-    let loadingCount = $state(0)
-    let isLoading = $state(false)
+    function getDescription(seed: number): string {
+        const count = (seed % 4) + 1
+        return Array.from(
+            { length: count },
+            (_, i) => loremSentences[(seed + i) % loremSentences.length]
+        ).join(' ')
+    }
+
+    let items = $state<Item[]>(
+        Array.from({ length: 1000 }, (_, i) => ({
+            id: i,
+            title: `Measured row ${i}`,
+            description: getDescription(i),
+            expanded: i === 0 || i === 7
+        }))
+    )
+
     let demoFrame: HTMLDivElement | undefined = $state(undefined)
     let domRows = $state(0)
     let domNodes = $state(0)
     let firstIndex = $state(0)
     let lastIndex = $state(0)
 
-    function updateStats() {
+    const expandedCount = $derived(items.filter((item) => item.expanded).length)
+
+    const updateStats = () => {
         if (!demoFrame) return
 
         const rows = Array.from(demoFrame.querySelectorAll<HTMLElement>('.demo-row'))
@@ -46,24 +60,12 @@
         }
     }
 
-    async function loadMore() {
-        if (isLoading || !hasMore) return
-
-        isLoading = true
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        loadingCount++
-        const start = items.length
-        items = [...items, ...makeItems(start, 50)]
-        if (items.length >= 500) hasMore = false
-        isLoading = false
+    function toggleExpand(id: number) {
+        items = items.map((item) => (item.id === id ? { ...item, expanded: !item.expanded } : item))
     }
 
     function reset() {
-        items = makeItems(0, 50)
-        hasMore = true
-        loadingCount = 0
-        isLoading = false
+        items = items.map((item) => ({ ...item, expanded: item.id === 0 || item.id === 7 }))
     }
 
     $effect(() => {
@@ -76,45 +78,45 @@
 
 <div class="demo-shell">
     <div class="demo-telemetry">
-        <div>loaded · <span>{items.length}</span></div>
-        <div>loads · <span>{loadingCount}</span></div>
+        <div>items · <span>1,000</span></div>
+        <div>expanded · <span>{expandedCount}</span></div>
         <div>range · <span>{firstIndex}-{lastIndex}</span></div>
         <div>dom rows · <span>{domRows}</span></div>
-        <div>
-            status · <span class:accent={hasMore}
-                >{isLoading ? 'loading' : hasMore ? 'ready' : 'complete'}</span
-            >
-        </div>
+        <div>dom nodes · <span>{domNodes}</span></div>
         <button type="button" onclick={reset}>reset</button>
     </div>
-
     <div class="demo-frame" bind:this={demoFrame}>
-        <VirtualList {items} onLoadMore={loadMore} {hasMore} loadMoreThreshold={10}>
+        <VirtualList {items}>
             {#snippet renderItem(item)}
-                <div class="demo-row" data-index={item.id}>
-                    <strong>{item.text}</strong>
-                    <span>{item.meta}</span>
+                <div class:expanded={item.expanded} class="demo-row" data-index={item.id}>
+                    <button type="button" onclick={() => toggleExpand(item.id)}>
+                        <strong>{item.title}</strong>
+                        <span class:open={item.expanded}>
+                            <ChevronDown size={12} />
+                        </span>
+                    </button>
+                    {#if item.expanded}
+                        <p>{item.description}</p>
+                    {/if}
                 </div>
             {/snippet}
         </VirtualList>
     </div>
-
     <div class="demo-foot">
-        <div>threshold · <span>10 rows</span></div>
-        <div>batch · <span>50 rows</span></div>
-        <div>dom nodes · <span>{domNodes}</span></div>
-        <div>cap · <span>500 rows</span></div>
-        <div>mode · <span>append</span></div>
+        <div>height · <span>auto measured</span></div>
+        <div>observer · <span>resize</span></div>
+        <div>content · <span>expandable</span></div>
+        <div>range · <span>{firstIndex}-{lastIndex}</span></div>
+        <div>mode · <span>dynamic</span></div>
     </div>
 </div>
 
 <style>
     .demo-shell {
         display: flex;
-        height: 340px;
+        min-height: 560px;
         width: 100%;
         flex-direction: column;
-        border: 1px solid var(--brut-rule);
         background: var(--brut-bg);
         color: var(--brut-ink);
         font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
@@ -123,13 +125,13 @@
     .demo-telemetry,
     .demo-foot {
         display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
         background: var(--brut-bg-2);
         color: var(--brut-ink-3);
         font-size: 11px;
     }
 
     .demo-telemetry {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
         border-bottom: 1px solid var(--brut-rule);
     }
 
@@ -167,10 +169,6 @@
         color: var(--brut-ink);
     }
 
-    .demo-telemetry .accent {
-        color: var(--brut-accent);
-    }
-
     .demo-frame {
         min-height: 0;
         flex: 1;
@@ -178,16 +176,27 @@
     }
 
     .demo-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 18px;
         border-bottom: 1px solid var(--brut-rule);
-        padding: 15px 18px;
+        padding: 0;
         font-size: 13px;
     }
 
-    .demo-row:hover {
+    .demo-row.expanded {
         background: var(--brut-bg-2);
+    }
+
+    .demo-row button {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        border: 0;
+        background: transparent;
+        color: var(--brut-ink);
+        cursor: pointer;
+        font: inherit;
+        padding: 16px 18px;
+        text-align: left;
     }
 
     .demo-row strong {
@@ -195,17 +204,29 @@
         font-weight: 600;
     }
 
-    .demo-row span {
+    .demo-row button span {
         color: var(--brut-ink-3);
-        font-size: 10.5px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        transition: transform 0.15s;
+    }
+
+    .demo-row button span.open {
+        color: var(--brut-accent);
+        transform: rotate(180deg);
+    }
+
+    .demo-row p {
+        margin: 0;
+        max-width: 860px;
+        padding: 0 18px 18px;
+        color: var(--brut-ink-2);
+        font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+        font-size: 13px;
+        line-height: 1.55;
     }
 
     @media (max-width: 720px) {
         .demo-shell {
-            height: auto;
-            min-height: 420px;
+            min-height: 460px;
         }
 
         .demo-telemetry,
@@ -216,13 +237,6 @@
         .demo-telemetry div:nth-child(2n),
         .demo-foot div:nth-child(2n) {
             border-right: 0;
-        }
-
-        .demo-row {
-            align-items: flex-start;
-            flex-direction: column;
-            gap: 4px;
-            padding: 14px 16px;
         }
     }
 </style>

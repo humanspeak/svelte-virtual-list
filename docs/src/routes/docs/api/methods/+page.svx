@@ -23,7 +23,7 @@ description: "Programmatic control methods available on the VirtualList componen
 
 Programmatic control methods available on the VirtualList component.
 
-<Example isSmall>
+<Example isSmall file="MethodsExample.svelte" exampleUrl="/examples/scroll-to-item" title="Methods API">
   <MethodsExample />
 </Example>
 

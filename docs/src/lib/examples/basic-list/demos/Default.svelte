@@ -1,34 +1,26 @@
 <script lang="ts">
     import VirtualList from '@humanspeak/svelte-virtual-list'
 
-    type Item = {
-        id: number
-        text: string
-        meta: string
-    }
+    const items = Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        text: `Item ${i}`,
+        meta:
+            i % 4 === 0
+                ? 'dynamic content ready'
+                : i % 4 === 1
+                  ? 'measured row'
+                  : i % 4 === 2
+                    ? 'recycled dom'
+                    : 'stable offset'
+    }))
 
-    const makeItems = (start: number, count: number) =>
-        Array.from({ length: count }, (_, i) => {
-            const id = start + i
-            return {
-                id,
-                text: `Item ${id}`,
-                meta:
-                    id % 3 === 0 ? 'loaded page' : id % 3 === 1 ? 'windowed dom' : 'threshold ready'
-            }
-        })
-
-    let items = $state<Item[]>(makeItems(0, 50))
-    let hasMore = $state(true)
-    let loadingCount = $state(0)
-    let isLoading = $state(false)
     let demoFrame: HTMLDivElement | undefined = $state(undefined)
     let domRows = $state(0)
     let domNodes = $state(0)
     let firstIndex = $state(0)
     let lastIndex = $state(0)
 
-    function updateStats() {
+    const updateStats = () => {
         if (!demoFrame) return
 
         const rows = Array.from(demoFrame.querySelectorAll<HTMLElement>('.demo-row'))
@@ -46,26 +38,6 @@
         }
     }
 
-    async function loadMore() {
-        if (isLoading || !hasMore) return
-
-        isLoading = true
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        loadingCount++
-        const start = items.length
-        items = [...items, ...makeItems(start, 50)]
-        if (items.length >= 500) hasMore = false
-        isLoading = false
-    }
-
-    function reset() {
-        items = makeItems(0, 50)
-        hasMore = true
-        loadingCount = 0
-        isLoading = false
-    }
-
     $effect(() => {
         if (typeof window === 'undefined' || !demoFrame) return
         updateStats()
@@ -76,20 +48,14 @@
 
 <div class="demo-shell">
     <div class="demo-telemetry">
-        <div>loaded · <span>{items.length}</span></div>
-        <div>loads · <span>{loadingCount}</span></div>
         <div>range · <span>{firstIndex}-{lastIndex}</span></div>
         <div>dom rows · <span>{domRows}</span></div>
-        <div>
-            status · <span class:accent={hasMore}
-                >{isLoading ? 'loading' : hasMore ? 'ready' : 'complete'}</span
-            >
-        </div>
-        <button type="button" onclick={reset}>reset</button>
+        <div>dom nodes · <span>{domNodes}</span></div>
+        <div>dataset · <span>10,000</span></div>
+        <div>mode · <span>windowed</span></div>
     </div>
-
     <div class="demo-frame" bind:this={demoFrame}>
-        <VirtualList {items} onLoadMore={loadMore} {hasMore} loadMoreThreshold={10}>
+        <VirtualList {items}>
             {#snippet renderItem(item)}
                 <div class="demo-row" data-index={item.id}>
                     <strong>{item.text}</strong>
@@ -98,77 +64,40 @@
             {/snippet}
         </VirtualList>
     </div>
-
-    <div class="demo-foot">
-        <div>threshold · <span>10 rows</span></div>
-        <div>batch · <span>50 rows</span></div>
-        <div>dom nodes · <span>{domNodes}</span></div>
-        <div>cap · <span>500 rows</span></div>
-        <div>mode · <span>append</span></div>
-    </div>
 </div>
 
 <style>
     .demo-shell {
         display: flex;
-        height: 340px;
+        min-height: 560px;
         width: 100%;
         flex-direction: column;
-        border: 1px solid var(--brut-rule);
         background: var(--brut-bg);
         color: var(--brut-ink);
         font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
     }
 
-    .demo-telemetry,
-    .demo-foot {
+    .demo-telemetry {
         display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        border-bottom: 1px solid var(--brut-rule);
         background: var(--brut-bg-2);
         color: var(--brut-ink-3);
         font-size: 11px;
     }
 
-    .demo-telemetry {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        border-bottom: 1px solid var(--brut-rule);
-    }
-
-    .demo-foot {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        border-top: 1px solid var(--brut-rule);
-    }
-
-    .demo-telemetry div,
-    .demo-telemetry button,
-    .demo-foot div {
+    .demo-telemetry div {
         border-right: 1px solid var(--brut-rule);
         padding: 8px 14px;
         white-space: nowrap;
     }
 
-    .demo-telemetry button {
-        border-top: 0;
-        border-bottom: 0;
-        border-left: 0;
-        background: transparent;
-        color: var(--brut-accent);
-        cursor: pointer;
-        font: inherit;
-        text-align: left;
-    }
-
-    .demo-telemetry button,
-    .demo-foot div:last-child {
+    .demo-telemetry div:last-child {
         border-right: 0;
     }
 
-    .demo-telemetry span,
-    .demo-foot span {
+    .demo-telemetry span {
         color: var(--brut-ink);
-    }
-
-    .demo-telemetry .accent {
-        color: var(--brut-accent);
     }
 
     .demo-frame {
@@ -182,7 +111,7 @@
         justify-content: space-between;
         gap: 18px;
         border-bottom: 1px solid var(--brut-rule);
-        padding: 15px 18px;
+        padding: 16px 18px;
         font-size: 13px;
     }
 
@@ -204,17 +133,14 @@
 
     @media (max-width: 720px) {
         .demo-shell {
-            height: auto;
-            min-height: 420px;
+            min-height: 460px;
         }
 
-        .demo-telemetry,
-        .demo-foot {
+        .demo-telemetry {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .demo-telemetry div:nth-child(2n),
-        .demo-foot div:nth-child(2n) {
+        .demo-telemetry div:nth-child(2n) {
             border-right: 0;
         }
 

@@ -1,15 +1,24 @@
 <script lang="ts">
-    import Header from '$lib/components/general/Header.svelte'
-    import { Footer } from '@humanspeak/docs-kit'
-    import { MotionConfig } from '@humanspeak/svelte-motion'
+    import { enhanceCodeBlocks, ExampleLayoutV2 } from '@humanspeak/docs-kit'
+    import { docsConfig } from '$lib/docs-config'
+    import favicon from '$lib/assets/logo.svg'
+    import { buildBreadcrumbs, headerNav } from '$lib/docsNav'
+    import rootPkg from '../../../../package.json'
+    import '@fontsource-variable/inter/index.css'
+    import '@fontsource-variable/jetbrains-mono/index.css'
 
     const { children } = $props()
+    const PKG_VERSION = rootPkg.version
 </script>
 
-<div class="bg-background relative flex min-h-screen flex-col">
-    <Header />
-    <MotionConfig transition={{ duration: 0.6 }}>
+<ExampleLayoutV2
+    config={docsConfig}
+    {favicon}
+    version={PKG_VERSION}
+    nav={headerNav}
+    breadcrumbResolver={buildBreadcrumbs}
+>
+    <div class="flex flex-1 flex-col" use:enhanceCodeBlocks>
         {@render children?.()}
-    </MotionConfig>
-    <Footer />
-</div>
+    </div>
+</ExampleLayoutV2>
