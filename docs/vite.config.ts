@@ -16,7 +16,12 @@ import { docsConfig } from './src/lib/docs-config'
 
 export default defineConfig({
     plugins: [
-        sitemapManifestPlugin(),
+        sitemapManifestPlugin({
+            extraPages: competitors.map((competitor) => ({
+                route: `/compare/${competitor.slug}`,
+                source: 'src/lib/compare-data.ts'
+            }))
+        }),
         demoManifestPlugin(),
         docMirrorsPlugin({ siteUrl: docsConfig.url }),
         llmsPlugin({
