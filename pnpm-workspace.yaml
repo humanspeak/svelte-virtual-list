@@ -7,3 +7,9 @@ onlyBuiltDependencies:
 minimumReleaseAge: 2880
 minimumReleaseAgeExclude:
     - '@humanspeak/*'
+allowBuilds:
+    '@humanspeak/docs-kit': true
+    '@sentry/cli': true
+    esbuild: true
+    sharp: true
+    workerd: true
