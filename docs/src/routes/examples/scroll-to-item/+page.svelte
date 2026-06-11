@@ -4,15 +4,15 @@
         ExampleV2,
         formatSheetLabel,
         getSeoContext,
-        type DemoManifestEntry,
         type ExampleSection
     } from '@humanspeak/docs-kit'
+    import { demoCodeSample } from '$lib/demo-loaders'
     import ScrollToItemDemo from '$lib/examples/scroll-to-item/demos/Default.svelte'
-    import demoManifest from '$lib/demo-manifest.json'
 
     const seo = getSeoContext()
     if (seo) {
         seo.title = 'Scroll to Item | Examples | Svelte Virtual List'
+        seo.h1 = { title: 'Scroll to Item' }
         seo.description =
             'Programmatically scroll to any item in the virtual list with configurable alignment options like top, bottom, nearest, and auto.'
         seo.ogTitle = 'Scroll to Item'
@@ -23,7 +23,6 @@
 
     const SOURCE_URL =
         'https://github.com/humanspeak/svelte-virtual-list/blob/main/docs/src/lib/examples/scroll-to-item/demos/Default.svelte'
-    const manifest = demoManifest as Record<string, DemoManifestEntry>
 
     const sections: ExampleSection[] = [
         {
@@ -51,11 +50,11 @@
 {#snippet code()}
     <CodeReferenceV2
         samples={[
-            {
-                id: 'scroll-to-item',
-                label: 'Default.svelte',
-                ...manifest['scroll-to-item/demos/Default.svelte']
-            }
+            demoCodeSample(
+                'scroll-to-item/demos/Default.svelte',
+                'scroll-to-item',
+                'Default.svelte'
+            )
         ]}
         columns={1}
     />

@@ -4,15 +4,15 @@
         ExampleV2,
         formatSheetLabel,
         getSeoContext,
-        type DemoManifestEntry,
         type ExampleSection
     } from '@humanspeak/docs-kit'
+    import { demoCodeSample } from '$lib/demo-loaders'
     import BasicListDemo from '$lib/examples/basic-list/demos/Default.svelte'
-    import demoManifest from '$lib/demo-manifest.json'
 
     const seo = getSeoContext()
     if (seo) {
         seo.title = 'Basic List | Examples | Svelte Virtual List'
+        seo.h1 = { title: 'Basic List' }
         seo.description =
             'A simple virtual list rendering thousands of items efficiently with fixed-height rows and smooth scrolling performance.'
         seo.ogTitle = 'Basic List'
@@ -23,7 +23,6 @@
 
     const SOURCE_URL =
         'https://github.com/humanspeak/svelte-virtual-list/blob/main/docs/src/lib/examples/basic-list/demos/Default.svelte'
-    const manifest = demoManifest as Record<string, DemoManifestEntry>
 
     type FooterMeta = {
         k: string
@@ -65,11 +64,7 @@
 {#snippet code()}
     <CodeReferenceV2
         samples={[
-            {
-                id: 'basic-list',
-                label: 'Default.svelte',
-                ...manifest['basic-list/demos/Default.svelte']
-            }
+            demoCodeSample('basic-list/demos/Default.svelte', 'basic-list', 'Default.svelte')
         ]}
         columns={1}
     />

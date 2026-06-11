@@ -6,6 +6,7 @@
         BreadcrumbContextProvider,
         BreadcrumbJsonLd,
         SeoContextProvider,
+        SeoH1,
         SeoHead,
         type SeoContext
     } from '@humanspeak/docs-kit'
@@ -25,4 +26,5 @@
             {@render children?.()}
         </MotionConfig>
     </BreadcrumbContextProvider>
+    <SeoH1 {seo} />
 </SeoContextProvider>

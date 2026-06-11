@@ -4,15 +4,15 @@
         ExampleV2,
         formatSheetLabel,
         getSeoContext,
-        type DemoManifestEntry,
         type ExampleSection
     } from '@humanspeak/docs-kit'
+    import { demoCodeSample } from '$lib/demo-loaders'
     import VariableHeightDemo from '$lib/examples/variable-height/demos/Default.svelte'
-    import demoManifest from '$lib/demo-manifest.json'
 
     const seo = getSeoContext()
     if (seo) {
         seo.title = 'Variable Height | Examples | Svelte Virtual List'
+        seo.h1 = { title: 'Variable Height' }
         seo.description =
             'Virtual list with automatic handling of variable item heights, supporting dynamic content like accordions and expandable rows.'
         seo.ogTitle = 'Variable Heights'
@@ -23,7 +23,6 @@
 
     const SOURCE_URL =
         'https://github.com/humanspeak/svelte-virtual-list/blob/main/docs/src/lib/examples/variable-height/demos/Default.svelte'
-    const manifest = demoManifest as Record<string, DemoManifestEntry>
 
     const sections: ExampleSection[] = [
         {
@@ -51,11 +50,11 @@
 {#snippet code()}
     <CodeReferenceV2
         samples={[
-            {
-                id: 'variable-height',
-                label: 'Default.svelte',
-                ...manifest['variable-height/demos/Default.svelte']
-            }
+            demoCodeSample(
+                'variable-height/demos/Default.svelte',
+                'variable-height',
+                'Default.svelte'
+            )
         ]}
         columns={1}
     />
