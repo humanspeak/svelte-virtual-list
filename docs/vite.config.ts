@@ -22,7 +22,7 @@ export default defineConfig({
                 source: 'src/lib/compare-data.ts'
             }))
         }),
-        demoManifestPlugin(),
+        demoManifestPlugin({ split: true }),
         docMirrorsPlugin({ siteUrl: docsConfig.url }),
         llmsPlugin({
             siteUrl: docsConfig.url,

@@ -30,6 +30,8 @@ static/twitter-default.png
 # Generated docs-kit manifests and LLM surfaces
 src/lib/sitemap-manifest.json
 src/lib/demo-manifest.json
+src/lib/demo-loaders.ts
+src/lib/demo-virtual.d.ts
 src/lib/github-stats.json
 static/docs/
 static/llms.txt

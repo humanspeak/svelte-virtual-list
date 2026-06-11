@@ -41,6 +41,9 @@ junit-playwright.xml
 # Development Notes
 .notes/
 docs/src/lib/sitemap-manifest.json
+docs/src/lib/demo-manifest.json
+docs/src/lib/demo-loaders.ts
+docs/src/lib/demo-virtual.d.ts
 
 # mprocs
 mprocs.log
