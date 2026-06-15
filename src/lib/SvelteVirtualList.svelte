@@ -161,6 +161,7 @@
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
+    import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { createAdvancedThrottledCallback } from '$lib/utils/throttle.js'
     import { ReactiveListManager } from '$lib/index.js'
     import { BROWSER } from 'esm-env'
@@ -222,6 +223,7 @@
     let heightUpdateTimeout: ReturnType<typeof setTimeout> | null = null // Debounce timer for height updates
     let resizeObserver: ResizeObserver | null = null // Watches for container size changes
     let itemResizeObserver: ResizeObserver | null = null // Watches for individual item size changes
+    let scrollAbortController: AbortController | null = null // Cancels an in-flight programmatic scroll wait
 
     /**
      * Performance Optimization State
@@ -686,6 +688,8 @@
                 if (itemResizeObserver) {
                     itemResizeObserver.disconnect()
                 }
+                // Abort any pending scroll wait so its timers/listeners are torn down.
+                scrollAbortController?.abort()
             }
         }
     })
@@ -801,90 +805,124 @@
      * @returns {Promise<void>} Promise that resolves when scrolling is complete
      * @throws {Error} If the index is out of bounds and shouldThrowOnBounds is true
      */
-    export const scroll = async (options: SvelteVirtualListScrollOptions): Promise<void> => {
+    export const scroll = (options: SvelteVirtualListScrollOptions): Promise<void> => {
         const { index, smoothScroll, shouldThrowOnBounds, align } = {
             ...DEFAULT_SCROLL_OPTIONS,
             ...options
         }
 
-        if (!items.length) return
-        if (!heightManager.viewportElement) {
-            tick().then(() => {
-                if (!heightManager.viewportElement) return
-                scroll({ index, smoothScroll, shouldThrowOnBounds, align })
-            })
-            return
-        }
+        // Cancel any scroll wait still in progress so its promise can't resolve
+        // against a stale target, and start a fresh cancellation scope.
+        scrollAbortController?.abort()
+        const abortController = new AbortController()
+        scrollAbortController = abortController
+        const { signal } = abortController
 
-        // Bounds checking
-        let targetIndex = index
-        if (targetIndex < 0 || targetIndex >= items.length) {
-            if (shouldThrowOnBounds) {
-                throw new Error(
-                    `scroll: index ${targetIndex} is out of bounds (0-${items.length - 1})`
-                )
-            } else {
-                targetIndex = clampValue(targetIndex, 0, items.length - 1)
+        return new Promise<void>((resolve, reject) => {
+            if (!items.length) {
+                resolve()
+                return
             }
-        }
 
-        const { start: firstVisibleIndex, end: lastVisibleIndex } = visibleItems
+            // Viewport not mounted yet: retry on the next tick and chain the result.
+            if (!heightManager.viewportElement) {
+                tick().then(() => {
+                    if (!heightManager.viewportElement) {
+                        resolve()
+                        return
+                    }
+                    scroll({ index, smoothScroll, shouldThrowOnBounds, align }).then(
+                        resolve,
+                        reject
+                    )
+                })
+                return
+            }
 
-        // Use extracted scroll calculation utility
-        const scrollTarget = calculateScrollTarget({
-            align: align || 'auto',
-            targetIndex,
-            itemsLength: items.length,
-            calculatedItemHeight: heightManager.averageHeight, // Use dynamic average from ReactiveListManager
-            height,
-            scrollTop: heightManager.scrollTop,
-            firstVisibleIndex,
-            lastVisibleIndex,
-            heightCache: heightManager.getHeightCache()
-        })
+            // Bounds checking
+            let targetIndex = index
+            if (targetIndex < 0 || targetIndex >= items.length) {
+                if (shouldThrowOnBounds) {
+                    reject(
+                        new Error(
+                            `scroll: index ${targetIndex} is out of bounds (0-${items.length - 1})`
+                        )
+                    )
+                    return
+                } else {
+                    targetIndex = clampValue(targetIndex, 0, items.length - 1)
+                }
+            }
 
-        // Handle early return for 'nearest' alignment when item is already visible
-        if (scrollTarget === null) {
-            return
-        }
+            const { start: firstVisibleIndex, end: lastVisibleIndex } = visibleItems
 
-        if (INTERNAL_DEBUG && heightManager.viewportElement) {
-            const domMax = Math.max(
-                0,
-                heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
-            )
-            console.info('[SVL] scroll-intent', {
-                targetIndex,
+            // Use extracted scroll calculation utility
+            const scrollTarget = calculateScrollTarget({
                 align: align || 'auto',
+                targetIndex,
+                itemsLength: items.length,
+                calculatedItemHeight: heightManager.averageHeight, // Use dynamic average from ReactiveListManager
+                height,
+                scrollTop: heightManager.scrollTop,
                 firstVisibleIndex,
                 lastVisibleIndex,
-                currentScrollTop: heightManager.scrollTop,
-                scrollTarget,
-                domMaxScrollTop: domMax
+                heightCache: heightManager.getHeightCache()
             })
-        }
 
-        heightManager.viewport.scrollTo({
-            top: scrollTarget,
-            behavior: smoothScroll ? 'smooth' : 'auto'
-        })
+            // Handle early return for 'nearest' alignment when item is already visible
+            if (scrollTarget === null) {
+                resolve()
+                return
+            }
 
-        // Update scrollTop state in next frame to avoid synchronous re-renders
-        requestAnimationFrame(() => {
-            heightManager.scrollTop = scrollTarget
             if (INTERNAL_DEBUG && heightManager.viewportElement) {
                 const domMax = Math.max(
                     0,
                     heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
                 )
-                console.info('[SVL] scroll-after-call', {
-                    scrollTop: heightManager.scrollTop,
+                console.info('[SVL] scroll-intent', {
+                    targetIndex,
+                    align: align || 'auto',
+                    firstVisibleIndex,
+                    lastVisibleIndex,
+                    currentScrollTop: heightManager.scrollTop,
+                    scrollTarget,
                     domMaxScrollTop: domMax
                 })
             }
-        })
 
-        // No extra alignment step here; allow native smooth scroll to reach DOM max scrollTop
+            heightManager.viewport.scrollTo({
+                top: scrollTarget,
+                behavior: smoothScroll ? 'smooth' : 'auto'
+            })
+
+            // Update scrollTop state in next frame to avoid synchronous re-renders
+            requestAnimationFrame(() => {
+                heightManager.scrollTop = scrollTarget
+                if (INTERNAL_DEBUG && heightManager.viewportElement) {
+                    const domMax = Math.max(
+                        0,
+                        heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+                    )
+                    console.info('[SVL] scroll-after-call', {
+                        scrollTop: heightManager.scrollTop,
+                        domMaxScrollTop: domMax
+                    })
+                }
+            })
+
+            // Resolve only once the scroll has visually finished AND the virtual
+            // list has re-rendered for the new position.
+            waitForScrollEnd(
+                heightManager.viewport,
+                scrollTarget,
+                smoothScroll ?? true,
+                signal
+            ).then(async () => {
+                await tick()
+                resolve()
+            }, reject)
+        })
     }
 
     /**

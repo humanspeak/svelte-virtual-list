@@ -52,8 +52,13 @@ Scroll to a specific item by index.
 ### Signature
 
 ```typescript
-scroll(options: SvelteVirtualListScrollOptions): void
+scroll(options: SvelteVirtualListScrollOptions): Promise<void>
 ```
+
+The returned promise resolves once the scroll has visually finished **and** the
+list has re-rendered for the new position. For a smooth scroll it waits for the
+native `scrollend` event (or, where unsupported, until the scroll position
+settles); for an instant scroll it resolves after the DOM updates.
 
 ### Options
 
