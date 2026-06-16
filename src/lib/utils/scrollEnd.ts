@@ -57,27 +57,32 @@ export const waitForScrollEnd = (
             return
         }
 
-        let rafId = 0
-        let timeoutId: ReturnType<typeof setTimeout> | undefined
-        let onScrollEnd: (() => void) | undefined
-        let onAbort: (() => void) | undefined
+        const alreadyThere = Math.abs(viewport.scrollTop - target) <= POSITION_TOLERANCE
+        const shouldWaitForSmoothScroll = smooth && !alreadyThere
 
-        const cleanup = () => {
+        let rafId = 0
+        let onScrollEnd: (() => void) | undefined
+
+        function cleanup() {
             if (rafId) cancelAnimationFrame(rafId)
             if (timeoutId !== undefined) clearTimeout(timeoutId)
             if (onScrollEnd) viewport.removeEventListener('scrollend', onScrollEnd)
-            if (onAbort) signal?.removeEventListener('abort', onAbort)
+            signal?.removeEventListener('abort', onAbort)
         }
 
-        const finish = () => {
+        function finish() {
             cleanup()
             resolve()
         }
 
+        const onAbort = finish
+        const timeoutId = shouldWaitForSmoothScroll
+            ? setTimeout(finish, SCROLL_END_TIMEOUT_MS)
+            : undefined
+
         // Instant scroll or no-op (already at target): a smooth `scrollTo` to the
         // current position never fires `scrollend`, so handle it as instant.
-        const alreadyThere = Math.abs(viewport.scrollTop - target) <= POSITION_TOLERANCE
-        if (!smooth || alreadyThere) {
+        if (!shouldWaitForSmoothScroll) {
             rafId = requestAnimationFrame(() => {
                 rafId = 0
                 finish()
@@ -85,12 +90,7 @@ export const waitForScrollEnd = (
             return
         }
 
-        onAbort = finish
         signal?.addEventListener('abort', onAbort, { once: true })
-
-        // Safety net: never let the promise hang.
-        timeoutId = setTimeout(finish, SCROLL_END_TIMEOUT_MS)
-
 
         // Smooth scroll with native `scrollend` support (Chrome, Firefox).
         if (typeof window !== 'undefined' && 'onscrollend' in window) {
