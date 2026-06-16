@@ -762,14 +762,14 @@
      *   {/snippet}
      * </SvelteVirtualList>
      *
-     * @returns {void}
+     * @returns {Promise<void>} Promise that resolves when scrolling is complete
      * @throws {Error} If the index is out of bounds and shouldThrowOnBounds is true
      */
     export const scrollToIndex = (
         index: number,
         smoothScroll = true,
         shouldThrowOnBounds = true
-    ): void => {
+    ): Promise<void> => {
         // Deprecation warning
         console.warn(
             'SvelteVirtualList: scrollToIndex is deprecated and will be removed in a future version. ' +
@@ -777,7 +777,7 @@
         )
 
         // Call the new scroll function with the provided parameters
-        scroll({ index, smoothScroll, shouldThrowOnBounds })
+        return scroll({ index, smoothScroll, shouldThrowOnBounds })
     }
 
     /**
@@ -827,6 +827,12 @@
             // Viewport not mounted yet: retry on the next tick and chain the result.
             if (!heightManager.viewportElement) {
                 tick().then(() => {
+                    // A newer scroll() may have superseded this one while we waited;
+                    // bail out instead of re-invoking and clobbering the newer target.
+                    if (signal.aborted) {
+                        resolve()
+                        return
+                    }
                     if (!heightManager.viewportElement) {
                         resolve()
                         return

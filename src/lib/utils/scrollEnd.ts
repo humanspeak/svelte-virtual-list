@@ -28,6 +28,17 @@ const POSITION_TOLERANCE = 1
  * animation). Passing an already-aborted (or later aborted) `signal` resolves
  * immediately and tears down all listeners/timers.
  *
+ * @example
+ * // Scroll smoothly and await the visual end, cancelling on a newer scroll:
+ * import { waitForScrollEnd } from '$lib/utils/scrollEnd.js';
+ *
+ * const controller = new AbortController();
+ * const target = 1200;
+ * viewport.scrollTo({ top: target, behavior: 'smooth' });
+ * await waitForScrollEnd(viewport, target, true, controller.signal);
+ * // ...later, to abandon the wait (e.g. a newer scroll started):
+ * controller.abort();
+ *
  * @param viewport The scrollable element being animated.
  * @param target The desired final `scrollTop` value.
  * @param smooth Whether the scroll was initiated with `behavior: 'smooth'`.
@@ -60,7 +71,6 @@ export const waitForScrollEnd = (
 
         const finish = () => {
             cleanup()
-            console.log('scroll finished')
             resolve()
         }
 

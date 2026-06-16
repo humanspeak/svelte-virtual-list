@@ -73,22 +73,22 @@ settles); for an instant scroll it resolves after the DOM updates.
 
 **Scroll to item 100:**
 ```typescript
-listRef.scroll({ index: 100 })
+await listRef.scroll({ index: 100 })
 ```
 
 **Scroll to top of list:**
 ```typescript
-listRef.scroll({ index: 0, align: 'top' })
+await listRef.scroll({ index: 0, align: 'top' })
 ```
 
 **Scroll to bottom:**
 ```typescript
-listRef.scroll({ index: items.length - 1, align: 'bottom' })
+await listRef.scroll({ index: items.length - 1, align: 'bottom' })
 ```
 
 **Instant scroll (no animation):**
 ```typescript
-listRef.scroll({ index: 500, smoothScroll: false })
+await listRef.scroll({ index: 500, smoothScroll: false })
 ```
 
 ### Alignment Options
@@ -105,7 +105,7 @@ listRef.scroll({ index: 500, smoothScroll: false })
 Convenience method to scroll to the beginning.
 
 ```typescript
-listRef.scrollToTop()
+await listRef.scrollToTop()
 ```
 
 ## scrollToBottom()
@@ -113,5 +113,5 @@ listRef.scrollToTop()
 Convenience method to scroll to the end.
 
 ```typescript
-listRef.scrollToBottom()
+await listRef.scrollToBottom()
 ```
