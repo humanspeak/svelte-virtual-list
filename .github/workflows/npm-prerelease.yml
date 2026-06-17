@@ -43,6 +43,9 @@ on:
             - src/**
             - tests/**
             - package.json
+            - pnpm-lock.yaml
+            - pnpm-workspace.yaml
+            - .github/workflows/npm-prerelease.yml
 
 jobs:
     # Quick validation
@@ -64,15 +67,15 @@ jobs:
                   cache: ''
 
             - name: Install dependencies
-              run: npm ci --prefer-offline --no-audit --ignore-scripts
+              run: pnpm install --filter . --prefer-offline --frozen-lockfile --ignore-scripts --config.engine-strict=false
 
             - name: Run tests
-              run: npm test
+              run: pnpm test
 
             - name: Run E2E tests
               run: |
-                  npx playwright install --with-deps
-                  npm run test:e2e
+                  pnpm exec playwright install --with-deps
+                  pnpm run test:e2e
 
     # Prerelease publishing
     publish-prerelease:
@@ -102,7 +105,7 @@ jobs:
                   cache: ''
 
             - name: Install dependencies
-              run: npm ci --prefer-offline --no-audit --ignore-scripts
+              run: pnpm install --filter . --prefer-offline --frozen-lockfile --ignore-scripts --config.engine-strict=false
 
             - name: Import GPG key
               id: import_gpg
@@ -156,17 +159,19 @@ jobs:
                   # Check if current version already has prerelease suffix
                   if [[ "$CURRENT_VERSION" == *"-"* ]]; then
                       # Increment existing prerelease
-                      NEW_VERSION=$(npm version prerelease --preid="$TYPE" --no-git-tag-version)
+                      pnpm version prerelease --preid="$TYPE" --no-git-tag-version
                   else
                       # Create new prerelease from bumped version
-                      npm version "$BASE_BUMP" --no-git-tag-version >/dev/null
-                      NEW_VERSION=$(npm version prerelease --preid="$TYPE" --no-git-tag-version)
+                      pnpm version "$BASE_BUMP" --no-git-tag-version
+                      pnpm version prerelease --preid="$TYPE" --no-git-tag-version
                   fi
 
-                  echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+                  PACKAGE_VERSION=$(node -p "require('./package.json').version")
+                  NEW_VERSION="v${PACKAGE_VERSION}"
+                  echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
                   # Create stripped version without 'v' prefix for npm install commands
                   STRIPPED_VERSION=${NEW_VERSION#v}
-                  echo "stripped_version=$STRIPPED_VERSION" >> $GITHUB_OUTPUT
+                  echo "stripped_version=$STRIPPED_VERSION" >> "$GITHUB_OUTPUT"
                   echo "New prerelease version: $NEW_VERSION"
 
             - name: Commit and tag prerelease
