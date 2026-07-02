@@ -86,7 +86,12 @@ export const calculateAverageHeightDebounced = (
         clearedDirtyItems: Set<number>
         newTotalHeight: number
         newValidCount: number
-        heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
+        heightChanges: Array<{
+            index: number
+            oldHeight: number | undefined
+            newHeight: number
+            delta: number
+        }>
     }) => void,
     debounceTime: number,
     dirtyItems: Set<number>,

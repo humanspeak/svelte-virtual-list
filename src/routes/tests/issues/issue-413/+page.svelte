@@ -239,9 +239,9 @@
             the scrolled distance — the step's jump is the worst deviation across all items that
             stayed rendered. Coverage is checked after every step and while the corrections settle:
             items are beige and bordered; the layer behind them is
-            <span class="stripes-sample">red-striped</span> — if you ever see stripes in the list, the
-            viewport is genuinely unpainted and the blank-coverage stat reads red to match. Re-running
-            remounts the list so the backlog is unmeasured again (a sweep over measured items passes vacuously).
+            <span class="stripes-sample">warning red</span> — if you ever see red in the list, the viewport
+            is genuinely unpainted and the blank-coverage stat reads red to match. Re-running remounts
+            the list so the backlog is unmeasured again (a sweep over measured items passes vacuously).
         </p>
     </div>
 
@@ -360,13 +360,7 @@
     .stripes-sample {
         padding: 1px 6px;
         border-radius: 3px;
-        background: repeating-linear-gradient(
-            45deg,
-            #ffe5e5,
-            #ffe5e5 6px,
-            #ffb3b3 6px,
-            #ffb3b3 12px
-        );
+        background: #ffc2c2;
     }
 
     .stats {
@@ -466,18 +460,13 @@
         color: #7a5320;
     }
 
-    /* The naked content layer behind the items. If you ever SEE these
-       stripes, the viewport is genuinely unpainted (stale transform offsets)
-       — and the blank-coverage stat will read red to match. A tall item's
-       textless body stays beige and bordered, so the two states can't be
-       confused. */
+    /* The naked content layer behind the items. If you ever SEE this red,
+       the viewport is genuinely unpainted (stale transform offsets) — and
+       the blank-coverage stat will read red to match. A tall item's textless
+       body stays beige and bordered, so the two states can't be confused.
+       Solid color on purpose: a repeating gradient across a ~90,000px layer
+       tanks WebKit's paint performance during the sweep. */
     :global(.unpainted-warning) {
-        background: repeating-linear-gradient(
-            45deg,
-            #ffe5e5,
-            #ffe5e5 12px,
-            #ffb3b3 12px,
-            #ffb3b3 24px
-        );
+        background: #ffc2c2;
     }
 </style>

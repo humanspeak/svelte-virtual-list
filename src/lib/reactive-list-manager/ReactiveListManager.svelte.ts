@@ -58,10 +58,24 @@ export class ReactiveListManager {
     private _blockSize = 1000
 
     private recomputeDerivedHeights(): void {
-        const average =
+        const exactAverage =
             this._measuredCount > 0
                 ? this._totalMeasuredHeight / this._measuredCount
                 : this._itemHeight
+        // Sticky estimate: every single measurement nudges the exact average,
+        // and that nudge multiplies across ALL unmeasured items — offsets,
+        // transform, and totalHeight physically shift by (Δavg × unmeasured)
+        // on every batch. The scroll-anchoring correction then has to eat
+        // that shift, rubber-banding the user's scroll progress while they
+        // cross unmeasured territory (#413). Hold the published average
+        // until the exact one drifts beyond 2%, then snap once.
+        const current = this._averageHeight
+        const average =
+            this._measuredCount > 0 &&
+            current > 0 &&
+            Math.abs(exactAverage - current) / current < 0.02
+                ? current
+                : exactAverage
         this._averageHeight = average
         const unmeasuredCount = this._itemLength - this._measuredCount
         this._totalHeight = this._totalMeasuredHeight + unmeasuredCount * average
@@ -303,6 +317,20 @@ export class ReactiveListManager {
     }
 
     /**
+     * Synchronously recompute derived heights (averageHeight, totalHeight),
+     * cancelling any scheduled deferred recompute.
+     *
+     * The scheduler defers recomputes to the next animation frame for visual
+     * stability, but pre-paint correction paths (measure → compensate inside
+     * a ResizeObserver callback, issue #413) need the derived totals in the
+     * same frame — one frame late means the correction paints.
+     */
+    flushDerivedHeights(): void {
+        this._scheduler.cancel()
+        this.recomputeDerivedHeights()
+    }
+
+    /**
      * Run a dynamic update with UA scroll anchoring disabled.
      * Accepts a sync or async function and ensures `overflow-anchor` stays 'none'
      * throughout. If the manager isn't ready yet, it simply executes `fn`.
@@ -489,18 +517,13 @@ export class ReactiveListManager {
             this.invalidateBlockSumsFrom(minChangedIndex)
         }
 
-        // IDK... no one can explain it to me,.. but its here like this... it cannot be:
-        //  if (heightDelta === 0 && countDelta === 0) return
-        const isJsdom =
-            typeof navigator !== 'undefined' && typeof navigator.userAgent === 'string'
-                ? /jsdom/i.test(navigator.userAgent)
-                : false
-        const isNonBrowser = typeof window === 'undefined' || isJsdom
-        if (isNonBrowser) {
-            if (heightDelta === 0 && countDelta === 0) return
-        } else {
-            if (countDelta === 0) return
-        }
+        // No-op batches (every entry replaced a height with the same value)
+        // skip the reactive recompute. Historical note: the browser path used
+        // to return on countDelta === 0 alone — combined with callers that
+        // substituted the average for oldHeight on fresh measurements (making
+        // every entry net to countDelta 0), it discarded entire batches and
+        // measured totals never updated at all (#413).
+        if (heightDelta === 0 && countDelta === 0) return
         // Apply all changes at once - triggers reactivity only once
         this._totalMeasuredHeight += heightDelta
         this._measuredCount += countDelta
