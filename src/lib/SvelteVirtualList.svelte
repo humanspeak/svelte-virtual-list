@@ -157,6 +157,7 @@
         calculateTransformY,
         calculateVisibleRange,
         clampValue,
+        measureItemPitch,
         updateHeightAndScroll as utilsUpdateHeightAndScroll
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
@@ -625,7 +626,9 @@
 
                     if (elementIndex !== -1) {
                         if (actualIndex >= 0) {
-                            const currentHeight = element.getBoundingClientRect().height
+                            // Compare pitch (not border-box height) against the
+                            // cache, which stores pitches — see measureItemPitch.
+                            const currentHeight = measureItemPitch(element)
                             const isSignificant = isSignificantHeightChange(
                                 actualIndex,
                                 currentHeight,
