@@ -244,6 +244,45 @@ export const updateHeightAndScroll = (
  *   40
  * )
  */
+/**
+ * Measures an item's layout pitch: the vertical space it actually occupies in
+ * the items container, including any margins that collapse through the
+ * component's unstyled item wrappers.
+ *
+ * A border-box measurement (`getBoundingClientRect().height`) excludes
+ * margins, and chat-bubble-style CSS (`margin: 12px 0` on rendered content)
+ * collapses through the wrapper — permanently under-counting every item and
+ * running totalHeight short (issue #412). Layout offsets are ground truth:
+ * the delta from this wrapper's top to the next sibling's top includes
+ * collapsed margins by construction. The last rendered wrapper is closed by
+ * the items container's bottom edge — the container is absolutely positioned
+ * (a block formatting context), so its auto height includes the last child's
+ * bottom margin.
+ *
+ * Known bounded residual: the leading collapsed margin above the first item
+ * belongs to no pitch — a constant ≤ one margin across the whole list,
+ * invisible to scrolling.
+ *
+ * Falls back to the border-box height when the element is not laid out
+ * (detached, display: none, or non-browser test environments where offsets
+ * read 0).
+ *
+ * @param {HTMLElement} element - The item wrapper element to measure.
+ * @returns {number} The item's layout pitch in pixels.
+ */
+export const measureItemPitch = (element: HTMLElement): number => {
+    const rect = element.getBoundingClientRect()
+    const parent = element.parentElement
+    if (!parent) return rect.height
+
+    const next = element.nextElementSibling
+    const pitch = next
+        ? next.getBoundingClientRect().top - rect.top
+        : parent.getBoundingClientRect().bottom - rect.top
+
+    return pitch > 0 ? pitch : rect.height
+}
+
 export const calculateAverageHeight = (
     itemElements: HTMLElement[],
     visibleRange: { start: number; end: number },
@@ -298,7 +337,7 @@ export const calculateAverageHeight = (
                 try {
                     // await tick()
                     void element.offsetHeight
-                    const height = element.getBoundingClientRect().height
+                    const height = measureItemPitch(element)
                     const oldHeight = newHeightCache[itemIndex]
                     if (Number.isFinite(height) && height > 0) {
                         // Only update if height actually changed (use smaller tolerance for precision)
@@ -341,7 +380,7 @@ export const calculateAverageHeight = (
             const itemIndex = visibleRange.start + i
             if (!newHeightCache[itemIndex]) {
                 try {
-                    const height = el.getBoundingClientRect().height
+                    const height = measureItemPitch(el)
                     if (Number.isFinite(height) && height > 0) {
                         // Add new height to running totals
                         totalValidHeight += height
