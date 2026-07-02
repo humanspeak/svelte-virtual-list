@@ -24,13 +24,15 @@ const MIN_SWEEP_SAMPLES = 15
 
 const stat = (name: string) => `[data-testid="stat-${name}"]`
 
-/** Parse the sweep stats line, e.g. "jumps=0 maxJumpPx=0 totalJumpPx=0 samples=24". */
-const readSweep = async (page: Page): Promise<Record<string, number>> => {
-    const text = await page.locator(stat('sweep')).innerText()
+/** Parse a stats line of key=value pairs, e.g. "jumps=0 maxJumpPx=0 samples=24". */
+const readStats = async (page: Page, name: string): Promise<Record<string, number>> => {
+    const text = await page.locator(stat(name)).innerText()
     return Object.fromEntries(
         [...text.matchAll(/(\w+)=([\d.]+)/g)].map((m) => [m[1], parseFloat(m[2])])
     )
 }
+
+const readSweep = (page: Page) => readStats(page, 'sweep')
 
 test.describe('Issue 413 - estimate-miss corrections while scrolling backlog', () => {
     test.beforeEach(async ({ page }) => {
@@ -67,5 +69,21 @@ test.describe('Issue 413 - estimate-miss corrections while scrolling backlog', (
         expect(sweep.samples).toBeGreaterThan(MIN_SWEEP_SAMPLES)
         expect(sweep.jumps).toBe(0)
         expect(sweep.maxJumpPx).toBeLessThanOrEqual(JUMP_TOLERANCE_PX)
+    })
+
+    /**
+     * The viewport must be fully covered by rendered items after every sweep
+     * step AND while the post-sweep correction waves settle. Stale transform
+     * offsets paint blank regions — a failure the jump metric alone cannot
+     * see, because a fully blank screen has no rendered items left to
+     * deviate. Note: this passes pre-fix; it is a tripwire so the fix (a
+     * synchronous scroll restore in the measurement path) cannot trade
+     * jump-hiding for unpainted frames.
+     */
+    test('viewport should never paint blank regions while scrolling backlog', async ({ page }) => {
+        const blank = await readStats(page, 'blank')
+
+        expect(blank.blankFrames).toBe(0)
+        expect(blank.maxBlankPx).toBe(0)
     })
 })

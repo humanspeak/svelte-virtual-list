@@ -30,13 +30,20 @@
         maxJumpPx: number
         totalJumpPx: number
         samples: number
+        blankFrames: number
+        maxBlankPx: number
     }
 
     let heightsMatch = $state<boolean | null>(null)
     let sweep = $state<SweepResult | null>(null)
     let sweepRunning = $state(false)
+    // Bumped per re-run: remounts the list so the height cache starts empty
+    // again. Without this a second sweep scrolls through already-measured
+    // items — no corrections, zero jumps — and reads as a vacuous green.
+    let runId = $state(0)
 
     const sweepPass = $derived(sweep !== null && sweep.maxJumpPx <= JUMP_TOLERANCE_PX)
+    const blankPass = $derived(sweep !== null && sweep.blankFrames === 0)
 
     const getViewport = (): HTMLElement | null =>
         document.querySelector('[data-testid="issue-413-list-viewport"]')
@@ -93,7 +100,42 @@
             return positions
         }
 
-        const result: SweepResult = { jumps: 0, maxJumpPx: 0, totalJumpPx: 0, samples: 0 }
+        // Coverage detector: the viewport must be fully covered by rendered
+        // items after every step. Stale transform offsets paint blank
+        // regions — a failure the jump metric alone cannot see (a fully
+        // blank screen has no items to deviate).
+        const measureBlankPx = (): number => {
+            const viewportRect = viewport.getBoundingClientRect()
+            const intervals: Array<[number, number]> = []
+            for (const el of Array.from(
+                viewport.querySelectorAll('[data-original-index]')
+            ) as HTMLElement[]) {
+                const rect = el.getBoundingClientRect()
+                const top = Math.max(rect.top, viewportRect.top)
+                const bottom = Math.min(rect.bottom, viewportRect.bottom)
+                if (bottom > top) intervals.push([top, bottom])
+            }
+            intervals.sort((a, b) => a[0] - b[0])
+            let covered = 0
+            let cursor = viewportRect.top
+            for (const [top, bottom] of intervals) {
+                const start = Math.max(top, cursor)
+                if (bottom > start) {
+                    covered += bottom - start
+                    cursor = bottom
+                }
+            }
+            return Math.max(0, Math.round(viewportRect.height - covered))
+        }
+
+        const result: SweepResult = {
+            jumps: 0,
+            maxJumpPx: 0,
+            totalJumpPx: 0,
+            samples: 0,
+            blankFrames: 0,
+            maxBlankPx: 0
+        }
 
         for (let step = 0; step < SWEEP_STEPS; step++) {
             if (viewport.scrollTop <= 0) break
@@ -105,6 +147,12 @@
             await nextFrame()
             await nextFrame()
             const after = snapshotPositions()
+
+            const blankPx = measureBlankPx()
+            if (blankPx > 2) {
+                result.blankFrames++
+                result.maxBlankPx = Math.max(result.maxBlankPx, blankPx)
+            }
 
             // Scrolling up: content moves down by exactly the scrolled
             // distance. The step's jump is the worst deviation across all
@@ -123,19 +171,44 @@
             result.samples++
         }
 
+        // Keep sampling coverage after the sweep ends: the debounced
+        // correction chain flushes in waves for a while after the last step,
+        // and any wave can leave the resting viewport blank even when every
+        // in-sweep frame was covered. A single post-sweep sample races the
+        // flush and reads a false zero.
+        for (let i = 0; i < 5; i++) {
+            await settle(350)
+            const restingBlankPx = measureBlankPx()
+            if (restingBlankPx > 2) {
+                result.blankFrames++
+                result.maxBlankPx = Math.max(result.maxBlankPx, restingBlankPx)
+            }
+        }
+
         sweep = result
         sweepRunning = false
     }
 
-    const remeasure = async () => {
+    const measureAndSweep = async () => {
         verifyHeights()
         await runSweep()
+    }
+
+    const remeasure = async () => {
+        if (sweepRunning) return
+        // Remount the list so the backlog is unmeasured again — a sweep over
+        // an already-measured backlog passes vacuously.
+        runId++
+        sweep = null
+        heightsMatch = null
+        await settle(800)
+        await measureAndSweep()
     }
 
     onMount(() => {
         // Let the post-hydration measurement pass and debounced height
         // recalculation settle before sampling geometry.
-        const timer = setTimeout(remeasure, 800)
+        const timer = setTimeout(measureAndSweep, 800)
         return () => clearTimeout(timer)
     })
 </script>
@@ -161,9 +234,14 @@
         </p>
         <p>
             <strong>How it's measured:</strong> the sweep scrolls up {SWEEP_STEP_PX}px per step and
-            tracks <em>every</em> rendered item across frames (batched corrections can cancel out for
-            any single item while its neighbors rearrange). Content must move down by exactly the scrolled
-            distance — the step's jump is the worst deviation across all items that stayed rendered.
+            tracks <em>every</em> rendered item across frames (batched corrections can cancel out
+            for any single item while its neighbors rearrange). Content must move down by exactly
+            the scrolled distance — the step's jump is the worst deviation across all items that
+            stayed rendered. Coverage is checked after every step and while the corrections settle:
+            items are beige and bordered; the layer behind them is
+            <span class="stripes-sample">red-striped</span> — if you ever see stripes in the list, the
+            viewport is genuinely unpainted and the blank-coverage stat reads red to match. Re-running
+            remounts the list so the backlog is unmeasured again (a sweep over measured items passes vacuously).
         </p>
     </div>
 
@@ -199,23 +277,50 @@
             </span>
         </div>
 
+        <div class="stat" class:pass={blankPass} class:fail={sweep !== null && !blankPass}>
+            <span class="light"
+                >{sweep === null ? (sweepRunning ? '⟳' : '…') : blankPass ? '✓' : '✗'}</span
+            >
+            <span class="label">blank viewport during sweep</span>
+            <span class="value" data-testid="stat-blank">
+                {#if sweep}
+                    blankFrames={sweep.blankFrames} maxBlankPx={sweep.maxBlankPx}
+                {:else if sweepRunning}
+                    running…
+                {:else}
+                    —
+                {/if}
+            </span>
+            <span class="expected">
+                rendered items must cover the viewport after every step — blank regions are stale
+                transform offsets painting nothing
+            </span>
+        </div>
+
         <button class="remeasure" onclick={remeasure} disabled={sweepRunning}>
-            {sweepRunning ? 'sweeping…' : 'Re-run sweep'}
+            {sweepRunning ? 'sweeping…' : 'Re-run sweep (fresh cache)'}
         </button>
     </div>
 
     <div class="test-container" style="height: 500px;">
-        <SvelteVirtualList defaultEstimatedItemHeight={40} {items} testId="issue-413-list">
-            {#snippet renderItem(item)}
-                <div
-                    class="variable-item"
-                    style="height: {item.heightPx}px;"
-                    data-testid="variable-item-{item.id}"
-                >
-                    {item.text} — {item.heightPx}px
-                </div>
-            {/snippet}
-        </SvelteVirtualList>
+        {#key runId}
+            <SvelteVirtualList
+                defaultEstimatedItemHeight={40}
+                {items}
+                testId="issue-413-list"
+                contentClass="unpainted-warning"
+            >
+                {#snippet renderItem(item)}
+                    <div
+                        class="variable-item"
+                        style="height: {item.heightPx}px;"
+                        data-testid="variable-item-{item.id}"
+                    >
+                        {item.text} — {item.heightPx}px
+                    </div>
+                {/snippet}
+            </SvelteVirtualList>
+        {/key}
     </div>
 </div>
 
@@ -250,6 +355,18 @@
         background: #eef2f7;
         padding: 1px 4px;
         border-radius: 3px;
+    }
+
+    .stripes-sample {
+        padding: 1px 6px;
+        border-radius: 3px;
+        background: repeating-linear-gradient(
+            45deg,
+            #ffe5e5,
+            #ffe5e5 6px,
+            #ffb3b3 6px,
+            #ffb3b3 12px
+        );
     }
 
     .stats {
@@ -338,9 +455,29 @@
 
     .variable-item {
         box-sizing: border-box;
+        display: flex;
+        align-items: center;
         padding: 8px;
         background: #fef3e8;
-        border-bottom: 1px solid #f0ddc8;
+        border: 1px solid #e0b984;
+        border-radius: 4px;
         font-size: 14px;
+        font-weight: 600;
+        color: #7a5320;
+    }
+
+    /* The naked content layer behind the items. If you ever SEE these
+       stripes, the viewport is genuinely unpainted (stale transform offsets)
+       — and the blank-coverage stat will read red to match. A tall item's
+       textless body stays beige and bordered, so the two states can't be
+       confused. */
+    :global(.unpainted-warning) {
+        background: repeating-linear-gradient(
+            45deg,
+            #ffe5e5,
+            #ffe5e5 12px,
+            #ffb3b3 12px,
+            #ffb3b3 24px
+        );
     }
 </style>
