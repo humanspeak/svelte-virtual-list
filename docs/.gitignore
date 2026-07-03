@@ -39,3 +39,7 @@ static/llms-full.txt
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Generated example mirrors (exampleMirrorsPlugin)
+static/examples.md
+static/examples/

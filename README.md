@@ -1,7 +1,7 @@
 # @humanspeak/svelte-virtual-list
 
 [![NPM version](https://img.shields.io/npm/v/@humanspeak/svelte-virtual-list.svg)](https://www.npmjs.com/package/@humanspeak/svelte-virtual-list)
-[![tokenmaxing](https://tokenmaxing.app/badge/humanspeak/svelte-virtual-list)](https://tokenmaxing.app/card/humanspeak/svelte-virtual-list)
+[![AI tokens used building this repo — TokenMaxing](https://tokenmaxing.app/badge/humanspeak/svelte-virtual-list)](https://tokenmaxing.app/card/humanspeak/svelte-virtual-list)
 [![Build Status](https://github.com/humanspeak/svelte-virtual-list/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/humanspeak/svelte-virtual-list/actions/workflows/npm-publish.yml)
 [![Coverage Status](https://coveralls.io/repos/github/humanspeak/svelte-virtual-list/badge.svg?branch=main)](https://coveralls.io/github/humanspeak/svelte-virtual-list?branch=main)
 [![License](https://img.shields.io/npm/l/@humanspeak/svelte-virtual-list.svg)](https://github.com/humanspeak/svelte-virtual-list/blob/main/LICENSE)

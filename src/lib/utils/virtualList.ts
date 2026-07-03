@@ -1,3 +1,4 @@
+import type { HeightChange } from '$lib/reactive-list-manager/types.js'
 import type { SvelteVirtualListPreviousVisibleRange } from '$lib/types.js'
 import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
 
@@ -298,7 +299,7 @@ export const calculateAverageHeight = (
     clearedDirtyItems: Set<number>
     newTotalHeight: number
     newValidCount: number
-    heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
+    heightChanges: HeightChange[]
 } => {
     const validElements = itemElements.filter((el) => el)
     if (validElements.length === 0) {
@@ -315,12 +316,7 @@ export const calculateAverageHeight = (
 
     const newHeightCache = { ...heightCache }
     const clearedDirtyItems = new Set<number>()
-    const heightChanges: Array<{
-        index: number
-        oldHeight: number
-        newHeight: number
-        delta: number
-    }> = []
+    const heightChanges: HeightChange[] = []
 
     // Start with current running totals (O(1) instead of O(n))
     let totalValidHeight = currentTotalHeight
@@ -342,15 +338,16 @@ export const calculateAverageHeight = (
                     if (Number.isFinite(height) && height > 0) {
                         // Only update if height actually changed (use smaller tolerance for precision)
                         if (!oldHeight || Math.abs(oldHeight - height) >= 0.1) {
-                            // Track the height change for scroll correction
-                            const actualOldHeight = oldHeight || currentItemHeight
-                            const delta = height - actualOldHeight
-
+                            // Report the RAW old height — undefined for a
+                            // never-measured item. Substituting the average
+                            // here made ReactiveListManager.processDirtyHeights
+                            // net every fresh measurement to countDelta 0 and
+                            // discard the whole batch, so measured totals
+                            // never updated in the browser (#413).
                             heightChanges.push({
                                 index: itemIndex,
-                                oldHeight: actualOldHeight,
-                                newHeight: height,
-                                delta
+                                oldHeight,
+                                newHeight: height
                             })
 
                             // Update running totals

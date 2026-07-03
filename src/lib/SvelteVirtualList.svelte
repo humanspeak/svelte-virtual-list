@@ -151,12 +151,14 @@
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
     import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
-    import { createRafScheduler } from '$lib/utils/raf.js'
     import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
+    import type { HeightChange } from '$lib/reactive-list-manager/types.js'
+    import { createRafScheduler } from '$lib/utils/raf.js'
     import {
         calculateTransformY,
         calculateVisibleRange,
         clampValue,
+        getScrollOffsetForIndex,
         measureItemPitch,
         updateHeightAndScroll as utilsUpdateHeightAndScroll
     } from '$lib/utils/virtualList.js'
@@ -277,6 +279,130 @@
         heightManager.scrollTop = scrollValue
     }
 
+    // Counts in-flight programmatic scroll() waits. Anchor preservation must
+    // not write scrollTop while one is animating: a scrollTop write cancels
+    // an in-progress smooth scroll, and scroll() re-verifies its own target
+    // when it lands anyway. A counter (not a boolean) because a new scroll()
+    // aborts the previous one whose teardown settles asynchronously.
+    let programmaticScrollDepth = 0
+
+    /**
+     * Captures the visual anchor before a measurement correction mutates the
+     * height cache: the first rendered item whose bottom edge sits below the
+     * viewport's top edge, and its current cache offset.
+     *
+     * Estimate corrections shift all content below the measured item by the
+     * full estimate error. Restoring this anchor's position after the
+     * correction (see {@link restoreViewportAnchor}) makes the correction
+     * invisible mid-list — the at-bottom path keeps its own end-stable
+     * correction instead (issue #413).
+     *
+     * The anchor is recorded as a cache offset, not a DOM measurement: a
+     * large correction batch can shift offsets so far that the re-render
+     * unmounts the anchor element entirely, so a DOM-based restore would
+     * silently bail exactly when the jump is worst.
+     */
+    type ViewportAnchor = { kind: 'bottom' } | { kind: 'item'; index: number; oldOffset: number }
+
+    // Computed on demand, not hoisted: callers read it at different times
+    // relative to the cache mutation (pre- vs post-correction totals).
+    const currentMaxScrollTop = () => Math.max(0, heightManager.totalHeight - (height || 0))
+
+    const captureViewportAnchor = (): ViewportAnchor | null => {
+        // NOTE: deliberately not gated on heightManager.initialized — that
+        // flag is never set anywhere (its only writer is a setter passed to
+        // utilsUpdateHeightAndScroll, which ignores it), so gating on it
+        // would make this dead code like the at-bottom correction above.
+        if (!heightManager.isReady) return null
+        if (programmaticScrollDepth > 0) return null
+        // Exactly at the bottom (a few px — where a scroll-to-bottom lands),
+        // corrections must be END-stable: keep the view pinned to the bottom
+        // rather than pinning the top edge. Skipping compensation here is not
+        // an option — an uncompensated at-bottom batch leaves scroll state
+        // inconsistent with the new totals, and the first scroll step away
+        // from the bottom then paints the difference as a jump.
+        if (Math.abs(heightManager.viewport.scrollTop - currentMaxScrollTop()) <= 2) {
+            return { kind: 'bottom' }
+        }
+        const viewportTop = heightManager.viewport.getBoundingClientRect().top
+        for (const element of itemElements) {
+            if (!element || !element.isConnected) continue
+            const rect = element.getBoundingClientRect()
+            if (rect.bottom <= viewportTop) continue
+            const index = parseInt(element.dataset.originalIndex || '-1', 10)
+            if (index < 0) return null
+            return {
+                kind: 'item',
+                index,
+                oldOffset: getScrollOffsetForIndex(
+                    heightManager.getHeightCache(),
+                    heightManager.averageHeight,
+                    index
+                )
+            }
+        }
+        return null
+    }
+
+    /**
+     * Restores the anchor captured by {@link captureViewportAnchor} after the
+     * cache mutation: the anchor's offset drift is applied to scrollTop so
+     * the anchor keeps its painted position through the correction.
+     *
+     * The reactive scrollTop state is set synchronously so the same flush
+     * derives the visible range from consistent scrollTop + offsets (no
+     * transient wrong-window render); the viewport DOM write is deferred to
+     * post-tick — still pre-paint — because the element's scrollHeight only
+     * reflects the new totals after the flush, and an early write would
+     * clamp against the stale height.
+     */
+    const restoreViewportAnchor = (anchor: ViewportAnchor) => {
+        if (!heightManager.viewportElement) return
+        if (programmaticScrollDepth > 0) return
+        // Clamp against the NEW totals (cache math) — the viewport element's
+        // scrollHeight reflects the old totals until the flush.
+        const maxScrollTop = currentMaxScrollTop()
+        const scrollTopNow = heightManager.viewport.scrollTop
+
+        let target: number
+        if (anchor.kind === 'bottom') {
+            // End-stable: the view was pinned to the bottom; keep it there
+            // under the corrected totals.
+            target = Math.round(maxScrollTop)
+        } else {
+            // Pure cache math, deliberately NOT DOM-measured: by the time the
+            // ResizeObserver fires, freshly mounted items already sit in the
+            // DOM at their real heights — the lurch has already happened in
+            // layout — so any painted position read here is polluted by the
+            // very shift we are hiding. The last stable frame's geometry is
+            // reconstructible from the old cache instead (everything painted
+            // was cache-consistent), which is what anchor.oldOffset captured.
+            const newOffset = getScrollOffsetForIndex(
+                heightManager.getHeightCache(),
+                heightManager.averageHeight,
+                anchor.index
+            )
+            const drift = newOffset - anchor.oldOffset
+            if (Math.abs(drift) <= 0.5) return
+            target = Math.round(clampValue(scrollTopNow + drift, 0, maxScrollTop))
+        }
+        if (Math.abs(target - scrollTopNow) < 1) return
+        syncScrollTop(target, true)
+        const applied = heightManager.viewport.scrollTop
+        if (Math.abs(applied - target) > 1) {
+            // The DOM clamped the write against the pre-flush scrollHeight
+            // (totals grew). Re-assert once the new height has flushed —
+            // tick() resolves in this task's microtask queue, so no scroll
+            // event can interleave; bail anyway if the position moved.
+            tick().then(() => {
+                if (!heightManager.viewportElement) return
+                if (programmaticScrollDepth > 0) return
+                if (Math.abs(heightManager.viewport.scrollTop - applied) > 1) return
+                syncScrollTop(target, true)
+            })
+        }
+    }
+
     // Height update function - removed throttling to fix race condition on initial load
     // Create throttled height update function with trailing execution to ensure measurement always happens
     const triggerHeightUpdate = createAdvancedThrottledCallback(
@@ -331,6 +457,19 @@
             lastMeasuredIndex,
             heightManager.averageHeight,
             (result) => {
+                // Anything to correct? Skip the anchor round trip (viewport
+                // rect + item rect reads + two offset walks) when neither the
+                // cache nor the estimate will move.
+                const willCorrect =
+                    result.heightChanges.length > 0 ||
+                    (result.newValidCount !== 1 &&
+                        Math.abs(result.newHeight - heightManager.itemHeight) > 1)
+
+                // Capture the visual anchor BEFORE any cache/estimate mutation
+                // shifts the offsets — the restore below hides the correction
+                // from the user mid-list (#413).
+                const anchor = willCorrect ? captureViewportAnchor() : null
+
                 // Only update the estimated item height from statistically meaningful
                 // samples. With _measuredCount === 0 (browser path), the formula
                 // _totalHeight = _itemLength × _itemHeight means a single expanded
@@ -346,8 +485,15 @@
                 if (result.heightChanges.length > 0) {
                     heightManager.processDirtyHeights(result.heightChanges)
                 }
+                if (willCorrect) {
+                    // Same reason as the ResizeObserver path: the restore's
+                    // math and the at-bottom check below must read the
+                    // corrected totals, not last frame's.
+                    heightManager.flushDerivedHeights()
+                }
 
                 // Keep the end item visually stable when total height changes at the end.
+                let atBottomHandled = false
                 if (heightManager.isReady && heightManager.initialized) {
                     const oldTotal = prevTotalHeightForScrollCorrection
                     const newTotal = heightManager.totalHeight
@@ -366,8 +512,17 @@
                                 maxScrollTop
                             )
                             syncScrollTop(adjusted, true)
+                            atBottomHandled = true
                         }
                     }
+                }
+
+                // Mid-list: restore the anchor now that the cache holds the
+                // corrected offsets. State updates synchronously (so this
+                // flush renders the right window); the viewport DOM write
+                // lands post-tick, still before the browser paints.
+                if (!atBottomHandled && anchor) {
+                    restoreViewportAnchor(anchor)
                 }
 
                 // Non-critical updates wrapped in untrack to prevent reactive cascades
@@ -611,45 +766,39 @@
 
     // Create itemResizeObserver immediately when in browser
     if (BROWSER) {
-        // Watch for individual item size changes
+        // Watch for individual item size changes.
+        //
+        // Runs SYNCHRONOUSLY in the ResizeObserver callback — post-layout,
+        // pre-paint — so a measurement (including an item's very first, on
+        // mount) and its scroll compensation land in the frame the size
+        // change would have painted. The previous pipeline (rAF batch →
+        // debounce → setTimeout) compensated 1-2 frames late: a 700px item
+        // mounting against a ~300px estimate painted a ~400px lurch before
+        // the correction arrived (issue #413).
         itemResizeObserver = new ResizeObserver((entries) => {
-            // Batch via RAF to avoid thrash across instances
-            rafSchedule(() => {
-                log('item-resize-observer', { entries: entries.length })
-                let shouldRecalculate = false
-                void visibleItems // Cache once to avoid reactive loops
+            const cache = heightManager.getHeightCache()
+            const changes: HeightChange[] = []
+            for (const entry of entries) {
+                const element = entry.target as HTMLElement
+                if (!element.isConnected) continue
+                const index = parseInt(element.dataset.originalIndex || '-1', 10)
+                if (index < 0) continue
+                // Pitch (not border-box height) — the cache stores pitches;
+                // see measureItemPitch.
+                const pitch = measureItemPitch(element)
+                if (!Number.isFinite(pitch) || pitch <= 0) continue
+                if (!isSignificantHeightChange(index, pitch, cache, 0.1)) continue
+                changes.push({ index, oldHeight: cache[index], newHeight: pitch })
+            }
+            if (changes.length === 0) return
+            log('item-resize-sync', { changes: changes.length })
 
-                for (const entry of entries) {
-                    const element = entry.target as HTMLElement
-                    const elementIndex = itemElements.indexOf(element)
-                    const actualIndex = parseInt(element.dataset.originalIndex || '-1', 10)
-
-                    if (elementIndex !== -1) {
-                        if (actualIndex >= 0) {
-                            // Compare pitch (not border-box height) against the
-                            // cache, which stores pitches — see measureItemPitch.
-                            const currentHeight = measureItemPitch(element)
-                            const isSignificant = isSignificantHeightChange(
-                                actualIndex,
-                                currentHeight,
-                                heightManager.getHeightCache()
-                            )
-
-                            // Only mark as dirty if height change is significant
-                            if (isSignificant) {
-                                dirtyItems.add(actualIndex)
-                                dirtyItemsCount = dirtyItems.size
-                                shouldRecalculate = true
-                            }
-                        }
-                    }
-                }
-
-                if (shouldRecalculate) {
-                    log('item-resize-recalc')
-                    updateHeight()
-                }
-            })
+            const anchor = captureViewportAnchor()
+            heightManager.processDirtyHeights(changes)
+            // Derived totals normally recompute next frame; the anchor math
+            // and this frame's contentHeight need them now.
+            heightManager.flushDerivedHeights()
+            if (anchor) restoreViewportAnchor(anchor)
         })
     }
 
@@ -900,6 +1049,10 @@
                 })
             }
 
+            // Suspend anchor preservation while this scroll animates — a
+            // scrollTop write would cancel the smooth scroll mid-flight.
+            programmaticScrollDepth++
+
             heightManager.viewport.scrollTo({
                 top: scrollTarget,
                 behavior: smoothScroll ? 'smooth' : 'auto'
@@ -922,15 +1075,14 @@
 
             // Resolve only once the scroll has visually finished AND the virtual
             // list has re-rendered for the new position.
-            waitForScrollEnd(
-                heightManager.viewport,
-                scrollTarget,
-                smoothScroll ?? true,
-                signal
-            ).then(async () => {
-                await tick()
-                resolve()
-            }, reject)
+            waitForScrollEnd(heightManager.viewport, scrollTarget, smoothScroll ?? true, signal)
+                .then(async () => {
+                    await tick()
+                    resolve()
+                }, reject)
+                .finally(() => {
+                    programmaticScrollDepth = Math.max(0, programmaticScrollDepth - 1)
+                })
         })
     }
 

@@ -1,3 +1,4 @@
+import type { HeightChange } from '$lib/reactive-list-manager/types.js'
 import { calculateAverageHeight } from '$lib/utils/virtualList.js'
 import { BROWSER } from 'esm-env'
 
@@ -86,7 +87,7 @@ export const calculateAverageHeightDebounced = (
         clearedDirtyItems: Set<number>
         newTotalHeight: number
         newValidCount: number
-        heightChanges: Array<{ index: number; oldHeight: number; newHeight: number; delta: number }>
+        heightChanges: HeightChange[]
     }) => void,
     debounceTime: number,
     dirtyItems: Set<number>,

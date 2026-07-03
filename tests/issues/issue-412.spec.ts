@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readStats, stat } from '../../src/lib/test/utils/statsLine.js'
 
 /**
  * Issue #412 — Item margins escape height measurement
@@ -27,18 +28,8 @@ const PITCH_TOLERANCE_PX = 1.5
 const JUMP_TOLERANCE_PX = 3
 const MIN_SWEEP_SAMPLES = 15
 
-const stat = (name: string) => `[data-testid="stat-${name}"]`
-
 const readPx = async (page: Page, name: string): Promise<number> =>
     parseFloat((await page.locator(stat(name)).innerText()).replace('px', ''))
-
-/** Parse the sweep stats line, e.g. "jumps=0 maxJumpPx=0 totalJumpPx=0 samples=24". */
-const readSweep = async (page: Page): Promise<Record<string, number>> => {
-    const text = await page.locator(stat('sweep')).innerText()
-    return Object.fromEntries(
-        [...text.matchAll(/(\w+)=([\d.]+)/g)].map((m) => [m[1], parseFloat(m[2])])
-    )
-}
 
 test.describe('Issue 412 - margins escape item height measurement', () => {
     test.beforeEach(async ({ page }) => {
@@ -74,7 +65,7 @@ test.describe('Issue 412 - margins escape item height measurement', () => {
      * fixture's tracked item jumped by the lost 12px margin per boundary.
      */
     test('content should not jump at render-range boundaries while scrolling', async ({ page }) => {
-        const sweep = await readSweep(page)
+        const sweep = await readStats(page, 'sweep')
 
         // Ensure the sweep actually measured movement rather than vacuously passing.
         expect(sweep.samples).toBeGreaterThan(MIN_SWEEP_SAMPLES)
