@@ -1,4 +1,3 @@
-import type { HeightChange } from '$lib/reactive-list-manager/types.js'
 import type { SvelteVirtualListPreviousVisibleRange } from '$lib/types.js'
 import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
 
@@ -219,33 +218,6 @@ export const updateHeightAndScroll = (
 }
 
 /**
- * Calculates the average height of visible items in a virtual list.
- *
- * This function optimizes performance by:
- * 1. Using a height cache to store measured item heights with dirty tracking
- * 2. Only measuring new items not in the cache
- * 3. Calculating a running average of all measured heights
- *
- * @param {HTMLElement[]} itemElements - Array of currently rendered item elements
- * @param {{ start: number }} visibleRange - Object containing the start index of visible items
- * @param {HeightCache} heightCache - Cache of previously measured item heights with dirty tracking
- * @param {number} currentItemHeight - Current average item height being used
- *
- * @returns {{
- *   newHeight: number,
- *   newLastMeasuredIndex: number,
- *   updatedHeightCache: HeightCache
- * }} Object containing new calculated height, last measured index, and updated cache
- *
- * @example
- * const result = calculateAverageHeight(
- *   itemElements,
- *   { start: 0 },
- *   {},
- *   40
- * )
- */
-/**
  * Measures an item's layout pitch: the vertical space it actually occupies in
  * the items container, including any margins that collapse through the
  * component's unstyled item wrappers.
@@ -282,125 +254,6 @@ export const measureItemPitch = (element: HTMLElement): number => {
         : parent.getBoundingClientRect().bottom - rect.top
 
     return pitch > 0 ? pitch : rect.height
-}
-
-export const calculateAverageHeight = (
-    itemElements: HTMLElement[],
-    visibleRange: { start: number; end: number },
-    heightCache: Record<number, number>,
-    currentItemHeight: number,
-    dirtyItems: Set<number>,
-    currentTotalHeight: number = 0,
-    currentValidCount: number = 0
-): {
-    newHeight: number
-    newLastMeasuredIndex: number
-    updatedHeightCache: Record<number, number>
-    clearedDirtyItems: Set<number>
-    newTotalHeight: number
-    newValidCount: number
-    heightChanges: HeightChange[]
-} => {
-    const validElements = itemElements.filter((el) => el)
-    if (validElements.length === 0) {
-        return {
-            newHeight: currentItemHeight,
-            newLastMeasuredIndex: visibleRange.start,
-            updatedHeightCache: heightCache,
-            clearedDirtyItems: new Set(),
-            newTotalHeight: currentTotalHeight,
-            newValidCount: currentValidCount,
-            heightChanges: []
-        }
-    }
-
-    const newHeightCache = { ...heightCache }
-    const clearedDirtyItems = new Set<number>()
-    const heightChanges: HeightChange[] = []
-
-    // Start with current running totals (O(1) instead of O(n))
-    let totalValidHeight = currentTotalHeight
-    let validHeightCount = currentValidCount
-
-    // Process only dirty items if they exist, otherwise process all visible items
-    if (dirtyItems.size > 0) {
-        // Process only dirty items
-        dirtyItems.forEach((itemIndex) => {
-            // Map original item index to position in itemElements array
-            const elementIndex = itemIndex - visibleRange.start
-            const element = validElements[elementIndex]
-            if (element && elementIndex >= 0 && elementIndex < validElements.length) {
-                try {
-                    // await tick()
-                    void element.offsetHeight
-                    const height = measureItemPitch(element)
-                    const oldHeight = newHeightCache[itemIndex]
-                    if (Number.isFinite(height) && height > 0) {
-                        // Only update if height actually changed (use smaller tolerance for precision)
-                        if (!oldHeight || Math.abs(oldHeight - height) >= 0.1) {
-                            // Report the RAW old height — undefined for a
-                            // never-measured item. Substituting the average
-                            // here made ReactiveListManager.processDirtyHeights
-                            // net every fresh measurement to countDelta 0 and
-                            // discard the whole batch, so measured totals
-                            // never updated in the browser (#413).
-                            heightChanges.push({
-                                index: itemIndex,
-                                oldHeight,
-                                newHeight: height
-                            })
-
-                            // Update running totals
-                            if (oldHeight && Number.isFinite(oldHeight) && oldHeight > 0) {
-                                // Replace old height with new height in running total
-                                totalValidHeight = totalValidHeight - oldHeight + height
-                            } else {
-                                // Add new height to running total
-                                totalValidHeight += height
-                                validHeightCount++
-                            }
-                            newHeightCache[itemIndex] = height
-                        }
-                    }
-                    clearedDirtyItems.add(itemIndex)
-                } catch {
-                    // Skip invalid measurements but still clear from dirty
-                    clearedDirtyItems.add(itemIndex)
-                }
-            } else {
-                clearedDirtyItems.add(itemIndex) // Still clear it from dirty items
-            }
-        })
-    } else {
-        // Original behavior: process all visible items
-        validElements.forEach((el, i) => {
-            const itemIndex = visibleRange.start + i
-            if (!newHeightCache[itemIndex]) {
-                try {
-                    const height = measureItemPitch(el)
-                    if (Number.isFinite(height) && height > 0) {
-                        // Add new height to running totals
-                        totalValidHeight += height
-                        validHeightCount++
-                        newHeightCache[itemIndex] = height
-                    }
-                } catch {
-                    // Skip invalid measurements
-                }
-            }
-        })
-    }
-
-    // O(1) average calculation using running totals!
-    return {
-        newHeight: validHeightCount > 0 ? totalValidHeight / validHeightCount : currentItemHeight,
-        newLastMeasuredIndex: visibleRange.start,
-        updatedHeightCache: newHeightCache,
-        clearedDirtyItems,
-        newTotalHeight: totalValidHeight,
-        newValidCount: validHeightCount,
-        heightChanges
-    }
 }
 
 /**
