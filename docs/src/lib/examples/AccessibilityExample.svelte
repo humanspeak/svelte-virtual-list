@@ -18,9 +18,9 @@
     }
 </script>
 
-<div class="flex w-full max-w-2xl flex-col gap-4 md:flex-row">
+<div class="flex w-full grow flex-col gap-4 md:flex-row">
     <div
-        class="border-border h-[300px] flex-1 rounded border"
+        class="border-border h-[300px] flex-1 rounded border md:h-auto"
         onkeydowncapture={describeKey}
         onfocusincapture={() => (focused = true)}
         onfocusoutcapture={() => (focused = false)}

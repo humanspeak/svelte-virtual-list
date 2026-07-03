@@ -81,11 +81,13 @@ The component only claims a key when the viewport itself is focused. If focus is
 
 ## Focus styling
 
-The viewport keeps the browser's default `:focus-visible` outline, so keyboard focus is visible without any configuration. To restyle it, target your `viewportClass`:
+The viewport draws an inset focus ring (`outline-offset: -2px`, `currentColor`) on `:focus-visible`. It is inset on purpose: the viewport fills a container with `overflow: hidden`, which would clip a default outside outline away entirely — keyboard users would see nothing.
+
+To restyle it, target your `viewportClass` — note that passing `viewportClass` replaces the component's default class, so bring your own focus style with it:
 
 ```css
 .my-viewport:focus-visible {
     outline: 2px solid var(--accent);
-    outline-offset: -2px;
+    outline-offset: -2px; /* keep it inset — outside outlines get clipped */
 }
 ```

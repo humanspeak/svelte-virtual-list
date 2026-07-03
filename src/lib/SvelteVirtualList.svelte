@@ -1245,6 +1245,14 @@
         -webkit-overflow-scrolling: touch;
     }
 
+    /* Keyboard-focus ring, drawn INSIDE the box: the viewport fills a
+       container with overflow: hidden, so the default outside outline is
+       clipped away entirely and keyboard users get no focus indicator. */
+    .virtual-list-viewport:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: -2px;
+    }
+
     /* Content wrapper maintains full scrollable height */
     .virtual-list-content {
         position: relative;
