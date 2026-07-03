@@ -157,6 +157,39 @@ export const calculateKeyboardScrollTarget = (params: KeyboardScrollParams): num
     return target === null ? null : clampValue(target, 0, maxScrollTop)
 }
 
+/**
+ * The scroll intent an anchor restore resolves against (#413): keep the view
+ * pinned to the bottom, or keep an item's cache offset steady through a
+ * measurement correction.
+ */
+export type AnchorScrollIntent =
+    | { kind: 'bottom' }
+    | { kind: 'item'; oldOffset: number; newOffset: number }
+
+/**
+ * Pure decision math for anchor restoration: given the anchor intent and the
+ * current scroll geometry, returns the scrollTop to write — or null when no
+ * write is warranted (sub-half-pixel offset drift, or a target within 1px of
+ * where the viewport already is).
+ */
+export const resolveAnchorScrollTarget = (
+    anchor: AnchorScrollIntent,
+    scrollTop: number,
+    maxScrollTop: number
+): number | null => {
+    let target: number
+    if (anchor.kind === 'bottom') {
+        // End-stable: the view was pinned to the bottom; keep it there
+        // under the corrected totals.
+        target = Math.round(maxScrollTop)
+    } else {
+        const drift = anchor.newOffset - anchor.oldOffset
+        if (Math.abs(drift) <= 0.5) return null
+        target = Math.round(clampValue(scrollTop + drift, 0, maxScrollTop))
+    }
+    return Math.abs(target - scrollTop) < 1 ? null : target
+}
+
 export interface ScrollTargetParams {
     align: SvelteVirtualListScrollAlign
     targetIndex: number

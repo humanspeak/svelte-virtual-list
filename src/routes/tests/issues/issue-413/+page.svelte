@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte'
     import SvelteVirtualList from '$lib/index.js'
+    import { uncoveredPx } from '$lib/test/utils/coverage.js'
 
     type Item = {
         id: number
@@ -108,26 +109,8 @@
         // items after every step. Stale transform offsets paint blank
         // regions — a failure the jump metric alone cannot see (a fully
         // blank screen has no items to deviate).
-        const measureBlankPx = (rects: Map<number, { top: number; bottom: number }>): number => {
-            const viewportRect = viewport.getBoundingClientRect()
-            const intervals: Array<[number, number]> = []
-            for (const { top, bottom } of rects.values()) {
-                const clippedTop = Math.max(top, viewportRect.top)
-                const clippedBottom = Math.min(bottom, viewportRect.bottom)
-                if (clippedBottom > clippedTop) intervals.push([clippedTop, clippedBottom])
-            }
-            intervals.sort((a, b) => a[0] - b[0])
-            let covered = 0
-            let cursor = viewportRect.top
-            for (const [top, bottom] of intervals) {
-                const start = Math.max(top, cursor)
-                if (bottom > start) {
-                    covered += bottom - start
-                    cursor = bottom
-                }
-            }
-            return Math.max(0, Math.round(viewportRect.height - covered))
-        }
+        const measureBlankPx = (rects: Map<number, { top: number; bottom: number }>): number =>
+            uncoveredPx(viewport.getBoundingClientRect(), rects.values())
 
         const result: SweepResult = {
             jumps: 0,

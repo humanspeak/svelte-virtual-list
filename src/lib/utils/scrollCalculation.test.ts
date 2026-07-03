@@ -6,7 +6,8 @@ import {
     alignVisibleToNearestEdge,
     calculateKeyboardScrollTarget,
     calculateScrollTarget,
-    isKeyboardScrollKey
+    isKeyboardScrollKey,
+    resolveAnchorScrollTarget
 } from './scrollCalculation.js'
 
 describe('alignToEdge', () => {
@@ -573,5 +574,55 @@ describe('calculateKeyboardScrollTarget', () => {
                 scrollHeight: 200
             })
         ).toBe(0)
+    })
+})
+
+describe('resolveAnchorScrollTarget', () => {
+    const maxScrollTop = 5000
+
+    describe('bottom anchor (end-stable at the bottom)', () => {
+        it('pins to the corrected maxScrollTop', () => {
+            expect(resolveAnchorScrollTarget({ kind: 'bottom' }, 4200, maxScrollTop)).toBe(5000)
+        })
+
+        it('rounds a fractional maxScrollTop', () => {
+            expect(resolveAnchorScrollTarget({ kind: 'bottom' }, 4200, 4999.6)).toBe(5000)
+        })
+
+        it('elides the write when already at the bottom', () => {
+            expect(resolveAnchorScrollTarget({ kind: 'bottom' }, 5000, maxScrollTop)).toBeNull()
+            expect(resolveAnchorScrollTarget({ kind: 'bottom' }, 4999.5, maxScrollTop)).toBeNull()
+        })
+    })
+
+    describe('item anchor (offset drift compensation)', () => {
+        const item = (oldOffset: number, newOffset: number) =>
+            ({ kind: 'item', oldOffset, newOffset }) as const
+
+        it('applies positive drift', () => {
+            expect(resolveAnchorScrollTarget(item(1000, 1400), 2000, maxScrollTop)).toBe(2400)
+        })
+
+        it('applies negative drift', () => {
+            expect(resolveAnchorScrollTarget(item(1400, 1000), 2000, maxScrollTop)).toBe(1600)
+        })
+
+        it('ignores sub-half-pixel drift', () => {
+            expect(resolveAnchorScrollTarget(item(1000, 1000.4), 2000, maxScrollTop)).toBeNull()
+            expect(resolveAnchorScrollTarget(item(1000, 999.6), 2000, maxScrollTop)).toBeNull()
+        })
+
+        it('clamps at the top', () => {
+            expect(resolveAnchorScrollTarget(item(5000, 100), 200, maxScrollTop)).toBe(0)
+        })
+
+        it('clamps at the bottom', () => {
+            expect(resolveAnchorScrollTarget(item(100, 5000), 4800, maxScrollTop)).toBe(5000)
+        })
+
+        it('elides a clamped target that lands where the viewport already is', () => {
+            // Drift is large but clamping brings the target back to scrollTop
+            expect(resolveAnchorScrollTarget(item(100, 3000), 5000, maxScrollTop)).toBeNull()
+        })
     })
 })

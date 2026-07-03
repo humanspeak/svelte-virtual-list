@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte'
     import SvelteVirtualList from '$lib/index.js'
+    import { uncoveredPx } from '$lib/test/utils/coverage.js'
 
     type Item = {
         id: number
@@ -28,37 +29,20 @@
     let running = $state(false)
 
     const grownPass = $derived(grownClientHeight === GROWN_HEIGHT_PX)
-    const coveragePass = $derived(blankPx !== null && blankPx <= 2)
+    // Strict zero, matching the stat label and the Playwright assertion.
+    const coveragePass = $derived(blankPx === 0)
 
     const getViewport = (): HTMLElement | null =>
         document.querySelector('[data-testid="issue-416-list-viewport"]')
 
     const settle = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
-    /** Unfilled vertical px of the viewport: viewport height minus the union
-     *  of rendered item rects clipped to it (same detector as issue-413). */
+    /** Unfilled vertical px of the viewport, via the shared coverage core. */
     const measureBlankPx = (viewport: HTMLElement): number => {
-        const viewportRect = viewport.getBoundingClientRect()
-        const intervals: Array<[number, number]> = []
-        for (const el of Array.from(
-            viewport.querySelectorAll('[data-original-index]')
-        ) as HTMLElement[]) {
-            const rect = el.getBoundingClientRect()
-            const top = Math.max(rect.top, viewportRect.top)
-            const bottom = Math.min(rect.bottom, viewportRect.bottom)
-            if (bottom > top) intervals.push([top, bottom])
-        }
-        intervals.sort((a, b) => a[0] - b[0])
-        let covered = 0
-        let cursor = viewportRect.top
-        for (const [top, bottom] of intervals) {
-            const start = Math.max(top, cursor)
-            if (bottom > start) {
-                covered += bottom - start
-                cursor = bottom
-            }
-        }
-        return Math.max(0, Math.round(viewportRect.height - covered))
+        const rects = Array.from(viewport.querySelectorAll('[data-original-index]')).map((el) =>
+            el.getBoundingClientRect()
+        )
+        return uncoveredPx(viewport.getBoundingClientRect(), rects)
     }
 
     const runProbe = async () => {
@@ -70,7 +54,14 @@
 
         // Reset to the base height and let the list settle there.
         containerHeight = BASE_HEIGHT_PX
+        viewport.scrollTop = 0
         await settle(400)
+
+        // Nudge the scroll by a few px BEFORE growing: a small nonzero
+        // scroll delta arms the visible-range memo, which must not serve a
+        // range sized for the old height after the resize lands.
+        viewport.scrollTop = 10
+        await settle(100)
 
         // Grow the container and give the component's ResizeObserver ample
         // time to react (it fires within a frame or two when it works).

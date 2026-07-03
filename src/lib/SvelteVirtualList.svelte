@@ -150,21 +150,20 @@
         type SvelteVirtualListProps,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
-    import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
-    import type { HeightChange } from '$lib/reactive-list-manager/types.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
     import {
         calculateTransformY,
         calculateVisibleRange,
         clampValue,
-        getScrollOffsetForIndex,
-        measureItemPitch
+        collectPitchChanges,
+        getScrollOffsetForIndex
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import {
         calculateKeyboardScrollTarget,
         calculateScrollTarget,
-        isKeyboardScrollKey
+        isKeyboardScrollKey,
+        resolveAnchorScrollTarget
     } from '$lib/utils/scrollCalculation.js'
     import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { ReactiveListManager } from '$lib/index.js'
@@ -380,34 +379,30 @@
     const restoreViewportAnchor = (anchor: ViewportAnchor) => {
         if (!heightManager.viewportElement) return
         if (programmaticScrollDepth > 0) return
-        // Clamp against the NEW totals (cache math) — the viewport element's
-        // scrollHeight reflects the old totals until the flush.
-        const maxScrollTop = currentMaxScrollTop()
-        const scrollTopNow = heightManager.viewport.scrollTop
-
-        let target: number
-        if (anchor.kind === 'bottom') {
-            // End-stable: the view was pinned to the bottom; keep it there
-            // under the corrected totals.
-            target = Math.round(maxScrollTop)
-        } else {
-            // Pure cache math, deliberately NOT DOM-measured: by the time the
-            // ResizeObserver fires, freshly mounted items already sit in the
-            // DOM at their real heights — the lurch has already happened in
-            // layout — so any painted position read here is polluted by the
-            // very shift we are hiding. The last stable frame's geometry is
-            // reconstructible from the old cache instead (everything painted
-            // was cache-consistent), which is what anchor.oldOffset captured.
-            const newOffset = getScrollOffsetForIndex(
-                heightManager.getHeightCache(),
-                heightManager.averageHeight,
-                anchor.index
-            )
-            const drift = newOffset - anchor.oldOffset
-            if (Math.abs(drift) <= 0.5) return
-            target = Math.round(clampValue(scrollTopNow + drift, 0, maxScrollTop))
-        }
-        if (Math.abs(target - scrollTopNow) < 1) return
+        // Pure cache math, deliberately NOT DOM-measured: by the time the
+        // ResizeObserver fires, freshly mounted items already sit in the DOM
+        // at their real heights — the lurch has already happened in layout —
+        // so any painted position read here is polluted by the very shift we
+        // are hiding. The last stable frame's geometry is reconstructible
+        // from the old cache instead, which is what anchor.oldOffset
+        // captured. maxScrollTop likewise comes from the NEW totals (cache
+        // math) — the element's scrollHeight is stale until the flush.
+        const target = resolveAnchorScrollTarget(
+            anchor.kind === 'bottom'
+                ? anchor
+                : {
+                      kind: 'item',
+                      oldOffset: anchor.oldOffset,
+                      newOffset: getScrollOffsetForIndex(
+                          heightManager.getHeightCache(),
+                          heightManager.averageHeight,
+                          anchor.index
+                      )
+                  },
+            heightManager.viewport.scrollTop,
+            currentMaxScrollTop()
+        )
+        if (target === null) return
         syncScrollTop(target, true)
         const applied = heightManager.viewport.scrollTop
         if (Math.abs(applied - target) > 1) {
@@ -505,15 +500,20 @@
     const syncContainerHeight = () => {
         if (!heightManager.isReady) return
         const h = heightManager.container.getBoundingClientRect().height
-        if (Number.isFinite(h) && h > 0) height = h
+        if (!Number.isFinite(h) || h <= 0 || h === height) return
+        height = h
+        // The visible-range memo reuses the cached range for small nonzero
+        // scroll deltas without consulting height — drop it so a resize can
+        // never be served a window sized for the old height.
+        lastVisibleRange = null
     }
 
-    // Update container height continuously to reflect layout changes that
-    // may occur outside ResizeObserver timing (keeps buffers correct across engines)
+    // Re-sync when the container element (re)binds. Not a continuous poll:
+    // getBoundingClientRect is not reactive, so this effect's only reactive
+    // dependencies are the manager's element bindings. Ongoing resizes are
+    // the container ResizeObserver's job.
     $effect(() => {
-        if (BROWSER && heightManager.isReady) {
-            syncContainerHeight()
-        }
+        if (BROWSER) syncContainerHeight()
     })
 
     /**
@@ -659,20 +659,10 @@
         // mounting against a ~300px estimate painted a ~400px lurch before
         // the correction arrived (issue #413).
         itemResizeObserver = new ResizeObserver((entries) => {
-            const cache = heightManager.getHeightCache()
-            const changes: HeightChange[] = []
-            for (const entry of entries) {
-                const element = entry.target as HTMLElement
-                if (!element.isConnected) continue
-                const index = parseInt(element.dataset.originalIndex || '-1', 10)
-                if (index < 0) continue
-                // Pitch (not border-box height) — the cache stores pitches;
-                // see measureItemPitch.
-                const pitch = measureItemPitch(element)
-                if (!Number.isFinite(pitch) || pitch <= 0) continue
-                if (!isSignificantHeightChange(index, pitch, cache, 0.1)) continue
-                changes.push({ index, oldHeight: cache[index], newHeight: pitch })
-            }
+            const changes = collectPitchChanges(
+                entries.map((entry) => entry.target as HTMLElement),
+                heightManager.getHeightCache()
+            )
             if (changes.length === 0) return
             log('item-resize-sync', { changes: changes.length })
 
@@ -688,22 +678,24 @@
     // Setup and cleanup
     onMount(() => {
         if (BROWSER) {
-            // Initial setup of heights and scroll position
             log('onMount-enter', { items: items.length })
-            syncContainerHeight()
 
-            // Watch for container size changes. No readiness gate beyond
-            // isReady (inside syncContainerHeight): this handler used to
-            // early-return on heightManager.initialized, a flag nothing ever
-            // set — container resizes were silently dropped for the lifetime
-            // of every instance (#416).
+            // Watch for container size changes (#416). Initial sizing comes
+            // from the element-binding $effect plus the observer's mandatory
+            // initial delivery; syncContainerHeight gates on isReady itself.
             resizeObserver = new ResizeObserver(() => {
                 log('container-resize')
                 syncContainerHeight()
             })
 
+            // If the container is somehow not bound by mount, resizes are
+            // never observed — same silent-drop shape as the initialized
+            // gate this fix removed. In practice bind:this runs before
+            // onMount; log loudly if that assumption ever breaks.
             if (heightManager.isReady) {
                 resizeObserver.observe(heightManager.container)
+            } else {
+                log('container-resize-unobserved', 'container not bound at mount')
             }
 
             // Cleanup on component destruction

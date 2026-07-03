@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
     calculateScrollPosition,
     calculateTransformY,
     calculateVisibleRange,
     clampValue,
+    collectPitchChanges,
     getScrollOffsetForIndex,
     getValidHeight
 } from './virtualList.js'
@@ -435,5 +436,74 @@ describe('getScrollOffsetForIndex', () => {
         // Expected offset: 30 + 40 + 50 + 60 + 70 = 250
         const offset = getScrollOffsetForIndex(heightCache, calculatedItemHeight, idx)
         expect(offset).toBe(250)
+    })
+})
+
+describe('collectPitchChanges', () => {
+    /** Build a connected item wrapper with a mocked measured height. */
+    const makeItem = (index: number | null, height: number): HTMLElement => {
+        const el = document.createElement('div')
+        if (index !== null) el.dataset.originalIndex = String(index)
+        el.getBoundingClientRect = () =>
+            ({ top: 0, bottom: height, height, left: 0, right: 0, width: 0, x: 0, y: 0 }) as DOMRect
+        document.body.appendChild(el)
+        return el
+    }
+
+    afterEach(() => {
+        document.body.innerHTML = ''
+    })
+
+    it('reports a fresh measurement with oldHeight undefined', () => {
+        const el = makeItem(5, 120)
+        const changes = collectPitchChanges([el], {})
+        expect(changes).toEqual([{ index: 5, oldHeight: undefined, newHeight: 120 }])
+    })
+
+    it('reports a changed measurement with the cached oldHeight', () => {
+        const el = makeItem(5, 120)
+        const changes = collectPitchChanges([el], { 5: 100 })
+        expect(changes).toEqual([{ index: 5, oldHeight: 100, newHeight: 120 }])
+    })
+
+    it('skips insignificant changes within the tolerance', () => {
+        const el = makeItem(5, 100.05)
+        expect(collectPitchChanges([el], { 5: 100 })).toEqual([])
+    })
+
+    it('honors a custom tolerance', () => {
+        const el = makeItem(5, 104)
+        expect(collectPitchChanges([el], { 5: 100 }, 5)).toEqual([])
+        expect(collectPitchChanges([el], { 5: 100 }, 3)).toEqual([
+            { index: 5, oldHeight: 100, newHeight: 104 }
+        ])
+    })
+
+    it('skips elements without a data-original-index', () => {
+        const el = makeItem(null, 120)
+        expect(collectPitchChanges([el], {})).toEqual([])
+    })
+
+    it('skips disconnected elements', () => {
+        const el = makeItem(5, 120)
+        el.remove()
+        expect(collectPitchChanges([el], {})).toEqual([])
+    })
+
+    it('skips zero and non-finite measurements', () => {
+        const zero = makeItem(1, 0)
+        const nan = makeItem(2, Number.NaN)
+        expect(collectPitchChanges([zero, nan], {})).toEqual([])
+    })
+
+    it('collects a mixed batch in element order', () => {
+        const fresh = makeItem(1, 40)
+        const unchanged = makeItem(2, 40)
+        const changed = makeItem(3, 80)
+        const changes = collectPitchChanges([fresh, unchanged, changed], { 2: 40, 3: 40 })
+        expect(changes).toEqual([
+            { index: 1, oldHeight: undefined, newHeight: 40 },
+            { index: 3, oldHeight: 40, newHeight: 80 }
+        ])
     })
 })

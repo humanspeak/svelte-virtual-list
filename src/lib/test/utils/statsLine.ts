@@ -1,6 +1,6 @@
 /**
  * Playwright helpers for fixtures that report live pass/fail stats
- * (see src/routes/tests/issues/issue-412 and issue-413).
+ * (the src/routes/tests/issues fixtures).
  *
  * Fixtures render each stat's value inside `[data-testid="stat-<name>"]`,
  * either as a plain value or as a `key=value key=value …` line. Specs assert
