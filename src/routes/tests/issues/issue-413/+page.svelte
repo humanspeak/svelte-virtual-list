@@ -48,6 +48,9 @@
     const getViewport = (): HTMLElement | null =>
         document.querySelector('[data-testid="issue-413-list-viewport"]')
 
+    const renderedItems = (viewport: HTMLElement): HTMLElement[] =>
+        Array.from(viewport.querySelectorAll('[data-original-index]')) as HTMLElement[]
+
     const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()))
     const settle = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
@@ -55,9 +58,7 @@
     const verifyHeights = () => {
         const viewport = getViewport()
         if (!viewport) return
-        const wrappers = Array.from(
-            viewport.querySelectorAll('[data-original-index]')
-        ) as HTMLElement[]
+        const wrappers = renderedItems(viewport)
         if (wrappers.length < 2) return
         heightsMatch = wrappers.every((w) => {
             const index = parseInt(w.dataset.originalIndex ?? '-1', 10)
@@ -89,31 +90,30 @@
         // Track EVERY rendered item, not one: batched corrections can net to
         // zero for a single tracked item (this fixture's cycle sums to the
         // mean) while items between the corrected ones visibly rearrange.
-        const snapshotPositions = (): Map<number, number> => {
-            const positions = new Map<number, number>()
-            for (const el of Array.from(
-                viewport.querySelectorAll('[data-original-index]')
-            ) as HTMLElement[]) {
+        // One rect sweep serves both the jump metric (tops) and the blank-
+        // coverage detector (top/bottom intervals).
+        const snapshotRects = (): Map<number, { top: number; bottom: number }> => {
+            const rects = new Map<number, { top: number; bottom: number }>()
+            for (const el of renderedItems(viewport)) {
                 const index = parseInt(el.dataset.originalIndex ?? '-1', 10)
-                if (index >= 0) positions.set(index, el.getBoundingClientRect().top)
+                if (index < 0) continue
+                const rect = el.getBoundingClientRect()
+                rects.set(index, { top: rect.top, bottom: rect.bottom })
             }
-            return positions
+            return rects
         }
 
         // Coverage detector: the viewport must be fully covered by rendered
         // items after every step. Stale transform offsets paint blank
         // regions — a failure the jump metric alone cannot see (a fully
         // blank screen has no items to deviate).
-        const measureBlankPx = (): number => {
+        const measureBlankPx = (rects: Map<number, { top: number; bottom: number }>): number => {
             const viewportRect = viewport.getBoundingClientRect()
             const intervals: Array<[number, number]> = []
-            for (const el of Array.from(
-                viewport.querySelectorAll('[data-original-index]')
-            ) as HTMLElement[]) {
-                const rect = el.getBoundingClientRect()
-                const top = Math.max(rect.top, viewportRect.top)
-                const bottom = Math.min(rect.bottom, viewportRect.bottom)
-                if (bottom > top) intervals.push([top, bottom])
+            for (const { top, bottom } of rects.values()) {
+                const clippedTop = Math.max(top, viewportRect.top)
+                const clippedBottom = Math.min(bottom, viewportRect.bottom)
+                if (clippedBottom > clippedTop) intervals.push([clippedTop, clippedBottom])
             }
             intervals.sort((a, b) => a[0] - b[0])
             let covered = 0
@@ -140,15 +140,15 @@
         for (let step = 0; step < SWEEP_STEPS; step++) {
             if (viewport.scrollTop <= 0) break
 
-            const before = snapshotPositions()
+            const before = snapshotRects()
             const target = Math.max(0, viewport.scrollTop - SWEEP_STEP_PX)
             const applied = viewport.scrollTop - target
             viewport.scrollTop = target
             await nextFrame()
             await nextFrame()
-            const after = snapshotPositions()
+            const after = snapshotRects()
 
-            const blankPx = measureBlankPx()
+            const blankPx = measureBlankPx(after)
             if (blankPx > 2) {
                 result.blankFrames++
                 result.maxBlankPx = Math.max(result.maxBlankPx, blankPx)
@@ -158,10 +158,10 @@
             // distance. The step's jump is the worst deviation across all
             // items that stayed rendered.
             let stepJump = -1
-            for (const [index, beforeTop] of before) {
-                const afterTop = after.get(index)
-                if (afterTop === undefined) continue
-                stepJump = Math.max(stepJump, Math.abs(afterTop - beforeTop - applied))
+            for (const [index, beforeRect] of before) {
+                const afterRect = after.get(index)
+                if (afterRect === undefined) continue
+                stepJump = Math.max(stepJump, Math.abs(afterRect.top - beforeRect.top - applied))
             }
 
             if (stepJump < 0) continue
@@ -178,7 +178,7 @@
         // flush and reads a false zero.
         for (let i = 0; i < 5; i++) {
             await settle(350)
-            const restingBlankPx = measureBlankPx()
+            const restingBlankPx = measureBlankPx(snapshotRects())
             if (restingBlankPx > 2) {
                 result.blankFrames++
                 result.maxBlankPx = Math.max(result.maxBlankPx, restingBlankPx)

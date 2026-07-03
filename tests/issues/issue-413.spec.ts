@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { readStats, stat } from '../../src/lib/test/utils/statsLine.js'
 
 /**
  * Issue #413 — Estimate-miss corrections paint visible jumps while
@@ -21,18 +22,6 @@ import { expect, test, type Page } from '@playwright/test'
 
 const JUMP_TOLERANCE_PX = 3
 const MIN_SWEEP_SAMPLES = 15
-
-const stat = (name: string) => `[data-testid="stat-${name}"]`
-
-/** Parse a stats line of key=value pairs, e.g. "jumps=0 maxJumpPx=0 samples=24". */
-const readStats = async (page: Page, name: string): Promise<Record<string, number>> => {
-    const text = await page.locator(stat(name)).innerText()
-    return Object.fromEntries(
-        [...text.matchAll(/(\w+)=([\d.]+)/g)].map((m) => [m[1], parseFloat(m[2])])
-    )
-}
-
-const readSweep = (page: Page) => readStats(page, 'sweep')
 
 test.describe('Issue 413 - estimate-miss corrections while scrolling backlog', () => {
     test.beforeEach(async ({ page }) => {
@@ -63,7 +52,7 @@ test.describe('Issue 413 - estimate-miss corrections while scrolling backlog', (
     test('estimate corrections should not paint jumps while scrolling backlog', async ({
         page
     }) => {
-        const sweep = await readSweep(page)
+        const sweep = await readStats(page, 'sweep')
 
         // Ensure the sweep actually measured movement rather than vacuously passing.
         expect(sweep.samples).toBeGreaterThan(MIN_SWEEP_SAMPLES)

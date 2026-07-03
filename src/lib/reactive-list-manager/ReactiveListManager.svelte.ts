@@ -3,6 +3,16 @@ import { RecomputeScheduler } from './RecomputeScheduler.js'
 import type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './types.js'
 
 /**
+ * Hysteresis band for the published average height, as a fraction of the
+ * current value. Every single measurement nudges the exact average, and that
+ * nudge multiplies across ALL unmeasured items — offsets, transform, and
+ * totalHeight physically shift by (Δavg × unmeasured) on every batch, which
+ * the scroll-anchoring correction then has to absorb (#413). The published
+ * average is held until the exact one drifts beyond this band, then snaps.
+ */
+const AVERAGE_HYSTERESIS = 0.02
+
+/**
  * ReactiveListManager - A standalone reactive height calculation system
  *
  * Efficiently manages height calculations for virtualized lists by:
@@ -62,18 +72,12 @@ export class ReactiveListManager {
             this._measuredCount > 0
                 ? this._totalMeasuredHeight / this._measuredCount
                 : this._itemHeight
-        // Sticky estimate: every single measurement nudges the exact average,
-        // and that nudge multiplies across ALL unmeasured items — offsets,
-        // transform, and totalHeight physically shift by (Δavg × unmeasured)
-        // on every batch. The scroll-anchoring correction then has to eat
-        // that shift, rubber-banding the user's scroll progress while they
-        // cross unmeasured territory (#413). Hold the published average
-        // until the exact one drifts beyond 2%, then snap once.
+        // Sticky estimate — see AVERAGE_HYSTERESIS for why.
         const current = this._averageHeight
         const average =
             this._measuredCount > 0 &&
             current > 0 &&
-            Math.abs(exactAverage - current) / current < 0.02
+            Math.abs(exactAverage - current) / current < AVERAGE_HYSTERESIS
                 ? current
                 : exactAverage
         this._averageHeight = average
@@ -396,13 +400,6 @@ export class ReactiveListManager {
      */
     get totalHeight(): number {
         return this._totalHeight
-    }
-
-    /**
-     * Test helper: force a recompute immediately (bypasses scheduler).
-     */
-    flushRecompute = (): void => {
-        this.recomputeDerivedHeights()
     }
 
     /**

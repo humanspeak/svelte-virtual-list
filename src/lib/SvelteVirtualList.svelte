@@ -151,6 +151,8 @@
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
     import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
+    import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
+    import type { HeightChange } from '$lib/reactive-list-manager/types.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
     import {
         calculateTransformY,
@@ -302,6 +304,10 @@
      */
     type ViewportAnchor = { kind: 'bottom' } | { kind: 'item'; index: number; oldOffset: number }
 
+    // Computed on demand, not hoisted: callers read it at different times
+    // relative to the cache mutation (pre- vs post-correction totals).
+    const currentMaxScrollTop = () => Math.max(0, heightManager.totalHeight - (height || 0))
+
     const captureViewportAnchor = (): ViewportAnchor | null => {
         // NOTE: deliberately not gated on heightManager.initialized — that
         // flag is never set anywhere (its only writer is a setter passed to
@@ -315,10 +321,8 @@
         // an option — an uncompensated at-bottom batch leaves scroll state
         // inconsistent with the new totals, and the first scroll step away
         // from the bottom then paints the difference as a jump.
-        const maxScrollTop = Math.max(0, heightManager.totalHeight - (height || 0))
-        const currentScrollTop = heightManager.viewport.scrollTop
-        if (Math.abs(currentScrollTop - maxScrollTop) <= 2) {
-            return { kind: 'bottom' as const }
+        if (Math.abs(heightManager.viewport.scrollTop - currentMaxScrollTop()) <= 2) {
+            return { kind: 'bottom' }
         }
         const viewportTop = heightManager.viewport.getBoundingClientRect().top
         for (const element of itemElements) {
@@ -328,7 +332,7 @@
             const index = parseInt(element.dataset.originalIndex || '-1', 10)
             if (index < 0) return null
             return {
-                kind: 'item' as const,
+                kind: 'item',
                 index,
                 oldOffset: getScrollOffsetForIndex(
                     heightManager.getHeightCache(),
@@ -357,7 +361,8 @@
         if (programmaticScrollDepth > 0) return
         // Clamp against the NEW totals (cache math) — the viewport element's
         // scrollHeight reflects the old totals until the flush.
-        const maxScrollTop = Math.max(0, heightManager.totalHeight - (height || 0))
+        const maxScrollTop = currentMaxScrollTop()
+        const scrollTopNow = heightManager.viewport.scrollTop
 
         let target: number
         if (anchor.kind === 'bottom') {
@@ -379,11 +384,9 @@
             )
             const drift = newOffset - anchor.oldOffset
             if (Math.abs(drift) <= 0.5) return
-            target = Math.round(
-                clampValue(heightManager.viewport.scrollTop + drift, 0, maxScrollTop)
-            )
+            target = Math.round(clampValue(scrollTopNow + drift, 0, maxScrollTop))
         }
-        if (Math.abs(target - heightManager.viewport.scrollTop) < 1) return
+        if (Math.abs(target - scrollTopNow) < 1) return
         syncScrollTop(target, true)
         const applied = heightManager.viewport.scrollTop
         if (Math.abs(applied - target) > 1) {
@@ -454,10 +457,18 @@
             lastMeasuredIndex,
             heightManager.averageHeight,
             (result) => {
+                // Anything to correct? Skip the anchor round trip (viewport
+                // rect + item rect reads + two offset walks) when neither the
+                // cache nor the estimate will move.
+                const willCorrect =
+                    result.heightChanges.length > 0 ||
+                    (result.newValidCount !== 1 &&
+                        Math.abs(result.newHeight - heightManager.itemHeight) > 1)
+
                 // Capture the visual anchor BEFORE any cache/estimate mutation
                 // shifts the offsets — the restore below hides the correction
                 // from the user mid-list (#413).
-                const anchor = captureViewportAnchor()
+                const anchor = willCorrect ? captureViewportAnchor() : null
 
                 // Only update the estimated item height from statistically meaningful
                 // samples. With _measuredCount === 0 (browser path), the formula
@@ -473,6 +484,12 @@
                 // Update manager totals/cache before any scroll correction logic relies on them
                 if (result.heightChanges.length > 0) {
                     heightManager.processDirtyHeights(result.heightChanges)
+                }
+                if (willCorrect) {
+                    // Same reason as the ResizeObserver path: the restore's
+                    // math and the at-bottom check below must read the
+                    // corrected totals, not last frame's.
+                    heightManager.flushDerivedHeights()
                 }
 
                 // Keep the end item visually stable when total height changes at the end.
@@ -760,12 +777,7 @@
         // the correction arrived (issue #413).
         itemResizeObserver = new ResizeObserver((entries) => {
             const cache = heightManager.getHeightCache()
-            const changes: {
-                index: number
-                oldHeight: number | undefined
-                newHeight: number
-                delta: number
-            }[] = []
+            const changes: HeightChange[] = []
             for (const entry of entries) {
                 const element = entry.target as HTMLElement
                 if (!element.isConnected) continue
@@ -775,14 +787,8 @@
                 // see measureItemPitch.
                 const pitch = measureItemPitch(element)
                 if (!Number.isFinite(pitch) || pitch <= 0) continue
-                const oldHeight = cache[index]
-                if (oldHeight !== undefined && Math.abs(oldHeight - pitch) < 0.1) continue
-                changes.push({
-                    index,
-                    oldHeight,
-                    newHeight: pitch,
-                    delta: pitch - (oldHeight ?? heightManager.averageHeight)
-                })
+                if (!isSignificantHeightChange(index, pitch, cache, 0.1)) continue
+                changes.push({ index, oldHeight: cache[index], newHeight: pitch })
             }
             if (changes.length === 0) return
             log('item-resize-sync', { changes: changes.length })
