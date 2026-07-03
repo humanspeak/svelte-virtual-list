@@ -150,22 +150,20 @@
         type SvelteVirtualListProps,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
-    import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
-    import type { HeightChange } from '$lib/reactive-list-manager/types.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
     import {
         calculateTransformY,
         calculateVisibleRange,
         clampValue,
-        getScrollOffsetForIndex,
-        measureItemPitch,
-        updateHeightAndScroll as utilsUpdateHeightAndScroll
+        collectPitchChanges,
+        getScrollOffsetForIndex
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import {
         calculateKeyboardScrollTarget,
         calculateScrollTarget,
-        isKeyboardScrollKey
+        isKeyboardScrollKey,
+        resolveAnchorScrollTarget
     } from '$lib/utils/scrollCalculation.js'
     import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { ReactiveListManager } from '$lib/index.js'
@@ -335,10 +333,6 @@
     const currentMaxScrollTop = () => Math.max(0, heightManager.totalHeight - (height || 0))
 
     const captureViewportAnchor = (): ViewportAnchor | null => {
-        // NOTE: deliberately not gated on heightManager.initialized — that
-        // flag is never set anywhere (its only writer is a setter passed to
-        // utilsUpdateHeightAndScroll, which ignores it), so gating on it
-        // would make this dead code like the at-bottom correction above.
         if (!heightManager.isReady) return null
         if (programmaticScrollDepth > 0) return null
         // Exactly at the bottom (a few px — where a scroll-to-bottom lands),
@@ -385,34 +379,30 @@
     const restoreViewportAnchor = (anchor: ViewportAnchor) => {
         if (!heightManager.viewportElement) return
         if (programmaticScrollDepth > 0) return
-        // Clamp against the NEW totals (cache math) — the viewport element's
-        // scrollHeight reflects the old totals until the flush.
-        const maxScrollTop = currentMaxScrollTop()
-        const scrollTopNow = heightManager.viewport.scrollTop
-
-        let target: number
-        if (anchor.kind === 'bottom') {
-            // End-stable: the view was pinned to the bottom; keep it there
-            // under the corrected totals.
-            target = Math.round(maxScrollTop)
-        } else {
-            // Pure cache math, deliberately NOT DOM-measured: by the time the
-            // ResizeObserver fires, freshly mounted items already sit in the
-            // DOM at their real heights — the lurch has already happened in
-            // layout — so any painted position read here is polluted by the
-            // very shift we are hiding. The last stable frame's geometry is
-            // reconstructible from the old cache instead (everything painted
-            // was cache-consistent), which is what anchor.oldOffset captured.
-            const newOffset = getScrollOffsetForIndex(
-                heightManager.getHeightCache(),
-                heightManager.averageHeight,
-                anchor.index
-            )
-            const drift = newOffset - anchor.oldOffset
-            if (Math.abs(drift) <= 0.5) return
-            target = Math.round(clampValue(scrollTopNow + drift, 0, maxScrollTop))
-        }
-        if (Math.abs(target - scrollTopNow) < 1) return
+        // Pure cache math, deliberately NOT DOM-measured: by the time the
+        // ResizeObserver fires, freshly mounted items already sit in the DOM
+        // at their real heights — the lurch has already happened in layout —
+        // so any painted position read here is polluted by the very shift we
+        // are hiding. The last stable frame's geometry is reconstructible
+        // from the old cache instead, which is what anchor.oldOffset
+        // captured. maxScrollTop likewise comes from the NEW totals (cache
+        // math) — the element's scrollHeight is stale until the flush.
+        const target = resolveAnchorScrollTarget(
+            anchor.kind === 'bottom'
+                ? anchor
+                : {
+                      kind: 'item',
+                      oldOffset: anchor.oldOffset,
+                      newOffset: getScrollOffsetForIndex(
+                          heightManager.getHeightCache(),
+                          heightManager.averageHeight,
+                          anchor.index
+                      )
+                  },
+            heightManager.viewport.scrollTop,
+            currentMaxScrollTop()
+        )
+        if (target === null) return
         syncScrollTop(target, true)
         const applied = heightManager.viewport.scrollTop
         if (Math.abs(applied - target) > 1) {
@@ -439,10 +429,12 @@
         if (!BROWSER || !onLoadMore || !hasMore || isLoadingMore) return
 
         const range = visibleItems
+        // Also covers short lists: with items.length < loadMoreThreshold the
+        // right side is negative, so any range.end qualifies and more data
+        // loads until the list can fill the viewport.
         const atLoadingEdge = range.end >= items.length - loadMoreThreshold
-        const insufficientItems = items.length < loadMoreThreshold && heightManager.initialized
 
-        if (atLoadingEdge || insufficientItems) {
+        if (atLoadingEdge) {
             isLoadingMore = true
             Promise.resolve(onLoadMore()).finally(() => {
                 isLoadingMore = false
@@ -500,13 +492,28 @@
 
     // no UI export; rely on console logs when debug=true
 
-    // Update container height continuously to reflect layout changes that
-    // may occur outside ResizeObserver timing (keeps buffers correct across engines)
+    /**
+     * Sync the internal viewport height from the container's laid-out size.
+     * The render window (visible range, buffers, max-scroll math) is derived
+     * from this value, so it must track the container through resizes.
+     */
+    const syncContainerHeight = () => {
+        if (!heightManager.isReady) return
+        const h = heightManager.container.getBoundingClientRect().height
+        if (!Number.isFinite(h) || h <= 0 || h === height) return
+        height = h
+        // The visible-range memo reuses the cached range for small nonzero
+        // scroll deltas without consulting height — drop it so a resize can
+        // never be served a window sized for the old height.
+        lastVisibleRange = null
+    }
+
+    // Re-sync when the container element (re)binds. Not a continuous poll:
+    // getBoundingClientRect is not reactive, so this effect's only reactive
+    // dependencies are the manager's element bindings. Ongoing resizes are
+    // the container ResizeObserver's job.
     $effect(() => {
-        if (BROWSER && heightManager.isReady) {
-            const h = heightManager.container.getBoundingClientRect().height
-            if (Number.isFinite(h) && h > 0) height = h
-        }
+        if (BROWSER) syncContainerHeight()
     })
 
     /**
@@ -640,40 +647,6 @@
         })
     }
 
-    /**
-     * Updates the height and scroll position of the virtual list.
-     *
-     * @param immediate - Whether to skip the delay (used for resize events)
-     */
-    const updateHeightAndScroll = (immediate = false) => {
-        log('updateHeightAndScroll-enter', {
-            immediate,
-            initialized: heightManager.initialized
-        })
-
-        utilsUpdateHeightAndScroll(
-            {
-                initialized: heightManager.initialized,
-                containerElement: heightManager.containerElement,
-                viewportElement: heightManager.viewportElement,
-                calculatedItemHeight: heightManager.averageHeight,
-                height,
-                scrollTop: heightManager.scrollTop
-            },
-            {
-                setHeight: (h) => (height = h),
-                setScrollTop: (st) => (heightManager.scrollTop = st),
-                // Guard: respect invariant in ReactiveListManager; avoid re-setting true
-                setInitialized: (i) => {
-                    if (i && heightManager.initialized) return
-                    heightManager.initialized = i
-                }
-            },
-            immediate
-        )
-        log('updateHeightAndScroll-exit', { immediate })
-    }
-
     // Create itemResizeObserver immediately when in browser
     if (BROWSER) {
         // Watch for individual item size changes.
@@ -686,20 +659,10 @@
         // mounting against a ~300px estimate painted a ~400px lurch before
         // the correction arrived (issue #413).
         itemResizeObserver = new ResizeObserver((entries) => {
-            const cache = heightManager.getHeightCache()
-            const changes: HeightChange[] = []
-            for (const entry of entries) {
-                const element = entry.target as HTMLElement
-                if (!element.isConnected) continue
-                const index = parseInt(element.dataset.originalIndex || '-1', 10)
-                if (index < 0) continue
-                // Pitch (not border-box height) — the cache stores pitches;
-                // see measureItemPitch.
-                const pitch = measureItemPitch(element)
-                if (!Number.isFinite(pitch) || pitch <= 0) continue
-                if (!isSignificantHeightChange(index, pitch, cache, 0.1)) continue
-                changes.push({ index, oldHeight: cache[index], newHeight: pitch })
-            }
+            const changes = collectPitchChanges(
+                entries.map((entry) => entry.target as HTMLElement),
+                heightManager.getHeightCache()
+            )
             if (changes.length === 0) return
             log('item-resize-sync', { changes: changes.length })
 
@@ -715,22 +678,24 @@
     // Setup and cleanup
     onMount(() => {
         if (BROWSER) {
-            // Initial setup of heights and scroll position
             log('onMount-enter', { items: items.length })
-            updateHeightAndScroll()
 
-            // Watch for container size changes
+            // Watch for container size changes (#416). Initial sizing comes
+            // from the element-binding $effect plus the observer's mandatory
+            // initial delivery; syncContainerHeight gates on isReady itself.
             resizeObserver = new ResizeObserver(() => {
-                if (!heightManager.initialized) {
-                    log('container-resize-ignored', 'not-initialized')
-                    return
-                }
                 log('container-resize')
-                updateHeightAndScroll(true)
+                syncContainerHeight()
             })
 
+            // If the container is somehow not bound by mount, resizes are
+            // never observed — same silent-drop shape as the initialized
+            // gate this fix removed. In practice bind:this runs before
+            // onMount; log loudly if that assumption ever breaks.
             if (heightManager.isReady) {
                 resizeObserver.observe(heightManager.container)
+            } else {
+                log('container-resize-unobserved', 'container not bound at mount')
             }
 
             // Cleanup on component destruction

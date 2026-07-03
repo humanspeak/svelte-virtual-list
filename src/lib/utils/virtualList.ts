@@ -1,5 +1,6 @@
+import type { HeightChange } from '$lib/reactive-list-manager/types.js'
 import type { SvelteVirtualListPreviousVisibleRange } from '$lib/types.js'
-import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
+import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
 
 /**
  * Validates a height value and returns it if valid, otherwise returns the fallback.
@@ -190,34 +191,6 @@ export const calculateTransformY = (
 }
 
 /**
- * Updates the virtual list's height and scroll position when necessary.
- *
- * This function handles dynamic updates to the virtual list's dimensions and scroll
- * position, particularly important when the container size changes. When immediate
- * is true, it forces an immediate update of the height and scroll position.
- *
- * @param {VirtualListState} state - Current state of the virtual list
- * @param {VirtualListSetters} setters - State setters for updating list properties
- * @param {boolean} immediate - Whether to perform the update immediately
- */
-export const updateHeightAndScroll = (
-    state: VirtualListState,
-    setters: VirtualListSetters,
-    immediate = false
-) => {
-    const { initialized, containerElement, viewportElement } = state
-
-    const { setHeight } = setters
-
-    if (immediate) {
-        if (containerElement && viewportElement && initialized) {
-            const newHeight = containerElement.getBoundingClientRect().height
-            setHeight(newHeight)
-        }
-    }
-}
-
-/**
  * Measures an item's layout pitch: the vertical space it actually occupies in
  * the items container, including any margins that collapse through the
  * component's unstyled item wrappers.
@@ -254,6 +227,40 @@ export const measureItemPitch = (element: HTMLElement): number => {
         : parent.getBoundingClientRect().bottom - rect.top
 
     return pitch > 0 ? pitch : rect.height
+}
+
+/**
+ * Collects the height-cache changes for a batch of rendered item wrappers —
+ * the measurement policy of the synchronous ResizeObserver path (#413).
+ *
+ * For each connected element carrying a `data-original-index`, measures its
+ * layout pitch (see {@link measureItemPitch}) and reports a change when the
+ * pitch differs from the cached value beyond the tolerance. Fresh
+ * measurements report `oldHeight: undefined` — the contract
+ * `ReactiveListManager.processDirtyHeights` relies on to grow its measured
+ * totals (see #413: substituting a fallback here discarded whole batches).
+ *
+ * @param elements - Item wrapper elements to measure (e.g. ResizeObserver entry targets)
+ * @param heightCache - The manager's current pitch cache
+ * @param tolerance - Minimum px difference that counts as a change
+ * @returns Changes ready for `processDirtyHeights`; empty when nothing moved
+ */
+export const collectPitchChanges = (
+    elements: Iterable<HTMLElement>,
+    heightCache: Readonly<Record<number, number>>,
+    tolerance = 0.1
+): HeightChange[] => {
+    const changes: HeightChange[] = []
+    for (const element of elements) {
+        if (!element.isConnected) continue
+        const index = parseInt(element.dataset.originalIndex || '-1', 10)
+        if (index < 0) continue
+        const pitch = measureItemPitch(element)
+        if (!Number.isFinite(pitch) || pitch <= 0) continue
+        if (!isSignificantHeightChange(index, pitch, heightCache, tolerance)) continue
+        changes.push({ index, oldHeight: heightCache[index], newHeight: pitch })
+    }
+    return changes
 }
 
 /**

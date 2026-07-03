@@ -140,7 +140,12 @@ export class ReactiveListManager {
     }
 
     /**
-     * Get/Set initialized flag
+     * Get/Set initialized flag.
+     *
+     * @deprecated Nothing in SvelteVirtualList reads or writes this anymore
+     * (#416 removed the last gates — they were dead code because no code
+     * path ever set it). Kept only for standalone manager consumers; do not
+     * gate new behavior on it. Will be removed in a future major.
      */
     get initialized(): boolean {
         return this._initialized
