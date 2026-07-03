@@ -158,8 +158,7 @@
         calculateVisibleRange,
         clampValue,
         getScrollOffsetForIndex,
-        measureItemPitch,
-        updateHeightAndScroll as utilsUpdateHeightAndScroll
+        measureItemPitch
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import {
@@ -335,10 +334,6 @@
     const currentMaxScrollTop = () => Math.max(0, heightManager.totalHeight - (height || 0))
 
     const captureViewportAnchor = (): ViewportAnchor | null => {
-        // NOTE: deliberately not gated on heightManager.initialized — that
-        // flag is never set anywhere (its only writer is a setter passed to
-        // utilsUpdateHeightAndScroll, which ignores it), so gating on it
-        // would make this dead code like the at-bottom correction above.
         if (!heightManager.isReady) return null
         if (programmaticScrollDepth > 0) return null
         // Exactly at the bottom (a few px — where a scroll-to-bottom lands),
@@ -439,10 +434,12 @@
         if (!BROWSER || !onLoadMore || !hasMore || isLoadingMore) return
 
         const range = visibleItems
+        // Also covers short lists: with items.length < loadMoreThreshold the
+        // right side is negative, so any range.end qualifies and more data
+        // loads until the list can fill the viewport.
         const atLoadingEdge = range.end >= items.length - loadMoreThreshold
-        const insufficientItems = items.length < loadMoreThreshold && heightManager.initialized
 
-        if (atLoadingEdge || insufficientItems) {
+        if (atLoadingEdge) {
             isLoadingMore = true
             Promise.resolve(onLoadMore()).finally(() => {
                 isLoadingMore = false
@@ -500,12 +497,22 @@
 
     // no UI export; rely on console logs when debug=true
 
+    /**
+     * Sync the internal viewport height from the container's laid-out size.
+     * The render window (visible range, buffers, max-scroll math) is derived
+     * from this value, so it must track the container through resizes.
+     */
+    const syncContainerHeight = () => {
+        if (!heightManager.isReady) return
+        const h = heightManager.container.getBoundingClientRect().height
+        if (Number.isFinite(h) && h > 0) height = h
+    }
+
     // Update container height continuously to reflect layout changes that
     // may occur outside ResizeObserver timing (keeps buffers correct across engines)
     $effect(() => {
         if (BROWSER && heightManager.isReady) {
-            const h = heightManager.container.getBoundingClientRect().height
-            if (Number.isFinite(h) && h > 0) height = h
+            syncContainerHeight()
         }
     })
 
@@ -640,40 +647,6 @@
         })
     }
 
-    /**
-     * Updates the height and scroll position of the virtual list.
-     *
-     * @param immediate - Whether to skip the delay (used for resize events)
-     */
-    const updateHeightAndScroll = (immediate = false) => {
-        log('updateHeightAndScroll-enter', {
-            immediate,
-            initialized: heightManager.initialized
-        })
-
-        utilsUpdateHeightAndScroll(
-            {
-                initialized: heightManager.initialized,
-                containerElement: heightManager.containerElement,
-                viewportElement: heightManager.viewportElement,
-                calculatedItemHeight: heightManager.averageHeight,
-                height,
-                scrollTop: heightManager.scrollTop
-            },
-            {
-                setHeight: (h) => (height = h),
-                setScrollTop: (st) => (heightManager.scrollTop = st),
-                // Guard: respect invariant in ReactiveListManager; avoid re-setting true
-                setInitialized: (i) => {
-                    if (i && heightManager.initialized) return
-                    heightManager.initialized = i
-                }
-            },
-            immediate
-        )
-        log('updateHeightAndScroll-exit', { immediate })
-    }
-
     // Create itemResizeObserver immediately when in browser
     if (BROWSER) {
         // Watch for individual item size changes.
@@ -717,16 +690,16 @@
         if (BROWSER) {
             // Initial setup of heights and scroll position
             log('onMount-enter', { items: items.length })
-            updateHeightAndScroll()
+            syncContainerHeight()
 
-            // Watch for container size changes
+            // Watch for container size changes. No readiness gate beyond
+            // isReady (inside syncContainerHeight): this handler used to
+            // early-return on heightManager.initialized, a flag nothing ever
+            // set — container resizes were silently dropped for the lifetime
+            // of every instance (#416).
             resizeObserver = new ResizeObserver(() => {
-                if (!heightManager.initialized) {
-                    log('container-resize-ignored', 'not-initialized')
-                    return
-                }
                 log('container-resize')
-                updateHeightAndScroll(true)
+                syncContainerHeight()
             })
 
             if (heightManager.isReady) {

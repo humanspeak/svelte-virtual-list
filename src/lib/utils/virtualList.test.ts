@@ -1,13 +1,11 @@
-import { describe, expect, it, vi } from 'vitest'
-import type { VirtualListSetters, VirtualListState } from './types.js'
+import { describe, expect, it } from 'vitest'
 import {
     calculateScrollPosition,
     calculateTransformY,
     calculateVisibleRange,
     clampValue,
     getScrollOffsetForIndex,
-    getValidHeight,
-    updateHeightAndScroll
+    getValidHeight
 } from './virtualList.js'
 
 describe('getValidHeight', () => {
@@ -409,29 +407,6 @@ describe('calculateTransformY', () => {
 
     it('should handle edge case with zero visible items', () => {
         expect(calculateTransformY(100, 0, 30)).toBe(0)
-    })
-})
-
-describe('updateHeightAndScroll', () => {
-    it('should not update when immediate is false', () => {
-        const state: VirtualListState = {
-            initialized: true,
-            containerElement: null,
-            viewportElement: null,
-            calculatedItemHeight: 30,
-            scrollTop: 100,
-            height: 0
-        }
-        const setters: VirtualListSetters = {
-            setHeight: vi.fn(),
-            setScrollTop: vi.fn(),
-            setInitialized: vi.fn()
-        }
-
-        updateHeightAndScroll(state, setters, false)
-        expect(setters.setHeight).not.toHaveBeenCalled()
-        expect(setters.setScrollTop).not.toHaveBeenCalled()
-        expect(setters.setInitialized).not.toHaveBeenCalled()
     })
 })
 

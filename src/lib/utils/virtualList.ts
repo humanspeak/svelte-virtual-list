@@ -1,5 +1,4 @@
 import type { SvelteVirtualListPreviousVisibleRange } from '$lib/types.js'
-import type { VirtualListSetters, VirtualListState } from '$lib/utils/types.js'
 
 /**
  * Validates a height value and returns it if valid, otherwise returns the fallback.
@@ -187,34 +186,6 @@ export const calculateTransformY = (
         return Math.max(0, Math.round(offset))
     }
     return Math.round(visibleStart * itemHeight)
-}
-
-/**
- * Updates the virtual list's height and scroll position when necessary.
- *
- * This function handles dynamic updates to the virtual list's dimensions and scroll
- * position, particularly important when the container size changes. When immediate
- * is true, it forces an immediate update of the height and scroll position.
- *
- * @param {VirtualListState} state - Current state of the virtual list
- * @param {VirtualListSetters} setters - State setters for updating list properties
- * @param {boolean} immediate - Whether to perform the update immediately
- */
-export const updateHeightAndScroll = (
-    state: VirtualListState,
-    setters: VirtualListSetters,
-    immediate = false
-) => {
-    const { initialized, containerElement, viewportElement } = state
-
-    const { setHeight } = setters
-
-    if (immediate) {
-        if (containerElement && viewportElement && initialized) {
-            const newHeight = containerElement.getBoundingClientRect().height
-            setHeight(newHeight)
-        }
-    }
 }
 
 /**
