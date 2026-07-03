@@ -1,4 +1,5 @@
 import type { Breadcrumb, NavSection } from '@humanspeak/docs-kit'
+import Accessibility from '@lucide/svelte/icons/accessibility'
 import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down'
 import Book from '@lucide/svelte/icons/book'
 import Bug from '@lucide/svelte/icons/bug'
@@ -95,6 +96,7 @@ export const docsSections: NavSection[] = [
             { title: 'Variable Heights', href: '/docs/variable-heights', icon: ArrowUpDown },
             { title: 'Infinite Scroll', href: '/docs/infinite-scroll', icon: InfinityIcon },
             { title: 'Scroll Methods', href: '/docs/scroll-methods', icon: Crosshair },
+            { title: 'Keyboard & Accessibility', href: '/docs/accessibility', icon: Accessibility },
             { title: 'SSR Support', href: '/docs/ssr', icon: Server },
             { title: 'Debug Mode', href: '/docs/debug', icon: Bug },
             { title: 'Convex', href: '/docs/convex', icon: Database }
