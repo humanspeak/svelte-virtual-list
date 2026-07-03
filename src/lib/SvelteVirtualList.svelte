@@ -192,6 +192,7 @@
         renderItem, // Function to render each item
         containerClass, // Custom class for the container element
         viewportClass, // Custom class for the viewport element
+        viewportLabel = 'Scrollable list', // Accessible label for the focusable viewport region
         contentClass, // Custom class for the content wrapper
         itemsClass, // Custom class for the items wrapper
         debugFunction, // Custom debug logging function
@@ -277,6 +278,58 @@
         const scrollValue = round ? Math.round(value) : value
         heightManager.viewport.scrollTop = scrollValue
         heightManager.scrollTop = scrollValue
+    }
+
+    // Per-keypress scroll distance for arrow keys, matching typical browser
+    // native line scrolling.
+    const LINE_SCROLL_PX = 40
+
+    /**
+     * Keyboard scrolling for the focusable viewport (issue #414). Native
+     * keyboard scrolling of an overflow div is engine-dependent (Safari
+     * does not even focus it), so the component owns the standard scroll
+     * keys itself: arrows move a line, PageUp/PageDown and Space/Shift+Space
+     * move a page (viewport height minus one line of overlap), Home/End jump
+     * to the edges. Only fires when the viewport itself is focused — keys
+     * pressed inside interactive item content (buttons, inputs) keep their
+     * native behavior.
+     */
+    const handleViewportKeydown = (event: KeyboardEvent) => {
+        if (event.target !== event.currentTarget) return
+        if (event.ctrlKey || event.metaKey || event.altKey) return
+        if (!heightManager.viewportElement) return
+
+        const viewport = heightManager.viewport
+        const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+        const page = Math.max(viewport.clientHeight - LINE_SCROLL_PX, LINE_SCROLL_PX)
+
+        let target: number | null = null
+        switch (event.key) {
+            case 'ArrowDown':
+                target = viewport.scrollTop + LINE_SCROLL_PX
+                break
+            case 'ArrowUp':
+                target = viewport.scrollTop - LINE_SCROLL_PX
+                break
+            case 'PageDown':
+                target = viewport.scrollTop + page
+                break
+            case 'PageUp':
+                target = viewport.scrollTop - page
+                break
+            case ' ':
+                target = viewport.scrollTop + (event.shiftKey ? -page : page)
+                break
+            case 'Home':
+                target = 0
+                break
+            case 'End':
+                target = maxScrollTop
+                break
+        }
+        if (target === null) return
+        event.preventDefault()
+        syncScrollTop(clampValue(target, 0, maxScrollTop), true)
     }
 
     // Counts in-flight programmatic scroll() waits. Anchor preservation must
@@ -1121,13 +1174,18 @@
     class={containerClass ?? 'virtual-list-container'}
     bind:this={heightManager.containerElement}
 >
-    <!-- Viewport handles scrolling -->
+    <!-- Viewport handles scrolling. Focusable labeled region so keyboard
+         users can operate the scroll area directly (issue #414). -->
     <div
         id="virtual-list-viewport"
         {...testId ? { 'data-testid': `${testId}-viewport` } : {}}
         class={viewportClass ?? 'virtual-list-viewport'}
         bind:this={heightManager.viewportElement}
+        role="region"
+        aria-label={viewportLabel}
+        tabindex="0"
         onscroll={handleScroll}
+        onkeydown={handleViewportKeydown}
         style:overflow-anchor="none"
     >
         <!-- Content provides full scrollable height -->

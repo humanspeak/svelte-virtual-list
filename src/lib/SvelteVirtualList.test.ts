@@ -486,5 +486,40 @@ describe('SvelteVirtualList Component', () => {
             expect(screen.getByTestId('my-list-content')).toBeInTheDocument()
             expect(screen.getByTestId('my-list-items')).toBeInTheDocument()
         })
+
+        test('exposes the viewport as a focusable labeled region', async () => {
+            const items = createMockItems(5)
+
+            render(TestWrapper, {
+                props: {
+                    testId: 'a11y-list',
+                    items
+                }
+            })
+
+            await vi.runAllTimersAsync()
+
+            const viewport = screen.getByTestId('a11y-list-viewport')
+            expect(viewport.getAttribute('role')).toBe('region')
+            expect(viewport.getAttribute('aria-label')).toBe('Scrollable list')
+            expect(viewport.getAttribute('tabindex')).toBe('0')
+        })
+
+        test('applies a custom viewportLabel', async () => {
+            const items = createMockItems(5)
+
+            render(TestWrapper, {
+                props: {
+                    testId: 'labeled-list',
+                    items,
+                    viewportLabel: 'Search results'
+                }
+            })
+
+            await vi.runAllTimersAsync()
+
+            const viewport = screen.getByTestId('labeled-list-viewport')
+            expect(viewport.getAttribute('aria-label')).toBe('Search results')
+        })
     })
 })

@@ -30,6 +30,7 @@ A high-performance virtual list component for Svelte 5 applications that efficie
 - 🚀 Progressive initialization for large datasets
 - 🕹️ Programmatic scrolling with `scroll`
 - ♾️ Infinite scroll support with `onLoadMore`
+- ♿ Keyboard-accessible viewport (focusable labeled region, standard scroll keys)
 
 ## Requirements
 
@@ -70,20 +71,21 @@ yarn add @humanspeak/svelte-virtual-list
 
 ## Props
 
-| Prop                         | Type                          | Default  | Description                                                                   |
-| ---------------------------- | ----------------------------- | -------- | ----------------------------------------------------------------------------- |
-| `items`                      | `T[]`                         | Required | Array of items to render                                                      |
-| `defaultEstimatedItemHeight` | `number`                      | `40`     | Initial height estimate used until items are measured                         |
-| `bufferSize`                 | `number`                      | `20`     | Number of items rendered outside the viewport                                 |
-| `debug`                      | `boolean`                     | `false`  | Enable debug logging and visualizations                                       |
-| `containerClass`             | `string`                      | `''`     | Class for outer container                                                     |
-| `viewportClass`              | `string`                      | `''`     | Class for scrollable viewport                                                 |
-| `contentClass`               | `string`                      | `''`     | Class for content wrapper                                                     |
-| `itemsClass`                 | `string`                      | `''`     | Class for items container                                                     |
-| `testId`                     | `string`                      | `''`     | Base test id used in internal test hooks (useful for E2E/tests and debugging) |
-| `onLoadMore`                 | `() => void \| Promise<void>` | -        | Callback when more data is needed for infinite scroll                         |
-| `loadMoreThreshold`          | `number`                      | `20`     | Items from end to trigger `onLoadMore`                                        |
-| `hasMore`                    | `boolean`                     | `true`   | Set to `false` when all data has been loaded                                  |
+| Prop                         | Type                          | Default             | Description                                                                   |
+| ---------------------------- | ----------------------------- | ------------------- | ----------------------------------------------------------------------------- |
+| `items`                      | `T[]`                         | Required            | Array of items to render                                                      |
+| `defaultEstimatedItemHeight` | `number`                      | `40`                | Initial height estimate used until items are measured                         |
+| `bufferSize`                 | `number`                      | `20`                | Number of items rendered outside the viewport                                 |
+| `debug`                      | `boolean`                     | `false`             | Enable debug logging and visualizations                                       |
+| `containerClass`             | `string`                      | `''`                | Class for outer container                                                     |
+| `viewportClass`              | `string`                      | `''`                | Class for scrollable viewport                                                 |
+| `viewportLabel`              | `string`                      | `'Scrollable list'` | Accessible label for the focusable viewport region                            |
+| `contentClass`               | `string`                      | `''`                | Class for content wrapper                                                     |
+| `itemsClass`                 | `string`                      | `''`                | Class for items container                                                     |
+| `testId`                     | `string`                      | `''`                | Base test id used in internal test hooks (useful for E2E/tests and debugging) |
+| `onLoadMore`                 | `() => void \| Promise<void>` | -                   | Callback when more data is needed for infinite scroll                         |
+| `loadMoreThreshold`          | `number`                      | `20`                | Items from end to trigger `onLoadMore`                                        |
+| `hasMore`                    | `boolean`                     | `true`              | Set to `false` when all data has been loaded                                  |
 
 ## Programmatic Scrolling
 
@@ -239,18 +241,18 @@ This project uses [Trunk](https://trunk.io) for formatting and linting. Trunk ma
 
 Part of the [Humanspeak](https://humanspeak.com) family of runes-native Svelte 5 packages:
 
-| Package | Description |
-| --- | --- |
-| [@humanspeak/svelte-markdown](https://markdown.svelte.page) | Runtime markdown renderer for Svelte |
-| **[@humanspeak/svelte-virtual-list](https://virtuallist.svelte.page)** — _this package_ | Virtual scrolling for Svelte |
-| [@humanspeak/svelte-motion](https://motion.svelte.page) | Framer Motion for Svelte 5 |
-| [@humanspeak/svelte-headless-table](https://table.svelte.page) | Headless data tables for Svelte |
-| [@humanspeak/svelte-diff-match-patch](https://diff.svelte.page) | Diff comparison for Svelte |
-| [@humanspeak/svelte-purify](https://purify.svelte.page) | HTML sanitisation for Svelte |
-| [@humanspeak/svelte-virtual-chat](https://virtualchat.svelte.page) | Virtual chat viewport for Svelte 5 |
-| [@humanspeak/memory-cache](https://memory.svelte.page) | In-memory cache for TypeScript |
-| [@humanspeak/svelte-json-view-lite](https://jsonview.svelte.page) | JSON tree viewer for Svelte 5 |
-| [@humanspeak/svelte-scoped-props](https://scoped.svelte.page) | Scoped class props for Svelte |
+| Package                                                                                 | Description                          |
+| --------------------------------------------------------------------------------------- | ------------------------------------ |
+| [@humanspeak/svelte-markdown](https://markdown.svelte.page)                             | Runtime markdown renderer for Svelte |
+| **[@humanspeak/svelte-virtual-list](https://virtuallist.svelte.page)** — _this package_ | Virtual scrolling for Svelte         |
+| [@humanspeak/svelte-motion](https://motion.svelte.page)                                 | Framer Motion for Svelte 5           |
+| [@humanspeak/svelte-headless-table](https://table.svelte.page)                          | Headless data tables for Svelte      |
+| [@humanspeak/svelte-diff-match-patch](https://diff.svelte.page)                         | Diff comparison for Svelte           |
+| [@humanspeak/svelte-purify](https://purify.svelte.page)                                 | HTML sanitisation for Svelte         |
+| [@humanspeak/svelte-virtual-chat](https://virtualchat.svelte.page)                      | Virtual chat viewport for Svelte 5   |
+| [@humanspeak/memory-cache](https://memory.svelte.page)                                  | In-memory cache for TypeScript       |
+| [@humanspeak/svelte-json-view-lite](https://jsonview.svelte.page)                       | JSON tree viewer for Svelte 5        |
+| [@humanspeak/svelte-scoped-props](https://scoped.svelte.page)                           | Scoped class props for Svelte        |
 
 ## License
 

@@ -113,6 +113,14 @@ CSS class for the scrollable viewport element.
 viewportClass?: string
 ```
 
+### viewportLabel
+
+Accessible label announced for the scrollable viewport. The viewport renders as a focusable `role="region"`, so keyboard users can Tab to it and operate it with the standard scroll keys (arrows, PageUp/PageDown, Space, Shift+Space, Home, End).
+
+```typescript
+viewportLabel?: string // default: 'Scrollable list'
+```
+
 ### contentClass
 
 CSS class for the content wrapper element.
