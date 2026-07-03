@@ -55,6 +55,12 @@ export type SvelteVirtualListProps<TItem = any> = {
      */
     viewportClass?: string
     /**
+     * Accessible label announced for the scrollable viewport (rendered as a
+     * focusable `role="region"` so keyboard users can operate it directly).
+     * @default 'Scrollable list'
+     */
+    viewportLabel?: string
+    /**
      * Callback when more data is needed. Supports sync and async functions.
      * Called when the user scrolls near the end of the list (based on loadMoreThreshold).
      */

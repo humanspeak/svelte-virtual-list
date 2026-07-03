@@ -82,6 +82,81 @@ export const alignVisibleToNearestEdge = (
 /**
  * Parameters for calculating scroll target position
  */
+/**
+ * Per-keypress scroll distance for arrow keys, matching the fixed ~40px line
+ * step browsers use for native keyboard scrolling. Deliberately NOT derived
+ * from item heights: native scrolling does not know about rows either, and a
+ * fixed step keeps arrow behavior predictable across lists.
+ */
+export const KEYBOARD_LINE_SCROLL_PX = 40
+
+const KEYBOARD_SCROLL_KEYS = new Set([
+    'ArrowDown',
+    'ArrowUp',
+    'PageDown',
+    'PageUp',
+    ' ',
+    'Home',
+    'End'
+])
+
+/**
+ * Whether a KeyboardEvent.key is one of the standard scroll keys the
+ * viewport handles. Callers should gate on this BEFORE reading viewport
+ * layout (scrollTop/clientHeight/scrollHeight) so unhandled keys — the
+ * common case while typing — never force a reflow.
+ */
+export const isKeyboardScrollKey = (key: string): boolean => KEYBOARD_SCROLL_KEYS.has(key)
+
+export interface KeyboardScrollParams {
+    /** KeyboardEvent.key */
+    key: string
+    /** KeyboardEvent.shiftKey (Shift+Space pages up) */
+    shiftKey: boolean
+    scrollTop: number
+    clientHeight: number
+    scrollHeight: number
+}
+
+/**
+ * Pure key→scrollTop mapping for viewport keyboard scrolling (issue #414):
+ * arrows move one line ({@link KEYBOARD_LINE_SCROLL_PX}), PageUp/PageDown and
+ * Space/Shift+Space move one page (viewport height minus one line of
+ * overlap), Home/End jump to the edges. Returns the clamped target, or null
+ * for keys the viewport does not handle.
+ */
+export const calculateKeyboardScrollTarget = (params: KeyboardScrollParams): number | null => {
+    const { key, shiftKey, scrollTop, clientHeight, scrollHeight } = params
+    const maxScrollTop = Math.max(0, scrollHeight - clientHeight)
+    const page = Math.max(clientHeight - KEYBOARD_LINE_SCROLL_PX, KEYBOARD_LINE_SCROLL_PX)
+
+    let target: number | null = null
+    switch (key) {
+        case 'ArrowDown':
+            target = scrollTop + KEYBOARD_LINE_SCROLL_PX
+            break
+        case 'ArrowUp':
+            target = scrollTop - KEYBOARD_LINE_SCROLL_PX
+            break
+        case 'PageDown':
+            target = scrollTop + page
+            break
+        case 'PageUp':
+            target = scrollTop - page
+            break
+        case ' ':
+            target = scrollTop + (shiftKey ? -page : page)
+            break
+        case 'Home':
+            target = 0
+            break
+        case 'End':
+            target = maxScrollTop
+            break
+    }
+    return target === null ? null : clampValue(target, 0, maxScrollTop)
+}
+
 export interface ScrollTargetParams {
     align: SvelteVirtualListScrollAlign
     targetIndex: number

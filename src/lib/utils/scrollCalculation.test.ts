@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { ScrollTargetParams } from './scrollCalculation.js'
 import {
+    KEYBOARD_LINE_SCROLL_PX,
     alignToEdge,
     alignVisibleToNearestEdge,
-    calculateScrollTarget
+    calculateKeyboardScrollTarget,
+    calculateScrollTarget,
+    isKeyboardScrollKey
 } from './scrollCalculation.js'
 
 describe('alignToEdge', () => {
@@ -478,5 +481,97 @@ describe('calculateScrollTarget', () => {
             expect(typeof result).toBe('number')
             expect(result).toBeGreaterThanOrEqual(0)
         })
+    })
+})
+
+describe('isKeyboardScrollKey', () => {
+    it('accepts every standard scroll key', () => {
+        for (const key of ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End']) {
+            expect(isKeyboardScrollKey(key)).toBe(true)
+        }
+    })
+
+    it('rejects non-scroll keys', () => {
+        for (const key of ['Tab', 'Escape', 'Enter', 'a', 'ArrowLeft', 'ArrowRight']) {
+            expect(isKeyboardScrollKey(key)).toBe(false)
+        }
+    })
+})
+
+describe('calculateKeyboardScrollTarget', () => {
+    // 400px viewport over 8000px of content, resting mid-list
+    const base = { shiftKey: false, scrollTop: 2000, clientHeight: 400, scrollHeight: 8000 }
+    const maxScrollTop = base.scrollHeight - base.clientHeight
+    const page = base.clientHeight - KEYBOARD_LINE_SCROLL_PX
+
+    it('moves one line on arrows', () => {
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'ArrowDown' })).toBe(
+            base.scrollTop + KEYBOARD_LINE_SCROLL_PX
+        )
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'ArrowUp' })).toBe(
+            base.scrollTop - KEYBOARD_LINE_SCROLL_PX
+        )
+    })
+
+    it('moves one page with a line of overlap on page keys', () => {
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'PageDown' })).toBe(
+            base.scrollTop + page
+        )
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'PageUp' })).toBe(
+            base.scrollTop - page
+        )
+    })
+
+    it('pages down on Space and up on Shift+Space', () => {
+        expect(calculateKeyboardScrollTarget({ ...base, key: ' ' })).toBe(base.scrollTop + page)
+        expect(calculateKeyboardScrollTarget({ ...base, key: ' ', shiftKey: true })).toBe(
+            base.scrollTop - page
+        )
+    })
+
+    it('jumps to the edges on Home and End', () => {
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'Home' })).toBe(0)
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'End' })).toBe(maxScrollTop)
+    })
+
+    it('clamps at both edges', () => {
+        expect(calculateKeyboardScrollTarget({ ...base, scrollTop: 10, key: 'ArrowUp' })).toBe(0)
+        expect(
+            calculateKeyboardScrollTarget({
+                ...base,
+                scrollTop: maxScrollTop - 10,
+                key: 'PageDown'
+            })
+        ).toBe(maxScrollTop)
+    })
+
+    it('keeps a minimum one-line page in tiny viewports', () => {
+        // clientHeight smaller than one line: page distance floors at one line
+        expect(
+            calculateKeyboardScrollTarget({
+                key: 'PageDown',
+                shiftKey: false,
+                scrollTop: 100,
+                clientHeight: 20,
+                scrollHeight: 8000
+            })
+        ).toBe(100 + KEYBOARD_LINE_SCROLL_PX)
+    })
+
+    it('returns null for keys the viewport does not handle', () => {
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'Tab' })).toBeNull()
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'ArrowLeft' })).toBeNull()
+    })
+
+    it('never returns a negative target when content fits the viewport', () => {
+        expect(
+            calculateKeyboardScrollTarget({
+                key: 'End',
+                shiftKey: false,
+                scrollTop: 0,
+                clientHeight: 400,
+                scrollHeight: 200
+            })
+        ).toBe(0)
     })
 })

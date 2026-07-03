@@ -1,0 +1,93 @@
+---
+title: 'Keyboard & Accessibility'
+description: 'Keyboard navigation and assistive-technology support in Svelte Virtual List'
+---
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import AccessibilityExample from '$lib/examples/AccessibilityExample.svelte'
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  if (seo) {
+    seo.title = 'Keyboard & Accessibility | Docs | Svelte Virtual List'
+    seo.description = 'Keyboard navigation and assistive-technology support in Svelte Virtual List'
+    seo.ogTitle = 'Keyboard & Accessibility'
+    seo.ogTagline = 'Focusable, labeled, and fully keyboard-operable.'
+    seo.ogFeatures = ['Focusable Region', 'Standard Scroll Keys', 'Configurable Label', 'Cross-Engine']
+    seo.ogSlug = 'docs-accessibility'
+  }
+</script>
+
+# Keyboard & Accessibility
+
+The scroll viewport is a focusable, labeled region that handles the standard scroll keys itself — so keyboard users get the same experience in every browser, and assistive technology announces the list meaningfully.
+
+<Example isSmall file="AccessibilityExample.svelte" title="Keyboard navigation">
+  <AccessibilityExample />
+</Example>
+
+## Why the component owns this
+
+A bare `overflow-y: scroll` element is not reliably keyboard-operable: Chrome and Firefox make scrollable elements focusable and scroll them with the keyboard, but Safari does not focus them at all — a keyboard user simply cannot reach the list. Screen readers also announce an unlabeled scrollable group with no hint of what it contains.
+
+Svelte Virtual List closes both gaps at the component level:
+
+- The viewport renders with `role="region"`, `tabindex="0"`, and an `aria-label`, making it a Tab stop and a named landmark in every engine.
+- The component handles the scroll keys itself instead of relying on engine-dependent native behavior.
+
+## Key bindings
+
+With the viewport focused:
+
+| Key                          | Action                                            |
+| ---------------------------- | ------------------------------------------------- |
+| `ArrowDown` / `ArrowUp`      | Scroll one line (40px)                            |
+| `PageDown` / `PageUp`        | Scroll one page (viewport height minus one line)  |
+| `Space` / `Shift+Space`      | Scroll one page down / up                         |
+| `Home` / `End`               | Jump to the top / bottom of the list              |
+
+Handled keys call `preventDefault()`, so `Space` scrolls the list instead of paging the document. Keys with `Ctrl`, `Meta`, or `Alt` modifiers pass through untouched — browser shortcuts keep working.
+
+## Labeling the region
+
+Set `viewportLabel` to describe what the list contains. Screen readers announce it when the user reaches the region.
+
+```svelte
+<VirtualList {items} viewportLabel="Search results">
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+The default label is `'Scrollable list'` — fine for a demo, but a real application should say what the list actually holds ("Order history", "Chat messages", "Search results").
+
+## Interactive content inside items
+
+The component only claims a key when the viewport itself is focused. If focus is on a button, link, or input rendered inside an item, keys keep their native behavior — `Space` still activates the button, arrows still move the text cursor. Nothing is hijacked.
+
+```svelte
+<VirtualList {items} viewportLabel="Inbox">
+    {#snippet renderItem(item)}
+        <div>
+            {item.subject}
+            <!-- Space activates this button; the list does not scroll -->
+            <button onclick={() => archive(item)}>Archive</button>
+        </div>
+    {/snippet}
+</VirtualList>
+```
+
+## Focus styling
+
+The viewport draws an inset focus ring (`outline-offset: -2px`, `currentColor`) on `:focus-visible`. It is inset on purpose: the viewport fills a container with `overflow: hidden`, which would clip a default outside outline away entirely — keyboard users would see nothing.
+
+The ring is applied unconditionally — passing a custom `viewportClass` does not remove it — and it is defined at low specificity so your stylesheet can restyle it:
+
+```css
+div.my-viewport:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px; /* keep it inset — outside outlines get clipped */
+}
+```
