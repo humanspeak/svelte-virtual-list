@@ -1,6 +1,8 @@
 import {
     demoManifestPlugin,
     docMirrorsPlugin,
+    exampleMirrorsPlugin,
+    indexNowPlugin,
     llmsFullPlugin,
     llmsPlugin,
     sitemapManifestPlugin,
@@ -14,6 +16,10 @@ import { defineConfig } from 'vitest/config'
 import { competitors } from './src/lib/compare-data'
 import { docsConfig } from './src/lib/docs-config'
 
+// IndexNow verification key — not a secret: the protocol requires the
+// matching static/<key>.txt to be publicly reachable on the site.
+const indexNowKey = '909c75f3-0a59-4484-9bbc-64e0f9ca97aa'
+
 export default defineConfig({
     plugins: [
         sitemapManifestPlugin({
@@ -24,6 +30,12 @@ export default defineConfig({
         }),
         demoManifestPlugin({ split: true }),
         docMirrorsPlugin({ siteUrl: docsConfig.url }),
+        // Before llmsPlugin: the llms.txt index links the example mirrors
+        // this plugin writes (static/examples.md + static/examples/<slug>.md).
+        exampleMirrorsPlugin({
+            siteUrl: docsConfig.url,
+            sourceBaseUrl: `https://github.com/${docsConfig.repo}/blob/main/docs`
+        }),
         llmsPlugin({
             siteUrl: docsConfig.url,
             pkgName: docsConfig.name,
@@ -51,6 +63,14 @@ export default defineConfig({
                     'Honest Verdict'
                 ]
             }))
+        }),
+        // Pings IndexNow with the sitemap manifest's URLs after a build run
+        // with `--mode indexnow` (the deploy script) — plain `vite build`
+        // never submits.
+        indexNowPlugin({
+            siteUrl: docsConfig.url,
+            key: indexNowKey,
+            productionMode: 'indexnow'
         }),
         svelteMotionOptimize(),
         tailwindcss(),
