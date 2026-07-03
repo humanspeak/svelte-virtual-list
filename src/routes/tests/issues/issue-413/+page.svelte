@@ -93,6 +93,7 @@
         // One rect sweep serves both the jump metric (tops) and the blank-
         // coverage detector (top/bottom intervals).
         const snapshotRects = (): Map<number, { top: number; bottom: number }> => {
+            // trunk-ignore(eslint/svelte/prefer-svelte-reactivity): transient per-frame measurement data, not reactive state
             const rects = new Map<number, { top: number; bottom: number }>()
             for (const el of renderedItems(viewport)) {
                 const index = parseInt(el.dataset.originalIndex ?? '-1', 10)
