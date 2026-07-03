@@ -47,40 +47,19 @@
     let ariaLabel = $state<string | null>(null)
     let keyResults = $state<Record<string, boolean> | null>(null)
     let running = $state(false)
-    let probed = $state(false)
 
     const labeled = $derived(role === 'region' && !!ariaLabel)
     const keysPass = $derived(keyResults !== null && Object.values(keyResults).every(Boolean))
-    const keysLine = $derived(
-        keyResults === null
-            ? null
-            : KEY_PROBES.map((probe) => `${probe.stat}=${keyResults?.[probe.stat] ? 1 : 0}`).join(
-                  ' '
-              )
-    )
+    const keysLine = $derived.by(() => {
+        const results = keyResults
+        if (results === null) return null
+        return KEY_PROBES.map((probe) => `${probe.stat}=${results[probe.stat] ? 1 : 0}`).join(' ')
+    })
 
     const getViewport = (): HTMLElement | null =>
         document.querySelector('[data-testid="issue-414-list-viewport"]')
 
     const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()))
-
-    /** Wait until scrollTop has been stable for a few frames (handles both
-     *  instant and smooth scrolling), bounded so a dead key resolves fast. */
-    const settleScroll = async (viewport: HTMLElement, maxMs = 800) => {
-        const start = performance.now()
-        let last = viewport.scrollTop
-        let stableFrames = 0
-        while (performance.now() - start < maxMs) {
-            await nextFrame()
-            if (viewport.scrollTop === last) {
-                stableFrames++
-                if (stableFrames >= 3) return
-            } else {
-                stableFrames = 0
-                last = viewport.scrollTop
-            }
-        }
-    }
 
     const runProbes = async () => {
         const viewport = getViewport()
@@ -117,7 +96,8 @@
                     cancelable: true
                 })
             )
-            await settleScroll(viewport)
+            // The component's key handler writes scrollTop synchronously, so
+            // the result is final as soon as dispatchEvent returns.
             const after = viewport.scrollTop
 
             switch (probe.expect) {
@@ -138,7 +118,6 @@
 
         keyResults = results
         running = false
-        probed = true
     }
 
     onMount(() => {
@@ -180,8 +159,8 @@
             >
         </div>
 
-        <div class="stat" class:pass={labeled} class:fail={probed && !labeled}>
-            <span class="light">{!probed && !labeled ? '…' : labeled ? '✓' : '✗'}</span>
+        <div class="stat" class:pass={labeled} class:fail={keyResults !== null && !labeled}>
+            <span class="light">{keyResults === null && !labeled ? '…' : labeled ? '✓' : '✗'}</span>
             <span class="label">labeled region for assistive tech</span>
             <span class="value" data-testid="stat-labeled">
                 role={role ?? 'none'} label={ariaLabel ? 'yes' : 'none'}

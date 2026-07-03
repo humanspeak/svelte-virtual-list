@@ -25,17 +25,15 @@ test.describe('Issue 414 - keyboard accessibility for the viewport', () => {
         await expect(page.locator(stat('keys'))).toContainText('end=', { timeout: 15000 })
     })
 
-    test('viewport should be focusable', async ({ page }) => {
+    // One test, three assertion groups: all stats come from a single probe
+    // run, so separate tests would just reload the fixture and re-run the
+    // whole probe cycle per assertion group on every engine.
+    test('viewport is a focusable, labeled, keyboard-operable region', async ({ page }) => {
         await expect(page.locator(stat('focusable'))).toHaveText(/yes/)
-    })
 
-    test('viewport should be a labeled region for assistive tech', async ({ page }) => {
         await expect(page.locator(stat('labeled'))).toHaveText(/role=region label=yes/)
-    })
 
-    test('viewport should handle all standard scroll keys', async ({ page }) => {
         const keys = await readStats(page, 'keys')
-
         expect(keys.arrowDown).toBe(1)
         expect(keys.arrowUp).toBe(1)
         expect(keys.pageDown).toBe(1)

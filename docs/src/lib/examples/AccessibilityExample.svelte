@@ -6,24 +6,23 @@
         text: `Item ${i}`
     }))
 
+    const SCROLL_KEYS = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '])
+
     let lastKey = $state<string | null>(null)
     let focused = $state(false)
 
     function describeKey(event: KeyboardEvent) {
-        // Capture-phase listener on the wrapper so the badge updates without
-        // interfering with the component's own handling.
-        const name = event.key === ' ' ? (event.shiftKey ? 'Shift+Space' : 'Space') : event.key
-        if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key))
-            lastKey = name
+        if (!SCROLL_KEYS.has(event.key)) return
+        lastKey = event.key === ' ' ? (event.shiftKey ? 'Shift+Space' : 'Space') : event.key
     }
 </script>
 
 <div class="flex w-full grow flex-col gap-4 md:flex-row">
     <div
         class="border-border h-[300px] flex-1 rounded border md:h-auto"
-        onkeydowncapture={describeKey}
-        onfocusincapture={() => (focused = true)}
-        onfocusoutcapture={() => (focused = false)}
+        onkeydown={describeKey}
+        onfocusin={() => (focused = true)}
+        onfocusout={() => (focused = false)}
     >
         <VirtualList {items} viewportLabel="Keyboard demo list">
             {#snippet renderItem(item)}

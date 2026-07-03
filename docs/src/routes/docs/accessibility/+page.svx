@@ -83,10 +83,10 @@ The component only claims a key when the viewport itself is focused. If focus is
 
 The viewport draws an inset focus ring (`outline-offset: -2px`, `currentColor`) on `:focus-visible`. It is inset on purpose: the viewport fills a container with `overflow: hidden`, which would clip a default outside outline away entirely — keyboard users would see nothing.
 
-To restyle it, target your `viewportClass` — note that passing `viewportClass` replaces the component's default class, so bring your own focus style with it:
+The ring is applied unconditionally — passing a custom `viewportClass` does not remove it — and it is defined at low specificity so your stylesheet can restyle it:
 
 ```css
-.my-viewport:focus-visible {
+div.my-viewport:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: -2px; /* keep it inset — outside outlines get clipped */
 }

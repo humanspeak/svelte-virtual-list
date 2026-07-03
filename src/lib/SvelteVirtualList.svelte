@@ -163,7 +163,11 @@
         updateHeightAndScroll as utilsUpdateHeightAndScroll
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
-    import { calculateScrollTarget } from '$lib/utils/scrollCalculation.js'
+    import {
+        calculateKeyboardScrollTarget,
+        calculateScrollTarget,
+        isKeyboardScrollKey
+    } from '$lib/utils/scrollCalculation.js'
     import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { createAdvancedThrottledCallback } from '$lib/utils/throttle.js'
     import { ReactiveListManager } from '$lib/index.js'
@@ -280,56 +284,38 @@
         heightManager.scrollTop = scrollValue
     }
 
-    // Per-keypress scroll distance for arrow keys, matching typical browser
-    // native line scrolling.
-    const LINE_SCROLL_PX = 40
-
     /**
      * Keyboard scrolling for the focusable viewport (issue #414). Native
      * keyboard scrolling of an overflow div is engine-dependent (Safari
      * does not even focus it), so the component owns the standard scroll
-     * keys itself: arrows move a line, PageUp/PageDown and Space/Shift+Space
-     * move a page (viewport height minus one line of overlap), Home/End jump
-     * to the edges. Only fires when the viewport itself is focused — keys
-     * pressed inside interactive item content (buttons, inputs) keep their
-     * native behavior.
+     * keys itself — the key→target math lives in
+     * {@link calculateKeyboardScrollTarget}. Only fires when the viewport
+     * itself is focused — keys pressed inside interactive item content
+     * (buttons, inputs) keep their native behavior.
      */
     const handleViewportKeydown = (event: KeyboardEvent) => {
         if (event.target !== event.currentTarget) return
         if (event.ctrlKey || event.metaKey || event.altKey) return
         if (!heightManager.viewportElement) return
+        // Gate BEFORE the layout reads below: unhandled keys must not force
+        // a reflow on every press.
+        if (!isKeyboardScrollKey(event.key)) return
 
         const viewport = heightManager.viewport
-        const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
-        const page = Math.max(viewport.clientHeight - LINE_SCROLL_PX, LINE_SCROLL_PX)
-
-        let target: number | null = null
-        switch (event.key) {
-            case 'ArrowDown':
-                target = viewport.scrollTop + LINE_SCROLL_PX
-                break
-            case 'ArrowUp':
-                target = viewport.scrollTop - LINE_SCROLL_PX
-                break
-            case 'PageDown':
-                target = viewport.scrollTop + page
-                break
-            case 'PageUp':
-                target = viewport.scrollTop - page
-                break
-            case ' ':
-                target = viewport.scrollTop + (event.shiftKey ? -page : page)
-                break
-            case 'Home':
-                target = 0
-                break
-            case 'End':
-                target = maxScrollTop
-                break
-        }
+        const target = calculateKeyboardScrollTarget({
+            key: event.key,
+            shiftKey: event.shiftKey,
+            scrollTop: viewport.scrollTop,
+            clientHeight: viewport.clientHeight,
+            scrollHeight: viewport.scrollHeight
+        })
         if (target === null) return
         event.preventDefault()
-        syncScrollTop(clampValue(target, 0, maxScrollTop), true)
+        // User input supersedes a programmatic scroll() the same way a newer
+        // scroll() call would — abort it so its completion machinery cannot
+        // re-assert a stale target over the keyboard position.
+        scrollAbortController?.abort()
+        syncScrollTop(target, true)
     }
 
     // Counts in-flight programmatic scroll() waits. Anchor preservation must
@@ -1113,6 +1099,9 @@
 
             // Update scrollTop state in next frame to avoid synchronous re-renders
             requestAnimationFrame(() => {
+                // Superseded (newer scroll() or keyboard input): don't clobber
+                // the newer position with this scroll's stale target.
+                if (signal.aborted) return
                 heightManager.scrollTop = scrollTarget
                 if (INTERNAL_DEBUG && heightManager.viewportElement) {
                     const domMax = Math.max(
@@ -1247,8 +1236,13 @@
 
     /* Keyboard-focus ring, drawn INSIDE the box: the viewport fills a
        container with overflow: hidden, so the default outside outline is
-       clipped away entirely and keyboard users get no focus indicator. */
-    .virtual-list-viewport:focus-visible {
+       clipped away entirely and keyboard users get no focus indicator.
+
+       Keyed off the always-present role/tabindex attributes — NOT the
+       .virtual-list-viewport class, which a consumer's viewportClass
+       replaces (the ring must not be opt-out-by-accident). :where() keeps
+       specificity low so consumer stylesheets can still restyle it. */
+    :where(div[role='region'][tabindex='0']):focus-visible {
         outline: 2px solid currentColor;
         outline-offset: -2px;
     }
