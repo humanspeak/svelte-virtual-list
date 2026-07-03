@@ -136,10 +136,10 @@
      * - Configurable buffer zones for smooth scrolling
      * - Modular utility system with dedicated helper files:
      *   * scrollCalculation.ts: Complex scroll positioning logic
-     *   * resizeObserver.ts: ResizeObserver management utilities
-     *   * heightCalculation.ts: Debounced height measurement
      *   * virtualList.ts: Core virtual list calculations
      *   * virtualListDebug.ts: Debug information utilities
+     * - Measurement is ResizeObserver-driven: items are measured and
+     *   compensated synchronously in the RO callback (see issue #413)
      * - Height caching and estimation system
      * - Progressive size adjustment system
      */
@@ -150,7 +150,6 @@
         type SvelteVirtualListProps,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
-    import { calculateAverageHeightDebounced } from '$lib/utils/heightCalculation.js'
     import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
     import type { HeightChange } from '$lib/reactive-list-manager/types.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
@@ -169,14 +168,11 @@
         isKeyboardScrollKey
     } from '$lib/utils/scrollCalculation.js'
     import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
-    import { createAdvancedThrottledCallback } from '$lib/utils/throttle.js'
     import { ReactiveListManager } from '$lib/index.js'
     import { BROWSER } from 'esm-env'
-    import { onMount, tick, untrack } from 'svelte'
+    import { onMount, tick } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-    // Timing constants
-    const HEIGHT_DEBOUNCE_MS = 100
     // Package-specific debug flag - safe for library distribution
     // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
     // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
@@ -221,29 +217,20 @@
      * State Flags and Control
      */
 
-    const isCalculatingHeight = $state(false) // Prevents concurrent height calculations
     let isLoadingMore = $state(false) // Prevents concurrent onLoadMore calls
-    let lastMeasuredIndex = $state(-1) // Index of last measured item
 
     /**
      * Timers and Observers
      */
-    let heightUpdateTimeout: ReturnType<typeof setTimeout> | null = null // Debounce timer for height updates
     let resizeObserver: ResizeObserver | null = null // Watches for container size changes
     let itemResizeObserver: ResizeObserver | null = null // Watches for individual item size changes
     let scrollAbortController: AbortController | null = null // Cancels an in-flight programmatic scroll wait
 
-    /**
-     * Performance Optimization State
-     */
-    const dirtyItems = $state(new Set<number>()) // Set of item indices that need height recalculation
-    let dirtyItemsCount = $state(0) // Reactive count of dirty items
     // Scroll delta threshold optimization - track last scroll position used for range calculation
     let lastProcessedScrollTop = $state(0)
 
     let prevVisibleRange = $state<SvelteVirtualListPreviousVisibleRange | null>(null)
     let prevHeight = $state<number>(0)
-    let prevTotalHeightForScrollCorrection = $state<number>(0)
 
     /**
      * Reactive Height Manager - O(1) height calculation system
@@ -442,27 +429,6 @@
         }
     }
 
-    // Height update function - removed throttling to fix race condition on initial load
-    // Create throttled height update function with trailing execution to ensure measurement always happens
-    const triggerHeightUpdate = createAdvancedThrottledCallback(
-        () => {
-            if (BROWSER && dirtyItemsCount > 0) {
-                heightManager.startDynamicUpdate()
-                updateHeight()
-            }
-        },
-        16,
-        {
-            leading: true, // Execute immediately for responsiveness
-            trailing: true // CRUCIAL: Execute the last call after delay to ensure measurement always happens
-        }
-    )
-
-    // Trigger height calculation when dirty items are added
-    $effect(() => {
-        triggerHeightUpdate()
-    })
-
     // Keep height manager synchronized with items length
     $effect(() => {
         heightManager.updateItemLength(items.length)
@@ -483,101 +449,6 @@
             })
         }
     })
-
-    const updateHeight = () => {
-        // Capture previous total height for scroll correction.
-        prevTotalHeightForScrollCorrection = heightManager.totalHeight
-        heightUpdateTimeout = calculateAverageHeightDebounced(
-            isCalculatingHeight,
-            heightUpdateTimeout,
-            visibleItems,
-            itemElements,
-            heightManager.getHeightCache(),
-            lastMeasuredIndex,
-            heightManager.averageHeight,
-            (result) => {
-                // Anything to correct? Skip the anchor round trip (viewport
-                // rect + item rect reads + two offset walks) when neither the
-                // cache nor the estimate will move.
-                const willCorrect =
-                    result.heightChanges.length > 0 ||
-                    (result.newValidCount !== 1 &&
-                        Math.abs(result.newHeight - heightManager.itemHeight) > 1)
-
-                // Capture the visual anchor BEFORE any cache/estimate mutation
-                // shifts the offsets — the restore below hides the correction
-                // from the user mid-list (#413).
-                const anchor = willCorrect ? captureViewportAnchor() : null
-
-                // Only update the estimated item height from statistically meaningful
-                // samples. With _measuredCount === 0 (browser path), the formula
-                // _totalHeight = _itemLength × _itemHeight means a single expanded
-                // accordion item (e.g., 117px) would balloon _totalHeight from
-                // 49,000 to 117,000px — a visible flash. Requiring ≥ 2 valid
-                // measurements prevents single-item outliers from swinging the estimate.
-                if (result.newValidCount !== 1) {
-                    heightManager.itemHeight = result.newHeight
-                }
-                lastMeasuredIndex = result.newLastMeasuredIndex
-
-                // Update manager totals/cache before any scroll correction logic relies on them
-                if (result.heightChanges.length > 0) {
-                    heightManager.processDirtyHeights(result.heightChanges)
-                }
-                if (willCorrect) {
-                    // Same reason as the ResizeObserver path: the restore's
-                    // math and the at-bottom check below must read the
-                    // corrected totals, not last frame's.
-                    heightManager.flushDerivedHeights()
-                }
-
-                // Keep the end item visually stable when total height changes at the end.
-                let atBottomHandled = false
-                if (heightManager.isReady && heightManager.initialized) {
-                    const oldTotal = prevTotalHeightForScrollCorrection
-                    const newTotal = heightManager.totalHeight
-                    const deltaTotal = newTotal - oldTotal
-                    // Ignore micro deltas to prevent oscillation
-                    if (Math.abs(deltaTotal) > 1) {
-                        const maxScrollTop = Math.max(0, newTotal - (height || 0))
-                        const tolerance = Math.max(heightManager.averageHeight, 10)
-                        const currentScrollTop = heightManager.viewport.scrollTop
-                        const isAtBottom = Math.abs(currentScrollTop - maxScrollTop) <= tolerance
-                        if (isAtBottom) {
-                            // Adjust scrollTop by total height delta to keep the same end position.
-                            const adjusted = clampValue(
-                                currentScrollTop + deltaTotal,
-                                0,
-                                maxScrollTop
-                            )
-                            syncScrollTop(adjusted, true)
-                            atBottomHandled = true
-                        }
-                    }
-                }
-
-                // Mid-list: restore the anchor now that the cache holds the
-                // corrected offsets. State updates synchronously (so this
-                // flush renders the right window); the viewport DOM write
-                // lands post-tick, still before the browser paints.
-                if (!atBottomHandled && anchor) {
-                    restoreViewportAnchor(anchor)
-                }
-
-                // Non-critical updates wrapped in untrack to prevent reactive cascades
-                untrack(() => {
-                    // Clear processed dirty items (all dirty items were processed)
-                    dirtyItems.clear()
-                    dirtyItemsCount = 0
-                })
-                heightManager.endDynamicUpdate()
-            },
-            lastMeasuredIndex < 0 || dirtyItems.size > 0 ? 0 : HEIGHT_DEBOUNCE_MS,
-            dirtyItems, // Pass dirty items for processing
-            0, // Don't pass ReactiveListManager state - let each system manage its own totals
-            0 // Don't pass ReactiveListManager state - let each system manage its own totals
-        )
-    }
 
     /**
      * CRITICAL: O(1) Reactive Total Height Calculation
@@ -847,15 +718,6 @@
             // Initial setup of heights and scroll position
             log('onMount-enter', { items: items.length })
             updateHeightAndScroll()
-            // Ensure one initial measurement pass even if no ResizeObserver fires
-            tick().then(() =>
-                requestAnimationFrame(() =>
-                    requestAnimationFrame(() => {
-                        log('post-hydration-measure')
-                        updateHeight()
-                    })
-                )
-            )
 
             // Watch for container size changes
             resizeObserver = new ResizeObserver(() => {

@@ -61,7 +61,7 @@ pnpm run check        # svelte-check (TypeScript validation)
 
 - `src/lib/reactive-list-manager/` — Manages item heights, averageHeight, totalHeight. Incremental updates with O(1) amortized recomputation via `RecomputeScheduler`.
 - `src/lib/utils/virtualList.ts` — Pure functions for visible range calculation, transform positioning, and scroll offset computation.
-- `src/lib/utils/throttle.ts` — Throttle utilities for scroll event handling.
+- `src/lib/utils/scrollCalculation.ts` — Pure scroll-target math (programmatic scroll alignment, keyboard scroll keys).
 
 ### Test Pages
 
