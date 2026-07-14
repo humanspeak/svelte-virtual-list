@@ -17,7 +17,7 @@ pause happens between the red step and the fix steps.
 
 | Plan | Title                                                       | Priority | Effort | Depends on | Status                                                                                   |
 | ---- | ----------------------------------------------------------- | -------- | ------ | ---------- | ---------------------------------------------------------------------------------------- |
-| 001  | Block-accelerated offset/range math (kills O(n) tail walks) | P1       | M      | —          | DONE (guard-approved 2026-07-14; on branch `worktree-agent-a89aec2b882ee21f8`, unmerged) |
+| 001  | Block-accelerated offset/range math (kills O(n) tail walks) | P1       | M      | —          | DONE (guard final PASS; PR #423)                                                         |
 | 002  | Public `onRangeChange` callback (range/scroll-edge state)   | P1       | S      | —          | DONE (guard-approved 2026-07-14; on branch `worktree-agent-a0c81ae1f02cfbbfb`, unmerged) |
 | 003  | `align: 'center'` + `scrollToOffset()` (issues #165, #66)   | P2       | M      | 001 (soft) | TODO                                                                                     |
 

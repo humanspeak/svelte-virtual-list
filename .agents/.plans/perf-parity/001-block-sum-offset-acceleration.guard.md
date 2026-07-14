@@ -32,3 +32,13 @@ b5da256 · pre-flight baseline, no executor work yet
 - Documented deviation 2 (upheld): fixture flake on WebKit-family engines was clock quantization (`headMs=0`), not signal. Executor floored both medians at 2ms and KEPT the stricter 3× threshold rather than taking the plan's sanctioned 4× raise; raw medians still displayed. A real O(n) regression (tail in tens of ms) still fails at 10×+. Two consecutive clean 5/5 runs, reproduced by guard in the full-suite rerun.
 - Bonus finding for the maintainer: `pnpm run test:only -- <filter>` does not actually filter (script ends `vitest run --`, so args land after a second `--`); worth a future package.json cleanup, out of scope here.
 - Action: index updated (001 → DONE), work stays on the worktree branch unmerged pending operator; dispatching plan 002 next.
+
+## Checkpoint 4 — 2026-07-14 12:07 — ON TRACK (final close-out, PASS)
+
+6eb6f97 · `guard final` — snapshot unchanged since checkpoint 3 (verified: same HEAD, clean tree)
+
+- Fast gates re-reproduced at final: `pnpm run check` 0 errors; `pnpm test` 315/315; `trunk check` clean; wiring greps pass (`getBlockSums()` ×5, casts 0). Full e2e stands on checkpoint 3's reproduction (same SHA, `350 passed / 5 skipped`).
+- Operator's browser question about the red backdrop answered with measurement: blank viewport lasts exactly ~2 frames after any long jump, at every depth (10%–99% identical), zero blank px during buffer-sized scrolling — pre-existing, inherent, and depth-independence is this plan's win. Recorded in the report's residual-risk section.
+- Close-out report written: `001-block-sum-offset-acceleration.guard-report.md` — **PASS**.
+- Integrated: branch published as `perf/block-sum-offset-acceleration`, PR <https://github.com/humanspeak/svelte-virtual-list/pull/423> opened via the `pr` skill (body sanity-checked). Merge is the operator's.
+- Action: report + log committed; awaiting operator merge decision.
