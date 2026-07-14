@@ -67,3 +67,13 @@
 - Snapshot commit `032e818` (`feat(virtual-list): support align center in scroll() (#165)`) staged ONLY the 4 in-scope source files; the sandbox's stray `.pnpm-store/` and reviewer-owned `PLAN-003.md` remain untracked (cleanup at close-out). Pre-commit hook auto-formatted the component (cosmetic); executor briefed to work against on-disk state.
 - Codex relaunched for Steps 4–6 (scrollToOffset, issue-165 fixture + specs, README), git-free, with deferred-e2e reporting.
 - Action: none needed beyond the committed snapshot; awaiting Steps 4–6.
+
+## Checkpoint 8 — 2026-07-14 15:58 — DRIFTING (one racy test pair; fix round dispatched)
+
+032e818+wip · Steps 4–6 authored; guard host verification caught a real defect the sandbox could not
+
+- Executor reported Steps 4–6 COMPLETE (gated in-sandbox on unit+typecheck; e2e deferred as agreed). Guard host gates: `pnpm run check` 0 errors; `pnpm test` 324/324; targeted deferred e2e → **10 failed / 70 passed**. The issue-165 fixture + spec pass on all 5 engines; BOTH new `scroll.spec.ts` center tests fail (hard on mobile-safari, retries on chromium/firefox).
+- Guard-diagnosed root cause from Playwright error context: the scroll test page defaults "Smooth Scroll" ON; the new tests wait only for the target item to EXIST (satisfied when the render window reaches it, mid-animation) then measure — clamp test received a 239,522px delta. Racy by construction; the plan's own fixture used `smoothScroll: false` and passes everywhere. Classified as executor drift (test authored against the plan's letter but not its verify-ably-deterministic spirit), NOT a product-code defect — `align: 'center'` itself is proven by the green issue-165 fixture on all engines.
+- Fix round dispatched (spec-only: uncheck Smooth Scroll before triggering, matching the existing file's toggle pattern). Also audited this round: `scrollToOffset` matches the plan's shape exactly; the executor correctly refused to touch out-of-scope `SvelteVirtualList.test.ts`; the digit-gated waits are correct here because `centerDeltaPx=0` means PASS (the 002 CodeRabbit lesson applied with understanding); one tasteful judgment call — injecting a 'center' option into the page's align dropdown from the test rather than editing the out-of-scope test page.
+- Vindication note for the record: this failure is exactly why the e2e-on-host split waives nothing — the sandbox's green unit gates could never have caught it.
+- Action: reported to operator; awaiting spec fix, then full-suite host gate and close-out.
