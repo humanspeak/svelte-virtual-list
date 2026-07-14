@@ -202,12 +202,14 @@ export interface ScrollTargetParams {
     heightCache: Record<number, number>
     /** Optional precomputed block sums for O(blockSize) offset lookup (see buildBlockSums). */
     blockSums?: number[]
+    /** Optional maximum scroll position used to clamp centered targets. */
+    maxScrollTop?: number
 }
 
 /**
  * Calculates the target scroll position for scrolling to a specific item index.
  *
- * This function handles different alignment options (auto, top, bottom, nearest)
+ * This function handles different alignment options (auto, top, bottom, nearest, center)
  * and calculates the optimal scroll position based on the current viewport state.
  *
  * @param params - Parameters for scroll target calculation
@@ -242,7 +244,8 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
         firstVisibleIndex,
         lastVisibleIndex,
         heightCache,
-        blockSums
+        blockSums,
+        maxScrollTop
     } = params
 
     return calculateTopToBottomScrollTarget({
@@ -254,7 +257,8 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
         firstVisibleIndex,
         lastVisibleIndex,
         heightCache,
-        blockSums
+        blockSums,
+        maxScrollTop
     })
 }
 
@@ -282,6 +286,8 @@ interface TopToBottomScrollParams {
     heightCache: Record<number, number>
     /** Optional precomputed block sums for O(blockSize) offset lookup (see buildBlockSums). */
     blockSums?: number[]
+    /** Optional maximum scroll position used to clamp centered targets. */
+    maxScrollTop?: number
 }
 
 /**
@@ -305,7 +311,8 @@ const calculateTopToBottomScrollTarget = (params: TopToBottomScrollParams): numb
         firstVisibleIndex,
         lastVisibleIndex,
         heightCache,
-        blockSums
+        blockSums,
+        maxScrollTop
     } = params
 
     // Calculate item boundaries
@@ -334,6 +341,12 @@ const calculateTopToBottomScrollTarget = (params: TopToBottomScrollParams): numb
             // Item is visible - align to nearest edge (always returns a value)
             return alignVisibleToNearestEdge(itemTop, itemBottom, scrollTop, height)
         }
+    }
+
+    if (align === 'center') {
+        const itemHeight = itemBottom - itemTop
+        const target = itemTop - (height - itemHeight) / 2
+        return Math.round(clampValue(target, 0, maxScrollTop ?? Infinity))
     }
 
     if (align === 'top' || align === 'bottom' || align === 'nearest') {

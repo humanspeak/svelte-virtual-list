@@ -126,7 +126,7 @@ export type SvelteVirtualListDebugInfo = {
 /**
  * Alignment options for programmatic scrolling.
  */
-export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest'
+export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest' | 'center'
 
 /**
  * Options for scrolling to a specific index in the virtual list.
@@ -138,7 +138,7 @@ export interface SvelteVirtualListScrollOptions {
     smoothScroll?: boolean
     /** Whether to throw an error if the index is out of bounds. Default: true */
     shouldThrowOnBounds?: boolean
-    /** Alignment for the scrolled item: 'auto', 'top', or 'bottom'. Default: 'auto' */
+    /** Alignment for the scrolled item: 'auto', 'top', 'bottom', 'nearest', or 'center'. Default: 'auto' */
     align?: SvelteVirtualListScrollAlign
 }
 
