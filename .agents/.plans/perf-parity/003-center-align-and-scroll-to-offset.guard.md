@@ -77,3 +77,13 @@
 - Fix round dispatched (spec-only: uncheck Smooth Scroll before triggering, matching the existing file's toggle pattern). Also audited this round: `scrollToOffset` matches the plan's shape exactly; the executor correctly refused to touch out-of-scope `SvelteVirtualList.test.ts`; the digit-gated waits are correct here because `centerDeltaPx=0` means PASS (the 002 CodeRabbit lesson applied with understanding); one tasteful judgment call — injecting a 'center' option into the page's align dropdown from the test rather than editing the out-of-scope test page.
 - Vindication note for the record: this failure is exactly why the e2e-on-host split waives nothing — the sandbox's green unit gates could never have caught it.
 - Action: reported to operator; awaiting spec fix, then full-suite host gate and close-out.
+
+## Checkpoint 9 — 2026-07-14 14:36 — ON TRACK (final close-out, PASS)
+
+9860eb5 · `guard final` — full review of the completed Codex run
+
+- Spec fix verified (two `getByLabel('Smooth Scroll').uncheck()` lines, nothing else): targeted e2e 80/80, then FULL suite on host **375 passed / 5 pre-existing skips / exit 0** (5 projects). All fast gates reproduced (check 0 errors; 324/324 unit; trunk clean; done-criteria greps; `scrollToIndex` byte-identical by function diff).
+- Snapshots: `032e818` (steps 1–3), `9860eb5` (steps 4–6 + race fix) — both committed by guard per protocol; reviewer artifacts (`PLAN-003.md`, `.pnpm-store/`) removed; worktree clean.
+- Close-out report written: `003-center-align-and-scroll-to-offset.guard-report.md` — **PASS**.
+- Integrated: branch pushed, PR <https://github.com/humanspeak/svelte-virtual-list/pull/425> opened via the `pr` skill. Merge is the operator's.
+- Action: report + log committed; index updated (003 → DONE).
