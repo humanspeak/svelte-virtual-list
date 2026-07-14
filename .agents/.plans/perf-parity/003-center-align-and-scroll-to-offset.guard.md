@@ -13,3 +13,11 @@
 - Verified no stale references survive (`grep b5da256` → only the two intentional historical notes).
 - Executor being dispatched by guard per operator instruction: `codex:codex-rescue` subagent (Codex CLI 0.144.3 present) in an isolated worktree, full amended plan text inlined (worktrees lack the `.agents/` folder — lesson from 001's first dispatch). Guard remains read-only on source; the same checkpoint/final regime as plans 001/002 applies, with extra scrutiny appropriate to a first run of a non-Claude executor: every report claim re-verified, tests read for gamed assertions, scope audited against the 9-file list.
 - Action: plan amendment recorded here and committed; dispatching.
+
+## Checkpoint 2 — 2026-07-14 13:55 — BLOCKED (runtime provisioning, resolved by re-dispatch)
+
+899ba3e · first Codex dispatch failed pre-work; no code to judge
+
+- First Codex run (task-mrkxuftx-ipdlqi) STOPped at its first action: the Agent-tool ephemeral worktree was auto-reaped the moment the wrapper agent completed, but the Codex task runs asynchronously in its own daemon — by the time GPT-5.6 started (~1 min later) its assigned cwd no longer existed. Executor conduct was clean: zero files touched, no substitute directory used, no retry improvised; the main checkout verified unaffected.
+- Root cause is the sync-worktree/async-executor lifecycle mismatch, not the plan or the model. Guard remediation (infrastructure, not source): provisioned a PERSISTENT worktree at `.claude/worktrees/plan-003-codex` on branch `feat/165-center-align-scroll-to-offset` pinned to `899ba3e` (exactly the amended plan's baseline), staged the amended plan into the worktree root as untracked `PLAN-003.md` (executor forbidden to commit/modify it), and re-dispatched with the wrapper required to poll the Codex task to a terminal state before replying.
+- Action: reported to operator; re-dispatched. No plan amendment — the plan was never reached.
