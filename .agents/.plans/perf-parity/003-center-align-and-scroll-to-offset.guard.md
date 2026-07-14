@@ -57,3 +57,13 @@
 - Final structural limit: the Codex sandbox denies localhost binds (`listen EPERM 127.0.0.1:4173` and `::1`), so Vite preview — and therefore Playwright e2e — can NEVER run in-sandbox. Guard-authorized protocol split, recorded as a deviation-by-design: Codex authors everything and gates each step on in-sandbox unit+typecheck; every e2e execution is deferred to the HOST — run first by the wrapper (which has host Bash) immediately after, then independently re-run by guard at checkpoint. No gate is waived; each is relocated with its runner identified. Trunk gets the same treatment if it hits sandbox limits.
 - Uncommitted steps 1–3 work ordered committed per plan git workflow before continuing; Steps 4–6 to completion next.
 - Action: reported to operator; awaiting the completed run + wrapper host verification.
+
+## Checkpoint 7 — 2026-07-14 15:35 — ON TRACK
+
+032e818 · steps 1–3 verified on host and snapshot-committed by guard; protocol finalized
+
+- Sixth sandbox finding: git worktree metadata lives in the main repo's `.git/worktrees/…` — outside the sandbox's writable root — so Codex cannot run ANY git command in this worktree (`index.lock: Operation not permitted`). Also the wrapper declined host-side execution (its contract is a single forwarding call). Final protocol, matching the guard skill's own model: **Codex authors + gates on in-sandbox unit/typecheck; guard verifies e2e/trunk on host and is the sole committer.** No COMMITS section expected from the executor anymore.
+- Guard host verification of steps 1–3: `pnpm run check` 0 errors; `pnpm test` 324/324; deferred Step-3 e2e gate `CI=1 pnpm run test:e2e -- tests/topToBottom/scroll.spec.ts tests/issues/issue-414.spec.ts` → **70/70 passed** (5 projects) — the extraction preserved the abort/depth machinery.
+- Snapshot commit `032e818` (`feat(virtual-list): support align center in scroll() (#165)`) staged ONLY the 4 in-scope source files; the sandbox's stray `.pnpm-store/` and reviewer-owned `PLAN-003.md` remain untracked (cleanup at close-out). Pre-commit hook auto-formatted the component (cosmetic); executor briefed to work against on-disk state.
+- Codex relaunched for Steps 4–6 (scrollToOffset, issue-165 fixture + specs, README), git-free, with deferred-e2e reporting.
+- Action: none needed beyond the committed snapshot; awaiting Steps 4–6.
