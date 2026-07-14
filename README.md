@@ -241,6 +241,7 @@ This project uses [Trunk](https://trunk.io) for formatting and linting. Trunk ma
 
 Part of the [Humanspeak](https://humanspeak.com) family of runes-native Svelte 5 packages:
 
+<!-- prettier-ignore-start -->
 | Package | Description |
 | --- | --- |
 | [@humanspeak/svelte-markdown](https://markdown.svelte.page) | Runtime markdown renderer for Svelte |
@@ -253,6 +254,7 @@ Part of the [Humanspeak](https://humanspeak.com) family of runes-native Svelte 5
 | [@humanspeak/memory-cache](https://memory.svelte.page) | In-memory cache for TypeScript |
 | [@humanspeak/svelte-json-view-lite](https://jsonview.svelte.page) | JSON tree viewer for Svelte 5 |
 | [@humanspeak/svelte-scoped-props](https://scoped.svelte.page) | Scoped class props for Svelte |
+<!-- prettier-ignore-end -->
 
 ## License
 
