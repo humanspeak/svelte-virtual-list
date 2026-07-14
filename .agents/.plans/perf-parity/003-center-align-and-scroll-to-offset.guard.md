@@ -39,3 +39,12 @@
 - Actual root cause pinned: `pmOnFail` is pnpm 11's own knob — with a `packageManager` pin, pnpm verifies the release signature against the npm registry per invocation; impossible offline. Guard verified ON HOST that both sandbox-PATH pnpm binaries (`/usr/local/bin/pnpm`, `~/Library/pnpm/pnpm`) are exactly the pinned 11.5.0, making the skip safe and scoped: fourth dispatch instructs `pnpm --config.pm-on-fail=ignore <cmd>` per invocation (env-var fallback `npm_config_pm_on_fail=ignore`), no config files touched, with a mandatory `--version` → `11.5.0` proof gate before any plan step.
 - Residual risk recorded for the close-out report: pnpm's signature verification is skipped inside the sandbox for this run only; binary identity was cross-checked on the host, and every gate will be re-run by guard on the host with verification active.
 - Action: reported to operator; awaiting fourth run.
+
+## Checkpoint 5 — 2026-07-14 14:52 — BLOCKED (version-pin mismatch fully diagnosed, fifth dispatch)
+
+899ba3e · fourth attempt: `--config.pm-on-fail=ignore` accepted by the parser but ineffective — the check fires before pnpm config is consulted
+
+- Complete root cause, guard-verified on host: NO pnpm on the sandbox PATH is the pinned version. `/usr/local/bin/pnpm` is Homebrew **11.12.0** (my earlier "11.5.0" reading was the post-switch version answering with network available — a diagnostic trap worth remembering); `~/Library/pnpm/pnpm` is intrinsically **11.9.0**. With `packageManager: pnpm@11.5.0`, every invocation must download + signature-verify 11.5.0 from the registry — impossible in the offline sandbox, unaffected by `pmOnFail` because the refusal happens in the version-switch path itself.
+- Deterministic bypass, verified from the executor's worktree on host: the host-side switch already populated pnpm's tools store — `~/Library/pnpm/.tools/pnpm/11.5.0/bin/pnpm --version` → `11.5.0`. Running the exact pinned version triggers no switch and no fetch. Fifth dispatch: executor uses that absolute path for every package-manager invocation, with a hard go/no-go gate (`--version` must print exactly `11.5.0` offline) and an explicit ban on falling back to bare `pnpm`.
+- The signature-verification posture is now BETTER than the checkpoint-4 plan: nothing is skipped — the 11.5.0 bytes in the tools store were downloaded and verified BY pnpm on the host with network; the sandbox merely executes them.
+- Action: reported to operator; awaiting fifth run.
