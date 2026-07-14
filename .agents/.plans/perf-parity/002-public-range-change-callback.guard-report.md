@@ -4,6 +4,7 @@
 **Reviewed at** `3394efc` (branch `worktree-agent-a0c81ae1f02cfbbfb`) · 2026-07-14 12:34 · **Plan planned at** `b5da256` (drift check satisfied by source-tree equivalence with base `f557765`; verified empty diff on in-scope paths)
 **Integrated** — PR <https://github.com/humanspeak/svelte-virtual-list/pull/424> opened via the `pr` skill, published as branch `feat/on-range-change-callback`; updated with the CodeRabbit fix (`d2633bd..3394efc` pushed). Merging is the operator's call.
 **External review** — CodeRabbit (operator-requested) reviewed all 7 files: **1 finding, fixed** — the verdict-spec waits matched any digit (incl. the failing `finalPass=0` state); now they wait for the pass tokens directly (`3394efc`, spec-only, re-verified 10/10 across 5 engines by guard). No other findings.
+**Integration** — after PR #423 (plan 001) merged to main, `origin/main` was merged into this branch (`6e94c26`; one README-formatting conflict, nothing semantic). First tree where both features coexist: full gate green (319 unit / 360 e2e / trunk), net diff vs main = exactly the 7 feature files. PR #424 mergeable.
 
 ## Done criteria
 

@@ -40,3 +40,12 @@ d2633bd · `guard final` after the operator-requested loudness revision
 - Revision round 2 (of max 2): executor changed the two waits to `/finalPass=1/` and `/initialPass=1/` (mirrors the spec's own `/atBottom=1/` pattern), comment updated, nothing else touched. Guard verified the delta (`git show 3394efc`: one file, 5+/4-) and re-ran the spec: 10/10 across all 5 projects.
 - Pushed `d2633bd..3394efc` to `feat/on-range-change-callback`; PR #424 now carries the fix. Report header re-stamped to the new reviewed SHA — verdict remains **PASS**.
 - Action: report updated and committed; revision budget now exhausted — any further findings go back to the operator, not the executor.
+
+## Checkpoint 5 — 2026-07-14 13:26 — ON TRACK
+
+6e94c26 · integration merge after PR #423 (plan 001) landed on main; PR #424 had conflicted
+
+- Executor merged `origin/main` (513db5d) into the branch — merge commit, no history rewrite. Single conflict: README's ecosystem table (HEAD carried a prettier-expanded artifact; main added prettier-ignore guards around byte-identical content) — resolved by taking main's hunk; nothing of 002's dropped. `SvelteVirtualList.svelte` auto-merged.
+- Guard verified the load-bearing claim directly: `git diff --stat origin/main HEAD` = exactly the 7 feature files (553 insertions), and the component's net diff vs main is only the type import, prop destructure, and deduped effect — main's block-sum threading fully intact. First-coexistence full gate run by executor (319 unit / 360 e2e / trunk clean); guard reproduced 319/319 unit and 15/15 on both new fixture specs across all 5 engines.
+- Pushed `3394efc..6e94c26`; GitHub reports PR #424 MERGEABLE (state BLOCKED = CI running on the fresh push).
+- Action: artifacts committed; PR back in the operator's hands.
