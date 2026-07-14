@@ -21,3 +21,13 @@ b5da256 · pre-flight baseline, no executor work yet
 - Reproduced by guard in the worktree: `pnpm run check` 0 errors (4 pre-existing warnings); `pnpm test` 312/312 (308 + 4 new); `CI=1 pnpm run test:e2e -- tests/other/range-callback.spec.ts` 5 passed (all 5 projects); `trunk check` no issues; done-criteria greps all pass.
 - Not re-reproduced: the full e2e suite (executor's own run: 350 passed / 5 pre-existing skips, internally consistent with the suite size at this base + 5 new). The diff is one additive effect; the targeted spec plus full unit suite was judged sufficient at this checkpoint — a `guard final` pass before merge should re-run the full suite on whichever branch integrates 001+002.
 - Action: index updated (002 → DONE); work stays unmerged on its worktree branch pending operator.
+
+## Checkpoint 3 — 2026-07-14 12:13 — ON TRACK (final close-out, PASS)
+
+d2633bd · `guard final` after the operator-requested loudness revision
+
+- Revision round (operator: "fix 002 to be loud"): executor delivered `d2633bd` exactly to the reviewer brief — first-vs-latest payload captured separately, `stat-initial`/`stat-final` red/green verdict rows in house CSS, verdicts resolve strictly to ✓/✗ on every terminal path (zero-deliveries and missing-viewport judge as fail), solid `#ffc2c2` backdrop, `stat-range` line byte-compatible, new spec test asserting the page's own verdicts with digit-gated waits. Scope: only the two permitted files.
+- Full gates reproduced by guard on the final snapshot: `pnpm run check` 0 errors; `pnpm test` 312/312; `CI=1 pnpm run test:e2e` **355 passed / 5 pre-existing skips / exit 0** (full suite, all 5 projects — closes the checkpoint-2 caveat); targeted spec 10/10; `trunk check` clean.
+- Close-out report written: `002-public-range-change-callback.guard-report.md` — **PASS**.
+- Integrated: branch published as `feat/on-range-change-callback`, PR <https://github.com/humanspeak/svelte-virtual-list/pull/424> opened via the `pr` skill. Merge is the operator's.
+- Action: report + log committed; awaiting operator merge decision.

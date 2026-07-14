@@ -15,11 +15,11 @@ pause happens between the red step and the fix steps.
 
 ## Execution order & status
 
-| Plan | Title                                                       | Priority | Effort | Depends on | Status                                                                                   |
-| ---- | ----------------------------------------------------------- | -------- | ------ | ---------- | ---------------------------------------------------------------------------------------- |
-| 001  | Block-accelerated offset/range math (kills O(n) tail walks) | P1       | M      | —          | DONE (guard final PASS; PR #423)                                                         |
-| 002  | Public `onRangeChange` callback (range/scroll-edge state)   | P1       | S      | —          | DONE (guard-approved 2026-07-14; on branch `worktree-agent-a0c81ae1f02cfbbfb`, unmerged) |
-| 003  | `align: 'center'` + `scrollToOffset()` (issues #165, #66)   | P2       | M      | 001 (soft) | TODO                                                                                     |
+| Plan | Title                                                       | Priority | Effort | Depends on | Status                           |
+| ---- | ----------------------------------------------------------- | -------- | ------ | ---------- | -------------------------------- |
+| 001  | Block-accelerated offset/range math (kills O(n) tail walks) | P1       | M      | —          | DONE (guard final PASS; PR #423) |
+| 002  | Public `onRangeChange` callback (range/scroll-edge state)   | P1       | S      | —          | DONE (guard final PASS; PR #424) |
+| 003  | `align: 'center'` + `scrollToOffset()` (issues #165, #66)   | P2       | M      | 001 (soft) | TODO                             |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED
 (with one-line rationale)
