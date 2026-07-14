@@ -835,7 +835,7 @@
         smoothScroll: boolean,
         signal: AbortSignal,
         resolve: () => void,
-        reject: (reason?: unknown) => void
+        reject: (_reason?: unknown) => void
     ) => {
         // Suspend anchor preservation while this scroll animates — a
         // scrollTop write would cancel the smooth scroll mid-flight.
@@ -996,6 +996,38 @@
             }
 
             executeScrollToTarget(scrollTarget, smoothScroll ?? true, signal, resolve, reject)
+        })
+    }
+
+    /**
+     * Scrolls the viewport to a raw pixel offset. Complements {@link scroll}
+     * (index-based): use this to restore a persisted scroll position.
+     *
+     * @returns Promise that resolves when scrolling has visually finished.
+     */
+    export const scrollToOffset = (options: {
+        offset: number
+        smoothScroll?: boolean
+    }): Promise<void> => {
+        const { offset, smoothScroll = true } = options
+        scrollAbortController?.abort()
+        const abortController = new AbortController()
+        scrollAbortController = abortController
+        const { signal } = abortController
+
+        return new Promise<void>((resolve, reject) => {
+            if (!heightManager.viewportElement) {
+                tick().then(() => {
+                    if (signal.aborted || !heightManager.viewportElement) {
+                        resolve()
+                        return
+                    }
+                    scrollToOffset({ offset, smoothScroll }).then(resolve, reject)
+                })
+                return
+            }
+            const target = Math.round(clampValue(offset, 0, currentMaxScrollTop()))
+            executeScrollToTarget(target, smoothScroll, signal, resolve, reject)
         })
     }
 

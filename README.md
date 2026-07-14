@@ -121,9 +121,14 @@ Scroll to any item in the list using the `scroll` method. Useful for jump-to-ite
     function goToItem5000() {
         listRef.scroll({ index: 5000, smoothScroll: true, align: 'auto' })
     }
+
+    function restoreScrollPosition() {
+        listRef.scrollToOffset({ offset: 12345, smoothScroll: false })
+    }
 </script>
 
 <button onclick={goToItem5000}> Scroll to item 5000 </button>
+<button onclick={restoreScrollPosition}> Restore scroll position </button>
 <SvelteVirtualList {items} bind:this={listRef}>
     {#snippet renderItem(item)}
         <div>{item.text}</div>
@@ -133,12 +138,12 @@ Scroll to any item in the list using the `scroll` method. Useful for jump-to-ite
 
 ### scroll() Options
 
-| Option                | Type                                       | Default  | Description                             |
-| --------------------- | ------------------------------------------ | -------- | --------------------------------------- |
-| `index`               | `number`                                   | Required | The item index to scroll to (0-based)   |
-| `smoothScroll`        | `boolean`                                  | `true`   | Use smooth scrolling animation          |
-| `shouldThrowOnBounds` | `boolean`                                  | `true`   | Throw if index is out of bounds         |
-| `align`               | `'auto' \| 'top' \| 'bottom' \| 'nearest'` | `'auto'` | Where to align the item in the viewport |
+| Option                | Type                                                   | Default  | Description                             |
+| --------------------- | ------------------------------------------------------ | -------- | --------------------------------------- |
+| `index`               | `number`                                               | Required | The item index to scroll to (0-based)   |
+| `smoothScroll`        | `boolean`                                              | `true`   | Use smooth scrolling animation          |
+| `shouldThrowOnBounds` | `boolean`                                              | `true`   | Throw if index is out of bounds         |
+| `align`               | `'auto' \| 'top' \| 'bottom' \| 'nearest' \| 'center'` | `'auto'` | Where to align the item in the viewport |
 
 Alignment options:
 
@@ -146,6 +151,16 @@ Alignment options:
 - `'top'` - Always align to the top
 - `'bottom'` - Always align to the bottom
 - `'nearest'` - Scroll as little as possible to bring the item into view
+- `'center'` - Center the item in the viewport, clamped at the list edges
+
+### scrollToOffset() Options
+
+Use `scrollToOffset({ offset, smoothScroll })` to scroll to a raw pixel offset, such as restoring a persisted scroll position after navigation. The returned promise resolves after scrolling has visually finished.
+
+| Option         | Type      | Default  | Description                          |
+| -------------- | --------- | -------- | ------------------------------------ |
+| `offset`       | `number`  | Required | Raw vertical scroll offset in pixels |
+| `smoothScroll` | `boolean` | `true`   | Use smooth scrolling animation       |
 
 ## Infinite Scroll
 
