@@ -359,7 +359,8 @@
                 oldOffset: getScrollOffsetForIndex(
                     heightManager.getHeightCache(),
                     heightManager.averageHeight,
-                    index
+                    index,
+                    heightManager.getBlockSums()
                 )
             }
         }
@@ -398,7 +399,8 @@
                       newOffset: getScrollOffsetForIndex(
                           heightManager.getHeightCache(),
                           heightManager.averageHeight,
-                          anchor.index
+                          anchor.index,
+                          heightManager.getBlockSums()
                       )
                   },
             heightManager.viewport.scrollTop,
@@ -560,7 +562,8 @@
             totalItems: items.length,
             bufferSize,
             totalContentHeight: totalHeight,
-            heightCache: heightManager.getHeightCache()
+            heightCache: heightManager.getHeightCache(),
+            blockSums: heightManager.getBlockSums()
         })
 
         return lastVisibleRange
@@ -586,7 +589,8 @@
                 items.length,
                 visibleRange.start,
                 heightManager.averageHeight,
-                heightManager.getHeightCache()
+                heightManager.getHeightCache(),
+                heightManager.getBlockSums()
             )
         )
     })
@@ -635,7 +639,7 @@
             if (scrollDelta >= threshold || lastVisibleRange === null) {
                 lastProcessedScrollTop = current
             }
-            updateDebugTailDistance()
+            if (INTERNAL_DEBUG) updateDebugTailDistance()
             if (INTERNAL_DEBUG) {
                 const vr = visibleItems
                 log('[SVL] scroll', {
@@ -918,7 +922,8 @@
                 scrollTop: heightManager.scrollTop,
                 firstVisibleIndex,
                 lastVisibleIndex,
-                heightCache: heightManager.getHeightCache()
+                heightCache: heightManager.getHeightCache(),
+                blockSums: heightManager.getBlockSums()
             })
 
             // Handle early return for 'nearest' alignment when item is already visible

@@ -200,6 +200,8 @@ export interface ScrollTargetParams {
     firstVisibleIndex: number
     lastVisibleIndex: number
     heightCache: Record<number, number>
+    /** Optional precomputed block sums for O(blockSize) offset lookup (see buildBlockSums). */
+    blockSums?: number[]
 }
 
 /**
@@ -239,7 +241,8 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
         scrollTop,
         firstVisibleIndex,
         lastVisibleIndex,
-        heightCache
+        heightCache,
+        blockSums
     } = params
 
     return calculateTopToBottomScrollTarget({
@@ -250,7 +253,8 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
         scrollTop,
         firstVisibleIndex,
         lastVisibleIndex,
-        heightCache
+        heightCache,
+        blockSums
     })
 }
 
@@ -276,6 +280,8 @@ interface TopToBottomScrollParams {
     lastVisibleIndex: number
     /** Cache of measured item heights. */
     heightCache: Record<number, number>
+    /** Optional precomputed block sums for O(blockSize) offset lookup (see buildBlockSums). */
+    blockSums?: number[]
 }
 
 /**
@@ -298,12 +304,23 @@ const calculateTopToBottomScrollTarget = (params: TopToBottomScrollParams): numb
         scrollTop,
         firstVisibleIndex,
         lastVisibleIndex,
-        heightCache
+        heightCache,
+        blockSums
     } = params
 
     // Calculate item boundaries
-    const itemTop = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex)
-    const itemBottom = getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex + 1)
+    const itemTop = getScrollOffsetForIndex(
+        heightCache,
+        calculatedItemHeight,
+        targetIndex,
+        blockSums
+    )
+    const itemBottom = getScrollOffsetForIndex(
+        heightCache,
+        calculatedItemHeight,
+        targetIndex + 1,
+        blockSums
+    )
 
     if (align === 'auto') {
         // If item is above the viewport, align to top
