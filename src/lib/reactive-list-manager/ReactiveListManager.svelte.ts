@@ -81,6 +81,13 @@ export class ReactiveListManager {
                 ? current
                 : exactAverage
         this._averageHeight = average
+        // Block sums bake `average` into every unmeasured item's contribution;
+        // a hysteresis snap that moves the published average therefore
+        // invalidates any sums computed against the old value.
+        if (average !== current) {
+            this._blockSums.length = 0
+            this._blockSumsValid = false
+        }
         const unmeasuredCount = this._itemLength - this._measuredCount
         this._totalHeight = this._totalMeasuredHeight + unmeasuredCount * average
     }

@@ -79,6 +79,15 @@ export interface VisibleRangeOptions {
     totalContentHeight?: number
     /** Measured item heights keyed by index; used to walk actual heights instead of dividing by average. */
     heightCache?: Record<number, number>
+    /**
+     * Optional precomputed block prefix sums (see {@link buildBlockSums}). When
+     * present and non-empty, the start index is found by binary-searching the
+     * blocks instead of accumulating heights from index 0 — O(blockSize)
+     * instead of O(start). Must be built with the same `blockSize`.
+     */
+    blockSums?: number[]
+    /** Block size the `blockSums` were built with (default 1000). */
+    blockSize?: number
 }
 
 /**
@@ -110,12 +119,33 @@ export const calculateVisibleRange = ({
     totalItems,
     bufferSize,
     totalContentHeight,
-    heightCache
+    heightCache,
+    blockSums,
+    blockSize = 1000
 }: VisibleRangeOptions): SvelteVirtualListPreviousVisibleRange => {
     // Walk forward through measured heights to find the correct start index
     // instead of dividing by average height (which is wrong for variable-height items).
     let start = 0
     let acc = 0
+    if (blockSums && blockSums.length > 0) {
+        // Block-accelerated start: binary-search for the smallest completed
+        // block whose cumulative height exceeds scrollTop, seed acc/start from
+        // it, then finish with a bounded walk (≤ blockSize iterations). This
+        // replaces the O(start) walk from index 0 with O(blockSize).
+        let lo = 0
+        let hi = blockSums.length
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1
+            if (blockSums[mid] > scrollTop) {
+                hi = mid
+            } else {
+                lo = mid + 1
+            }
+        }
+        const b = lo
+        acc = b > 0 ? blockSums[b - 1] : 0
+        start = b * blockSize
+    }
     while (start < totalItems) {
         const h = getValidHeight(heightCache?.[start], itemHeight)
         if (acc + h > scrollTop) break
@@ -174,17 +204,19 @@ export const calculateVisibleRange = ({
  * @param {number} visibleStart - Index of the first visible item
  * @param {number} itemHeight - Height of each list item in pixels
  * @param {Record<number, number>} [heightCache] - Cache of measured item heights
+ * @param {number[]} [blockSums] - Optional precomputed block sums for O(blockSize) offset lookup
  * @returns {number} The calculated transform Y value in pixels
  */
 export const calculateTransformY = (
     totalItems: number,
     visibleStart: number,
     itemHeight: number,
-    heightCache?: Record<number, number>
+    heightCache?: Record<number, number>,
+    blockSums?: number[]
 ) => {
     // Prefer precise offset using measured heights when available
     if (heightCache) {
-        const offset = getScrollOffsetForIndex(heightCache, itemHeight, visibleStart)
+        const offset = getScrollOffsetForIndex(heightCache, itemHeight, visibleStart, blockSums)
         return Math.max(0, Math.round(offset))
     }
     return Math.round(visibleStart * itemHeight)
@@ -304,14 +336,21 @@ export const getScrollOffsetForIndex = (
 
         return offset
     }
+    // Clamp to the last stored block sum. `blockSums` holds one entry per
+    // COMPLETED block (blocks - 1 entries), so an index at or beyond the final
+    // block's start — e.g. idx === totalItems when totalItems is a multiple of
+    // blockSize — has no prefix entry of its own. Seeding from the last
+    // available sum and walking the remainder keeps the result correct instead
+    // of reading `undefined` and collapsing to 0.
     const blockIdx = Math.floor(safeIdx / blockSize)
+    const effBlock = Math.min(blockIdx, blockSums.length)
     let offsetBase = 0
-    if (blockIdx > 0) {
-        const base = blockSums[blockIdx - 1]
+    if (effBlock > 0) {
+        const base = blockSums[effBlock - 1]
         offsetBase = Number.isFinite(base) ? (base as number) : 0
     }
     let offset = offsetBase
-    const start = blockIdx * blockSize
+    const start = effBlock * blockSize
     for (let i = start; i < safeIdx; i++) {
         offset += getValidHeight(heightCache[i], calculatedItemHeight)
     }

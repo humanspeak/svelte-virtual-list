@@ -766,6 +766,38 @@ describe('ReactiveListManager (alias)', () => {
             expect(blockSums.length).toBe(0)
         })
 
+        it('should reflect a post-hysteresis-snap average in unmeasured tail blocks', () => {
+            // 3000 items, itemHeight 40 → published average starts at 40.
+            // blockSize 1000 → 3 blocks, blockSums has 2 prefix entries
+            // (block 0 = items 0-999, block 1 = items 0-1999).
+            const manager = new ReactiveListManager({ itemLength: 3000, itemHeight: 40 })
+
+            // Validate sums against the pre-snap average (40).
+            const before = manager.getBlockSums()
+            expect(before[0]).toBe(40000) // 1000 items × 40
+            expect(before[1]).toBe(80000) // 2000 items × 40
+
+            // Measure 100 items in block 0 at 200px. Exact average jumps to 200
+            // (|200-40|/40 = 4.0), far past the 2% hysteresis band, so the
+            // published average SNAPS to 200. Block sums bake that average into
+            // every unmeasured item, so the whole (untouched) tail must move.
+            const dirty = Array.from({ length: 100 }, (_, i) => ({
+                index: i,
+                oldHeight: undefined,
+                newHeight: 200
+            }))
+            manager.processDirtyHeights(dirty)
+            expect(manager.averageHeight).toBe(200)
+
+            const after = manager.getBlockSums()
+            // Block 0: 100 measured × 200 + 900 unmeasured × 200 = 200000.
+            expect(after[0]).toBe(200000)
+            // Block 1 is ENTIRELY unmeasured — if sums were stale (old avg 40)
+            // it would read 200000 + 1000×40 = 240000. With the snapped
+            // average it must read 200000 + 1000×200 = 400000.
+            expect(after[1]).toBe(400000)
+        })
+
         it('should perform efficiently with large item counts', () => {
             const manager = new ReactiveListManager({ itemLength: 100000, itemHeight: 40 })
 
