@@ -2,6 +2,7 @@ import SvelteVirtualList from '$lib/SvelteVirtualList.svelte'
 import type {
     SvelteVirtualListDebugInfo,
     SvelteVirtualListProps,
+    SvelteVirtualListRangeInfo,
     SvelteVirtualListScrollAlign,
     SvelteVirtualListScrollOptions
 } from '$lib/types.js'
@@ -9,6 +10,7 @@ import type {
 export type {
     SvelteVirtualListDebugInfo,
     SvelteVirtualListProps,
+    SvelteVirtualListRangeInfo,
     SvelteVirtualListScrollAlign,
     SvelteVirtualListScrollOptions
 }

@@ -75,6 +75,26 @@ export type SvelteVirtualListProps<TItem = any> = {
      * @default true
      */
     hasMore?: boolean
+    /**
+     * Called whenever the rendered item range or the at-top/at-bottom state
+     * changes. Fires once after mount with the initial range. Use for
+     * impression tracking, URL sync, or scroll-position persistence.
+     */
+    onRangeChange?: (_range: SvelteVirtualListRangeInfo) => void
+}
+
+/**
+ * Snapshot of the rendered range and scroll edges, delivered via `onRangeChange`.
+ */
+export type SvelteVirtualListRangeInfo = {
+    /** Index of the first rendered item (includes buffer). */
+    start: number
+    /** Index one past the last rendered item (includes buffer). */
+    end: number
+    /** True when the viewport is scrolled to the very top. */
+    atTop: boolean
+    /** True when the viewport is scrolled to the very bottom. */
+    atBottom: boolean
 }
 
 /**

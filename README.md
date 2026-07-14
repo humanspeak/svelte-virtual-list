@@ -86,6 +86,27 @@ yarn add @humanspeak/svelte-virtual-list
 | `onLoadMore`                 | `() => void \| Promise<void>` | -                   | Callback when more data is needed for infinite scroll                         |
 | `loadMoreThreshold`          | `number`                      | `20`                | Items from end to trigger `onLoadMore`                                        |
 | `hasMore`                    | `boolean`                     | `true`              | Set to `false` when all data has been loaded                                  |
+| `onRangeChange`              | `(range) => void`             | -                   | Fires when the rendered range or at-top/at-bottom state changes               |
+
+### Observing the visible range
+
+`onRangeChange` delivers a `{ start, end, atTop, atBottom }` snapshot whenever the rendered
+item range or the scroll edges change (it also fires once after mount with the initial range).
+Use it for impression/analytics tracking, URL sync, sticky toolbars, or scroll-position
+persistence — no need to enable `debug`. `start`/`end` include the render buffer.
+
+```svelte
+<SvelteVirtualList
+    {items}
+    onRangeChange={({ start, end, atTop, atBottom }) => {
+        console.log(`rendering ${start}..${end}`, { atTop, atBottom })
+    }}
+>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</SvelteVirtualList>
+```
 
 ## Programmatic Scrolling
 

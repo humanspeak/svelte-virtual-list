@@ -148,6 +148,7 @@
         DEFAULT_SCROLL_OPTIONS,
         type SvelteVirtualListPreviousVisibleRange,
         type SvelteVirtualListProps,
+        type SvelteVirtualListRangeInfo,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
@@ -198,7 +199,8 @@
         testId, // Base test ID for component elements (undefined = no data-testid attributes)
         onLoadMore, // Callback when more data needed (supports sync and async)
         loadMoreThreshold = 20, // Items from end to trigger load
-        hasMore = true // Set false when all data loaded
+        hasMore = true, // Set false when all data loaded
+        onRangeChange // Public callback for visible-range / scroll-edge changes
     }: SvelteVirtualListProps<TItem> = $props()
 
     /**
@@ -754,6 +756,32 @@
         } else {
             console.info('Virtual List Debug:', info)
         }
+    })
+
+    // Public range/scroll-edge callback. Mirrors the debug effect's shape but
+    // delivers a trimmed, first-class payload (no debug gating, no console
+    // noise). lastRangeInfo is a plain `let` — NOT $state — because writing
+    // $state inside an effect that also reads it would loop.
+    let lastRangeInfo: SvelteVirtualListRangeInfo | null = null
+
+    $effect(() => {
+        if (!onRangeChange) return
+        const range = visibleItems
+        const viewportHeight = height || 0
+        // atTop/atBottom math intentionally matches createDebugInfo
+        // (virtualListDebug.ts) so the two channels can never disagree.
+        const atTop = heightManager.scrollTop <= 1
+        const atBottom = heightManager.scrollTop >= totalHeight - viewportHeight - 1
+        if (
+            lastRangeInfo &&
+            lastRangeInfo.start === range.start &&
+            lastRangeInfo.end === range.end &&
+            lastRangeInfo.atTop === atTop &&
+            lastRangeInfo.atBottom === atBottom
+        )
+            return
+        lastRangeInfo = { start: range.start, end: range.end, atTop, atBottom }
+        onRangeChange(lastRangeInfo)
     })
 
     /**
