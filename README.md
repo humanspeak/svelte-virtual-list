@@ -86,6 +86,27 @@ yarn add @humanspeak/svelte-virtual-list
 | `onLoadMore`                 | `() => void \| Promise<void>` | -                   | Callback when more data is needed for infinite scroll                         |
 | `loadMoreThreshold`          | `number`                      | `20`                | Items from end to trigger `onLoadMore`                                        |
 | `hasMore`                    | `boolean`                     | `true`              | Set to `false` when all data has been loaded                                  |
+| `onRangeChange`              | `(range) => void`             | -                   | Fires when the rendered range or at-top/at-bottom state changes               |
+
+### Observing the visible range
+
+`onRangeChange` delivers a `{ start, end, atTop, atBottom }` snapshot whenever the rendered
+item range or the scroll edges change (it also fires once after mount with the initial range).
+Use it for impression/analytics tracking, URL sync, sticky toolbars, or scroll-position
+persistence — no need to enable `debug`. `start`/`end` include the render buffer.
+
+```svelte
+<SvelteVirtualList
+    {items}
+    onRangeChange={({ start, end, atTop, atBottom }) => {
+        console.log(`rendering ${start}..${end}`, { atTop, atBottom })
+    }}
+>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</SvelteVirtualList>
+```
 
 ## Programmatic Scrolling
 
@@ -241,18 +262,18 @@ This project uses [Trunk](https://trunk.io) for formatting and linting. Trunk ma
 
 Part of the [Humanspeak](https://humanspeak.com) family of runes-native Svelte 5 packages:
 
-| Package | Description |
-| --- | --- |
-| [@humanspeak/svelte-markdown](https://markdown.svelte.page) | Runtime markdown renderer for Svelte |
-| **[@humanspeak/svelte-virtual-list](https://virtuallist.svelte.page)** — _this package_ | Virtual scrolling for Svelte |
-| [@humanspeak/svelte-motion](https://motion.svelte.page) | Framer Motion for Svelte 5 |
-| [@humanspeak/svelte-headless-table](https://table.svelte.page) | Headless data tables for Svelte |
-| [@humanspeak/svelte-diff-match-patch](https://diff.svelte.page) | Diff comparison for Svelte |
-| [@humanspeak/svelte-purify](https://purify.svelte.page) | HTML sanitisation for Svelte |
-| [@humanspeak/svelte-virtual-chat](https://virtualchat.svelte.page) | Virtual chat viewport for Svelte 5 |
-| [@humanspeak/memory-cache](https://memory.svelte.page) | In-memory cache for TypeScript |
-| [@humanspeak/svelte-json-view-lite](https://jsonview.svelte.page) | JSON tree viewer for Svelte 5 |
-| [@humanspeak/svelte-scoped-props](https://scoped.svelte.page) | Scoped class props for Svelte |
+| Package                                                                                 | Description                          |
+| --------------------------------------------------------------------------------------- | ------------------------------------ |
+| [@humanspeak/svelte-markdown](https://markdown.svelte.page)                             | Runtime markdown renderer for Svelte |
+| **[@humanspeak/svelte-virtual-list](https://virtuallist.svelte.page)** — _this package_ | Virtual scrolling for Svelte         |
+| [@humanspeak/svelte-motion](https://motion.svelte.page)                                 | Framer Motion for Svelte 5           |
+| [@humanspeak/svelte-headless-table](https://table.svelte.page)                          | Headless data tables for Svelte      |
+| [@humanspeak/svelte-diff-match-patch](https://diff.svelte.page)                         | Diff comparison for Svelte           |
+| [@humanspeak/svelte-purify](https://purify.svelte.page)                                 | HTML sanitisation for Svelte         |
+| [@humanspeak/svelte-virtual-chat](https://virtualchat.svelte.page)                      | Virtual chat viewport for Svelte 5   |
+| [@humanspeak/memory-cache](https://memory.svelte.page)                                  | In-memory cache for TypeScript       |
+| [@humanspeak/svelte-json-view-lite](https://jsonview.svelte.page)                       | JSON tree viewer for Svelte 5        |
+| [@humanspeak/svelte-scoped-props](https://scoped.svelte.page)                           | Scoped class props for Svelte        |
 
 ## License
 

@@ -228,6 +228,112 @@ describe('SvelteVirtualList Component', () => {
         })
     })
 
+    describe('onRangeChange Callback', () => {
+        test('fires at least once after mount with the initial range', async () => {
+            const onRangeChange = vi.fn()
+            const items = createMockItems(100)
+
+            render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items,
+                    onRangeChange
+                }
+            })
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(onRangeChange).toHaveBeenCalled()
+
+            const lastCall = onRangeChange.mock.calls[onRangeChange.mock.calls.length - 1][0]
+            expect(lastCall.start).toBe(0)
+            expect(lastCall.end).toBeGreaterThan(0)
+            expect(lastCall.atTop).toBe(true)
+        })
+
+        test('does not re-deliver identical payloads on unrelated re-renders', async () => {
+            const onRangeChange = vi.fn()
+            const items = createMockItems(100)
+
+            const { rerender } = render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items,
+                    onRangeChange
+                }
+            })
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            const countAfterSettle = onRangeChange.mock.calls.length
+            expect(countAfterSettle).toBeGreaterThan(0)
+
+            // Force an unrelated re-render with the same props/state.
+            await rerender({
+                testId: 'test-list',
+                items,
+                onRangeChange
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(onRangeChange.mock.calls.length).toBe(countAfterSettle)
+        })
+
+        test('every payload has exactly {start, end, atTop, atBottom} with correct types', async () => {
+            const onRangeChange = vi.fn()
+            const items = createMockItems(100)
+
+            render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items,
+                    onRangeChange
+                }
+            })
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(onRangeChange).toHaveBeenCalled()
+            for (const [payload] of onRangeChange.mock.calls) {
+                expect(Object.keys(payload).sort()).toEqual(
+                    ['atBottom', 'atTop', 'end', 'start'].sort()
+                )
+                expect(typeof payload.start).toBe('number')
+                expect(typeof payload.end).toBe('number')
+                expect(typeof payload.atTop).toBe('boolean')
+                expect(typeof payload.atBottom).toBe('boolean')
+            }
+        })
+
+        test('mounting without onRangeChange does not throw or warn', async () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+            const items = createMockItems(100)
+
+            expect(() => {
+                render(TestWrapper, {
+                    props: {
+                        testId: 'test-list',
+                        items
+                    }
+                })
+            }).not.toThrow()
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(warnSpy).not.toHaveBeenCalled()
+            expect(errorSpy).not.toHaveBeenCalled()
+
+            warnSpy.mockRestore()
+            errorSpy.mockRestore()
+        })
+    })
+
     describe('Height Management', () => {
         test('handles different item heights', async () => {
             const items = createMockItems(10)
