@@ -31,3 +31,12 @@ d2633bd · `guard final` after the operator-requested loudness revision
 - Close-out report written: `002-public-range-change-callback.guard-report.md` — **PASS**.
 - Integrated: branch published as `feat/on-range-change-callback`, PR <https://github.com/humanspeak/svelte-virtual-list/pull/424> opened via the `pr` skill. Merge is the operator's.
 - Action: report + log committed; awaiting operator merge decision.
+
+## Checkpoint 4 — 2026-07-14 12:34 — ON TRACK
+
+3394efc · post-final CodeRabbit pass (operator-requested) and revision round 2
+
+- CodeRabbit CLI reviewed the branch vs main: 1 finding (rated major), 0 others. Guard vetted it as real: the verdict-spec waits (`/finalPass=\d/`, `/initialPass=\d/`) also matched the failing `0` state, so a transient failing verdict could satisfy the wait and flake the strict `toBe(1)` assertions.
+- Revision round 2 (of max 2): executor changed the two waits to `/finalPass=1/` and `/initialPass=1/` (mirrors the spec's own `/atBottom=1/` pattern), comment updated, nothing else touched. Guard verified the delta (`git show 3394efc`: one file, 5+/4-) and re-ran the spec: 10/10 across all 5 projects.
+- Pushed `d2633bd..3394efc` to `feat/on-range-change-callback`; PR #424 now carries the fix. Report header re-stamped to the new reviewed SHA — verdict remains **PASS**.
+- Action: report updated and committed; revision budget now exhausted — any further findings go back to the operator, not the executor.
