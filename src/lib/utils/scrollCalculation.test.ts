@@ -9,6 +9,7 @@ import {
     isKeyboardScrollKey,
     resolveAnchorScrollTarget
 } from './scrollCalculation.js'
+import { buildBlockSums, getValidHeight } from './virtualList.js'
 
 describe('alignToEdge', () => {
     // Common test setup: item at position 400-450, viewport 400px tall
@@ -624,5 +625,58 @@ describe('resolveAnchorScrollTarget', () => {
             // Drift is large but clamping brings the target back to scrollTop
             expect(resolveAnchorScrollTarget(item(100, 3000), 5000, maxScrollTop)).toBeNull()
         })
+    })
+})
+
+describe('calculateScrollTarget blockSums equivalence', () => {
+    const makeRng = (seed: number) => {
+        let s = seed >>> 0
+        return () => {
+            s = (s * 1664525 + 1013904223) >>> 0
+            return s / 0xffffffff
+        }
+    }
+
+    const TOTAL = 10_000
+    const AVG = 60
+
+    const buildSparseCache = (seed: number): Record<number, number> => {
+        const rng = makeRng(seed)
+        const cache: Record<number, number> = {}
+        for (let i = 0; i < TOTAL; i++) {
+            if (rng() < 0.3) cache[i] = 20 + Math.floor(rng() * 181)
+        }
+        return cache
+    }
+
+    it('returns identical targets with and without blockSums for every align mode', () => {
+        const cache = buildSparseCache(4242)
+        const blockSums = buildBlockSums(cache, AVG, TOTAL)
+
+        // A representative scroll geometry: viewport somewhere in the middle.
+        let scrollTop = 0
+        for (let i = 0; i < 4000; i++) scrollTop += getValidHeight(cache[i], AVG)
+
+        const aligns: ScrollTargetParams['align'][] = ['auto', 'top', 'bottom', 'nearest']
+        const targets = [0, 1, 500, 999, 1000, 1001, 4000, 4005, 5000, 9500, 9999]
+
+        for (const align of aligns) {
+            for (const targetIndex of targets) {
+                const base: ScrollTargetParams = {
+                    align,
+                    targetIndex,
+                    itemsLength: TOTAL,
+                    calculatedItemHeight: AVG,
+                    height: 400,
+                    scrollTop,
+                    firstVisibleIndex: 4000,
+                    lastVisibleIndex: 4010,
+                    heightCache: cache
+                }
+                const legacy = calculateScrollTarget(base)
+                const accelerated = calculateScrollTarget({ ...base, blockSums })
+                expect(accelerated, `align=${align} target=${targetIndex}`).toBe(legacy)
+            }
+        }
     })
 })

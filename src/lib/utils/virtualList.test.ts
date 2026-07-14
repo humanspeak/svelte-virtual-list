@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+    buildBlockSums,
     calculateScrollPosition,
     calculateTransformY,
     calculateVisibleRange,
@@ -505,5 +506,81 @@ describe('collectPitchChanges', () => {
             { index: 1, oldHeight: undefined, newHeight: 40 },
             { index: 3, oldHeight: 40, newHeight: 80 }
         ])
+    })
+})
+
+describe('calculateVisibleRange blockSums equivalence', () => {
+    // Small seeded LCG so the sparse cache is deterministic across runs.
+    const makeRng = (seed: number) => {
+        let s = seed >>> 0
+        return () => {
+            s = (s * 1664525 + 1013904223) >>> 0
+            return s / 0xffffffff
+        }
+    }
+
+    const TOTAL = 10_000
+    const AVG = 60
+
+    // ~30% of items measured with heights in [20, 200]; the rest fall back to AVG.
+    const buildSparseCache = (seed: number): Record<number, number> => {
+        const rng = makeRng(seed)
+        const cache: Record<number, number> = {}
+        for (let i = 0; i < TOTAL; i++) {
+            if (rng() < 0.3) {
+                cache[i] = 20 + Math.floor(rng() * 181) // 20..200
+            }
+        }
+        return cache
+    }
+
+    it('returns identical {start,end} with and without blockSums across a scrollTop sweep', () => {
+        const cache = buildSparseCache(12345)
+        const blockSums = buildBlockSums(cache, AVG, TOTAL)
+
+        // Total content height by the same accounting the range math uses.
+        let totalContentHeight = 0
+        for (let i = 0; i < TOTAL; i++) {
+            totalContentHeight += getValidHeight(cache[i], AVG)
+        }
+        const viewportHeight = 400
+        const maxScrollTop = Math.max(0, totalContentHeight - viewportHeight)
+
+        const scrollTops = [
+            0,
+            1,
+            123,
+            Math.floor(maxScrollTop * 0.25),
+            Math.floor(maxScrollTop * 0.5),
+            Math.floor(maxScrollTop * 0.75),
+            maxScrollTop - 1000,
+            maxScrollTop - 10,
+            maxScrollTop
+        ]
+
+        for (const scrollTop of scrollTops) {
+            const base = {
+                scrollTop,
+                viewportHeight,
+                itemHeight: AVG,
+                totalItems: TOTAL,
+                bufferSize: 5,
+                totalContentHeight,
+                heightCache: cache
+            }
+            const legacy = calculateVisibleRange(base)
+            const accelerated = calculateVisibleRange({ ...base, blockSums })
+            expect(accelerated, `scrollTop=${scrollTop}`).toEqual(legacy)
+        }
+    })
+
+    it('calculateTransformY returns identical offsets with and without blockSums', () => {
+        const cache = buildSparseCache(999)
+        const blockSums = buildBlockSums(cache, AVG, TOTAL)
+        for (const idx of [0, 1, 500, 999, 1000, 1001, 5000, 9500, 9999]) {
+            const legacy = calculateTransformY(TOTAL, idx, AVG, cache)
+            const accelerated = calculateTransformY(TOTAL, idx, AVG, cache, blockSums)
+            expect(accelerated, `idx=${idx}`).toBe(legacy)
+        }
     })
 })
