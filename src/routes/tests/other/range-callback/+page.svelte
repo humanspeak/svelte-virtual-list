@@ -17,16 +17,30 @@
     }))
 
     // Live tally of the public onRangeChange channel. `calls` counts every
-    // delivery so the dedupe behaviour is observable; `latest` is the most
-    // recent payload the component handed us.
+    // delivery so the dedupe behaviour is observable; `first` is the very
+    // first payload the component delivered (judged for the initial-range
+    // verdict); `latest` is the most recent one.
     let calls = $state(0)
+    let first = $state<SvelteVirtualListRangeInfo | null>(null)
     let latest = $state<SvelteVirtualListRangeInfo | null>(null)
     let running = $state(false)
+    let probeDone = $state(false)
 
     const handleRangeChange = (range: SvelteVirtualListRangeInfo) => {
         calls += 1
+        if (!first) first = range
         latest = range
     }
+
+    // Verdicts stay pending (null) only until the probe completes, then MUST
+    // resolve to pass or fail — a callback that never fired judges as fail
+    // (first/latest still null), never as endless "pending".
+    const initialPass = $derived(
+        probeDone ? first !== null && first.start === 0 && first.atTop === true : null
+    )
+    const finalPass = $derived(
+        probeDone ? latest !== null && latest.atBottom === true && latest.end === ITEM_COUNT : null
+    )
 
     const getViewport = (): HTMLElement | null =>
         document.querySelector('[data-testid="range-callback-list-viewport"]')
@@ -37,9 +51,17 @@
     // viewport all the way to the bottom so the spec can assert atBottom=1
     // and end=ITEM_COUNT arrive through the callback.
     const runProbe = async () => {
+        if (running) return
         const viewport = getViewport()
-        if (!viewport || running) return
+        if (!viewport) {
+            // No viewport rendered at all — judge immediately (both verdicts
+            // fail on whatever was or wasn't delivered) rather than hang
+            // forever in the pending state.
+            probeDone = true
+            return
+        }
         running = true
+        probeDone = false
 
         viewport.scrollTop = 0
         await settle(300)
@@ -47,6 +69,7 @@
         viewport.scrollTop = viewport.scrollHeight
         await settle(600)
 
+        probeDone = true
         running = false
     }
 
@@ -70,10 +93,12 @@
             noise — for impression tracking, URL sync, or scroll-position persistence.
         </p>
         <p>
-            <strong>How it's measured:</strong> the handler counts every delivery and records the
-            latest payload. The probe settles the list at the top, then scrolls the viewport to
-            <code>scrollHeight</code>. Identical payloads are de-duplicated, so
-            <code>calls</code> only grows on real range/edge changes.
+            <strong>How it's measured:</strong> the handler counts every delivery, keeps the first
+            payload, and records the latest one. The probe settles the list at the top, then scrolls
+            the viewport to <code>scrollHeight</code>. When the probe completes, both verdicts below
+            resolve to pass or fail — a callback that never fired reads as ✗, never as pending.
+            Identical payloads are de-duplicated, so <code>calls</code> only grows on real range/edge
+            changes.
         </p>
     </div>
 
@@ -88,6 +113,38 @@
             </span>
             <span class="expected">
                 after mount: start=0 atTop=1; after scroll-to-bottom: end={ITEM_COUNT} atBottom=1
+            </span>
+        </div>
+
+        <div class="stat" class:pass={initialPass === true} class:fail={initialPass === false}>
+            <span class="light"
+                >{initialPass === null ? (running ? '⟳' : '…') : initialPass ? '✓' : '✗'}</span
+            >
+            <span class="label">initial fire at the top</span>
+            <span class="value" data-testid="stat-initial">
+                start={first?.start ?? '—'} atTop={first ? b(first.atTop) : '—'} initialPass={initialPass ===
+                null
+                    ? '—'
+                    : b(initialPass)}
+            </span>
+            <span class="expected">
+                first payload ever delivered must be start=0 atTop=1; zero deliveries = fail
+            </span>
+        </div>
+
+        <div class="stat" class:pass={finalPass === true} class:fail={finalPass === false}>
+            <span class="light"
+                >{finalPass === null ? (running ? '⟳' : '…') : finalPass ? '✓' : '✗'}</span
+            >
+            <span class="label">bottom state after scroll</span>
+            <span class="value" data-testid="stat-final">
+                end={latest?.end ?? '—'} atBottom={latest ? b(latest.atBottom) : '—'} finalPass={finalPass ===
+                null
+                    ? '—'
+                    : b(finalPass)}
+            </span>
+            <span class="expected">
+                after the probe scrolls to the bottom: end={ITEM_COUNT} atBottom=1
             </span>
         </div>
 
@@ -168,8 +225,26 @@
         background: #eef2f7;
     }
 
+    .stat.pass {
+        background: #e9f7ee;
+        border-color: #b7e2c4;
+    }
+
+    .stat.fail {
+        background: #fdeaea;
+        border-color: #f2b8b8;
+    }
+
     .light {
         font-weight: 700;
+    }
+
+    .stat.pass .light {
+        color: #1a7f37;
+    }
+
+    .stat.fail .light {
+        color: #c62828;
     }
 
     .label {
@@ -179,6 +254,14 @@
     .value {
         font-variant-numeric: tabular-nums;
         font-weight: 600;
+    }
+
+    .stat.pass .value {
+        color: #1a7f37;
+    }
+
+    .stat.fail .value {
+        color: #c62828;
     }
 
     .expected {
@@ -202,10 +285,13 @@
         cursor: wait;
     }
 
+    /* The list's container is behind the items; if you see this red, the
+       viewport region is not covered by rendered items. Solid warning red
+       per the house rule — never gradients. */
     .test-container {
         width: 100%;
         height: 400px;
-        background: #f0f0f0;
+        background: #ffc2c2;
     }
 
     .fixed-item {

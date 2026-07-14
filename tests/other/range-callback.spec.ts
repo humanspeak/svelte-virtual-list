@@ -44,4 +44,27 @@ test.describe('onRangeChange - public range callback', () => {
         expect(scrolled.end).toBe(1000)
         expect(scrolled.calls).toBeGreaterThan(initialCalls)
     })
+
+    test('the page judges its own verdicts green once the probe completes', async ({ page }) => {
+        // Verdicts resolve only when the probe finishes — require a digit,
+        // never the pending placeholder dash.
+        await expect(page.locator(stat('final'))).toContainText(/finalPass=\d/, {
+            timeout: 15000
+        })
+        await expect(page.locator(stat('initial'))).toContainText(/initialPass=\d/, {
+            timeout: 15000
+        })
+
+        // First delivery was the top-of-list range.
+        const initial = await readStats(page, 'initial')
+        expect(initial.start).toBe(0)
+        expect(initial.atTop).toBe(1)
+        expect(initial.initialPass).toBe(1)
+
+        // Latest delivery reflects the scrolled-to-bottom state.
+        const final = await readStats(page, 'final')
+        expect(final.end).toBe(1000)
+        expect(final.atBottom).toBe(1)
+        expect(final.finalPass).toBe(1)
+    })
 })
