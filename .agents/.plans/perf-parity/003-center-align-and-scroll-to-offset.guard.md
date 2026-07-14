@@ -48,3 +48,12 @@
 - Deterministic bypass, verified from the executor's worktree on host: the host-side switch already populated pnpm's tools store — `~/Library/pnpm/.tools/pnpm/11.5.0/bin/pnpm --version` → `11.5.0`. Running the exact pinned version triggers no switch and no fetch. Fifth dispatch: executor uses that absolute path for every package-manager invocation, with a hard go/no-go gate (`--version` must print exactly `11.5.0` offline) and an explicit ban on falling back to bare `pnpm`.
 - The signature-verification posture is now BETTER than the checkpoint-4 plan: nothing is skipped — the 11.5.0 bytes in the tools store were downloaded and verified BY pnpm on the host with network; the sandbox merely executes them.
 - Action: reported to operator; awaiting fifth run.
+
+## Checkpoint 6 — 2026-07-14 15:12 — ON TRACK (with documented protocol split)
+
+899ba3e+wip · fifth attempt: toolchain solved, real execution underway; final sandbox limit reached and routed around
+
+- The tools-store pnpm worked: version gate `11.5.0`, frozen install exit 0. Step 1 red evidence captured VERBATIM and correct ("expected null to be 1820", 1 failed / 319 passed — exactly the plan's predicted failure). Step 2 done (324/324 unit, 0 typecheck errors — 5 new center tests). Step 3 code written. Executor showed good judgment: fixed a nested-bare-pnpm issue by PATH-prepending the verified 11.5.0 dir (no config changes), documented it.
+- Final structural limit: the Codex sandbox denies localhost binds (`listen EPERM 127.0.0.1:4173` and `::1`), so Vite preview — and therefore Playwright e2e — can NEVER run in-sandbox. Guard-authorized protocol split, recorded as a deviation-by-design: Codex authors everything and gates each step on in-sandbox unit+typecheck; every e2e execution is deferred to the HOST — run first by the wrapper (which has host Bash) immediately after, then independently re-run by guard at checkpoint. No gate is waived; each is relocated with its runner identified. Trunk gets the same treatment if it hits sandbox limits.
+- Uncommitted steps 1–3 work ordered committed per plan git workflow before continuing; Steps 4–6 to completion next.
+- Action: reported to operator; awaiting the completed run + wrapper host verification.
