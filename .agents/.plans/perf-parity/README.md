@@ -15,11 +15,11 @@ pause happens between the red step and the fix steps.
 
 ## Execution order & status
 
-| Plan | Title                                                       | Priority | Effort | Depends on | Status                                                                     |
-| ---- | ----------------------------------------------------------- | -------- | ------ | ---------- | -------------------------------------------------------------------------- |
-| 001  | Block-accelerated offset/range math (kills O(n) tail walks) | P1       | M      | —          | MERGED (PR #423 → main, 2026-07-14)                                        |
-| 002  | Public `onRangeChange` callback (range/scroll-edge state)   | P1       | S      | —          | DONE (guard final PASS; PR #424 open, conflict resolved via merge 6e94c26) |
-| 003  | `align: 'center'` + `scrollToOffset()` (issues #165, #66)   | P2       | M      | 001 (soft) | TODO — unblocked (001 on main)                                             |
+| Plan | Title                                                       | Priority | Effort | Depends on | Status                                                                                                |
+| ---- | ----------------------------------------------------------- | -------- | ------ | ---------- | ----------------------------------------------------------------------------------------------------- |
+| 001  | Block-accelerated offset/range math (kills O(n) tail walks) | P1       | M      | —          | MERGED (PR #423 → main, 2026-07-14)                                                                   |
+| 002  | Public `onRangeChange` callback (range/scroll-edge state)   | P1       | S      | —          | DONE (guard final PASS; PR #424 open, conflict resolved via merge 6e94c26)                            |
+| 003  | `align: 'center'` + `scrollToOffset()` (issues #165, #66)   | P2       | M      | —          | IN PROGRESS (re-baselined to 899ba3e; Codex/GPT-5.6 executor dispatched 2026-07-14, guard overseeing) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED
 (with one-line rationale)

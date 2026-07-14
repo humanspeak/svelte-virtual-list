@@ -6,24 +6,29 @@
 > report — do not improvise. When done, update the status row for this plan
 > in `.agents/.plans/perf-parity/README.md`.
 >
-> **Drift check (run first)**: `git diff --stat b5da256..HEAD -- src/lib/types.ts src/lib/utils/scrollCalculation.ts src/lib/SvelteVirtualList.svelte`
+> **Drift check (run first)**: `git diff --stat 899ba3e..HEAD -- src/lib/types.ts src/lib/utils/scrollCalculation.ts src/lib/SvelteVirtualList.svelte`
 > If any in-scope file changed since this plan was written, compare the
 > "Current state" excerpts against the live code before proceeding; on a
-> mismatch, treat it as a STOP condition. NOTE: Plan 001 intentionally edits
-> `scrollCalculation.ts` (adds an optional `blockSums` param) and the
-> component — execute this plan AFTER 001 and treat 001's changes as the
-> expected baseline, not drift.
+> mismatch, treat it as a STOP condition.
+>
+> **Revision 2026-07-14 (guard):** Re-baselined from `b5da256` to `899ba3e`
+> after plans 001 (block-sum acceleration, PR #423) and 002 (onRangeChange,
+> PR #424) merged to main. All line anchors and excerpts below now describe
+> main at `899ba3e`; `ScrollTargetParams` already carries an optional
+> `blockSums` param that this plan's `maxScrollTop` addition composes with.
+> Toolchain corrections baked in: Playwright runs 5 projects (not 3), e2e
+> must run under `CI=1`, and `pnpm run test:only -- <filter>` does not
+> actually filter (verify from per-file output of the full run instead).
 
 ## Status
 
 - **Priority**: P2
 - **Effort**: M
 - **Risk**: LOW
-- **Depends on**: 001-block-sum-offset-acceleration.md (same-file ordering only, no
-  logical dependency — if 001 is skipped, this plan still works against the excerpts
-  below minus 001's `blockSums` params)
+- **Depends on**: none — plans 001 and 002 are both merged to main; this plan applies
+  directly on top of `main`.
 - **Category**: direction (parity)
-- **Planned at**: commit `b5da256`, 2026-07-13
+- **Planned at**: commit `899ba3e`, 2026-07-14 (originally `b5da256`, 2026-07-13; re-baselined by guard)
 
 ## Why this matters
 
@@ -48,12 +53,12 @@ library. Initial-scroll-position props (`initialScrollIndex`) are deliberately d
 Files and roles:
 
 - `src/lib/types.ts`:
-    - Align union (line 109): `export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest'`
+    - Align union (line 129): `export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest'`
     - `SvelteVirtualListScrollOptions` (lines 114–123) and `DEFAULT_SCROLL_OPTIONS`
       (lines 128–132).
 - `src/lib/utils/scrollCalculation.ts` — pure scroll-target math, well unit-tested
   (`scrollCalculation.test.ts`, 628 lines — the pattern to extend):
-    - `calculateTopToBottomScrollTarget` (lines 292–327) computes
+    - `calculateTopToBottomScrollTarget` (lines 298–343) computes
       `itemTop`/`itemBottom` via `getScrollOffsetForIndex`, then branches on `align`.
       The final branch is:
 
@@ -69,21 +74,26 @@ Files and roles:
         treats as "no scroll needed" and resolves silently. That is the current (broken)
         behavior for `'center'`.
 
-    - `ScrollTargetParams` (lines 193–203) includes `itemsLength`, `heightCache`,
-      `calculatedItemHeight`, `height`, `scrollTop` — but note `calculateTopToBottomScrollTarget`
-      does NOT currently receive `itemsLength`, and neither function knows `maxScrollTop`.
+    - `ScrollTargetParams` (lines 193–205) includes `itemsLength`, `heightCache`,
+      `calculatedItemHeight`, `height`, `scrollTop`, and an optional `blockSums?: number[]`
+      (line 204, landed with plan 001; `TopToBottomScrollParams` mirrors it at line 284) —
+      but note `calculateTopToBottomScrollTarget` does NOT currently receive `itemsLength`,
+      and neither function knows `maxScrollTop`. The `itemTop`/`itemBottom` computations are
+      now multi-line `getScrollOffsetForIndex(...)` calls passing `blockSums` — keep passing
+      it; your `maxScrollTop` param is additive alongside.
     - `clampValue` is imported from `./virtualList.js` (line 2).
 
 - `src/lib/SvelteVirtualList.svelte`:
-    - `scroll(options)` (lines 826–956): validates bounds, computes
-      `scrollTarget = calculateScrollTarget({...})` (line 884), handles the `null` early
-      return (897–900), then runs the scroll machinery: increments
-      `programmaticScrollDepth` (920), calls `heightManager.viewport.scrollTo({top, behavior})`
-      (922–925), updates state in a rAF (928–943), and resolves via
-      `waitForScrollEnd(...)` + `tick()` (947–954). Abort handling: lines 832–837 create a
-      fresh `AbortController` per call.
-    - `totalHeight` derived (line 475); container height state `height` (line 212);
-      `currentMaxScrollTop()` helper (line 333):
+    - `scroll(options)` (lines 858–988): validates bounds, computes
+      `scrollTarget = calculateScrollTarget({...})` (line 916; the params already include
+      `blockSums: heightManager.getBlockSums()` at line 926 — keep it), handles the `null`
+      early return just below, then runs the scroll machinery: increments
+      `programmaticScrollDepth` (line 953), calls `heightManager.viewport.scrollTo({top, behavior})`
+      (955–958), updates state in a rAF (~961–976, with an `INTERNAL_DEBUG` log block inside),
+      and resolves via `waitForScrollEnd(...)` + `tick()` (980–987). Abort handling: lines
+      864–869 create a fresh `AbortController` per call; the not-yet-mounted retry block
+      follows at ~878–896.
+    - `currentMaxScrollTop()` helper (line 335):
       `() => Math.max(0, heightManager.totalHeight - (height || 0))`.
 - `tests/topToBottom/scroll.spec.ts` — e2e exemplar for scroll behavior specs.
 
@@ -100,15 +110,15 @@ Conventions:
 
 ## Commands you will need
 
-| Purpose         | Command                          | Expected on success  |
-| --------------- | -------------------------------- | -------------------- |
-| Install         | `pnpm install`                   | exit 0               |
-| Typecheck       | `pnpm run check`                 | exit 0, 0 errors     |
-| Unit tests      | `pnpm run test:only -- <filter>` | all pass             |
-| Full unit suite | `pnpm test`                      | all pass             |
-| E2E             | `pnpm run test:e2e`              | all pass (3 engines) |
-| Lint            | `trunk check`                    | no new failures      |
-| Format          | `trunk fmt`                      | exit 0               |
+| Purpose         | Command                          | Expected on success   |
+| --------------- | -------------------------------- | --------------------- |
+| Install         | `pnpm install`                   | exit 0                |
+| Typecheck       | `pnpm run check`                 | exit 0, 0 errors      |
+| Unit tests      | `pnpm run test:only -- <filter>` | all pass              |
+| Full unit suite | `pnpm test`                      | all pass              |
+| E2E             | `CI=1 pnpm run test:e2e`         | all pass (5 projects) |
+| Lint            | `trunk check`                    | no new failures       |
+| Format          | `trunk fmt`                      | exit 0                |
 
 ## Scope
 
@@ -127,7 +137,7 @@ Conventions:
 **Out of scope** (do NOT touch):
 
 - `initialScrollIndex` / `initialScrollOffset` props — deferred, see Maintenance notes.
-- The deprecated `scrollToIndex` wrapper (lines 786–799) — leave exactly as-is.
+- The deprecated `scrollToIndex` wrapper (lines 818–831) — leave exactly as-is.
 - `waitForScrollEnd` (`src/lib/utils/scrollEnd.ts`) — reuse, don't modify.
 - Bottom-to-top / reverse mode of any kind — deliberately removed in #395; chat lives in
   `@humanspeak/svelte-virtual-chat`.
@@ -174,7 +184,7 @@ remove it in Step 2.)
 
 ### Step 2: Implement center alignment in the pure math
 
-1. `src/lib/types.ts` line 109: widen the union to
+1. `src/lib/types.ts` line 129: widen the union to
    `'auto' | 'top' | 'bottom' | 'nearest' | 'center'` and update the
    `SvelteVirtualListScrollOptions.align` JSDoc (line 121) to list it.
 2. `src/lib/utils/scrollCalculation.ts`: add `maxScrollTop?: number` to
@@ -195,7 +205,8 @@ remove it in Step 2.)
     for a position the browser can never reach.
 
 3. `src/lib/SvelteVirtualList.svelte`: in `scroll()`, add
-   `maxScrollTop: currentMaxScrollTop()` to the `calculateScrollTarget` params (line 884).
+   `maxScrollTop: currentMaxScrollTop()` to the `calculateScrollTarget` params (line 916,
+   alongside the existing `blockSums` entry).
 4. Remove the Step-1 cast. Add unit tests: center for an item taller than the viewport
    (expect `itemTop`-anchored via the same formula — negative half-gap clamps at the
    right edge cases), center near index 0 (clamps to 0), center near the last index with
@@ -208,7 +219,7 @@ test (now green). `pnpm run check` → exit 0.
 ### Step 3: Extract the shared scroll-execution tail
 
 In `SvelteVirtualList.svelte`, `scrollToOffset` (Step 4) needs the exact machinery
-`scroll()` runs after it knows its target. Extract lines 920–954 (from
+`scroll()` runs after it knows its target. Extract lines 953–987 (from
 `programmaticScrollDepth++` through the `waitForScrollEnd` chain) into a private helper
 inside the script block:
 
@@ -251,7 +262,7 @@ all pass (the scroll machinery is heavily covered there).
 ### Step 4: Add the `scrollToOffset` method
 
 Below `scroll()`, add an exported method mirroring its structure (abort handling copied
-from lines 832–837, mounted-check from 846–864):
+from lines 864–869, mounted-check from ~878–896):
 
 ```ts
 /**
@@ -320,7 +331,7 @@ viewport (±2px); center-align index `items.length - 1` and assert the viewport 
 `scrollHeight - clientHeight` (clamp works end-to-end).
 
 **Verify**: `pnpm run test:e2e -- tests/issues/issue-165.spec.ts tests/topToBottom/scroll.spec.ts`
-→ all pass on chromium, firefox, webkit.
+→ all pass on all five Playwright projects.
 
 ### Step 6: README + full gate
 
@@ -332,7 +343,7 @@ next to `scroll()`, matching the existing format.
 
 1. `pnpm run check` → exit 0
 2. `pnpm test` → all pass
-3. `pnpm run test:e2e` → all pass on all three engines
+3. `CI=1 pnpm run test:e2e` → all pass on all five projects
 4. `trunk fmt` then `trunk check` → no new failures
 5. `git status` → only in-scope files modified/created
 
@@ -346,7 +357,7 @@ next to `scroll()`, matching the existing format.
   clamp-at-0, clamp-at-max. Model on existing `calculateScrollTarget` tests in
   `scrollCalculation.test.ts`.
 - E2E: issue-165 fixture stats (`centerDeltaPx`, `scrollTopPx`) + two scroll.spec.ts
-  cases, all three engines.
+  cases, all five Playwright projects (chromium, firefox, webkit, mobile-chrome, mobile-safari).
 - Step 3's refactor is guarded by the existing `scroll.spec.ts` suite.
 
 ## Done criteria
@@ -357,7 +368,7 @@ next to `scroll()`, matching the existing format.
 - [ ] `grep -n "'center'" src/lib/types.ts` returns a match in the align union
 - [ ] `grep -n "scrollToOffset" src/lib/SvelteVirtualList.svelte` shows the exported method
 - [ ] `grep -n "center" README.md` and `grep -n "scrollToOffset" README.md` return matches
-- [ ] The deprecated `scrollToIndex` is byte-identical to before (`git diff` shows no hunk touching lines 786–799's region)
+- [ ] The deprecated `scrollToIndex` is byte-identical to before (`git diff` shows no hunk touching lines 818–831's region)
 - [ ] No files outside the in-scope list are modified (`git status`)
 - [ ] `.agents/.plans/perf-parity/README.md` status row updated
 
