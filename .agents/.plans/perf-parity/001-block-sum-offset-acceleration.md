@@ -259,7 +259,7 @@ signatures yet — the current code silently ignores them, which is exactly the 
 Step 4 makes the params real; a later step removes the casts.
 
 **Verify**: `pnpm run test:only -- virtualList.perf-budget` → all 3 tests FAIL with
-"expected <big number> to be less than 5000" where the big number is ~90,000–200,000.
+`expected N to be less than 5000` where N is a large read count (~90,000–200,000).
 If any test passes, the reproduction is wrong: STOP and report.
 
 ### Step 2: Gate updateDebugTailDistance behind INTERNAL_DEBUG (PERF-03)
