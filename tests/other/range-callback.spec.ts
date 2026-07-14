@@ -46,12 +46,13 @@ test.describe('onRangeChange - public range callback', () => {
     })
 
     test('the page judges its own verdicts green once the probe completes', async ({ page }) => {
-        // Verdicts resolve only when the probe finishes — require a digit,
-        // never the pending placeholder dash.
-        await expect(page.locator(stat('final'))).toContainText(/finalPass=\d/, {
+        // Wait for the pass tokens directly (same pattern as the atBottom=1
+        // wait above): a bare digit would also match a transiently failing
+        // verdict (…=0) and let the hard assertions below flake.
+        await expect(page.locator(stat('final'))).toContainText(/finalPass=1/, {
             timeout: 15000
         })
-        await expect(page.locator(stat('initial'))).toContainText(/initialPass=\d/, {
+        await expect(page.locator(stat('initial'))).toContainText(/initialPass=1/, {
             timeout: 15000
         })
 
