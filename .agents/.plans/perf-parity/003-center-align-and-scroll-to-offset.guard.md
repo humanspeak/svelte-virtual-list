@@ -21,3 +21,11 @@
 - First Codex run (task-mrkxuftx-ipdlqi) STOPped at its first action: the Agent-tool ephemeral worktree was auto-reaped the moment the wrapper agent completed, but the Codex task runs asynchronously in its own daemon — by the time GPT-5.6 started (~1 min later) its assigned cwd no longer existed. Executor conduct was clean: zero files touched, no substitute directory used, no retry improvised; the main checkout verified unaffected.
 - Root cause is the sync-worktree/async-executor lifecycle mismatch, not the plan or the model. Guard remediation (infrastructure, not source): provisioned a PERSISTENT worktree at `.claude/worktrees/plan-003-codex` on branch `feat/165-center-align-scroll-to-offset` pinned to `899ba3e` (exactly the amended plan's baseline), staged the amended plan into the worktree root as untracked `PLAN-003.md` (executor forbidden to commit/modify it), and re-dispatched with the wrapper required to poll the Codex task to a terminal state before replying.
 - Action: reported to operator; re-dispatched. No plan amendment — the plan was never reached.
+
+## Checkpoint 3 — 2026-07-14 14:12 — BLOCKED (sandbox network, resolved by re-dispatch)
+
+899ba3e · second Codex attempt: worktree fix held, new blocker one layer down
+
+- The persistent worktree worked (install exited 0, drift check empty, Step-1 red test written to `scrollCalculation.test.ts`), but the first `pnpm run test:only` invocation died: pnpm's pinned-version signature verification (`packageManager: pnpm@11.5.0`) needs a registry fetch on invocation, and the Codex sandbox denies network — `fetch failed` → pnpm refused to run with a tampered-lockfile warning. Guard assessment: false alarm; sandbox network restriction, not supply-chain. Executor honored the STOP (Step-1 didn't produce the required "expected null to be 1820"), attempted no workaround, left one uncommitted in-scope edit.
+- Re-dispatched with the wrapper instructed to relaunch with a network-permitting sandbox config (fallback: disable pnpm's version self-switch via env var only, verify 11.5.x, no config-file changes), and to have the executor verify-then-reuse the existing red-test edit rather than duplicate it.
+- Action: reported to operator; awaiting third run. Executor conduct across both failures has been exactly right — clean STOPs, no improvisation.
