@@ -12,6 +12,9 @@
     const VIEWPORT_HEIGHT_PX = 400
     const CENTER_INDEX = 500
     const RESTORE_OFFSET_PX = 12_345
+    const PROBE_DELAY_MS = 500
+    const BLANK_BUDGET_MS = 500
+    const BLANK_SAMPLE_TIMEOUT_MS = 3_000
 
     const items: Item[] = Array.from({ length: ITEM_COUNT }, (_, i) => ({
         id: i,
@@ -21,17 +24,71 @@
     let listRef: SvelteVirtualList<Item>
     let centerDeltaPx = $state<number | null>(null)
     let scrollTopPx = $state<number | null>(null)
+    let blankMs = $state<number | null>(null)
     let running = $state(false)
 
     const centerPass = $derived(centerDeltaPx !== null && centerDeltaPx <= 2)
     const offsetPass = $derived(
         scrollTopPx !== null && Math.abs(scrollTopPx - RESTORE_OFFSET_PX) <= 2
     )
+    const blankPass = $derived(blankMs !== null && blankMs <= BLANK_BUDGET_MS)
 
     const getViewport = (): HTMLElement | null =>
         document.querySelector('[data-testid="issue-165-list-viewport"]')
 
     const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+    /**
+     * True when rendered items span the viewport's full visible height —
+     * i.e. none of the warning-red backdrop is showing through.
+     */
+    const viewportCovered = (viewport: HTMLElement): boolean => {
+        const viewportRect = viewport.getBoundingClientRect()
+        const rects = [...viewport.querySelectorAll('[data-testid^="issue-165-item-"]')]
+            .map((el) => el.getBoundingClientRect())
+            .filter((r) => r.bottom > viewportRect.top && r.top < viewportRect.bottom)
+            .sort((a, b) => a.top - b.top)
+        // Walk downward; any >1px gap between consecutive items (or at either
+        // edge) means the red backdrop is showing through.
+        let coveredToPx = viewportRect.top
+        for (const rect of rects) {
+            if (rect.top > coveredToPx + 1) return false
+            coveredToPx = Math.max(coveredToPx, rect.bottom)
+        }
+        return coveredToPx >= viewportRect.bottom - 1
+    }
+
+    /**
+     * Runs a programmatic jump and returns how long the viewport showed any
+     * unrendered (red-backdrop) region, sampled once per animation frame.
+     */
+    const jumpBlankMs = async (
+        viewport: HTMLElement,
+        jump: () => Promise<void>
+    ): Promise<number> => {
+        const startedAt = performance.now()
+        let accumulatedMs = 0
+        let lastSampleAt = startedAt
+        let settled = false
+        const sampler = new Promise<void>((resolve) => {
+            const tick = () => {
+                const now = performance.now()
+                const covered = viewportCovered(viewport)
+                if (!covered) accumulatedMs += now - lastSampleAt
+                lastSampleAt = now
+                if ((settled && covered) || now - startedAt > BLANK_SAMPLE_TIMEOUT_MS) {
+                    resolve()
+                    return
+                }
+                requestAnimationFrame(tick)
+            }
+            requestAnimationFrame(tick)
+        })
+        await jump()
+        settled = true
+        await sampler
+        return Math.round(accumulatedMs)
+    }
 
     const runProbes = async () => {
         const viewport = getViewport()
@@ -39,8 +96,11 @@
         running = true
         centerDeltaPx = null
         scrollTopPx = null
+        blankMs = null
 
-        await listRef.scroll({ index: CENTER_INDEX, align: 'center', smoothScroll: false })
+        const centerBlankMs = await jumpBlankMs(viewport, () =>
+            listRef.scroll({ index: CENTER_INDEX, align: 'center', smoothScroll: false })
+        )
         await nextFrame()
 
         const target = viewport.querySelector(`[data-testid="issue-165-item-${CENTER_INDEX}"]`)
@@ -55,14 +115,17 @@
             centerDeltaPx = 999_999
         }
 
-        await listRef.scrollToOffset({ offset: RESTORE_OFFSET_PX, smoothScroll: false })
+        const offsetBlankMs = await jumpBlankMs(viewport, () =>
+            listRef.scrollToOffset({ offset: RESTORE_OFFSET_PX, smoothScroll: false })
+        )
         await nextFrame()
         scrollTopPx = Math.round(viewport.scrollTop)
+        blankMs = Math.max(centerBlankMs, offsetBlankMs)
         running = false
     }
 
     onMount(() => {
-        const timer = setTimeout(runProbes, 500)
+        const timer = setTimeout(runProbes, PROBE_DELAY_MS)
         return () => clearTimeout(timer)
     })
 </script>
@@ -86,6 +149,12 @@
             alignment and compares its rendered center with the viewport center. The second probe calls
             <code>scrollToOffset</code>
             with {RESTORE_OFFSET_PX}px and reads the viewport's actual <code>scrollTop</code>.
+        </p>
+        <p>
+            <strong>Timing:</strong> the probes run automatically {PROBE_DELAY_MS}ms after load (and
+            on demand via the button). While each jump lands, any not-yet-rendered region shows the
+            warning-red backdrop — brief red flashes during the probes are expected, and the third
+            stat records how long the backdrop was visible.
         </p>
     </div>
 
@@ -112,6 +181,17 @@
             <span class="label">raw offset is restored</span>
             <span class="value" data-testid="stat-offset">scrollTopPx={scrollTopPx ?? '—'}</span>
             <span class="expected">must be within 2px of {RESTORE_OFFSET_PX}px</span>
+        </div>
+
+        <div class="stat" class:pass={blankPass} class:fail={blankMs !== null && !blankPass}>
+            <span class="light"
+                >{blankMs === null ? (running ? '⟳' : '…') : blankPass ? '✓' : '✗'}</span
+            >
+            <span class="label">viewport repaints after jumps</span>
+            <span class="value" data-testid="stat-blank">blankMs={blankMs ?? '—'}</span>
+            <span class="expected"
+                >red backdrop visible ≤ {BLANK_BUDGET_MS}ms (worst of both jumps)</span
+            >
         </div>
 
         <button class="remeasure" onclick={runProbes} disabled={running}>
