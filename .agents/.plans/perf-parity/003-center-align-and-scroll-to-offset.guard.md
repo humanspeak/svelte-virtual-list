@@ -87,3 +87,13 @@
 - Close-out report written: `003-center-align-and-scroll-to-offset.guard-report.md` — **PASS**.
 - Integrated: branch pushed, PR <https://github.com/humanspeak/svelte-virtual-list/pull/425> opened via the `pr` skill. Merge is the operator's.
 - Action: report + log committed; index updated (003 → DONE).
+
+## Post-merge signoff — 2026-07-16 11:00 — CLOSED
+
+fcc6cdf · PR #425 merged to main by the operator; all CI checks green
+
+- Post-open additions, authored in the operator's session (not by the executor) and merged with the PR: `ca87bb7` — fixture gained a probe-timing note (auto-run 500ms after load; red backdrop flashes during jumps are expected) plus a third stat, `blankMs`: a gap-aware per-frame coverage sampler recording how long the red backdrop stayed visible across both jumps, ≤500ms budget, spec-asserted (10/10 on host across all 5 engines; 17ms unthrottled, 164ms at 20x CPU throttle — scales with load, far from budget). Prompted by an operator observation the original fixture couldn't answer ("is the red on load expected? how long until usable?").
+- `09545cf` — docs-site prose: `'center'` across scroll-methods guide, api/methods reference, and `SvelteVirtualListScrollAlign` in api/types; full `scrollToOffset()` sections (signature, clamping/promise behavior, options, restore-position examples). Authored by a docs subagent, verified against source; docs `check` 0 errors.
+- `8adf6db` — the three interactive demos (ScrollToItemExample, MethodsExample, scroll-to-item Default) gained `center` in their align dropdowns; middle quick-buttons now use it. Verified headed: smooth+center lands the target 1px from frame center. A false alarm ("smooth+center doesn't scroll") was traced to the verification harness clicking the wrong button via substring selector — worth remembering: scope demo selectors to `.demo-telemetry`.
+- Close-out: remote feature branch deleted post-merge; `plan-003-codex` worktree unlocked (supacode lock) and removed; local branch deleted. Guard log preserved via this PR, labeled `skip-publish`.
+- Plan 003 CLOSED.
