@@ -66,7 +66,7 @@ settles); for an instant scroll it resolves after the DOM updates.
 |----------|------|---------|-------------|
 | `index` | `number` | required | Target item index |
 | `smoothScroll` | `boolean` | `true` | Use smooth scroll animation |
-| `align` | `'auto' \| 'top' \| 'bottom' \| 'nearest'` | `'auto'` | Alignment of target item |
+| `align` | `'auto' \| 'top' \| 'bottom' \| 'nearest' \| 'center'` | `'auto'` | Alignment of target item |
 | `shouldThrowOnBounds` | `boolean` | `true` | Throw error if index out of bounds |
 
 ### Examples
@@ -86,6 +86,11 @@ await listRef.scroll({ index: 0, align: 'top' })
 await listRef.scroll({ index: items.length - 1, align: 'bottom' })
 ```
 
+**Center an item in the viewport:**
+```typescript
+await listRef.scroll({ index: 500, align: 'center' })
+```
+
 **Instant scroll (no animation):**
 ```typescript
 await listRef.scroll({ index: 500, smoothScroll: false })
@@ -99,6 +104,41 @@ await listRef.scroll({ index: 500, smoothScroll: false })
 | `'top'` | Align item to top of viewport |
 | `'bottom'` | Align item to bottom of viewport |
 | `'nearest'` | Scroll to nearest edge if not visible |
+| `'center'` | Center the item vertically in the viewport, clamped at the list edges |
+
+## scrollToOffset()
+
+Scroll to a raw pixel offset instead of an item index. Complements `scroll()` and is ideal for restoring a persisted scroll position after navigation.
+
+### Signature
+
+```typescript
+scrollToOffset(options: {
+    offset: number
+    smoothScroll?: boolean
+}): Promise<void>
+```
+
+The `offset` is clamped to the list's valid scroll range, so values past the end settle at the bottom. The returned promise resolves once the scroll has visually finished.
+
+### Options
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `offset` | `number` | required | Raw vertical scroll offset in pixels |
+| `smoothScroll` | `boolean` | `true` | Use smooth scroll animation |
+
+### Examples
+
+**Restore a saved scroll position instantly:**
+```typescript
+await listRef.scrollToOffset({ offset: 12345, smoothScroll: false })
+```
+
+**Smoothly scroll to a pixel offset:**
+```typescript
+await listRef.scrollToOffset({ offset: 2000 })
+```
 
 ## scrollToTop()
 

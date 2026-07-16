@@ -68,7 +68,7 @@ interface SvelteVirtualListScrollOptions {
 Alignment options for programmatic scrolling.
 
 ```typescript
-type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest'
+type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest' | 'center'
 ```
 
 ## SvelteVirtualListDebugInfo
