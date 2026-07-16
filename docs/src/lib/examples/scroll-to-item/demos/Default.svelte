@@ -5,11 +5,11 @@
         scroll: (_options: {
             index: number
             smoothScroll?: boolean
-            align?: 'auto' | 'top' | 'bottom' | 'nearest'
+            align?: 'auto' | 'top' | 'bottom' | 'nearest' | 'center'
         }) => void
     }
 
-    type Align = 'auto' | 'top' | 'bottom' | 'nearest'
+    type Align = 'auto' | 'top' | 'bottom' | 'nearest' | 'center'
 
     let listRef: ListRef | undefined = $state(undefined)
     let targetIndex = $state(5000)
@@ -80,11 +80,12 @@
                 <option value="top">top</option>
                 <option value="bottom">bottom</option>
                 <option value="nearest">nearest</option>
+                <option value="center">center</option>
             </select>
         </label>
         <button type="button" class="run" onclick={() => scrollToTarget()}>run</button>
         <button type="button" onclick={() => scrollToTarget(0, 'top')}>first</button>
-        <button type="button" onclick={() => scrollToTarget(5000, 'auto')}>middle</button>
+        <button type="button" onclick={() => scrollToTarget(5000, 'center')}>middle</button>
         <button type="button" onclick={() => scrollToTarget(9999, 'bottom')}>last</button>
     </div>
     <div class="demo-frame" bind:this={demoFrame}>

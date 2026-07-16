@@ -75,8 +75,8 @@ scroll(options: {
     index: number
     smoothScroll?: boolean
     shouldThrowOnBounds?: boolean
-    align?: 'auto' | 'top' | 'bottom' | 'nearest'
-})
+    align?: 'auto' | 'top' | 'bottom' | 'nearest' | 'center'
+}): Promise<void>
 ```
 
 ### Options
@@ -94,6 +94,7 @@ scroll(options: {
 - **`'top'`** - Always align the item to the top of the viewport.
 - **`'bottom'`** - Always align the item to the bottom of the viewport.
 - **`'nearest'`** - Scroll as little as possible to bring the item into view (like native `scrollIntoView({ block: 'nearest' })`).
+- **`'center'`** - Center the item vertically in the viewport, clamped at the list edges. Great for focusing a search result or highlighted item so it lands in the middle of the view.
 
 ## Examples
 
@@ -129,6 +130,61 @@ scroll(options: {
 </button>
 ```
 
+### Center the item in the viewport
+
+```svelte
+<button onclick={() => listRef.scroll({ index: 500, align: 'center' })}>
+    Scroll to item 500 (centered)
+</button>
+```
+
+## scrollToOffset(options)
+
+Scrolls the viewport to a raw pixel offset instead of an item index. This complements `scroll()` (which is index-based) and is ideal for restoring a persisted scroll position after navigation.
+
+```typescript
+scrollToOffset(options: {
+    offset: number
+    smoothScroll?: boolean
+}): Promise<void>
+```
+
+The offset is clamped to the list's valid scroll range, so values beyond the end simply settle at the bottom. The returned promise resolves once scrolling has visually finished.
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `offset` | `number` | Required | Raw vertical scroll offset in pixels |
+| `smoothScroll` | `boolean` | `true` | Use smooth scrolling animation |
+
+### Example
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let listRef
+
+    // e.g. a value read back from sessionStorage
+    const savedOffset = 12345
+
+    function restoreScrollPosition() {
+        listRef.scrollToOffset({ offset: savedOffset, smoothScroll: false })
+    }
+</script>
+
+<button onclick={restoreScrollPosition}>
+    Restore scroll position
+</button>
+
+<VirtualList {items} bind:this={listRef}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
 ## TypeScript
 
 For full type safety, you can type the ref:
@@ -139,8 +195,12 @@ type ListRef = {
         index: number
         smoothScroll?: boolean
         shouldThrowOnBounds?: boolean
-        align?: 'auto' | 'top' | 'bottom' | 'nearest'
-    }) => void
+        align?: 'auto' | 'top' | 'bottom' | 'nearest' | 'center'
+    }) => Promise<void>
+    scrollToOffset: (options: {
+        offset: number
+        smoothScroll?: boolean
+    }) => Promise<void>
 }
 
 let listRef: ListRef | undefined = $state(undefined)

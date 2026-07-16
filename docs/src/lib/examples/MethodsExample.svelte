@@ -1,7 +1,7 @@
 <script lang="ts">
     import VirtualList from '@humanspeak/svelte-virtual-list'
 
-    type Align = 'auto' | 'top' | 'bottom' | 'nearest'
+    type Align = 'auto' | 'top' | 'bottom' | 'nearest' | 'center'
 
     type ListRef = {
         scroll: (_options: {
@@ -89,6 +89,7 @@
                 <option value="top">top</option>
                 <option value="bottom">bottom</option>
                 <option value="nearest">nearest</option>
+                <option value="center">center</option>
             </select>
         </label>
         <label class="check">
@@ -97,7 +98,7 @@
         </label>
         <button type="button" class="run" onclick={() => scrollTo()}>run</button>
         <button type="button" onclick={() => scrollTo(0, 'top')}>first</button>
-        <button type="button" onclick={() => scrollTo(500, 'auto')}>middle</button>
+        <button type="button" onclick={() => scrollTo(500, 'center')}>middle</button>
         <button type="button" onclick={() => scrollTo(items.length - 1, 'bottom')}>last</button>
         <div class="status">● ready</div>
     </div>

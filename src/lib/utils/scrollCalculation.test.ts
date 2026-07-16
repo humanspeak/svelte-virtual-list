@@ -271,6 +271,76 @@ describe('calculateScrollTarget', () => {
     }
 
     describe('topToBottom mode', () => {
+        describe('center alignment', () => {
+            it('centers the target item in the viewport for align center', () => {
+                const target = calculateScrollTarget({
+                    align: 'center',
+                    targetIndex: 50,
+                    itemsLength: 100,
+                    calculatedItemHeight: 40,
+                    height: 400,
+                    scrollTop: 0,
+                    firstVisibleIndex: 0,
+                    lastVisibleIndex: 10,
+                    heightCache: {}
+                })
+                // itemTop = 50*40 = 2000, itemHeight = 40, viewport = 400
+                // centered: 2000 - (400 - 40) / 2 = 1820
+                expect(target).toBe(1820)
+            })
+
+            it('centers an item taller than the viewport using the same formula', () => {
+                const target = calculateScrollTarget({
+                    ...baseParams,
+                    align: 'center',
+                    targetIndex: 2,
+                    calculatedItemHeight: 40,
+                    height: 400,
+                    heightCache: { 2: 600 }
+                })
+
+                expect(target).toBe(180)
+            })
+
+            it('clamps a centered target near the start to zero', () => {
+                const target = calculateScrollTarget({
+                    ...baseParams,
+                    align: 'center',
+                    targetIndex: 0,
+                    calculatedItemHeight: 40,
+                    height: 400
+                })
+
+                expect(target).toBe(0)
+            })
+
+            it('clamps a centered target near the end to maxScrollTop', () => {
+                const target = calculateScrollTarget({
+                    ...baseParams,
+                    align: 'center',
+                    targetIndex: 99,
+                    calculatedItemHeight: 40,
+                    height: 400,
+                    maxScrollTop: 3600
+                })
+
+                expect(target).toBe(3600)
+            })
+
+            it('centers using non-uniform measured heights', () => {
+                const target = calculateScrollTarget({
+                    ...baseParams,
+                    align: 'center',
+                    targetIndex: 2,
+                    calculatedItemHeight: 40,
+                    height: 200,
+                    heightCache: { 0: 20, 1: 60, 2: 100 }
+                })
+
+                expect(target).toBe(30)
+            })
+        })
+
         describe('auto alignment', () => {
             it('should scroll to top when item is above viewport', () => {
                 const params = {

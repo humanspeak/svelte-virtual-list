@@ -6,6 +6,14 @@ test.describe('topToBottom scroll', () => {
     })
 
     async function setAlign(page: Page, value: string) {
+        if (value === 'center') {
+            await page.locator('select').evaluate((select) => {
+                const option = document.createElement('option')
+                option.value = 'center'
+                option.textContent = 'Center'
+                select.append(option)
+            })
+        }
         await page.locator('select').selectOption(value)
     }
 
@@ -97,5 +105,46 @@ test.describe('topToBottom scroll', () => {
         const item2 = page.locator('[data-testid="list-item-501"]')
         await page.waitForFunction(() => !!document.querySelector('[data-testid="list-item-501"]'))
         await expect(item2).toBeVisible()
+    })
+
+    test('should vertically center a mid-list item with align=center', async ({ page }) => {
+        await setAlign(page, 'center')
+        await page.getByLabel('Smooth Scroll').uncheck()
+        await page.locator('input[type=range]').fill('1234')
+        await page.locator('button').click()
+        await page.waitForFunction(() => !!document.querySelector('[data-testid="list-item-1234"]'))
+
+        const centers = await page.evaluate(() => {
+            const viewport = document.querySelector('[data-testid="basic-list-viewport"]')
+            const item = document.querySelector('[data-testid="list-item-1234"]')
+            if (!viewport || !item) throw new Error('Expected viewport and target item')
+            const viewportRect = viewport.getBoundingClientRect()
+            const itemRect = item.getBoundingClientRect()
+            return {
+                viewport: (viewportRect.top + viewportRect.bottom) / 2,
+                item: (itemRect.top + itemRect.bottom) / 2
+            }
+        })
+
+        expect(Math.abs(centers.item - centers.viewport)).toBeLessThanOrEqual(2)
+    })
+
+    test('should clamp align=center for the last item to the maximum scroll position', async ({
+        page
+    }) => {
+        await setAlign(page, 'center')
+        await page.getByLabel('Smooth Scroll').uncheck()
+        await page.locator('input[type=range]').fill('9999')
+        await page.locator('button').click()
+        await page.waitForFunction(() => !!document.querySelector('[data-testid="list-item-9999"]'))
+
+        const position = await page
+            .locator('[data-testid="basic-list-viewport"]')
+            .evaluate((viewport) => ({
+                scrollTop: viewport.scrollTop,
+                maxScrollTop: viewport.scrollHeight - viewport.clientHeight
+            }))
+
+        expect(Math.abs(position.scrollTop - position.maxScrollTop)).toBeLessThanOrEqual(2)
     })
 })

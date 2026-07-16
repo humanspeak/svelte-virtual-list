@@ -830,6 +830,52 @@
         return scroll({ index, smoothScroll, shouldThrowOnBounds })
     }
 
+    const executeScrollToTarget = (
+        scrollTarget: number,
+        smoothScroll: boolean,
+        signal: AbortSignal,
+        resolve: () => void,
+        reject: (_reason?: unknown) => void
+    ) => {
+        // Suspend anchor preservation while this scroll animates — a
+        // scrollTop write would cancel the smooth scroll mid-flight.
+        programmaticScrollDepth++
+
+        heightManager.viewport.scrollTo({
+            top: scrollTarget,
+            behavior: smoothScroll ? 'smooth' : 'auto'
+        })
+
+        // Update scrollTop state in next frame to avoid synchronous re-renders
+        requestAnimationFrame(() => {
+            // Superseded by a newer programmatic scroll or keyboard input: don't
+            // clobber the newer position with this scroll's stale target.
+            if (signal.aborted) return
+            heightManager.scrollTop = scrollTarget
+            if (INTERNAL_DEBUG && heightManager.viewportElement) {
+                const domMax = Math.max(
+                    0,
+                    heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+                )
+                console.info('[SVL] scroll-after-call', {
+                    scrollTop: heightManager.scrollTop,
+                    domMaxScrollTop: domMax
+                })
+            }
+        })
+
+        // Resolve only once the scroll has visually finished AND the virtual
+        // list has re-rendered for the new position.
+        waitForScrollEnd(heightManager.viewport, scrollTarget, smoothScroll, signal)
+            .then(async () => {
+                await tick()
+                resolve()
+            }, reject)
+            .finally(() => {
+                programmaticScrollDepth = Math.max(0, programmaticScrollDepth - 1)
+            })
+    }
+
     /**
      * Scrolls the virtual list to the item at the given index using a type-based options approach.
      *
@@ -923,7 +969,8 @@
                 firstVisibleIndex,
                 lastVisibleIndex,
                 heightCache: heightManager.getHeightCache(),
-                blockSums: heightManager.getBlockSums()
+                blockSums: heightManager.getBlockSums(),
+                maxScrollTop: currentMaxScrollTop()
             })
 
             // Handle early return for 'nearest' alignment when item is already visible
@@ -948,43 +995,39 @@
                 })
             }
 
-            // Suspend anchor preservation while this scroll animates — a
-            // scrollTop write would cancel the smooth scroll mid-flight.
-            programmaticScrollDepth++
+            executeScrollToTarget(scrollTarget, smoothScroll ?? true, signal, resolve, reject)
+        })
+    }
 
-            heightManager.viewport.scrollTo({
-                top: scrollTarget,
-                behavior: smoothScroll ? 'smooth' : 'auto'
-            })
+    /**
+     * Scrolls the viewport to a raw pixel offset. Complements {@link scroll}
+     * (index-based): use this to restore a persisted scroll position.
+     *
+     * @returns Promise that resolves when scrolling has visually finished.
+     */
+    export const scrollToOffset = (options: {
+        offset: number
+        smoothScroll?: boolean
+    }): Promise<void> => {
+        const { offset, smoothScroll = true } = options
+        scrollAbortController?.abort()
+        const abortController = new AbortController()
+        scrollAbortController = abortController
+        const { signal } = abortController
 
-            // Update scrollTop state in next frame to avoid synchronous re-renders
-            requestAnimationFrame(() => {
-                // Superseded (newer scroll() or keyboard input): don't clobber
-                // the newer position with this scroll's stale target.
-                if (signal.aborted) return
-                heightManager.scrollTop = scrollTarget
-                if (INTERNAL_DEBUG && heightManager.viewportElement) {
-                    const domMax = Math.max(
-                        0,
-                        heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
-                    )
-                    console.info('[SVL] scroll-after-call', {
-                        scrollTop: heightManager.scrollTop,
-                        domMaxScrollTop: domMax
-                    })
-                }
-            })
-
-            // Resolve only once the scroll has visually finished AND the virtual
-            // list has re-rendered for the new position.
-            waitForScrollEnd(heightManager.viewport, scrollTarget, smoothScroll ?? true, signal)
-                .then(async () => {
-                    await tick()
-                    resolve()
-                }, reject)
-                .finally(() => {
-                    programmaticScrollDepth = Math.max(0, programmaticScrollDepth - 1)
+        return new Promise<void>((resolve, reject) => {
+            if (!heightManager.viewportElement) {
+                tick().then(() => {
+                    if (signal.aborted || !heightManager.viewportElement) {
+                        resolve()
+                        return
+                    }
+                    scrollToOffset({ offset, smoothScroll }).then(resolve, reject)
                 })
+                return
+            }
+            const target = Math.round(clampValue(offset, 0, currentMaxScrollTop()))
+            executeScrollToTarget(target, smoothScroll, signal, resolve, reject)
         })
     }
 
