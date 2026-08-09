@@ -17,15 +17,19 @@ export interface AxisAdapter {
     scrollTo: (_element: HTMLElement, _offset: number, _behavior: ScrollBehavior) => void
 }
 
-const verticalKeys = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End'])
-const horizontalKeys = new Set([
+// Single source of truth for keyboard scrolling: both axes share the paging
+// keys and each adds its own arrow pair. scrollCalculation derives its
+// handled-key union from these sets, so a key added here is picked up there.
+const sharedScrollKeys = ['PageDown', 'PageUp', ' ', 'Home', 'End']
+export const verticalScrollKeys: ReadonlySet<string> = new Set([
+    ...sharedScrollKeys,
+    'ArrowDown',
+    'ArrowUp'
+])
+export const horizontalScrollKeys: ReadonlySet<string> = new Set([
+    ...sharedScrollKeys,
     'ArrowRight',
-    'ArrowLeft',
-    'PageDown',
-    'PageUp',
-    ' ',
-    'Home',
-    'End'
+    'ArrowLeft'
 ])
 
 const verticalAxis: AxisAdapter = {
@@ -41,7 +45,7 @@ const verticalAxis: AxisAdapter = {
     getSize: (rect) => rect.height,
     contentSizeStyle: (size) => `height: ${size}px`,
     transform: (offset) => `translateY(${offset}px)`,
-    isScrollKey: (key) => verticalKeys.has(key),
+    isScrollKey: (key) => verticalScrollKeys.has(key),
     scrollTo: (element, offset, behavior) => element.scrollTo({ top: offset, behavior })
 }
 
@@ -58,7 +62,7 @@ const horizontalAxis: AxisAdapter = {
     getSize: (rect) => rect.width,
     contentSizeStyle: (size) => `width: ${size}px`,
     transform: (offset) => `translateX(${offset}px)`,
-    isScrollKey: (key) => horizontalKeys.has(key),
+    isScrollKey: (key) => horizontalScrollKeys.has(key),
     scrollTo: (element, offset, behavior) => element.scrollTo({ left: offset, behavior })
 }
 

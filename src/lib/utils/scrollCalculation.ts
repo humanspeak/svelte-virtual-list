@@ -1,4 +1,5 @@
 import type { SvelteVirtualListScrollAlign } from '$lib/types.js'
+import { horizontalScrollKeys, verticalScrollKeys } from './axis.js'
 import { clampValue, getScrollOffsetForIndex } from './virtualList.js'
 
 /**
@@ -90,17 +91,7 @@ export const alignVisibleToNearestEdge = (
  */
 export const KEYBOARD_LINE_SCROLL_PX = 40
 
-const KEYBOARD_SCROLL_KEYS = new Set([
-    'ArrowRight',
-    'ArrowLeft',
-    'ArrowDown',
-    'ArrowUp',
-    'PageDown',
-    'PageUp',
-    ' ',
-    'Home',
-    'End'
-])
+const KEYBOARD_SCROLL_KEYS = new Set([...verticalScrollKeys, ...horizontalScrollKeys])
 
 /**
  * Whether a KeyboardEvent.key is one of the standard scroll keys the

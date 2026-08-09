@@ -151,7 +151,7 @@
         type SvelteVirtualListRangeInfo,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
-    import { createRafScheduler } from '$lib/utils/raf.js'
+    import { createRafScheduler, nextFrame } from '$lib/utils/raf.js'
     import { getAxisAdapter } from '$lib/utils/axis.js'
     import {
         calculateTransformY,
@@ -166,7 +166,6 @@
     import {
         calculateKeyboardScrollTarget,
         calculateScrollTarget,
-        isKeyboardScrollKey,
         resolveAnchorScrollTarget
     } from '$lib/utils/scrollCalculation.js'
     import { shouldReassertScrollOffset, waitForScrollEnd } from '$lib/utils/scrollEnd.js'
@@ -330,7 +329,7 @@
                 for (let pass = 0; pass < 10; pass++) {
                     lastVisibleRange = null
                     await tick()
-                    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+                    await nextFrame()
                     if (generation !== orientationGeneration || !heightManager.viewportElement)
                         return
                     heightManager.flushDerivedHeights()
@@ -346,7 +345,7 @@
                 let stableFrames = 0
                 for (let pass = 0; pass < 10; pass++) {
                     await tick()
-                    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+                    await nextFrame()
                     if (generation !== orientationGeneration || !heightManager.viewportElement)
                         return
                     const anchorElement = itemElements.find(
@@ -427,7 +426,7 @@
         if (!heightManager.viewportElement) return
         // Gate BEFORE the layout reads below: unhandled keys must not force
         // a reflow on every press.
-        if (!axis.isScrollKey(event.key) || !isKeyboardScrollKey(event.key)) return
+        if (!axis.isScrollKey(event.key)) return
 
         const viewport = heightManager.viewport
         const target = calculateKeyboardScrollTarget({
@@ -598,12 +597,9 @@
         if (!hasReconciledItems) {
             heightManager.updateItemLength(currentItems.length)
         } else if (currentKeys && previousKeys) {
-            const hasIdenticalKeys =
-                currentKeys.length === previousKeys.length &&
-                previousKeys.every((key, index) => currentKeys[index] === key)
-            const isAppendOnly =
-                currentKeys.length >= previousKeys.length &&
-                previousKeys.every((key, index) => currentKeys[index] === key)
+            const sharesPrefix = previousKeys.every((key, index) => currentKeys[index] === key)
+            const hasIdenticalKeys = sharesPrefix && currentKeys.length === previousKeys.length
+            const isAppendOnly = sharesPrefix && currentKeys.length >= previousKeys.length
             if (hasIdenticalKeys) {
                 // Measurements and length are already synchronized.
             } else if (isAppendOnly) heightManager.updateItemLength(currentItems.length)
@@ -1235,8 +1231,8 @@
                 // Let its ResizeObserver measurements land, then perform one
                 // exact re-alignment so end/center do not retain estimate error.
                 await tick()
-                await new Promise<void>((done) => requestAnimationFrame(() => done()))
-                await new Promise<void>((done) => requestAnimationFrame(() => done()))
+                await nextFrame()
+                await nextFrame()
                 if (signal.aborted || !heightManager.viewportElement) {
                     resolve()
                     return
@@ -1306,8 +1302,8 @@
             const finishAfterMeasurement = async () => {
                 const settledOffset = axis.getScrollOffset(heightManager.viewport)
                 await tick()
-                await new Promise<void>((done) => requestAnimationFrame(() => done()))
-                await new Promise<void>((done) => requestAnimationFrame(() => done()))
+                await nextFrame()
+                await nextFrame()
                 if (!signal.aborted && heightManager.viewportElement) {
                     const currentOffset = axis.getScrollOffset(heightManager.viewport)
                     const correctedTarget = Math.round(clampValue(offset, 0, currentMaxScrollTop()))
