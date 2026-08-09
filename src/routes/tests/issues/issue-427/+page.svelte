@@ -50,6 +50,7 @@
     let settledAnchorInset = $state(0)
     let scrollTop = $state(0)
     let transformY = $state(0)
+    let hasMeasured = $state(false)
 
     const viewport = () =>
         document.querySelector<HTMLElement>('[data-testid="issue-427-list-viewport"]')
@@ -83,6 +84,7 @@
         const matrix = new DOMMatrixReadOnly(transform === 'none' ? undefined : transform)
         transformX = Math.round(matrix.m41)
         transformY = Math.round(matrix.m42)
+        hasMeasured = true
     }
 
     const toggleOrientation = async () => {
@@ -248,13 +250,15 @@
     )
     const overallPass = $derived(geometryPass && (!responsiveAttempted || responsivePass))
     const overallState = $derived(
-        !responsiveAttempted
-            ? overallPass
-                ? 'GREEN — HORIZONTAL READY'
-                : 'RED — HORIZONTAL FAIL'
-            : overallPass
-              ? 'GREEN — RESPONSIVE PASS'
-              : 'RED — RESPONSIVE FAIL'
+        !hasMeasured
+            ? 'CHECKING — HORIZONTAL'
+            : !responsiveAttempted
+              ? overallPass
+                  ? 'GREEN — HORIZONTAL READY'
+                  : 'RED — HORIZONTAL FAIL'
+              : overallPass
+                ? 'GREEN — RESPONSIVE PASS'
+                : 'RED — RESPONSIVE FAIL'
     )
 
     onMount(() => {
@@ -277,7 +281,12 @@
         measurably broken; green means geometry, virtualization, and the selected anchor agree.
     </p>
 
-    <section class:pass={overallPass} class:fail={!overallPass} class="diagnostics">
+    <section
+        class:checking={!hasMeasured}
+        class:pass={hasMeasured && overallPass}
+        class:fail={hasMeasured && !overallPass}
+        class="diagnostics"
+    >
         <strong data-testid="overall-state">{overallState}</strong>
         <dl>
             <div>
@@ -468,6 +477,11 @@
         color: #075e28;
         border-color: #12a150;
         background: #dcffe9;
+    }
+    .diagnostics.checking {
+        color: #17365d;
+        border-color: #4a78b0;
+        background: #e8f2ff;
     }
     .diagnostics.fail {
         color: #7e0712;

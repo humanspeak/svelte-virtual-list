@@ -3,6 +3,15 @@ import { expect, test } from '@playwright/test'
 const number = async (page: import('@playwright/test').Page, testId: string) =>
     Number(await page.getByTestId(testId).textContent())
 
+test('issue fixture SSR is neutral until browser geometry is measured', async ({ request }) => {
+    const response = await request.get('/tests/issues/issue-427')
+    expect(response.ok()).toBe(true)
+    const html = await response.text()
+    expect(html).toContain('CHECKING — HORIZONTAL')
+    expect(html).not.toContain('RED — HORIZONTAL FAIL')
+    expect(html).not.toContain('RED — RESPONSIVE FAIL')
+})
+
 test('root test index links to the issue 427 fixture', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     const link = page.getByRole('link', { name: 'Issue 427 — Horizontal list' })
