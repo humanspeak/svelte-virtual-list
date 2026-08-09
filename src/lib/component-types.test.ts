@@ -19,6 +19,13 @@ describe('SvelteVirtualList component generic inference', () => {
         expectTypeOf<Args>().toEqualTypeOf<[Message, number]>()
     })
 
+    it('itemKey receives the inferred item and index and returns a stable primitive key', () => {
+        type Props = SvelteVirtualListProps<Message>
+        expectTypeOf<Props['itemKey']>().toEqualTypeOf<
+            ((item: Message, index: number) => string | number) | undefined
+        >()
+    })
+
     it('defaults to any when type parameter is omitted', () => {
         // No generic specified → defaults to any per current public API
         type DefaultProps = SvelteVirtualListProps

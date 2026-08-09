@@ -168,7 +168,7 @@
     } from '$lib/utils/scrollCalculation.js'
     import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { ReactiveListManager } from '$lib/index.js'
-    import { BROWSER } from 'esm-env'
+    import { BROWSER, DEV } from 'esm-env'
     import { onMount, tick } from 'svelte'
 
     const rafSchedule = createRafScheduler()
@@ -186,6 +186,7 @@
      */
     const {
         items = [], // Array of items to be rendered in the virtual list
+        itemKey, // Stable identity used to preserve measurements through mutations
         defaultEstimatedItemHeight = 40, // Initial height estimate for items before measurement
         debug = false, // Enable debug logging
         renderItem, // Function to render each item
@@ -242,6 +243,9 @@
         internalDebug: INTERNAL_DEBUG
     })
     const instanceId = Math.random().toString(36).slice(2, 7)
+    let previousItems: TItem[] = []
+    let previousKeys: (string | number)[] | null = null
+    let hasReconciledItems = false
 
     // Centralized debug logger gated by flags
     const log = (tag: string, payload?: unknown) => {
@@ -423,9 +427,63 @@
         }
     }
 
-    // Keep height manager synchronized with items length
+    const assertUniqueItemKeys = (keys: readonly (string | number)[]) => {
+        const seen: Record<string, true> = {}
+        for (const key of keys) {
+            const identity = `${typeof key}:${String(key)}`
+            if (seen[identity]) {
+                throw new Error(`SvelteVirtualList: duplicate itemKey value "${String(key)}"`)
+            }
+            seen[identity] = true
+        }
+    }
+
+    const itemIdentities = $derived.by(() => {
+        if (!itemKey) return null
+        const keys = items.map(itemKey)
+        if (DEV || debug) assertUniqueItemKeys(keys)
+        return keys
+    })
+
+    // Keep the manager synchronized with item identity as well as length. A
+    // shared prefix is the O(1) append/suffix-removal path; all ambiguous
+    // unkeyed mutations discard measurements rather than applying stale sizes.
     $effect(() => {
-        heightManager.updateItemLength(items.length)
+        const currentItems = items
+        const currentKeys = itemIdentities
+
+        if (!hasReconciledItems) {
+            heightManager.updateItemLength(currentItems.length)
+        } else if (currentKeys && previousKeys) {
+            const isAppendOnly =
+                currentKeys.length >= previousKeys.length &&
+                previousKeys.every((key, index) => currentKeys[index] === key)
+            if (isAppendOnly) heightManager.updateItemLength(currentItems.length)
+            else heightManager.reconcileItemKeys(previousKeys, currentKeys)
+        } else if (!currentKeys && !previousKeys) {
+            const commonLength = Math.min(previousItems.length, currentItems.length)
+            let hasStablePrefix = true
+            for (let index = 0; index < commonLength; index += 1) {
+                if (previousItems[index] !== currentItems[index]) {
+                    hasStablePrefix = false
+                    break
+                }
+            }
+
+            if (hasStablePrefix) {
+                heightManager.updateItemLength(currentItems.length)
+            } else {
+                heightManager.reset()
+                heightManager.updateItemLength(currentItems.length)
+            }
+        } else {
+            heightManager.reset()
+            heightManager.updateItemLength(currentItems.length)
+        }
+
+        previousItems = currentItems.slice()
+        previousKeys = currentKeys
+        hasReconciledItems = true
     })
 
     // Infinite scroll: trigger onLoadMore when approaching end of list
@@ -1094,7 +1152,7 @@
                 class={itemsClass ?? 'virtual-list-items'}
                 style:transform="translateY({transformY}px)"
             >
-                {#each displayItems as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
+                {#each displayItems as currentItemWithIndex, _i (itemIdentities ? itemIdentities[currentItemWithIndex.originalIndex] : currentItemWithIndex.originalIndex)}
                     <!-- Render each visible item -->
                     <div
                         bind:this={itemElements[currentItemWithIndex.sliceIndex]}

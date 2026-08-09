@@ -605,23 +605,42 @@ describe('ReactiveListManager (alias)', () => {
             expect(manager.totalMeasuredHeight).toBe(80)
         })
 
-        it('decreasing item length recomputes totals without changing measured count (document behavior)', () => {
-            const manager = new ReactiveListManager({ itemLength: 5000, itemHeight: 40 })
-            const dirty: HeightChange[] = Array.from({ length: 100 }, (_, i) => ({
-                index: i,
-                oldHeight: undefined,
-                newHeight: 50
-            }))
-            manager.processDirtyHeights(dirty)
-            expect(manager.measuredCount).toBe(100)
+        it('decreasing item length removes measurements beyond the new boundary', () => {
+            const manager = new ReactiveListManager({ itemLength: 8, itemHeight: 40 })
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 20 },
+                { index: 2, oldHeight: undefined, newHeight: 40 },
+                { index: 5, oldHeight: undefined, newHeight: 80 },
+                { index: 7, oldHeight: undefined, newHeight: 100 }
+            ])
 
-            manager.updateItemLength(2000)
-            expect(manager.itemLength).toBe(2000)
+            manager.updateItemLength(4)
 
-            const expectedAverage = manager.averageHeight
-            const expectedTotal =
-                manager.totalMeasuredHeight + (2000 - manager.measuredCount) * expectedAverage
-            expect(manager.totalHeight).toBe(expectedTotal)
+            expect(manager.itemLength).toBe(4)
+            expect(manager.getHeightCache()).toEqual({ 0: 20, 2: 40 })
+            expect(manager.measuredCount).toBe(2)
+            expect(manager.totalMeasuredHeight).toBe(60)
+            expect(manager.averageHeight).toBe(30)
+            expect(manager.totalHeight).toBe(120)
+        })
+
+        it('remaps measurements by stable item keys across prepend, reorder, and removal', () => {
+            const manager = new ReactiveListManager({ itemLength: 4, itemHeight: 40 })
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 20 },
+                { index: 1, oldHeight: undefined, newHeight: 40 },
+                { index: 2, oldHeight: undefined, newHeight: 60 },
+                { index: 3, oldHeight: undefined, newHeight: 80 }
+            ])
+
+            manager.reconcileItemKeys(['a', 'b', 'c', 'd'], ['new', 'd', 'b'])
+
+            expect(manager.itemLength).toBe(3)
+            expect(manager.getHeightCache()).toEqual({ 1: 80, 2: 40 })
+            expect(manager.measuredCount).toBe(2)
+            expect(manager.totalMeasuredHeight).toBe(120)
+            expect(manager.averageHeight).toBe(60)
+            expect(manager.totalHeight).toBe(180)
         })
 
         it('getHeightCache exposure does not affect totals when mutated externally', () => {

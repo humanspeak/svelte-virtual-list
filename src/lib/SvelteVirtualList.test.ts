@@ -7,14 +7,23 @@ import TestWrapper from './test/TestWrapper.svelte'
 
 // Add ResizeObserver mock
 class ResizeObserverMock {
+    static instances: ResizeObserverMock[] = []
     callback: ResizeObserverCallback
+    observed = new Set<Element>()
     constructor(callback: ResizeObserverCallback) {
         this.callback = callback
+        ResizeObserverMock.instances.push(this)
     }
 
-    observe() {}
-    unobserve() {}
-    disconnect() {}
+    observe(element: Element) {
+        this.observed.add(element)
+    }
+    unobserve(element: Element) {
+        this.observed.delete(element)
+    }
+    disconnect() {
+        this.observed.clear()
+    }
 
     // Helper method to trigger resize
     trigger(entries: ResizeObserverEntry[]) {
@@ -37,6 +46,7 @@ const mockRenderItem = `
 
 beforeEach(() => {
     vi.useFakeTimers()
+    ResizeObserverMock.instances = []
     // Add ResizeObserver to the global object
     global.ResizeObserver = ResizeObserverMock as any
 
@@ -335,6 +345,129 @@ describe('SvelteVirtualList Component', () => {
     })
 
     describe('Height Management', () => {
+        test('invalidates stale measurements on an unkeyed same-length replacement', async () => {
+            const initialItems = createMockItems(4)
+            const debugFn = vi.fn()
+            const { rerender } = render(TestWrapper, {
+                props: {
+                    testId: 'mutation-list',
+                    items: initialItems,
+                    debug: true,
+                    debugFunction: debugFn,
+                    bufferSize: 0
+                }
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            const measuredItem = screen.getByTestId('mutation-list-item-0')
+            Object.defineProperty(measuredItem, 'offsetHeight', { configurable: true, value: 100 })
+            const itemObserver = ResizeObserverMock.instances.find((observer) =>
+                observer.observed.has(measuredItem)
+            )
+            expect(itemObserver).toBeDefined()
+            itemObserver?.trigger([{ target: measuredItem } as unknown as ResizeObserverEntry])
+            await tick()
+            expect(screen.getByTestId('mutation-list-content')).toHaveStyle({ height: '200px' })
+
+            const appendedItems = [...initialItems, { id: 'appended', text: 'Appended item' }]
+            await rerender({
+                testId: 'mutation-list',
+                items: appendedItems,
+                debug: true,
+                debugFunction: debugFn,
+                bufferSize: 0
+            })
+            await tick()
+            expect(screen.getByTestId('mutation-list-content')).toHaveStyle({ height: '250px' })
+
+            await rerender({
+                testId: 'mutation-list',
+                items: appendedItems.slice(0, 3),
+                debug: true,
+                debugFunction: debugFn,
+                bufferSize: 0
+            })
+            await tick()
+            expect(screen.getByTestId('mutation-list-content')).toHaveStyle({ height: '150px' })
+
+            await rerender({
+                testId: 'mutation-list',
+                items: initialItems
+                    .slice(0, 3)
+                    .map((item) => ({ ...item, id: `replacement-${item.id}` })),
+                debug: true,
+                debugFunction: debugFn,
+                bufferSize: 0
+            })
+            await tick()
+
+            expect(screen.getByTestId('mutation-list-content')).toHaveStyle({ height: '120px' })
+
+            await rerender({
+                testId: 'mutation-list',
+                items: [],
+                debug: true,
+                debugFunction: debugFn,
+                bufferSize: 0
+            })
+            await tick()
+            await rerender({
+                testId: 'mutation-list',
+                items: initialItems,
+                debug: true,
+                debugFunction: debugFn,
+                bufferSize: 0
+            })
+            await tick()
+
+            expect(screen.getByTestId('mutation-list-content')).toHaveStyle({ height: '160px' })
+        })
+
+        test('uses itemKey to preserve DOM identity through reorder and prepend', async () => {
+            const items = createMockItems(4)
+            const itemKey = (item: (typeof items)[number]) => item.id
+            const { rerender } = render(TestWrapper, {
+                props: { testId: 'keyed-list', items, itemKey, bufferSize: 0 }
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            const originalNode = screen.getByTestId('item-item-1').parentElement
+            expect(originalNode).toHaveAttribute('data-original-index', '1')
+
+            const reordered = [
+                { id: 'prepended', text: 'Prepended' },
+                items[3],
+                items[1],
+                items[0],
+                items[2]
+            ]
+            await rerender({ testId: 'keyed-list', items: reordered, itemKey, bufferSize: 0 })
+            await tick()
+
+            const movedNode = screen.getByTestId('item-item-1').parentElement
+            expect(movedNode).toBe(originalNode)
+            expect(movedNode).toHaveAttribute('data-original-index', '2')
+        })
+
+        test('rejects duplicate itemKey values with a useful error', () => {
+            const items = [
+                { id: 'duplicate', text: 'First' },
+                { id: 'duplicate', text: 'Second' }
+            ]
+
+            expect(() =>
+                render(TestWrapper, {
+                    props: {
+                        testId: 'duplicate-list',
+                        items,
+                        itemKey: (item: (typeof items)[number]) => item.id
+                    }
+                })
+            ).toThrow(/duplicate itemKey.*duplicate/i)
+        })
+
         test('handles different item heights', async () => {
             const items = createMockItems(10)
 

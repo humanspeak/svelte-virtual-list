@@ -545,12 +545,68 @@ export class ReactiveListManager {
      * @param newLength - New total number of items
      */
     updateItemLength(newLength: number): void {
+        if (newLength < this._itemLength) {
+            let removedHeight = 0
+            let removedCount = 0
+
+            for (const indexKey of Object.keys(this._heightCache)) {
+                const index = Number(indexKey)
+                if (index >= newLength) {
+                    removedHeight += this._heightCache[index] ?? 0
+                    removedCount += 1
+                    delete this._heightCache[index]
+                }
+            }
+
+            this._totalMeasuredHeight -= removedHeight
+            this._measuredCount -= removedCount
+        }
         this._itemLength = newLength
         this._measuredFlags = new Uint8Array(Math.max(0, newLength))
         // Reset block sums since length changed
         this._blockSums = []
         this._blockSumsValid = false
         // Immediate recompute so new items become visible without delay
+        this.recomputeDerivedHeights()
+    }
+
+    /**
+     * Move cached measurements to the new indexes of stable item keys.
+     * Measurements whose keys no longer exist are discarded.
+     */
+    reconcileItemKeys(
+        previousKeys: readonly (string | number)[],
+        nextKeys: readonly (string | number)[]
+    ): void {
+        const previousIndexes: Record<string, number> = {}
+        for (let index = 0; index < previousKeys.length; index += 1) {
+            const key = previousKeys[index]
+            if (key !== undefined) previousIndexes[`${typeof key}:${String(key)}`] = index
+        }
+
+        const nextCache: Record<number, number> = {}
+        let nextMeasuredHeight = 0
+        for (let index = 0; index < nextKeys.length; index += 1) {
+            const key = nextKeys[index]
+            if (key === undefined) continue
+            const previousIndex = previousIndexes[`${typeof key}:${String(key)}`]
+            if (previousIndex === undefined) continue
+            const measuredHeight = this._heightCache[previousIndex]
+            if (measuredHeight === undefined) continue
+            nextCache[index] = measuredHeight
+            nextMeasuredHeight += measuredHeight
+        }
+
+        this._heightCache = nextCache
+        this._totalMeasuredHeight = nextMeasuredHeight
+        this._measuredCount = Object.keys(nextCache).length
+        this._itemLength = nextKeys.length
+        this._measuredFlags = new Uint8Array(Math.max(0, nextKeys.length))
+        for (const indexKey of Object.keys(nextCache)) {
+            this._measuredFlags[Number(indexKey)] = 1
+        }
+        this._blockSums = []
+        this._blockSumsValid = false
         this.recomputeDerivedHeights()
     }
 

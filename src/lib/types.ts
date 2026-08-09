@@ -39,6 +39,11 @@ export type SvelteVirtualListProps<TItem = any> = {
      */
     items: TItem[]
     /**
+     * Returns a stable identity for an item. Supplying a key lets cached
+     * measurements and DOM nodes follow items through reorder, prepend, and removal.
+     */
+    itemKey?: (_item: TItem, _index: number) => string | number
+    /**
      * CSS class to apply to individual item containers.
      */
     itemsClass?: string
