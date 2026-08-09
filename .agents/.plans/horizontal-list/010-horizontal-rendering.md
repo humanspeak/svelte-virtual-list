@@ -4,8 +4,13 @@
 > switching, comprehensive keyboard behavior, and public docs belong to plan 011.
 > Update the sibling README.
 >
+> **Revision 2026-08-09**: Rebased after guarded completion of Plans 001–003 and 009
+> at `93d35fb`. Red browser coverage is mandatory before implementation. The issue
+> fixture must be loud, deterministic, and visibly measurable as specified below; a
+> visually ambiguous demo or assertions hidden only in the test runner are not enough.
+>
 > **Drift check (run first)**:
-> `git diff --stat 0e343e5..HEAD -- src/lib/types.ts src/lib/SvelteVirtualList.svelte src/lib/SvelteVirtualList.test.ts src/lib/utils src/lib/reactive-list-manager src/routes/tests tests`
+> `git diff --stat 93d35fb..HEAD -- src/lib/types.ts src/lib/SvelteVirtualList.svelte src/lib/SvelteVirtualList.test.ts src/lib/utils src/lib/reactive-list-manager src/routes/tests tests`
 
 ## Status
 
@@ -14,7 +19,7 @@
 - **Risk**: HIGH
 - **Depends on**: 002-item-mutation-cache.md, 009-axis-foundation.md
 - **Category**: direction
-- **Planned at**: commit `0e343e5`, 2026-08-09
+- **Planned at**: commit `93d35fb`, 2026-08-09
 
 ## Why this matters
 
@@ -73,6 +78,15 @@ indices, bounded DOM count, variable-width transform accuracy, and programmatic 
 for start/end/nearest/center. Show and manually inspect the red fixture before fixing,
 following the repository's issue-fixture ritual.
 
+The page itself must expose an always-visible diagnostics panel with a large RED/GREEN
+overall state and numeric rows for orientation, `scrollLeft`, `clientWidth`,
+`scrollWidth`, `clientHeight`, `scrollHeight`, rendered count, first/last rendered
+index, transform X, and anchor/index error. Use fixed deterministic item widths and
+stable test IDs/data attributes; no randomness, timing-dependent labels, or console-
+only evidence. Add explicit controls for deep manual scroll and every programmatic
+alignment. Capture a red screenshot before implementation and a green screenshot after
+implementation so a reviewer can understand failure/success without reading code.
+
 **Verify**: `pnpm exec playwright test tests/issues/issue-427.spec.ts --project=chromium`
 fails because horizontal orientation is unsupported.
 
@@ -120,6 +134,8 @@ Firefox, WebKit, mobile Chrome, and mobile Safari, existing vertical Chromium E2
 ## Done criteria
 
 - [ ] The red issue #427 fixture is reviewed before implementation and green afterward.
+- [ ] The issue page visibly reports RED/GREEN plus exact geometry/index metrics, and
+      red/green screenshots make the browser result reviewable without test-runner logs.
 - [ ] 10k variable-width items maintain bounded rendered DOM.
 - [ ] Manual, smooth, index, offset, and all supported alignments work horizontally.
 - [ ] Dynamic width changes preserve the visible anchor and end pinning.
