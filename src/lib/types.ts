@@ -1,5 +1,8 @@
 import type { Snippet } from 'svelte'
 
+/** The physical axis along which a virtual list lays out and scrolls. */
+export type VirtualListOrientation = 'vertical' | 'horizontal'
+
 /**
  * Configuration properties for the SvelteVirtualList component.
  *

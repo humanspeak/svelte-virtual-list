@@ -1,5 +1,6 @@
 import type { HeightChange } from '$lib/reactive-list-manager/types.js'
 import type { SvelteVirtualListPreviousVisibleRange } from '$lib/types.js'
+import { getAxisAdapter, type AxisAdapter } from '$lib/utils/axis.js'
 import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
 
 /**
@@ -248,17 +249,20 @@ export const calculateTransformY = (
  * @param {HTMLElement} element - The item wrapper element to measure.
  * @returns {number} The item's layout pitch in pixels.
  */
-export const measureItemPitch = (element: HTMLElement): number => {
+export const measureItemPitch = (
+    element: HTMLElement,
+    axis: AxisAdapter = getAxisAdapter('vertical')
+): number => {
     const rect = element.getBoundingClientRect()
     const parent = element.parentElement
-    if (!parent) return rect.height
+    if (!parent) return axis.getSize(rect)
 
     const next = element.nextElementSibling
     const pitch = next
-        ? next.getBoundingClientRect().top - rect.top
-        : parent.getBoundingClientRect().bottom - rect.top
+        ? axis.getStart(next.getBoundingClientRect()) - axis.getStart(rect)
+        : axis.getEnd(parent.getBoundingClientRect()) - axis.getStart(rect)
 
-    return pitch > 0 ? pitch : rect.height
+    return pitch > 0 ? pitch : axis.getSize(rect)
 }
 
 /**
@@ -280,14 +284,15 @@ export const measureItemPitch = (element: HTMLElement): number => {
 export const collectPitchChanges = (
     elements: Iterable<HTMLElement>,
     heightCache: Readonly<Record<number, number>>,
-    tolerance = 0.1
+    tolerance = 0.1,
+    axis: AxisAdapter = getAxisAdapter('vertical')
 ): HeightChange[] => {
     const changes: HeightChange[] = []
     for (const element of elements) {
         if (!element.isConnected) continue
         const index = parseInt(element.dataset.originalIndex || '-1', 10)
         if (index < 0) continue
-        const pitch = measureItemPitch(element)
+        const pitch = measureItemPitch(element, axis)
         if (!Number.isFinite(pitch) || pitch <= 0) continue
         if (!isSignificantHeightChange(index, pitch, heightCache, tolerance)) continue
         changes.push({ index, oldHeight: heightCache[index], newHeight: pitch })

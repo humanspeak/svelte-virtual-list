@@ -152,6 +152,7 @@
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
     import { createRafScheduler } from '$lib/utils/raf.js'
+    import { getAxisAdapter } from '$lib/utils/axis.js'
     import {
         calculateTransformY,
         calculateVisibleRange,
@@ -172,6 +173,10 @@
     import { onMount, tick } from 'svelte'
 
     const rafSchedule = createRafScheduler()
+    // Horizontal rendering is deliberately not enabled in this foundation phase.
+    // All existing behavior flows through the vertical adapter so Plan 010 can
+    // select an axis without duplicating DOM geometry branches.
+    const axis = getAxisAdapter('vertical')
     // Package-specific debug flag - safe for library distribution
     // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
     // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
@@ -271,7 +276,7 @@
     const syncScrollTop = (value: number, round = false) => {
         if (!heightManager.viewportElement) return
         const scrollValue = round ? Math.round(value) : value
-        heightManager.viewport.scrollTop = scrollValue
+        axis.setScrollOffset(heightManager.viewport, scrollValue)
         heightManager.scrollTop = scrollValue
     }
 
@@ -290,15 +295,15 @@
         if (!heightManager.viewportElement) return
         // Gate BEFORE the layout reads below: unhandled keys must not force
         // a reflow on every press.
-        if (!isKeyboardScrollKey(event.key)) return
+        if (!axis.isScrollKey(event.key) || !isKeyboardScrollKey(event.key)) return
 
         const viewport = heightManager.viewport
         const target = calculateKeyboardScrollTarget({
             key: event.key,
             shiftKey: event.shiftKey,
-            scrollTop: viewport.scrollTop,
-            clientHeight: viewport.clientHeight,
-            scrollHeight: viewport.scrollHeight
+            scrollTop: axis.getScrollOffset(viewport),
+            clientHeight: axis.getViewportSize(viewport),
+            scrollHeight: axis.getScrollSize(viewport)
         })
         if (target === null) return
         event.preventDefault()
@@ -347,14 +352,14 @@
         // an option — an uncompensated at-bottom batch leaves scroll state
         // inconsistent with the new totals, and the first scroll step away
         // from the bottom then paints the difference as a jump.
-        if (Math.abs(heightManager.viewport.scrollTop - currentMaxScrollTop()) <= 2) {
+        if (Math.abs(axis.getScrollOffset(heightManager.viewport) - currentMaxScrollTop()) <= 2) {
             return { kind: 'bottom' }
         }
-        const viewportTop = heightManager.viewport.getBoundingClientRect().top
+        const viewportStart = axis.getStart(heightManager.viewport.getBoundingClientRect())
         for (const element of itemElements) {
             if (!element || !element.isConnected) continue
             const rect = element.getBoundingClientRect()
-            if (rect.bottom <= viewportTop) continue
+            if (axis.getEnd(rect) <= viewportStart) continue
             const index = parseInt(element.dataset.originalIndex || '-1', 10)
             if (index < 0) return null
             return {
@@ -407,12 +412,12 @@
                           heightManager.getBlockSums()
                       )
                   },
-            heightManager.viewport.scrollTop,
+            axis.getScrollOffset(heightManager.viewport),
             currentMaxScrollTop()
         )
         if (target === null) return
         syncScrollTop(target, true)
-        const applied = heightManager.viewport.scrollTop
+        const applied = axis.getScrollOffset(heightManager.viewport)
         if (Math.abs(applied - target) > 1) {
             // The DOM clamped the write against the pre-flush scrollHeight
             // (totals grew). Re-assert once the new height has flushed —
@@ -421,7 +426,7 @@
             tick().then(() => {
                 if (!heightManager.viewportElement) return
                 if (programmaticScrollDepth > 0) return
-                if (Math.abs(heightManager.viewport.scrollTop - applied) > 1) return
+                if (Math.abs(axis.getScrollOffset(heightManager.viewport) - applied) > 1) return
                 syncScrollTop(target, true)
             })
         }
@@ -564,7 +569,7 @@
         if (!last) return
         const v = heightManager.viewport.getBoundingClientRect()
         const r = last.getBoundingClientRect()
-        const bottomDistance = Math.round(Math.abs(r.bottom - v.bottom))
+        const bottomDistance = Math.round(Math.abs(axis.getEnd(r) - axis.getEnd(v)))
         if (INTERNAL_DEBUG) {
             console.info('[SVL] bottomDistance(px):', bottomDistance)
         }
@@ -579,7 +584,7 @@
      */
     const syncContainerHeight = () => {
         if (!heightManager.isReady) return
-        const h = heightManager.container.getBoundingClientRect().height
+        const h = axis.getSize(heightManager.container.getBoundingClientRect())
         if (!Number.isFinite(h) || h <= 0 || h === height) return
         height = h
         // The visible-range memo reuses the cached range for small nonzero
@@ -706,7 +711,7 @@
         if (!BROWSER || !heightManager.viewportElement) return
 
         rafSchedule(() => {
-            const current = heightManager.viewport.scrollTop
+            const current = axis.getScrollOffset(heightManager.viewport)
             heightManager.scrollTop = current
             // Update last processed scroll position for delta threshold optimization
             // Only update when we actually process a scroll (i.e., recalculate visible range)
@@ -743,7 +748,9 @@
         itemResizeObserver = new ResizeObserver((entries) => {
             const changes = collectPitchChanges(
                 entries.map((entry) => entry.target as HTMLElement),
-                heightManager.getHeightCache()
+                heightManager.getHeightCache(),
+                undefined,
+                axis
             )
             if (changes.length === 0) return
             log('item-resize-sync', { changes: changes.length })
@@ -917,10 +924,7 @@
         // scrollTop write would cancel the smooth scroll mid-flight.
         programmaticScrollDepth++
 
-        heightManager.viewport.scrollTo({
-            top: scrollTarget,
-            behavior: smoothScroll ? 'smooth' : 'auto'
-        })
+        axis.scrollTo(heightManager.viewport, scrollTarget, smoothScroll ? 'smooth' : 'auto')
 
         // Update scrollTop state in next frame to avoid synchronous re-renders
         requestAnimationFrame(() => {
@@ -931,7 +935,8 @@
             if (INTERNAL_DEBUG && heightManager.viewportElement) {
                 const domMax = Math.max(
                     0,
-                    heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+                    axis.getScrollSize(heightManager.viewport) -
+                        axis.getViewportSize(heightManager.viewport)
                 )
                 console.info('[SVL] scroll-after-call', {
                     scrollTop: heightManager.scrollTop,
@@ -1058,7 +1063,8 @@
             if (INTERNAL_DEBUG && heightManager.viewportElement) {
                 const domMax = Math.max(
                     0,
-                    heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+                    axis.getScrollSize(heightManager.viewport) -
+                        axis.getViewportSize(heightManager.viewport)
                 )
                 console.info('[SVL] scroll-intent', {
                     targetIndex,
@@ -1161,14 +1167,14 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            style:height="{contentHeight}px"
+            style={axis.contentSizeStyle(contentHeight)}
         >
             <!-- Items container is translated to show correct items -->
             <div
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
-                style:transform="translateY({transformY}px)"
+                style:transform={axis.transform(transformY)}
             >
                 {#each displayItems as currentItemWithIndex, _i (itemIdentities ? itemIdentities[currentItemWithIndex.originalIndex] : currentItemWithIndex.originalIndex)}
                     <!-- Render each visible item -->

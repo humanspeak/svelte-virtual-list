@@ -126,6 +126,26 @@ describe('SvelteVirtualList Component', () => {
             expect(itemsContainer).toHaveClass('custom-items')
         })
 
+        test('keeps vertical content sizing and Y-axis translation in the DOM contract', async () => {
+            render(TestWrapper, {
+                props: {
+                    testId: 'vertical-contract-list',
+                    items: createMockItems(10),
+                    defaultEstimatedItemHeight: 40
+                }
+            })
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(screen.getByTestId('vertical-contract-list-content')).toHaveStyle({
+                height: '400px'
+            })
+            expect(screen.getByTestId('vertical-contract-list-items')).toHaveStyle({
+                transform: 'translateY(0px)'
+            })
+        })
+
         test('applies runtime estimated item height changes to unmeasured content geometry', async () => {
             const items = createMockItems(10)
             const { rerender } = render(TestWrapper, {
