@@ -158,6 +158,27 @@ describe('ReactiveListManager (alias)', () => {
             expect(manager.measuredCount).toBe(0)
         })
 
+        it('should clear cached measurements so old indexes can be measured again', () => {
+            manager.setMeasuredHeight(0, 80)
+            manager.setMeasuredHeight(1, 120)
+
+            manager.reset()
+
+            expect(manager.getHeightCache()).toEqual({})
+            expect(manager.measuredCount).toBe(0)
+            expect(manager.totalMeasuredHeight).toBe(0)
+            expect(manager.averageHeight).toBe(40)
+            expect(manager.totalHeight).toBe(10000 * 40)
+
+            manager.setMeasuredHeight(0, 60)
+
+            expect(manager.getHeightCache()).toEqual({ 0: 60 })
+            expect(manager.measuredCount).toBe(1)
+            expect(manager.totalMeasuredHeight).toBe(60)
+            expect(manager.averageHeight).toBe(60)
+            expect(manager.totalHeight).toBe(10000 * 60)
+        })
+
         it('reset should not change initialized; updateItemLength should not change initialized', () => {
             expect(manager.initialized).toBe(false)
             manager.updateItemLength(15000)

@@ -593,6 +593,7 @@ export class ReactiveListManager {
     reset(): void {
         this._totalMeasuredHeight = 0
         this._measuredCount = 0
+        this._heightCache = {}
         this._measuredFlags = this._itemLength > 0 ? new Uint8Array(this._itemLength) : null
         // Reset block sums
         this._blockSums = []
