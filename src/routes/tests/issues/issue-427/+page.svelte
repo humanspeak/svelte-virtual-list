@@ -249,6 +249,7 @@
                 : scrollHeight > clientHeight)
     )
     const overallPass = $derived(geometryPass && (!responsiveAttempted || responsivePass))
+    const displayedOrientation = $derived(hasMeasured ? measuredOrientation : requestedOrientation)
     const overallState = $derived(
         !hasMeasured
             ? 'CHECKING — HORIZONTAL'
@@ -306,7 +307,7 @@
             <div>
                 <dt>orientation</dt>
                 <dd data-testid="diag-orientation">
-                    {measuredOrientation}
+                    {displayedOrientation}
                 </dd>
             </div>
             <div>

@@ -10,6 +10,35 @@ test('issue fixture SSR is neutral until browser geometry is measured', async ({
     expect(html).toContain('CHECKING — HORIZONTAL')
     expect(html).not.toContain('RED — HORIZONTAL FAIL')
     expect(html).not.toContain('RED — RESPONSIVE FAIL')
+    expect(html).not.toContain('vertical/unsupported')
+    expect(html).toMatch(/data-testid="diag-orientation"[^>]*>horizontal</)
+})
+
+test('hydration keeps the diagnostic panel footprint stable', async ({ browser }) => {
+    const ssrContext = await browser.newContext({
+        javaScriptEnabled: false,
+        viewport: { width: 1280, height: 720 }
+    })
+    const hydratedContext = await browser.newContext({ viewport: { width: 1280, height: 720 } })
+    try {
+        const ssrPage = await ssrContext.newPage()
+        await ssrPage.goto('/tests/issues/issue-427')
+        const ssrBox = await ssrPage.locator('.diagnostics').boundingBox()
+
+        const hydratedPage = await hydratedContext.newPage()
+        await hydratedPage.goto('/tests/issues/issue-427')
+        await expect(hydratedPage.getByTestId('overall-state')).toHaveText(
+            'GREEN — HORIZONTAL READY'
+        )
+        const hydratedBox = await hydratedPage.locator('.diagnostics').boundingBox()
+
+        expect(ssrBox).not.toBeNull()
+        expect(hydratedBox).not.toBeNull()
+        expect(Math.abs(ssrBox!.height - hydratedBox!.height)).toBeLessThanOrEqual(1)
+    } finally {
+        await ssrContext.close()
+        await hydratedContext.close()
+    }
 })
 
 test('root test index links to the issue 427 fixture', async ({ page }) => {
