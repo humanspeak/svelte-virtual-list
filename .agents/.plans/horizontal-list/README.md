@@ -12,7 +12,7 @@ work.
 | ---- | ------------------------------------------------------- | -------- | ------ | ---------- | ------ |
 | 001  | Make manager reset clear all measurements               | P1       | S      | —          | DONE   |
 | 002  | Preserve measurement correctness across item mutations  | P1       | M      | 001        | DONE   |
-| 003  | Apply runtime estimated-size changes safely             | P1       | S      | 001        | TODO   |
+| 003  | Apply runtime estimated-size changes safely             | P1       | S      | 001        | DONE   |
 | 004  | Recover from load-more callback failures                | P1       | S      | —          | TODO   |
 | 005  | Make the docs Playwright smoke test real                | P2       | S      | —          | TODO   |
 | 006  | Delete the stale PRD and repair README test commands    | P2       | S      | —          | TODO   |
