@@ -53,7 +53,7 @@ jobs:
         runs-on: blacksmith-2vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
         steps:
             - name: Checkout
-              uses: actions/checkout@v6 # zizmor: ignore[unpinned-uses]
+              uses: actions/checkout@v7 # zizmor: ignore[unpinned-uses]
               with:
                   persist-credentials: false
                   fetch-depth: 0
@@ -61,7 +61,7 @@ jobs:
             - uses: pnpm/action-setup@v6 # zizmor: ignore[unpinned-uses]
 
             - name: Use Node.js 24
-              uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses,cache-poisoning]
+              uses: actions/setup-node@v7 # zizmor: ignore[unpinned-uses,cache-poisoning]
               with:
                   node-version: 24
                   cache: ''
@@ -88,7 +88,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v6 # zizmor: ignore[unpinned-uses]
+              uses: actions/checkout@v7 # zizmor: ignore[unpinned-uses]
               with:
                   persist-credentials: false
                   token: ${{ secrets.ACTIONS_KEY }}
@@ -97,7 +97,7 @@ jobs:
             - uses: pnpm/action-setup@v6 # zizmor: ignore[unpinned-uses]
 
             - name: Use Node.js - 24
-              uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses,cache-poisoning]
+              uses: actions/setup-node@v7 # zizmor: ignore[unpinned-uses,cache-poisoning]
               with:
                   node-version: 24
                   registry-url: https://registry.npmjs.org
@@ -109,7 +109,7 @@ jobs:
 
             - name: Import GPG key
               id: import_gpg
-              uses: crazy-max/ghaction-import-gpg@v6 # zizmor: ignore[unpinned-uses]
+              uses: crazy-max/ghaction-import-gpg@v7 # zizmor: ignore[unpinned-uses]
               with:
                   gpg_private_key: ${{ secrets.ACTIONS_GPG_PRIVATE_KEY }}
                   passphrase: ${{ secrets.ACTIONS_GPG_PASSPHRASE }}
