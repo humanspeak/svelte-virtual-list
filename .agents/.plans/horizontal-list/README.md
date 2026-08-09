@@ -18,7 +18,7 @@ work.
 | 006  | Delete the stale PRD and repair README test commands    | P2       | S      | —          | TODO   |
 | 007  | Add enforceable library coverage thresholds             | P2       | S–M    | —          | TODO   |
 | 008  | Route conventional lint scripts through Trunk           | P2       | S      | —          | TODO   |
-| 009  | Introduce an axis-neutral geometry foundation           | P1       | M      | 001, 003   | TODO   |
+| 009  | Introduce an axis-neutral geometry foundation           | P1       | M      | 001–003    | DONE   |
 | 010  | Render and measure horizontal virtual lists             | P1       | L      | 002, 009   | TODO   |
 | 011  | Complete responsive horizontal behavior and public docs | P1       | L      | 010        | TODO   |
 
