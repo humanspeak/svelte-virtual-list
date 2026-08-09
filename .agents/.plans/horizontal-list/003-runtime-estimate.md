@@ -3,8 +3,12 @@
 > **Executor instructions**: Run each gate and update the sibling README. Stop instead
 > of broadening scope.
 >
+> **Revision 2026-08-09**: Rebased after plan 001 completed at `cd280a1`. Runtime
+> estimate changes may rely on reset clearing the measurement cache. The drift
+> baseline below includes plan 001.
+>
 > **Drift check (run first)**:
-> `git diff --stat 0e343e5..HEAD -- src/lib/SvelteVirtualList.svelte src/lib/SvelteVirtualList.test.ts src/lib/reactive-list-manager/ReactiveListManager.svelte.ts`
+> `git diff --stat 3a90029..HEAD -- src/lib/SvelteVirtualList.svelte src/lib/SvelteVirtualList.test.ts src/lib/reactive-list-manager/ReactiveListManager.svelte.ts`
 
 ## Status
 
@@ -13,7 +17,7 @@
 - **Risk**: MED
 - **Depends on**: 001-reset-measurements.md
 - **Category**: bug
-- **Planned at**: commit `0e343e5`, 2026-08-09
+- **Planned at**: commit `3a90029`, 2026-08-09
 
 ## Why this matters
 

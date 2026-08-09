@@ -3,8 +3,12 @@
 > **Executor instructions**: Execute step by step, run every gate, and update the
 > sibling README status. Do not improvise beyond the STOP conditions.
 >
+> **Revision 2026-08-09**: Rebased after plan 001 completed at `cd280a1`. The
+> manager reset now clears `_heightCache`; preserve that invariant while implementing
+> shrink and identity reconciliation. The drift baseline below includes plan 001.
+>
 > **Drift check (run first)**:
-> `git diff --stat 0e343e5..HEAD -- src/lib/types.ts src/lib/SvelteVirtualList.svelte src/lib/SvelteVirtualList.test.ts src/lib/reactive-list-manager/ReactiveListManager.svelte.ts src/lib/reactive-list-manager/ReactiveListManager.test.ts tests/topToBottom`
+> `git diff --stat 3a90029..HEAD -- src/lib/types.ts src/lib/SvelteVirtualList.svelte src/lib/SvelteVirtualList.test.ts src/lib/reactive-list-manager/ReactiveListManager.svelte.ts src/lib/reactive-list-manager/ReactiveListManager.test.ts tests/topToBottom`
 
 ## Status
 
@@ -13,7 +17,7 @@
 - **Risk**: MED
 - **Depends on**: 001-reset-measurements.md
 - **Category**: bug
-- **Planned at**: commit `0e343e5`, 2026-08-09
+- **Planned at**: commit `3a90029`, 2026-08-09
 
 ## Why this matters
 
