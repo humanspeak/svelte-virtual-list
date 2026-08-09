@@ -125,6 +125,127 @@ describe('SvelteVirtualList Component', () => {
             const itemsContainer = screen.getByTestId('test-list-items')
             expect(itemsContainer).toHaveClass('custom-items')
         })
+
+        test('applies runtime estimated item height changes to unmeasured content geometry', async () => {
+            const items = createMockItems(10)
+            const { rerender } = render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items,
+                    defaultEstimatedItemHeight: 40
+                }
+            })
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            const content = screen.getByTestId('test-list-content')
+            expect(content).toHaveStyle({ height: '400px' })
+
+            await rerender({
+                testId: 'test-list',
+                items,
+                defaultEstimatedItemHeight: 80
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(content).toHaveStyle({ height: '800px' })
+
+            // Invalid runtime estimates are ignored deterministically, preserving
+            // the last valid geometry rather than poisoning scroll calculations.
+            await rerender({
+                testId: 'test-list',
+                items,
+                defaultEstimatedItemHeight: Number.NaN
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(content).toHaveStyle({ height: '800px' })
+        })
+
+        test('preserves a mid-list scroll position when the runtime estimate changes', async () => {
+            vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (
+                this: Element
+            ) {
+                const element = this as HTMLElement
+                const index = Number(element.dataset.originalIndex)
+                const isItem = Number.isInteger(index)
+                const top = isItem ? (index < 4 ? -40 : (index - 4) * 40) : 0
+                const height = isItem ? 40 : 50
+                return {
+                    width: 300,
+                    height,
+                    top,
+                    left: 0,
+                    bottom: top + height,
+                    right: 300,
+                    x: 0,
+                    y: top,
+                    toJSON: () => {}
+                }
+            })
+
+            const items = createMockItems(20)
+            const { rerender } = render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items,
+                    defaultEstimatedItemHeight: 40
+                }
+            })
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            const viewport = screen.getByTestId('test-list-viewport')
+            Object.defineProperty(viewport, 'scrollTop', { writable: true, value: 160 })
+            await fireEvent.scroll(viewport)
+            await vi.runAllTimersAsync()
+
+            await rerender({
+                testId: 'test-list',
+                items,
+                defaultEstimatedItemHeight: 80
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            // Index 4 is the first item crossing the viewport top. Its
+            // estimated offset changes from 160px to 320px, so preserving
+            // its painted position requires applying the full 160px drift.
+            expect(viewport.scrollTop).toBe(320)
+        })
+
+        test('keeps a bottom-pinned viewport at the new bottom after an estimate change', async () => {
+            const items = createMockItems(10)
+            const { rerender } = render(TestWrapper, {
+                props: {
+                    testId: 'test-list',
+                    items,
+                    defaultEstimatedItemHeight: 40
+                }
+            })
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            const viewport = screen.getByTestId('test-list-viewport')
+            Object.defineProperty(viewport, 'scrollTop', { writable: true, value: 350 })
+            await fireEvent.scroll(viewport)
+            await vi.runAllTimersAsync()
+
+            await rerender({
+                testId: 'test-list',
+                items,
+                defaultEstimatedItemHeight: 80
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(viewport.scrollTop).toBe(750)
+        })
     })
 
     describe('Scroll Functionality', () => {

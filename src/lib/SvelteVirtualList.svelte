@@ -486,6 +486,24 @@
         hasReconciledItems = true
     })
 
+    // Keep the estimate for unmeasured items synchronized with its reactive
+    // prop. Invalid estimates are ignored so runtime updates cannot poison
+    // total-size and scroll calculations; the last positive finite value
+    // remains active.
+    $effect(() => {
+        const nextEstimatedHeight = defaultEstimatedItemHeight
+        if (!Number.isFinite(nextEstimatedHeight) || nextEstimatedHeight <= 0) return
+        if (nextEstimatedHeight === heightManager.itemHeight) return
+
+        const anchor = captureViewportAnchor()
+        heightManager.updateEstimatedHeight(nextEstimatedHeight)
+        // Anchor restoration and content geometry must observe the new total
+        // in the same reactive turn rather than waiting for the scheduler.
+        heightManager.flushDerivedHeights()
+        lastVisibleRange = null
+        if (anchor) restoreViewportAnchor(anchor)
+    })
+
     // Infinite scroll: trigger onLoadMore when approaching end of list
     $effect(() => {
         if (!BROWSER || !onLoadMore || !hasMore || isLoadingMore) return
