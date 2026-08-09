@@ -146,6 +146,35 @@ describe('SvelteVirtualList Component', () => {
             })
         })
 
+        test('uses stable horizontal attributes, neutral sizing, and X-axis translation', async () => {
+            render(TestWrapper, {
+                props: {
+                    testId: 'horizontal-contract-list',
+                    items: createMockItems(10),
+                    orientation: 'horizontal',
+                    defaultEstimatedItemSize: 80,
+                    defaultEstimatedItemHeight: 40,
+                    viewportClass: 'replaced-viewport',
+                    contentClass: 'replaced-content',
+                    itemsClass: 'replaced-items'
+                }
+            })
+
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(screen.getByTestId('horizontal-contract-list-viewport')).toHaveAttribute(
+                'data-orientation',
+                'horizontal'
+            )
+            expect(screen.getByTestId('horizontal-contract-list-content')).toHaveStyle({
+                width: '800px'
+            })
+            expect(screen.getByTestId('horizontal-contract-list-items')).toHaveStyle({
+                transform: 'translateX(0px)'
+            })
+        })
+
         test('applies runtime estimated item height changes to unmeasured content geometry', async () => {
             const items = createMockItems(10)
             const { rerender } = render(TestWrapper, {

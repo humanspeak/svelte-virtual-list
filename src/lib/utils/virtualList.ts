@@ -262,7 +262,11 @@ export const measureItemPitch = (
         ? axis.getStart(next.getBoundingClientRect()) - axis.getStart(rect)
         : axis.getEnd(parent.getBoundingClientRect()) - axis.getStart(rect)
 
-    return pitch > 0 ? pitch : axis.getSize(rect)
+    const borderBoxSize = axis.getSize(rect)
+    // An absolutely positioned items layer may resolve its containing-block
+    // edge to the full virtual content extent. That is not the final item's
+    // pitch; reject such an implausible edge just like a zero layout read.
+    return pitch > 0 && (borderBoxSize <= 0 || pitch <= borderBoxSize * 4) ? pitch : borderBoxSize
 }
 
 /**

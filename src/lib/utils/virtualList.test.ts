@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { getAxisAdapter } from './axis.js'
 import {
     buildBlockSums,
     calculateScrollPosition,
@@ -505,6 +506,39 @@ describe('collectPitchChanges', () => {
         expect(changes).toEqual([
             { index: 1, oldHeight: undefined, newHeight: 40 },
             { index: 3, oldHeight: 40, newHeight: 80 }
+        ])
+    })
+
+    it('measures horizontal pitch from sibling left deltas including gaps', () => {
+        const parent = document.createElement('div')
+        const first = document.createElement('div')
+        const second = document.createElement('div')
+        first.dataset.originalIndex = '7'
+        parent.append(first, second)
+        document.body.appendChild(parent)
+        first.getBoundingClientRect = () =>
+            ({ left: 20, right: 100, width: 80, top: 0, bottom: 20, height: 20 }) as DOMRect
+        second.getBoundingClientRect = () =>
+            ({ left: 132, right: 200, width: 68, top: 0, bottom: 20, height: 20 }) as DOMRect
+
+        expect(collectPitchChanges([first], {}, undefined, getAxisAdapter('horizontal'))).toEqual([
+            { index: 7, oldHeight: undefined, newHeight: 112 }
+        ])
+    })
+
+    it('measures the final horizontal pitch to its parent right edge', () => {
+        const parent = document.createElement('div')
+        const item = document.createElement('div')
+        item.dataset.originalIndex = '8'
+        parent.appendChild(item)
+        document.body.appendChild(parent)
+        item.getBoundingClientRect = () =>
+            ({ left: 200, right: 280, width: 80, top: 0, bottom: 20, height: 20 }) as DOMRect
+        parent.getBoundingClientRect = () =>
+            ({ left: 200, right: 296, width: 96, top: 0, bottom: 20, height: 20 }) as DOMRect
+
+        expect(collectPitchChanges([item], {}, undefined, getAxisAdapter('horizontal'))).toEqual([
+            { index: 8, oldHeight: undefined, newHeight: 96 }
         ])
     })
 })

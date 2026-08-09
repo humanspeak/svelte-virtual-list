@@ -173,10 +173,6 @@
     import { onMount, tick } from 'svelte'
 
     const rafSchedule = createRafScheduler()
-    // Horizontal rendering is deliberately not enabled in this foundation phase.
-    // All existing behavior flows through the vertical adapter so Plan 010 can
-    // select an axis without duplicating DOM geometry branches.
-    const axis = getAxisAdapter('vertical')
     // Package-specific debug flag - safe for library distribution
     // Enable with: PUBLIC_SVELTE_VIRTUAL_LIST_DEBUG=true (preferred) or SVELTE_VIRTUAL_LIST_DEBUG=true
     // Avoid SvelteKit-only $env imports so library works in non-Kit/Vitest contexts
@@ -192,7 +188,9 @@
     const {
         items = [], // Array of items to be rendered in the virtual list
         itemKey, // Stable identity used to preserve measurements through mutations
-        defaultEstimatedItemHeight = 40, // Initial height estimate for items before measurement
+        defaultEstimatedItemHeight, // Compatibility alias for the initial size estimate
+        defaultEstimatedItemSize, // Axis-neutral initial size estimate
+        orientation = 'vertical',
         debug = false, // Enable debug logging
         renderItem, // Function to render each item
         containerClass, // Custom class for the container element
@@ -208,6 +206,22 @@
         hasMore = true, // Set false when all data loaded
         onRangeChange // Public callback for visible-range / scroll-edge changes
     }: SvelteVirtualListProps<TItem> = $props()
+
+    // Orientation is intentionally static in this phase. The adapter keeps
+    // scalar geometry shared between axes; runtime switching belongs to 011.
+    const axis = getAxisAdapter(orientation)
+    const initialEstimatedItemSize = defaultEstimatedItemSize ?? defaultEstimatedItemHeight ?? 40
+
+    if (
+        (DEV || debug) &&
+        defaultEstimatedItemSize !== undefined &&
+        defaultEstimatedItemHeight !== undefined &&
+        defaultEstimatedItemSize !== defaultEstimatedItemHeight
+    ) {
+        console.warn(
+            'SvelteVirtualList: defaultEstimatedItemSize takes precedence over defaultEstimatedItemHeight.'
+        )
+    }
 
     /**
      * DOM References and Core State
@@ -244,7 +258,7 @@
      */
     const heightManager = new ReactiveListManager({
         itemLength: items.length,
-        itemHeight: defaultEstimatedItemHeight,
+        itemHeight: initialEstimatedItemSize,
         internalDebug: INTERNAL_DEBUG
     })
     const instanceId = Math.random().toString(36).slice(2, 7)
@@ -356,13 +370,14 @@
             return { kind: 'bottom' }
         }
         const viewportStart = axis.getStart(heightManager.viewport.getBoundingClientRect())
+        let intersectingFallback: { index: number; oldOffset: number } | null = null
         for (const element of itemElements) {
             if (!element || !element.isConnected) continue
             const rect = element.getBoundingClientRect()
             if (axis.getEnd(rect) <= viewportStart) continue
             const index = parseInt(element.dataset.originalIndex || '-1', 10)
             if (index < 0) return null
-            return {
+            const candidate = {
                 kind: 'item',
                 index,
                 oldOffset: getScrollOffsetForIndex(
@@ -371,9 +386,16 @@
                     index,
                     heightManager.getBlockSums()
                 )
-            }
+            } as const
+            // ResizeObserver runs after layout. A predecessor that just grew
+            // can newly overlap the viewport and must not become the anchor:
+            // its own cache offset is unchanged, yielding zero compensation
+            // while shifting the established first-starting item. Prefer the
+            // first item whose start edge is at/after the viewport start.
+            if (axis.getStart(rect) >= viewportStart - 1) return candidate
+            intersectingFallback ??= candidate
         }
-        return null
+        return intersectingFallback ? { kind: 'item', ...intersectingFallback } : null
     }
 
     /**
@@ -496,7 +518,7 @@
     // total-size and scroll calculations; the last positive finite value
     // remains active.
     $effect(() => {
-        const nextEstimatedHeight = defaultEstimatedItemHeight
+        const nextEstimatedHeight = defaultEstimatedItemSize ?? defaultEstimatedItemHeight ?? 40
         if (!Number.isFinite(nextEstimatedHeight) || nextEstimatedHeight <= 0) return
         if (nextEstimatedHeight === heightManager.itemHeight) return
 
@@ -1077,7 +1099,48 @@
                 })
             }
 
-            executeScrollToTarget(scrollTarget, smoothScroll ?? true, signal, resolve, reject)
+            const finishAfterMeasurement = async () => {
+                // The target window was initially positioned from estimates.
+                // Let its ResizeObserver measurements land, then perform one
+                // exact re-alignment so end/center do not retain estimate error.
+                await tick()
+                await new Promise<void>((done) => requestAnimationFrame(() => done()))
+                await new Promise<void>((done) => requestAnimationFrame(() => done()))
+                if (signal.aborted || !heightManager.viewportElement) {
+                    resolve()
+                    return
+                }
+                const correctedRange = visibleItems
+                const correctedTarget = calculateScrollTarget({
+                    align: align || 'auto',
+                    targetIndex,
+                    itemsLength: items.length,
+                    calculatedItemHeight: heightManager.averageHeight,
+                    height,
+                    scrollTop: axis.getScrollOffset(heightManager.viewport),
+                    firstVisibleIndex: correctedRange.start,
+                    lastVisibleIndex: correctedRange.end,
+                    heightCache: heightManager.getHeightCache(),
+                    blockSums: heightManager.getBlockSums(),
+                    maxScrollTop: currentMaxScrollTop()
+                })
+                if (
+                    correctedTarget !== null &&
+                    Math.abs(correctedTarget - axis.getScrollOffset(heightManager.viewport)) > 1
+                ) {
+                    syncScrollTop(correctedTarget, true)
+                    await tick()
+                }
+                resolve()
+            }
+
+            executeScrollToTarget(
+                scrollTarget,
+                smoothScroll ?? true,
+                signal,
+                finishAfterMeasurement,
+                reject
+            )
         })
     }
 
@@ -1109,7 +1172,18 @@
                 return
             }
             const target = Math.round(clampValue(offset, 0, currentMaxScrollTop()))
-            executeScrollToTarget(target, smoothScroll, signal, resolve, reject)
+            const finishAfterMeasurement = async () => {
+                await tick()
+                await new Promise<void>((done) => requestAnimationFrame(() => done()))
+                await new Promise<void>((done) => requestAnimationFrame(() => done()))
+                await new Promise<void>((done) => setTimeout(done, 100))
+                if (!signal.aborted && heightManager.viewportElement) {
+                    syncScrollTop(Math.round(clampValue(offset, 0, currentMaxScrollTop())), true)
+                    await tick()
+                }
+                resolve()
+            }
+            executeScrollToTarget(target, smoothScroll, signal, finishAfterMeasurement, reject)
         })
     }
 
@@ -1146,6 +1220,8 @@
     id="virtual-list-container"
     {...testId ? { 'data-testid': `${testId}-container` } : {}}
     class={containerClass ?? 'virtual-list-container'}
+    data-orientation={orientation}
+    data-svl-container
     bind:this={heightManager.containerElement}
 >
     <!-- Viewport handles scrolling. Focusable labeled region so keyboard
@@ -1154,6 +1230,8 @@
         id="virtual-list-viewport"
         {...testId ? { 'data-testid': `${testId}-viewport` } : {}}
         class={viewportClass ?? 'virtual-list-viewport'}
+        data-orientation={orientation}
+        data-svl-viewport
         bind:this={heightManager.viewportElement}
         role="region"
         aria-label={viewportLabel}
@@ -1167,6 +1245,8 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
+            data-orientation={orientation}
+            data-svl-content
             style={axis.contentSizeStyle(contentHeight)}
         >
             <!-- Items container is translated to show correct items -->
@@ -1174,6 +1254,8 @@
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
+                data-orientation={orientation}
+                data-svl-items
                 style:transform={axis.transform(transformY)}
             >
                 {#each displayItems as currentItemWithIndex, _i (itemIdentities ? itemIdentities[currentItemWithIndex.originalIndex] : currentItemWithIndex.originalIndex)}
@@ -1182,6 +1264,7 @@
                         bind:this={itemElements[currentItemWithIndex.sliceIndex]}
                         use:autoObserveItemResize
                         data-original-index={currentItemWithIndex.originalIndex}
+                        data-svl-item
                         {...testId
                             ? {
                                   'data-testid': `${testId}-item-${currentItemWithIndex.originalIndex}`
@@ -1251,5 +1334,30 @@
     .virtual-list-items > div {
         width: 100%;
         display: block;
+    }
+
+    /* Required axis layout uses stable internal attributes because consumer
+       class props replace (rather than extend) the default class names. */
+    [data-svl-viewport][data-orientation='horizontal'] {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    [data-svl-content][data-orientation='horizontal'] {
+        height: 100%;
+        min-height: 0;
+    }
+
+    [data-svl-items][data-orientation='horizontal'] {
+        display: flex;
+        width: max-content;
+        height: 100%;
+    }
+
+    [data-svl-items][data-orientation='horizontal'] > [data-svl-item] {
+        display: block;
+        flex: 0 0 auto;
+        width: max-content;
+        height: 100%;
     }
 </style>

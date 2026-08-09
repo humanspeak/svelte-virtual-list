@@ -1,0 +1,410 @@
+<script lang="ts">
+    import { onMount } from 'svelte'
+    import SvelteVirtualList from '$lib/index.js'
+
+    type Item = { id: number; width: number }
+    type Alignment = 'start' | 'end' | 'nearest' | 'center'
+
+    const ITEM_COUNT = 10_000
+    const WIDTHS = [72, 104, 136, 88, 164, 116]
+    const TARGET_INDEX = 4321
+    const items: Item[] = Array.from({ length: ITEM_COUNT }, (_, id) => ({
+        id,
+        width: WIDTHS[id % WIDTHS.length]
+    }))
+
+    let list: {
+        scroll: (_options: {
+            index: number
+            align: Alignment
+            smoothScroll?: boolean
+        }) => Promise<void>
+        scrollToOffset: (_options: { offset: number; smoothScroll?: boolean }) => Promise<void>
+    }
+    let scrollLeft = $state(0)
+    let clientWidth = $state(0)
+    let scrollWidth = $state(0)
+    let clientHeight = $state(0)
+    let scrollHeight = $state(0)
+    let renderedCount = $state(0)
+    let firstIndex = $state(-1)
+    let lastIndex = $state(-1)
+    let transformX = $state(0)
+    let anchorError = $state(0)
+    let compensationError = $state(0)
+    let targetLeftBefore = $state(0)
+    let targetLeftAfter = $state(0)
+    let resizeScrollDelta = $state(0)
+    let measuredOrientation = $state('vertical/unsupported')
+    let activeAlignment = $state<string>('none')
+    let expandedIndex = $state<number | null>(null)
+    let loadMoreCalls = $state(0)
+    let hasMore = $state(true)
+
+    const viewport = () =>
+        document.querySelector<HTMLElement>('[data-testid="issue-427-list-viewport"]')
+
+    const measure = () => {
+        const view = viewport()
+        if (!view) return
+        const wrappers = Array.from(view.querySelectorAll<HTMLElement>('[data-original-index]'))
+        measuredOrientation = view.getAttribute('data-orientation') ?? 'vertical/unsupported'
+        scrollLeft = Math.round(view.scrollLeft)
+        clientWidth = Math.round(view.clientWidth)
+        scrollWidth = Math.round(view.scrollWidth)
+        clientHeight = Math.round(view.clientHeight)
+        scrollHeight = Math.round(view.scrollHeight)
+        renderedCount = wrappers.length
+        firstIndex = Number(wrappers[0]?.dataset.originalIndex ?? -1)
+        lastIndex = Number(wrappers.at(-1)?.dataset.originalIndex ?? -1)
+        const transform = getComputedStyle(
+            view.querySelector<HTMLElement>('[data-testid="issue-427-list-items"]')!
+        ).transform
+        const matrix = new DOMMatrixReadOnly(transform === 'none' ? undefined : transform)
+        transformX = Math.round(matrix.m41)
+    }
+
+    const updateAnchorError = (index: number, align: Alignment) => {
+        const view = viewport()
+        const item = view?.querySelector<HTMLElement>(`[data-original-index="${index}"]`)
+        if (!view || !item) {
+            anchorError = 9999
+            return
+        }
+        const v = view.getBoundingClientRect()
+        const r = item.getBoundingClientRect()
+        if (align === 'start') anchorError = Math.round(Math.abs(r.left - v.left))
+        else if (align === 'end') anchorError = Math.round(Math.abs(r.right - v.right))
+        else if (align === 'center') {
+            anchorError = Math.round(Math.abs((r.left + r.right) / 2 - (v.left + v.right) / 2))
+        } else {
+            anchorError = Math.round(Math.max(v.left - r.left, r.right - v.right, 0))
+        }
+    }
+
+    const goDeep = async () => {
+        activeAlignment = 'manual-deep'
+        const view = viewport()
+        if (view) view.scrollLeft = 550_000
+        await new Promise((resolve) => setTimeout(resolve, 150))
+        measure()
+        anchorError = firstIndex > 4000 ? 0 : 9999
+    }
+
+    const goToOffset = async () => {
+        activeAlignment = 'raw-offset'
+        await list.scrollToOffset({ offset: 250_000, smoothScroll: false })
+        await new Promise((resolve) => setTimeout(resolve, 150))
+        measure()
+        anchorError = Math.abs(scrollLeft - 250_000)
+    }
+
+    const smoothToIndex = async () => {
+        activeAlignment = 'smooth-index'
+        await list.scroll({ index: 2500, align: 'center', smoothScroll: true })
+        await new Promise((resolve) => setTimeout(resolve, 150))
+        measure()
+        updateAnchorError(2500, 'center')
+    }
+
+    const loadAtEnd = async () => {
+        activeAlignment = 'load-end'
+        await list.scroll({ index: ITEM_COUNT - 1, align: 'end', smoothScroll: false })
+        await new Promise((resolve) => setTimeout(resolve, 250))
+        measure()
+        updateAnchorError(ITEM_COUNT - 1, 'end')
+    }
+
+    const align = async (alignment: Alignment) => {
+        activeAlignment = alignment
+        await list.scroll({ index: TARGET_INDEX, align: alignment, smoothScroll: false })
+        await new Promise((resolve) => setTimeout(resolve, 150))
+        measure()
+        updateAnchorError(TARGET_INDEX, alignment)
+    }
+
+    const widenVisible = async () => {
+        activeAlignment = 'resize-anchor'
+        await list.scroll({ index: TARGET_INDEX, align: 'start', smoothScroll: false })
+        await new Promise((resolve) => setTimeout(resolve, 150))
+        measure()
+        const view = viewport()
+        const target = view?.querySelector<HTMLElement>(`[data-original-index="${TARGET_INDEX}"]`)
+        if (!view || !target) {
+            anchorError = 9999
+            compensationError = 9999
+            return
+        }
+        const viewportLeft = view.getBoundingClientRect().left
+        targetLeftBefore = Math.round(target.getBoundingClientRect().left - viewportLeft)
+        const scrollBefore = view.scrollLeft
+        // Item 4320 is 72px wide and expands to 96px: a deterministic +24px.
+        // The delta stays within average-size hysteresis, isolating predecessor
+        // compensation instead of changing every unmeasured prefix estimate.
+        expandedIndex = TARGET_INDEX - 1
+        await new Promise((resolve) => setTimeout(resolve, 300))
+        measure()
+        const resizedTarget = view.querySelector<HTMLElement>(
+            `[data-original-index="${TARGET_INDEX}"]`
+        )
+        if (!resizedTarget) {
+            anchorError = 9999
+            compensationError = 9999
+            return
+        }
+        targetLeftAfter = Math.round(resizedTarget.getBoundingClientRect().left - viewportLeft)
+        resizeScrollDelta = Math.round(view.scrollLeft - scrollBefore)
+        anchorError = Math.abs(targetLeftAfter - targetLeftBefore)
+        compensationError = Math.abs(resizeScrollDelta - 24)
+    }
+
+    const overflowPass = $derived(scrollWidth > clientWidth * 100)
+    const verticalPass = $derived(scrollHeight <= clientHeight + 2)
+    const boundedPass = $derived(renderedCount > 0 && renderedCount < 100)
+    const orientationPass = $derived(measuredOrientation === 'horizontal')
+    const overallPass = $derived(
+        orientationPass && overflowPass && verticalPass && boundedPass && anchorError <= 2
+    )
+
+    onMount(() => {
+        let frame = 0
+        const loop = () => {
+            measure()
+            frame = requestAnimationFrame(loop)
+        }
+        frame = requestAnimationFrame(loop)
+        return () => cancelAnimationFrame(frame)
+    })
+</script>
+
+<svelte:head><title>Issue #427 — horizontal virtual list</title></svelte:head>
+
+<main>
+    <h1>Issue #427 — deterministic horizontal virtual list</h1>
+    <p>
+        Ten thousand deterministic, variably wide cards. Red means the horizontal contract is
+        measurably broken; green means geometry, virtualization, and the selected anchor agree.
+    </p>
+
+    <section class:pass={overallPass} class:fail={!overallPass} class="diagnostics">
+        <strong data-testid="overall-state"
+            >{overallPass ? 'GREEN — HORIZONTAL PASS' : 'RED — HORIZONTAL FAIL'}</strong
+        >
+        <dl>
+            <div>
+                <dt>orientation</dt>
+                <dd data-testid="diag-orientation">
+                    {orientationPass ? 'horizontal' : 'vertical/unsupported'}
+                </dd>
+            </div>
+            <div>
+                <dt>scrollLeft</dt>
+                <dd data-testid="diag-scroll-left">{scrollLeft}</dd>
+            </div>
+            <div>
+                <dt>clientWidth</dt>
+                <dd data-testid="diag-client-width">{clientWidth}</dd>
+            </div>
+            <div>
+                <dt>scrollWidth</dt>
+                <dd data-testid="diag-scroll-width">{scrollWidth}</dd>
+            </div>
+            <div>
+                <dt>clientHeight</dt>
+                <dd data-testid="diag-client-height">{clientHeight}</dd>
+            </div>
+            <div>
+                <dt>scrollHeight</dt>
+                <dd data-testid="diag-scroll-height">{scrollHeight}</dd>
+            </div>
+            <div>
+                <dt>rendered count</dt>
+                <dd data-testid="diag-rendered-count">{renderedCount}</dd>
+            </div>
+            <div>
+                <dt>first index</dt>
+                <dd data-testid="diag-first-index">{firstIndex}</dd>
+            </div>
+            <div>
+                <dt>last index</dt>
+                <dd data-testid="diag-last-index">{lastIndex}</dd>
+            </div>
+            <div>
+                <dt>transform X</dt>
+                <dd data-testid="diag-transform-x">{transformX}</dd>
+            </div>
+            <div>
+                <dt>anchor/index error</dt>
+                <dd data-testid="diag-anchor-error">{anchorError}</dd>
+            </div>
+            <div>
+                <dt>resize compensation error</dt>
+                <dd data-testid="diag-compensation-error">{compensationError}</dd>
+            </div>
+            <div>
+                <dt>target left before</dt>
+                <dd data-testid="diag-target-left-before">{targetLeftBefore}</dd>
+            </div>
+            <div>
+                <dt>target left after</dt>
+                <dd data-testid="diag-target-left-after">{targetLeftAfter}</dd>
+            </div>
+            <div>
+                <dt>resize scroll delta</dt>
+                <dd data-testid="diag-resize-scroll-delta">{resizeScrollDelta}</dd>
+            </div>
+            <div>
+                <dt>active check</dt>
+                <dd data-testid="diag-active">{activeAlignment}</dd>
+            </div>
+            <div>
+                <dt>load-more calls</dt>
+                <dd data-testid="diag-load-more">{loadMoreCalls}</dd>
+            </div>
+        </dl>
+    </section>
+
+    <nav aria-label="Horizontal test controls">
+        <button data-testid="deep-scroll" onclick={goDeep}>Deep manual scroll</button>
+        <button data-testid="raw-offset" onclick={goToOffset}>Raw offset API</button>
+        <button data-testid="smooth-index" onclick={smoothToIndex}>Smooth to index</button>
+        <button data-testid="align-start" onclick={() => align('start')}>Align start</button>
+        <button data-testid="align-end" onclick={() => align('end')}>Align end</button>
+        <button data-testid="align-nearest" onclick={() => align('nearest')}>Align nearest</button>
+        <button data-testid="align-center" onclick={() => align('center')}>Align center</button>
+        <button data-testid="widen-visible" onclick={widenVisible}>Widen visible item</button>
+        <button data-testid="load-end" onclick={loadAtEnd}>Load at horizontal end</button>
+    </nav>
+
+    <div class="list-shell">
+        <SvelteVirtualList
+            bind:this={list}
+            {items}
+            itemKey={(item) => item.id}
+            orientation="horizontal"
+            defaultEstimatedItemSize={116}
+            defaultEstimatedItemHeight={41}
+            bufferSize={8}
+            testId="issue-427-list"
+            onLoadMore={() => {
+                loadMoreCalls++
+                hasMore = false
+            }}
+            loadMoreThreshold={4}
+            {hasMore}
+        >
+            {#snippet renderItem(item: Item, index: number)}
+                <article
+                    class="card"
+                    class:expanded={expandedIndex === index}
+                    style:width={`${item.width}px`}
+                    data-testid={`card-${index}`}
+                >
+                    <div class="box">{index}</div>
+                    <span>Item {index} · {item.width}px</span>
+                </article>
+            {/snippet}
+        </SvelteVirtualList>
+    </div>
+</main>
+
+<style>
+    main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 16px;
+        font-family: system-ui, sans-serif;
+    }
+    h1 {
+        margin: 0 0 6px;
+    }
+    .diagnostics {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        pointer-events: none;
+        border: 5px solid;
+        padding: 10px;
+        background: #fff;
+    }
+    .diagnostics.pass {
+        color: #075e28;
+        border-color: #12a150;
+        background: #dcffe9;
+    }
+    .diagnostics.fail {
+        color: #7e0712;
+        border-color: #e0001b;
+        background: #ffe3e6;
+    }
+    .diagnostics > strong {
+        display: block;
+        font-size: 26px;
+        letter-spacing: 0.04em;
+    }
+    dl {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 5px;
+        margin: 8px 0 0;
+    }
+    dl div {
+        border: 1px solid currentColor;
+        padding: 4px;
+    }
+    dt {
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+    dd {
+        margin: 0;
+        font-size: 18px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+    }
+    nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 12px 0;
+    }
+    button {
+        padding: 8px 12px;
+        font-weight: 700;
+        scroll-margin-top: 440px;
+    }
+    .list-shell {
+        width: 100%;
+        height: 230px;
+        border: 4px solid #14213d;
+        overflow: hidden;
+    }
+    .card {
+        box-sizing: border-box;
+        flex: 0 0 auto;
+        height: 210px;
+        margin-right: 12px;
+        padding: 8px;
+        background: #f5ca54;
+        border: 3px solid #14213d;
+    }
+    .card.expanded {
+        width: 96px !important;
+        background: #86e7b8;
+    }
+    .box {
+        height: 155px;
+        display: grid;
+        place-items: center;
+        background: #ef476f;
+        color: white;
+        font-size: 34px;
+        font-weight: 900;
+    }
+    .card span {
+        display: block;
+        margin-top: 7px;
+        white-space: nowrap;
+        font-weight: 700;
+    }
+</style>

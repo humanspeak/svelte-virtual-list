@@ -1,5 +1,9 @@
 import { describe, expectTypeOf, it } from 'vitest'
-import type { SvelteVirtualListProps } from './types.js'
+import type {
+    SvelteVirtualListProps,
+    SvelteVirtualListScrollAlign,
+    VirtualListOrientation
+} from './types.js'
 
 interface Message {
     id: number
@@ -34,5 +38,12 @@ describe('SvelteVirtualList component generic inference', () => {
         expectTypeOf<DefaultProps['items']>().toEqualTypeOf<any[]>()
         expectTypeOf<DefaultArgs[0]>().toEqualTypeOf<any>()
         expectTypeOf<DefaultArgs[1]>().toEqualTypeOf<number>()
+    })
+
+    it('exposes static orientation, neutral estimates, and semantic alignment', () => {
+        type Props = SvelteVirtualListProps<Message>
+        expectTypeOf<Props['orientation']>().toEqualTypeOf<VirtualListOrientation | undefined>()
+        expectTypeOf<Props['defaultEstimatedItemSize']>().toEqualTypeOf<number | undefined>()
+        expectTypeOf<'start' | 'end'>().toMatchTypeOf<SvelteVirtualListScrollAlign>()
     })
 })

@@ -16,13 +16,13 @@ export const alignToEdge = (
     itemBottom: number,
     scrollTop: number,
     viewportHeight: number,
-    align: 'top' | 'bottom' | 'nearest'
+    align: 'top' | 'bottom' | 'start' | 'end' | 'nearest'
 ): number | null => {
-    if (align === 'top') {
+    if (align === 'top' || align === 'start') {
         return itemTop
     }
 
-    if (align === 'bottom') {
+    if (align === 'bottom' || align === 'end') {
         return clampValue(itemBottom - viewportHeight, 0, Infinity)
     }
 
@@ -163,8 +163,7 @@ export const calculateKeyboardScrollTarget = (params: KeyboardScrollParams): num
  * measurement correction.
  */
 export type AnchorScrollIntent =
-    | { kind: 'bottom' }
-    | { kind: 'item'; oldOffset: number; newOffset: number }
+    { kind: 'bottom' } | { kind: 'item'; oldOffset: number; newOffset: number }
 
 /**
  * Pure decision math for anchor restoration: given the anchor intent and the
@@ -349,7 +348,13 @@ const calculateTopToBottomScrollTarget = (params: TopToBottomScrollParams): numb
         return Math.round(clampValue(target, 0, maxScrollTop ?? Infinity))
     }
 
-    if (align === 'top' || align === 'bottom' || align === 'nearest') {
+    if (
+        align === 'top' ||
+        align === 'bottom' ||
+        align === 'start' ||
+        align === 'end' ||
+        align === 'nearest'
+    ) {
         return alignToEdge(itemTop, itemBottom, scrollTop, height, align)
     }
 
