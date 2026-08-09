@@ -3,6 +3,11 @@
 > **Executor instructions**: This plan completes the user-facing feature after static
 > horizontal mode is stable. Run every browser gate and update the sibling README.
 >
+> **Revision 2026-08-09**: Issue #427 names `svelte-virtuallists` and
+> `svelte-tiny-virtual-list` as alternatives. The latter already has a comparison page;
+> add the missing `svelte-virtuallists` comparison and refresh both comparisons after
+> horizontal support ships.
+>
 > **Drift check (run first)**:
 > `git diff --stat 0e343e5..HEAD -- src/lib src/routes/tests/issues/issue-427 tests/issues/issue-427.spec.ts README.md docs/src docs/static`
 
@@ -87,7 +92,12 @@ and issue #427 keyboard cases pass.
 Update README props and scrolling tables, add static and responsive examples, document
 size-prop precedence, start/end semantics, LTR-only scope, dynamic widths, keyboard
 behavior, infinite loading, and migration compatibility. Add a docs guide/demo and nav
-entry. Do not restore the deleted `PRD.md`.
+entry. Add `svelte-virtuallists` to the comparison data/navigation so its generated
+comparison page covers the API, maintenance posture, horizontal behavior, and
+programmatic scrolling called out by issue #427. Refresh the existing
+`svelte-tiny-virtual-list` comparison and all comparison summaries so they no longer
+describe horizontal mode as an advantage over this package. Keep claims factual and
+source-linked. Do not restore the deleted `PRD.md`.
 
 **Verify**: `pnpm --filter docs check` and `pnpm --filter docs build` exit 0; manually
 inspect desktop and mobile layouts in the docs preview.
@@ -105,6 +115,8 @@ Run `trunk fmt`, `pnpm run check`, `pnpm run test:only`, `pnpm run test:e2e`,
 - [ ] Horizontal keyboard behavior is pure-tested and browser-tested.
 - [ ] Interactive descendants retain native key behavior.
 - [ ] README and docs show issue #427's desktop/mobile pattern and state LTR scope.
+- [ ] `/compare/svelte-virtuallists` exists, and both issue-mentioned alternatives
+      have accurate post-feature comparisons without stale horizontal-gap claims.
 - [ ] Full library/docs/browser gates pass.
 
 ## STOP conditions
