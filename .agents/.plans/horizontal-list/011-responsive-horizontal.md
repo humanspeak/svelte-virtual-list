@@ -8,8 +8,13 @@
 > add the missing `svelte-virtuallists` comparison and refresh both comparisons after
 > horizontal support ships.
 >
+> **Revision 2026-08-09**: Rebased after guarded static horizontal completion at
+> `0a92d0a`. Extend the existing loud issue #427 page and its pixel diagnostics. Add
+> responsive-switch/keyboard assertions and capture their deterministic RED state
+> before implementing reactive orientation; do not replace the proven static cases.
+>
 > **Drift check (run first)**:
-> `git diff --stat 0e343e5..HEAD -- src/lib src/routes/tests/issues/issue-427 tests/issues/issue-427.spec.ts README.md docs/src docs/static`
+> `git diff --stat 0a92d0a..HEAD -- src/lib src/routes/tests/issues/issue-427 tests/issues/issue-427.spec.ts README.md docs/src docs/static`
 
 ## Status
 
@@ -18,7 +23,7 @@
 - **Risk**: HIGH
 - **Depends on**: 010-horizontal-rendering.md
 - **Category**: direction
-- **Planned at**: commit `0e343e5`, 2026-08-09
+- **Planned at**: commit `0a92d0a`, 2026-08-09
 
 ## Why this matters
 
@@ -66,6 +71,13 @@ toggle. Start mid-list, switch both directions repeatedly, and assert anchor ide
 bounded DOM, no blank frame after settle, correct axis overflow, and no stale transform.
 Add horizontal keyboard assertions plus interactive-child noninterference.
 
+The fixture must visibly display requested orientation, active DOM orientation, switch
+generation/count, preserved anchor key/index, both scroll offsets, both transforms,
+both-axis extents, rendered count, and a large RED/GREEN responsive result. Capture a
+red screenshot before implementation and a green screenshot after it. The test must
+fail on the static Plan 010 implementation for an observable axis/anchor mismatch, not
+merely because a new selector is absent.
+
 **Verify**: issue #427 Chromium spec fails at runtime switching/keyboard behavior.
 
 ### Step 2: Implement atomic runtime orientation switching
@@ -110,6 +122,8 @@ Run `trunk fmt`, `pnpm run check`, `pnpm run test:only`, `pnpm run test:e2e`,
 ## Done criteria
 
 - [ ] Vertical ↔ horizontal switching preserves the same logical visible item.
+- [ ] Responsive red/green screenshots and on-page metrics make repeated axis switching
+      independently reviewable without test-runner output.
 - [ ] No height survives as a width or vice versa.
 - [ ] Rapid toggles and in-flight smooth scrolls cannot reassert stale positions.
 - [ ] Horizontal keyboard behavior is pure-tested and browser-tested.
