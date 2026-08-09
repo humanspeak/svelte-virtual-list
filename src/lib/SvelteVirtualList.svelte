@@ -172,7 +172,6 @@
     import { ReactiveListManager } from '$lib/index.js'
     import { BROWSER, DEV } from 'esm-env'
     import { onMount, tick, untrack } from 'svelte'
-    import { SvelteSet } from 'svelte/reactivity'
 
     const rafSchedule = createRafScheduler()
     // Package-specific debug flag - safe for library distribution
@@ -564,7 +563,10 @@
     }
 
     const assertUniqueItemKeys = (keys: readonly (string | number)[]) => {
-        const seen = new SvelteSet<string | number>()
+        // Plain Set on purpose: a SvelteSet creates a reactive source per key,
+        // and in dev each source captures a stack trace — ~10s of main-thread
+        // stall for a 10k-item list before hydration can finish.
+        const seen = new Set<string | number>()
         for (const key of keys) {
             if (seen.has(key)) {
                 throw new Error(`SvelteVirtualList: duplicate itemKey value "${String(key)}"`)
@@ -928,6 +930,19 @@
                 resizeObserver.observe(heightManager.container)
             } else {
                 log('container-resize-unobserved', 'container not bound at mount')
+            }
+
+            // A mid-scroll refresh can hand us a viewport whose offset the
+            // browser already restored onto the SSR DOM (Firefox does this
+            // before hydration, so the restore's scroll event fired before
+            // our listener attached). Adopt the pre-existing offset so the
+            // rendered window matches where the viewport actually sits
+            // (issue #427).
+            if (
+                heightManager.viewportElement &&
+                axis.getScrollOffset(heightManager.viewport) !== heightManager.scrollTop
+            ) {
+                handleScroll()
             }
 
             // Cleanup on component destruction

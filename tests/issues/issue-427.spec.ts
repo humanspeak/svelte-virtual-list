@@ -52,6 +52,36 @@ test('root test index links to the issue 427 fixture', async ({ page }) => {
     )
 })
 
+test('adopts a browser-restored scroll offset during hydration', async ({ page }) => {
+    // A mid-scroll refresh in Firefox restores the inner scroller's offset
+    // onto the SSR DOM before hydration, so the restore's scroll event fires
+    // before the component's listener attaches. Simulate that restoration
+    // directly so every engine exercises the path.
+    await page.addInitScript(() => {
+        const restore = () => {
+            const viewport = document.querySelector<HTMLElement>(
+                '[data-testid="issue-427-list-viewport"]'
+            )
+            if (!viewport) return false
+            viewport.scrollLeft = 500_000
+            // While the content child is still streaming in, the write clamps
+            // to 0 — keep retrying until the offset sticks.
+            return viewport.scrollLeft > 0
+        }
+        const observer = new MutationObserver(() => {
+            if (restore()) observer.disconnect()
+        })
+        observer.observe(document, { childList: true, subtree: true })
+    })
+    await page.goto('/tests/issues/issue-427', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('diag-rendered-count')).not.toHaveText('0')
+    await expect(page.getByTestId('diag-scroll-left')).not.toHaveText('0')
+    // Without mount-time reconciliation the rendered window stays at item 0
+    // while the viewport sits ~500k px in — a blank list until the user scrolls.
+    await expect.poll(() => number(page, 'diag-first-index')).toBeGreaterThan(3000)
+    await expect.poll(() => number(page, 'diag-transform-x')).toBeGreaterThan(400_000)
+})
+
 test.describe('Issue 427 - static LTR horizontal virtualization', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/tests/issues/issue-427', { waitUntil: 'domcontentloaded' })
