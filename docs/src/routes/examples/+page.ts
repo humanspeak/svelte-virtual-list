@@ -23,6 +23,12 @@ export const load: PageLoad = async () => {
             title: 'Variable Height',
             description: 'Interactive variable height animation example using Svelte Motion.',
             sourceUrl: null
+        },
+        horizontal: {
+            title: 'Horizontal & Responsive',
+            description:
+                'Interactive horizontal list with explicit axis controls and responsive switching.',
+            sourceUrl: null
         }
     }
 

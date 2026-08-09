@@ -182,6 +182,8 @@ Use `orientation="horizontal"` for an LTR horizontal list. The prop is reactive,
 
 `start`/`end`, `nearest`, `center`, `scrollToOffset()`, range callbacks, and infinite loading follow the active axis. In horizontal mode Left/Right scroll by one line; Home/End go to the logical edges; Page Up/Page Down and Space page the viewport. Up/Down and keys inside interactive children are left alone. RTL horizontal behavior is not supported in this release.
 
+See the [horizontal guide](https://virtuallist.svelte.page/docs/horizontal) or open the [interactive 10,000-item example](https://virtuallist.svelte.page/examples/horizontal) to switch between horizontal, vertical, and responsive modes.
+
 ## Infinite Scroll
 
 Load more data automatically as users scroll near the end of the list. Perfect for paginated APIs, infinite feeds, and activity logs.
