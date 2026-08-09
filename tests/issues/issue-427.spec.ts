@@ -25,6 +25,8 @@ test.describe('Issue 427 - static LTR horizontal virtualization', () => {
             await page.screenshot({ path: process.env.ISSUE427_SCREENSHOT, fullPage: true })
         }
         await expect(page.getByTestId('diag-orientation')).toHaveText('horizontal')
+        await expect(page.getByTestId('overall-state')).toHaveText('GREEN — HORIZONTAL READY')
+        await expect(page.getByTestId('diag-responsive-result')).toHaveText('NOT RUN')
         expect(await number(page, 'diag-scroll-width')).toBeGreaterThan(
             (await number(page, 'diag-client-width')) * 100
         )

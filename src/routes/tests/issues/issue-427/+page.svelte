@@ -235,15 +235,26 @@
     const verticalPass = $derived(scrollHeight <= clientHeight + 2)
     const boundedPass = $derived(renderedCount > 0 && renderedCount < 100)
     const orientationPass = $derived(measuredOrientation === requestedOrientation)
+    const responsiveAttempted = $derived(anchorBeforeSwitch >= 0)
     const responsivePass = $derived(
         orientationPass && anchorBeforeSwitch >= 0 && preservedAnchor >= 0 && anchorError <= 2
     )
-    const overallPass = $derived(
-        responsivePass &&
-            boundedPass &&
+    const geometryPass = $derived(
+        boundedPass &&
+            orientationPass &&
             (requestedOrientation === 'horizontal'
                 ? overflowPass && verticalPass
                 : scrollHeight > clientHeight)
+    )
+    const overallPass = $derived(geometryPass && (!responsiveAttempted || responsivePass))
+    const overallState = $derived(
+        !responsiveAttempted
+            ? overallPass
+                ? 'GREEN — HORIZONTAL READY'
+                : 'RED — HORIZONTAL FAIL'
+            : overallPass
+              ? 'GREEN — RESPONSIVE PASS'
+              : 'RED — RESPONSIVE FAIL'
     )
 
     onMount(() => {
@@ -267,9 +278,7 @@
     </p>
 
     <section class:pass={overallPass} class:fail={!overallPass} class="diagnostics">
-        <strong data-testid="overall-state"
-            >{overallPass ? 'GREEN — RESPONSIVE PASS' : 'RED — RESPONSIVE FAIL'}</strong
-        >
+        <strong data-testid="overall-state">{overallState}</strong>
         <dl>
             <div>
                 <dt>anchor inset before/after</dt>
@@ -305,7 +314,9 @@
             </div>
             <div>
                 <dt>responsive result</dt>
-                <dd data-testid="diag-responsive-result">{responsivePass ? 'GREEN' : 'RED'}</dd>
+                <dd data-testid="diag-responsive-result">
+                    {responsiveAttempted ? (responsivePass ? 'GREEN' : 'RED') : 'NOT RUN'}
+                </dd>
             </div>
             <div>
                 <dt>scrollLeft</dt>
@@ -405,7 +416,6 @@
             itemKey={(item) => item.id}
             orientation={requestedOrientation}
             defaultEstimatedItemSize={116}
-            defaultEstimatedItemHeight={41}
             bufferSize={8}
             testId="issue-427-list"
             onLoadMore={() => {
