@@ -1,4 +1,3 @@
-import { SvelteMap } from 'svelte/reactivity'
 import { buildBlockSums } from '../utils/virtualList.js'
 import { RecomputeScheduler } from './RecomputeScheduler.js'
 import type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './types.js'
@@ -579,7 +578,10 @@ export class ReactiveListManager {
         previousKeys: readonly (string | number)[],
         nextKeys: readonly (string | number)[]
     ): void {
-        const previousIndexes = new SvelteMap<string | number, number>()
+        // Plain Map on purpose: a SvelteMap creates a reactive source per
+        // entry, which stalls dev builds for seconds on 10k-item reconciles.
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient lookup, never observed by Svelte
+        const previousIndexes = new Map<string | number, number>()
         for (let index = 0; index < previousKeys.length; index += 1) {
             const key = previousKeys[index]
             if (key !== undefined) previousIndexes.set(key, index)

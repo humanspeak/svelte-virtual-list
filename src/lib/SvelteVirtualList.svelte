@@ -566,6 +566,7 @@
         // Plain Set on purpose: a SvelteSet creates a reactive source per key,
         // and in dev each source captures a stack trace — ~10s of main-thread
         // stall for a 10k-item list before hydration can finish.
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient validation, never observed by Svelte
         const seen = new Set<string | number>()
         for (const key of keys) {
             if (seen.has(key)) {
