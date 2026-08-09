@@ -34,7 +34,7 @@ export type SvelteVirtualListProps<TItem = any> = {
      * @default 40
      */
     defaultEstimatedItemSize?: number
-    /** The static physical axis used to lay out and scroll items. */
+    /** Reactive physical axis used to lay out and scroll items. Horizontal mode is LTR-only. */
     orientation?: VirtualListOrientation
     /**
      * When true, enables debug mode with additional logging and information.

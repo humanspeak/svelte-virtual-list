@@ -40,7 +40,7 @@ describe('SvelteVirtualList component generic inference', () => {
         expectTypeOf<DefaultArgs[1]>().toEqualTypeOf<number>()
     })
 
-    it('exposes static orientation, neutral estimates, and semantic alignment', () => {
+    it('exposes reactive orientation, neutral estimates, and semantic alignment', () => {
         type Props = SvelteVirtualListProps<Message>
         expectTypeOf<Props['orientation']>().toEqualTypeOf<VirtualListOrientation | undefined>()
         expectTypeOf<Props['defaultEstimatedItemSize']>().toEqualTypeOf<number | undefined>()

@@ -214,6 +214,44 @@ describe('SvelteVirtualList Component', () => {
             expect(content).toHaveStyle({ height: '800px' })
         })
 
+        test('retains the latest runtime estimate when orientation changes', async () => {
+            const items = createMockItems(10)
+            const { rerender } = render(TestWrapper, {
+                props: {
+                    testId: 'runtime-axis-estimate-list',
+                    items,
+                    orientation: 'vertical',
+                    defaultEstimatedItemSize: 40
+                }
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            await rerender({
+                testId: 'runtime-axis-estimate-list',
+                items,
+                orientation: 'vertical',
+                defaultEstimatedItemSize: 80
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+            expect(screen.getByTestId('runtime-axis-estimate-list-content')).toHaveStyle({
+                height: '800px'
+            })
+
+            await rerender({
+                testId: 'runtime-axis-estimate-list',
+                items,
+                orientation: 'horizontal',
+                defaultEstimatedItemSize: 80
+            })
+            await tick()
+
+            expect(screen.getByTestId('runtime-axis-estimate-list-content')).toHaveStyle({
+                width: '800px'
+            })
+        })
+
         test('preserves a mid-list scroll position when the runtime estimate changes', async () => {
             vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (
                 this: Element

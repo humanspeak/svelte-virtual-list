@@ -22,6 +22,10 @@
                 { href: resolve('/tests/issues/issue-215'), label: 'Issue 215' },
                 { href: resolve('/tests/issues/issue-263'), label: 'Issue 263' },
                 { href: resolve('/tests/issues/issue-300'), label: 'Issue 300' },
+                {
+                    href: resolve('/tests/issues/issue-427'),
+                    label: 'Issue 427 — Horizontal list'
+                },
                 { href: resolve('/tests/issues/layout'), label: 'Layout' },
                 // Example dynamic route under layout
                 { href: resolve('/tests/issues/layout/123'), label: 'Layout (id = 123)' }

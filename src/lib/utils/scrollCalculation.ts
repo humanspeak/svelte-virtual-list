@@ -91,6 +91,8 @@ export const alignVisibleToNearestEdge = (
 export const KEYBOARD_LINE_SCROLL_PX = 40
 
 const KEYBOARD_SCROLL_KEYS = new Set([
+    'ArrowRight',
+    'ArrowLeft',
     'ArrowDown',
     'ArrowUp',
     'PageDown',
@@ -133,9 +135,11 @@ export const calculateKeyboardScrollTarget = (params: KeyboardScrollParams): num
     let target: number | null = null
     switch (key) {
         case 'ArrowDown':
+        case 'ArrowRight':
             target = scrollTop + KEYBOARD_LINE_SCROLL_PX
             break
         case 'ArrowUp':
+        case 'ArrowLeft':
             target = scrollTop - KEYBOARD_LINE_SCROLL_PX
             break
         case 'PageDown':

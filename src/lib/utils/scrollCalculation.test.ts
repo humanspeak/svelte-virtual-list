@@ -558,13 +558,23 @@ describe('calculateScrollTarget', () => {
 
 describe('isKeyboardScrollKey', () => {
     it('accepts every standard scroll key', () => {
-        for (const key of ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End']) {
+        for (const key of [
+            'ArrowDown',
+            'ArrowUp',
+            'ArrowLeft',
+            'ArrowRight',
+            'PageDown',
+            'PageUp',
+            ' ',
+            'Home',
+            'End'
+        ]) {
             expect(isKeyboardScrollKey(key)).toBe(true)
         }
     })
 
     it('rejects non-scroll keys', () => {
-        for (const key of ['Tab', 'Escape', 'Enter', 'a', 'ArrowLeft', 'ArrowRight']) {
+        for (const key of ['Tab', 'Escape', 'Enter', 'a']) {
             expect(isKeyboardScrollKey(key)).toBe(false)
         }
     })
@@ -581,6 +591,12 @@ describe('calculateKeyboardScrollTarget', () => {
             base.scrollTop + KEYBOARD_LINE_SCROLL_PX
         )
         expect(calculateKeyboardScrollTarget({ ...base, key: 'ArrowUp' })).toBe(
+            base.scrollTop - KEYBOARD_LINE_SCROLL_PX
+        )
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'ArrowRight' })).toBe(
+            base.scrollTop + KEYBOARD_LINE_SCROLL_PX
+        )
+        expect(calculateKeyboardScrollTarget({ ...base, key: 'ArrowLeft' })).toBe(
             base.scrollTop - KEYBOARD_LINE_SCROLL_PX
         )
     })
@@ -632,7 +648,6 @@ describe('calculateKeyboardScrollTarget', () => {
 
     it('returns null for keys the viewport does not handle', () => {
         expect(calculateKeyboardScrollTarget({ ...base, key: 'Tab' })).toBeNull()
-        expect(calculateKeyboardScrollTarget({ ...base, key: 'ArrowLeft' })).toBeNull()
     })
 
     it('never returns a negative target when content fits the viewport', () => {

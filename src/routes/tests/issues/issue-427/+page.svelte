@@ -1,8 +1,8 @@
 <script lang="ts">
-    import { onMount } from 'svelte'
+    import { onMount, tick } from 'svelte'
     import SvelteVirtualList from '$lib/index.js'
 
-    type Item = { id: number; width: number }
+    type Item = { id: number; width: number; height: number }
     type Alignment = 'start' | 'end' | 'nearest' | 'center'
 
     const ITEM_COUNT = 10_000
@@ -10,7 +10,8 @@
     const TARGET_INDEX = 4321
     const items: Item[] = Array.from({ length: ITEM_COUNT }, (_, id) => ({
         id,
-        width: WIDTHS[id % WIDTHS.length]
+        width: WIDTHS[id % WIDTHS.length],
+        height: 36 + (id % 4) * 12
     }))
 
     let list: {
@@ -40,6 +41,15 @@
     let expandedIndex = $state<number | null>(null)
     let loadMoreCalls = $state(0)
     let hasMore = $state(true)
+    let requestedOrientation = $state<'vertical' | 'horizontal'>('horizontal')
+    let switchCount = $state(0)
+    let preservedAnchor = $state(-1)
+    let anchorBeforeSwitch = $state(-1)
+    let visibleAnchor = $state(-1)
+    let switchAnchorInset = $state(0)
+    let settledAnchorInset = $state(0)
+    let scrollTop = $state(0)
+    let transformY = $state(0)
 
     const viewport = () =>
         document.querySelector<HTMLElement>('[data-testid="issue-427-list-viewport"]')
@@ -49,7 +59,17 @@
         if (!view) return
         const wrappers = Array.from(view.querySelectorAll<HTMLElement>('[data-original-index]'))
         measuredOrientation = view.getAttribute('data-orientation') ?? 'vertical/unsupported'
+        const viewportRect = view.getBoundingClientRect()
+        visibleAnchor = Number(
+            wrappers.find((wrapper) => {
+                const rect = wrapper.getBoundingClientRect()
+                return measuredOrientation === 'horizontal'
+                    ? rect.left >= viewportRect.left - 1
+                    : rect.top >= viewportRect.top - 1
+            })?.dataset.originalIndex ?? -1
+        )
         scrollLeft = Math.round(view.scrollLeft)
+        scrollTop = Math.round(view.scrollTop)
         clientWidth = Math.round(view.clientWidth)
         scrollWidth = Math.round(view.scrollWidth)
         clientHeight = Math.round(view.clientHeight)
@@ -62,6 +82,59 @@
         ).transform
         const matrix = new DOMMatrixReadOnly(transform === 'none' ? undefined : transform)
         transformX = Math.round(matrix.m41)
+        transformY = Math.round(matrix.m42)
+    }
+
+    const toggleOrientation = async () => {
+        measure()
+        anchorBeforeSwitch = visibleAnchor
+        const view = viewport()
+        const anchorElement = view?.querySelector<HTMLElement>(
+            `[data-original-index="${anchorBeforeSwitch}"]`
+        )
+        if (view && anchorElement) {
+            const viewRect = view.getBoundingClientRect()
+            const anchorRect = anchorElement.getBoundingClientRect()
+            switchAnchorInset =
+                requestedOrientation === 'horizontal'
+                    ? anchorRect.left - viewRect.left
+                    : anchorRect.top - viewRect.top
+        }
+        requestedOrientation = requestedOrientation === 'horizontal' ? 'vertical' : 'horizontal'
+        switchCount++
+        for (let attempt = 0; attempt < 40; attempt++) {
+            await new Promise((resolve) => setTimeout(resolve, 50))
+            measure()
+            if (measuredOrientation === requestedOrientation && visibleAnchor >= 0) break
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        measure()
+        const settledView = viewport()
+        const settledAnchor = settledView?.querySelector<HTMLElement>(
+            `[data-original-index="${anchorBeforeSwitch}"]`
+        )
+        preservedAnchor = settledAnchor ? anchorBeforeSwitch : -1
+        if (settledView && settledAnchor) {
+            const viewRect = settledView.getBoundingClientRect()
+            const anchorRect = settledAnchor.getBoundingClientRect()
+            const inset =
+                requestedOrientation === 'horizontal'
+                    ? anchorRect.left - viewRect.left
+                    : anchorRect.top - viewRect.top
+            settledAnchorInset = Math.round(inset)
+            anchorError = Math.round(Math.abs(inset - switchAnchorInset))
+        } else anchorError = 9999
+        await tick()
+    }
+
+    const rapidToggle = async () => {
+        for (let i = 0; i < 5; i++) {
+            requestedOrientation = requestedOrientation === 'horizontal' ? 'vertical' : 'horizontal'
+            switchCount++
+            await new Promise((resolve) => setTimeout(resolve, 15))
+        }
+        await new Promise((resolve) => setTimeout(resolve, 350))
+        measure()
     }
 
     const updateAnchorError = (index: number, align: Alignment) => {
@@ -161,9 +234,16 @@
     const overflowPass = $derived(scrollWidth > clientWidth * 100)
     const verticalPass = $derived(scrollHeight <= clientHeight + 2)
     const boundedPass = $derived(renderedCount > 0 && renderedCount < 100)
-    const orientationPass = $derived(measuredOrientation === 'horizontal')
+    const orientationPass = $derived(measuredOrientation === requestedOrientation)
+    const responsivePass = $derived(
+        orientationPass && anchorBeforeSwitch >= 0 && preservedAnchor >= 0 && anchorError <= 2
+    )
     const overallPass = $derived(
-        orientationPass && overflowPass && verticalPass && boundedPass && anchorError <= 2
+        responsivePass &&
+            boundedPass &&
+            (requestedOrientation === 'horizontal'
+                ? overflowPass && verticalPass
+                : scrollHeight > clientHeight)
     )
 
     onMount(() => {
@@ -188,18 +268,52 @@
 
     <section class:pass={overallPass} class:fail={!overallPass} class="diagnostics">
         <strong data-testid="overall-state"
-            >{overallPass ? 'GREEN — HORIZONTAL PASS' : 'RED — HORIZONTAL FAIL'}</strong
+            >{overallPass ? 'GREEN — RESPONSIVE PASS' : 'RED — RESPONSIVE FAIL'}</strong
         >
         <dl>
             <div>
+                <dt>anchor inset before/after</dt>
+                <dd data-testid="diag-anchor-insets">
+                    {Math.round(switchAnchorInset)}/{settledAnchorInset}
+                </dd>
+            </div>
+            <div>
+                <dt>visible anchor</dt>
+                <dd data-testid="diag-visible-anchor">{visibleAnchor}</dd>
+            </div>
+            <div>
+                <dt>requested orientation</dt>
+                <dd data-testid="diag-requested-orientation">{requestedOrientation}</dd>
+            </div>
+            <div>
                 <dt>orientation</dt>
                 <dd data-testid="diag-orientation">
-                    {orientationPass ? 'horizontal' : 'vertical/unsupported'}
+                    {measuredOrientation}
                 </dd>
+            </div>
+            <div>
+                <dt>switch count</dt>
+                <dd data-testid="diag-switch-count">{switchCount}</dd>
+            </div>
+            <div>
+                <dt>anchor before switch</dt>
+                <dd data-testid="diag-anchor-before-switch">{anchorBeforeSwitch}</dd>
+            </div>
+            <div>
+                <dt>preserved anchor</dt>
+                <dd data-testid="diag-preserved-anchor">{preservedAnchor}</dd>
+            </div>
+            <div>
+                <dt>responsive result</dt>
+                <dd data-testid="diag-responsive-result">{responsivePass ? 'GREEN' : 'RED'}</dd>
             </div>
             <div>
                 <dt>scrollLeft</dt>
                 <dd data-testid="diag-scroll-left">{scrollLeft}</dd>
+            </div>
+            <div>
+                <dt>scrollTop</dt>
+                <dd data-testid="diag-scroll-top">{scrollTop}</dd>
             </div>
             <div>
                 <dt>clientWidth</dt>
@@ -232,6 +346,10 @@
             <div>
                 <dt>transform X</dt>
                 <dd data-testid="diag-transform-x">{transformX}</dd>
+            </div>
+            <div>
+                <dt>transform Y</dt>
+                <dd data-testid="diag-transform-y">{transformY}</dd>
             </div>
             <div>
                 <dt>anchor/index error</dt>
@@ -274,6 +392,10 @@
         <button data-testid="align-center" onclick={() => align('center')}>Align center</button>
         <button data-testid="widen-visible" onclick={widenVisible}>Widen visible item</button>
         <button data-testid="load-end" onclick={loadAtEnd}>Load at horizontal end</button>
+        <button data-testid="toggle-orientation" onclick={toggleOrientation}
+            >Toggle orientation</button
+        >
+        <button data-testid="rapid-toggle" onclick={rapidToggle}>Rapid toggle ×5</button>
     </nav>
 
     <div class="list-shell">
@@ -281,7 +403,7 @@
             bind:this={list}
             {items}
             itemKey={(item) => item.id}
-            orientation="horizontal"
+            orientation={requestedOrientation}
             defaultEstimatedItemSize={116}
             defaultEstimatedItemHeight={41}
             bufferSize={8}
@@ -296,12 +418,17 @@
             {#snippet renderItem(item: Item, index: number)}
                 <article
                     class="card"
+                    class:vertical={requestedOrientation === 'vertical'}
                     class:expanded={expandedIndex === index}
                     style:width={`${item.width}px`}
+                    style:--item-height={`${item.height}px`}
                     data-testid={`card-${index}`}
                 >
                     <div class="box">{index}</div>
                     <span>Item {index} · {item.width}px</span>
+                    {#if index === 0}
+                        <button data-testid="interactive-child">Native child</button>
+                    {/if}
                 </article>
             {/snippet}
         </SvelteVirtualList>
@@ -380,6 +507,7 @@
         overflow: hidden;
     }
     .card {
+        position: relative;
         box-sizing: border-box;
         flex: 0 0 auto;
         height: 210px;
@@ -391,6 +519,14 @@
     .card.expanded {
         width: 96px !important;
         background: #86e7b8;
+    }
+    .card.vertical {
+        width: 100% !important;
+        height: var(--item-height, 48px);
+        overflow: hidden;
+    }
+    .card.vertical .box {
+        height: calc(var(--item-height, 48px) - 16px);
     }
     .box {
         height: 155px;
@@ -406,5 +542,12 @@
         margin-top: 7px;
         white-space: nowrap;
         font-weight: 700;
+    }
+    .card [data-testid='interactive-child'] {
+        position: absolute;
+        right: 6px;
+        bottom: 6px;
+        padding: 2px 4px;
+        font-size: 10px;
     }
 </style>

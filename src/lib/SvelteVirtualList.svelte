@@ -110,10 +110,10 @@
      *    - Improved separation of concerns and maintainability
      *    - Simplified initialization (removed unnecessary chunked processing)
      *
-     * 9. Future Improvements (Planned)
-     *    - Add horizontal scrolling support
+     * 9. Axis Support ✓
+     *    - Added horizontal scrolling and reactive orientation switching
      *    - Implement variable-sized item caching
-     *    - Add keyboard navigation support
+     *    - Extend keyboard navigation with item-level focus management
      *    - Support for dynamic item updates
      *    - Add accessibility enhancements
      *
@@ -170,7 +170,7 @@
     import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { ReactiveListManager } from '$lib/index.js'
     import { BROWSER, DEV } from 'esm-env'
-    import { onMount, tick } from 'svelte'
+    import { onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
     // Package-specific debug flag - safe for library distribution
@@ -207,9 +207,8 @@
         onRangeChange // Public callback for visible-range / scroll-edge changes
     }: SvelteVirtualListProps<TItem> = $props()
 
-    // Orientation is intentionally static in this phase. The adapter keeps
-    // scalar geometry shared between axes; runtime switching belongs to 011.
-    const axis = getAxisAdapter(orientation)
+    let activeOrientation = $state(orientation)
+    const axis = $derived(getAxisAdapter(activeOrientation))
     const initialEstimatedItemSize = defaultEstimatedItemSize ?? defaultEstimatedItemHeight ?? 40
 
     if (
@@ -265,6 +264,129 @@
     let previousItems: TItem[] = []
     let previousKeys: (string | number)[] | null = null
     let hasReconciledItems = false
+    let orientationGeneration = 0
+    let orientationTransitioning = false
+
+    type OrientationAnchor = {
+        index: number
+        key: string | number | null
+        inset: number
+    }
+
+    const captureOrientationAnchor = (): OrientationAnchor | null => {
+        if (!heightManager.viewportElement) return null
+        const viewportStart = axis.getStart(heightManager.viewport.getBoundingClientRect())
+        const renderedElements =
+            heightManager.viewport.querySelectorAll<HTMLElement>('[data-original-index]')
+        let intersecting: HTMLElement | null = null
+        for (const element of renderedElements) {
+            if (!element?.isConnected) continue
+            const rect = element.getBoundingClientRect()
+            if (axis.getEnd(rect) <= viewportStart) continue
+            intersecting ??= element
+            if (axis.getStart(rect) < viewportStart - 1) continue
+            const index = Number(element.dataset.originalIndex)
+            if (!Number.isInteger(index) || index < 0) continue
+            return {
+                index,
+                key: itemKey ? itemKey(items[index], index) : null,
+                inset: axis.getStart(rect) - viewportStart
+            }
+        }
+        if (intersecting) {
+            const rect = intersecting.getBoundingClientRect()
+            const index = Number(intersecting.dataset.originalIndex)
+            if (Number.isInteger(index) && index >= 0) {
+                return {
+                    index,
+                    key: itemKey ? itemKey(items[index], index) : null,
+                    inset: axis.getStart(rect) - viewportStart
+                }
+            }
+        }
+        return null
+    }
+
+    const resolveOrientationAnchorIndex = (anchor: OrientationAnchor): number => {
+        if (!itemKey || anchor.key === null) return Math.min(anchor.index, items.length - 1)
+        const index = items.findIndex((item, itemIndex) => itemKey(item, itemIndex) === anchor.key)
+        return index < 0 ? Math.min(anchor.index, items.length - 1) : index
+    }
+
+    const switchOrientation = async (nextOrientation: typeof activeOrientation) => {
+        if (nextOrientation === activeOrientation) return
+        const generation = ++orientationGeneration
+        const oldAxis = axis
+        const anchor = captureOrientationAnchor()
+        scrollAbortController?.abort()
+        programmaticScrollDepth = 0
+        orientationTransitioning = true
+
+        if (heightManager.viewportElement) oldAxis.setScrollOffset(heightManager.viewport, 0)
+        heightManager.reset()
+        heightManager.flushDerivedHeights()
+        lastVisibleRange = null
+        lastProcessedScrollTop = 0
+        heightManager.scrollTop = 0
+        activeOrientation = nextOrientation
+        height = 0
+        await tick()
+        if (generation !== orientationGeneration || !heightManager.viewportElement) return
+        syncContainerHeight()
+
+        if (anchor) {
+            const index = resolveOrientationAnchorIndex(anchor)
+            const estimatedOffset = getScrollOffsetForIndex(
+                heightManager.getHeightCache(),
+                heightManager.averageHeight,
+                index,
+                heightManager.getBlockSums()
+            )
+            syncScrollTop(Math.max(0, estimatedOffset - anchor.inset), true)
+            for (let pass = 0; pass < 10; pass++) {
+                lastVisibleRange = null
+                await tick()
+                await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+                if (generation !== orientationGeneration || !heightManager.viewportElement) return
+                heightManager.flushDerivedHeights()
+                const averageFromTotal =
+                    items.length > 0
+                        ? heightManager.totalHeight / items.length
+                        : heightManager.averageHeight
+                syncScrollTop(Math.max(0, index * averageFromTotal - anchor.inset), true)
+                if (heightManager.measuredCount > 0 && pass >= 2) break
+            }
+            let stableFrames = 0
+            for (let pass = 0; pass < 10; pass++) {
+                await tick()
+                await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+                if (generation !== orientationGeneration || !heightManager.viewportElement) return
+                const anchorElement = heightManager.viewport.querySelector<HTMLElement>(
+                    `[data-original-index="${index}"]`
+                )
+                if (!anchorElement) continue
+                const viewportStart = axis.getStart(heightManager.viewport.getBoundingClientRect())
+                const currentInset =
+                    axis.getStart(anchorElement.getBoundingClientRect()) - viewportStart
+                syncScrollTop(
+                    axis.getScrollOffset(heightManager.viewport) + currentInset - anchor.inset,
+                    true
+                )
+                stableFrames = Math.abs(currentInset - anchor.inset) <= 0.5 ? stableFrames + 1 : 0
+                if (stableFrames >= 2) break
+            }
+        }
+        if (generation === orientationGeneration) orientationTransitioning = false
+    }
+
+    $effect.pre(() => {
+        const requestedOrientation = orientation
+        untrack(() => {
+            if (BROWSER && requestedOrientation !== activeOrientation) {
+                void switchOrientation(requestedOrientation)
+            }
+        })
+    })
 
     // Centralized debug logger gated by flags
     const log = (tag: string, payload?: unknown) => {
@@ -359,6 +481,7 @@
 
     const captureViewportAnchor = (): ViewportAnchor | null => {
         if (!heightManager.isReady) return null
+        if (orientationTransitioning) return null
         if (programmaticScrollDepth > 0) return null
         // Exactly at the bottom (a few px — where a scroll-to-bottom lands),
         // corrections must be END-stable: keep the view pinned to the bottom
@@ -1220,7 +1343,7 @@
     id="virtual-list-container"
     {...testId ? { 'data-testid': `${testId}-container` } : {}}
     class={containerClass ?? 'virtual-list-container'}
-    data-orientation={orientation}
+    data-orientation={activeOrientation}
     data-svl-container
     bind:this={heightManager.containerElement}
 >
@@ -1230,7 +1353,7 @@
         id="virtual-list-viewport"
         {...testId ? { 'data-testid': `${testId}-viewport` } : {}}
         class={viewportClass ?? 'virtual-list-viewport'}
-        data-orientation={orientation}
+        data-orientation={activeOrientation}
         data-svl-viewport
         bind:this={heightManager.viewportElement}
         role="region"
@@ -1245,7 +1368,7 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            data-orientation={orientation}
+            data-orientation={activeOrientation}
             data-svl-content
             style={axis.contentSizeStyle(contentHeight)}
         >
@@ -1254,7 +1377,7 @@
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
-                data-orientation={orientation}
+                data-orientation={activeOrientation}
                 data-svl-items
                 style:transform={axis.transform(transformY)}
             >

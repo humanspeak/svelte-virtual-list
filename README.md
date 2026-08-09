@@ -71,22 +71,25 @@ yarn add @humanspeak/svelte-virtual-list
 
 ## Props
 
-| Prop                         | Type                          | Default             | Description                                                                   |
-| ---------------------------- | ----------------------------- | ------------------- | ----------------------------------------------------------------------------- |
-| `items`                      | `T[]`                         | Required            | Array of items to render                                                      |
-| `defaultEstimatedItemHeight` | `number`                      | `40`                | Initial height estimate used until items are measured                         |
-| `bufferSize`                 | `number`                      | `20`                | Number of items rendered outside the viewport                                 |
-| `debug`                      | `boolean`                     | `false`             | Enable debug logging and visualizations                                       |
-| `containerClass`             | `string`                      | `''`                | Class for outer container                                                     |
-| `viewportClass`              | `string`                      | `''`                | Class for scrollable viewport                                                 |
-| `viewportLabel`              | `string`                      | `'Scrollable list'` | Accessible label for the focusable viewport region                            |
-| `contentClass`               | `string`                      | `''`                | Class for content wrapper                                                     |
-| `itemsClass`                 | `string`                      | `''`                | Class for items container                                                     |
-| `testId`                     | `string`                      | `''`                | Base test id used in internal test hooks (useful for E2E/tests and debugging) |
-| `onLoadMore`                 | `() => void \| Promise<void>` | -                   | Callback when more data is needed for infinite scroll                         |
-| `loadMoreThreshold`          | `number`                      | `20`                | Items from end to trigger `onLoadMore`                                        |
-| `hasMore`                    | `boolean`                     | `true`              | Set to `false` when all data has been loaded                                  |
-| `onRangeChange`              | `(range) => void`             | -                   | Fires when the rendered range or at-top/at-bottom state changes               |
+| Prop                         | Type                                | Default             | Description                                                                   |
+| ---------------------------- | ----------------------------------- | ------------------- | ----------------------------------------------------------------------------- |
+| `items`                      | `T[]`                               | Required            | Array of items to render                                                      |
+| `itemKey`                    | `(item, index) => string \| number` | -                   | Stable identity for measurement and responsive anchor preservation            |
+| `orientation`                | `'vertical' \| 'horizontal'`        | `'vertical'`        | Active layout axis; may change reactively (horizontal is LTR-only)            |
+| `defaultEstimatedItemSize`   | `number`                            | `40`                | Axis-neutral initial size; takes precedence over the height alias             |
+| `defaultEstimatedItemHeight` | `number`                            | `40`                | Initial height estimate used until items are measured                         |
+| `bufferSize`                 | `number`                            | `20`                | Number of items rendered outside the viewport                                 |
+| `debug`                      | `boolean`                           | `false`             | Enable debug logging and visualizations                                       |
+| `containerClass`             | `string`                            | `''`                | Class for outer container                                                     |
+| `viewportClass`              | `string`                            | `''`                | Class for scrollable viewport                                                 |
+| `viewportLabel`              | `string`                            | `'Scrollable list'` | Accessible label for the focusable viewport region                            |
+| `contentClass`               | `string`                            | `''`                | Class for content wrapper                                                     |
+| `itemsClass`                 | `string`                            | `''`                | Class for items container                                                     |
+| `testId`                     | `string`                            | `''`                | Base test id used in internal test hooks (useful for E2E/tests and debugging) |
+| `onLoadMore`                 | `() => void \| Promise<void>`       | -                   | Callback when more data is needed for infinite scroll                         |
+| `loadMoreThreshold`          | `number`                            | `20`                | Items from end to trigger `onLoadMore`                                        |
+| `hasMore`                    | `boolean`                           | `true`              | Set to `false` when all data has been loaded                                  |
+| `onRangeChange`              | `(range) => void`                   | -                   | Fires when the rendered range or at-top/at-bottom state changes               |
 
 ### Observing the visible range
 
@@ -157,10 +160,27 @@ Alignment options:
 
 Use `scrollToOffset({ offset, smoothScroll })` to scroll to a raw pixel offset, such as restoring a persisted scroll position after navigation. The returned promise resolves after scrolling has visually finished.
 
-| Option         | Type      | Default  | Description                          |
-| -------------- | --------- | -------- | ------------------------------------ |
-| `offset`       | `number`  | Required | Raw vertical scroll offset in pixels |
-| `smoothScroll` | `boolean` | `true`   | Use smooth scrolling animation       |
+| Option         | Type      | Default  | Description                                |
+| -------------- | --------- | -------- | ------------------------------------------ |
+| `offset`       | `number`  | Required | Raw offset in pixels along the active axis |
+| `smoothScroll` | `boolean` | `true`   | Use smooth scrolling animation             |
+
+## Horizontal and responsive orientation
+
+Use `orientation="horizontal"` for an LTR horizontal list. The prop is reactive, so a keyed list can switch axes at a breakpoint while retaining the same logical visible item. Measurements are axis-specific and are cleared during the switch.
+
+```svelte
+<SvelteVirtualList
+    {items}
+    itemKey={(item) => item.id}
+    orientation={mobile ? 'horizontal' : 'vertical'}
+    defaultEstimatedItemSize={120}
+>
+    {#snippet renderItem(item)}<article>{item.title}</article>{/snippet}
+</SvelteVirtualList>
+```
+
+`start`/`end`, `nearest`, `center`, `scrollToOffset()`, range callbacks, and infinite loading follow the active axis. In horizontal mode Left/Right scroll by one line; Home/End go to the logical edges; Page Up/Page Down and Space page the viewport. Up/Down and keys inside interactive children are left alone. RTL horizontal behavior is not supported in this release.
 
 ## Infinite Scroll
 

@@ -94,6 +94,7 @@ export const docsSections: NavSection[] = [
         icon: Code,
         items: [
             { title: 'Variable Heights', href: '/docs/variable-heights', icon: ArrowUpDown },
+            { title: 'Horizontal & Responsive', href: '/docs/horizontal', icon: SlidersHorizontal },
             { title: 'Infinite Scroll', href: '/docs/infinite-scroll', icon: InfinityIcon },
             { title: 'Scroll Methods', href: '/docs/scroll-methods', icon: Crosshair },
             { title: 'Keyboard & Accessibility', href: '/docs/accessibility', icon: Accessibility },
@@ -132,6 +133,7 @@ export const docsSections: NavSection[] = [
             { title: 'All Comparisons', href: '/compare', icon: Swords, exact: true },
             { title: 'vs TanStack Virtual', href: '/compare/tanstack-virtual', icon: Swords },
             { title: 'vs virtua', href: '/compare/virtua', icon: Swords },
+            { title: 'vs svelte-virtuallists', href: '/compare/svelte-virtuallists', icon: Swords },
             {
                 title: 'vs svelte-tiny-virtual-list',
                 href: '/compare/svelte-tiny-virtual-list',
