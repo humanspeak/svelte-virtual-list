@@ -158,6 +158,8 @@
         calculateVisibleRange,
         clampValue,
         collectPitchChanges,
+        findViewportAnchorElement,
+        getItemKeyAtIndex,
         getScrollOffsetForIndex
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
@@ -167,10 +169,11 @@
         isKeyboardScrollKey,
         resolveAnchorScrollTarget
     } from '$lib/utils/scrollCalculation.js'
-    import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
+    import { shouldReassertScrollOffset, waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { ReactiveListManager } from '$lib/index.js'
     import { BROWSER, DEV } from 'esm-env'
     import { onMount, tick, untrack } from 'svelte'
+    import { SvelteSet } from 'svelte/reactivity'
 
     const rafSchedule = createRafScheduler()
     // Package-specific debug flag - safe for library distribution
@@ -275,36 +278,16 @@
 
     const captureOrientationAnchor = (): OrientationAnchor | null => {
         if (!heightManager.viewportElement) return null
-        const viewportStart = axis.getStart(heightManager.viewport.getBoundingClientRect())
-        const renderedElements =
-            heightManager.viewport.querySelectorAll<HTMLElement>('[data-original-index]')
-        let intersecting: HTMLElement | null = null
-        for (const element of renderedElements) {
-            if (!element?.isConnected) continue
-            const rect = element.getBoundingClientRect()
-            if (axis.getEnd(rect) <= viewportStart) continue
-            intersecting ??= element
-            if (axis.getStart(rect) < viewportStart - 1) continue
-            const index = Number(element.dataset.originalIndex)
-            if (!Number.isInteger(index) || index < 0) continue
-            return {
-                index,
-                key: itemKey ? itemKey(items[index], index) : null,
-                inset: axis.getStart(rect) - viewportStart
-            }
+        const viewportRect = heightManager.viewport.getBoundingClientRect()
+        const element = findViewportAnchorElement(itemElements, axis, viewportRect)
+        if (!element) return null
+        const index = Number(element.dataset.originalIndex)
+        if (!Number.isInteger(index) || index < 0) return null
+        return {
+            index,
+            key: itemKey ? getItemKeyAtIndex(items, index, itemKey) : null,
+            inset: axis.getStart(element.getBoundingClientRect()) - axis.getStart(viewportRect)
         }
-        if (intersecting) {
-            const rect = intersecting.getBoundingClientRect()
-            const index = Number(intersecting.dataset.originalIndex)
-            if (Number.isInteger(index) && index >= 0) {
-                return {
-                    index,
-                    key: itemKey ? itemKey(items[index], index) : null,
-                    inset: axis.getStart(rect) - viewportStart
-                }
-            }
-        }
-        return null
     }
 
     const resolveOrientationAnchorIndex = (anchor: OrientationAnchor): number => {
@@ -322,68 +305,81 @@
         programmaticScrollDepth = 0
         orientationTransitioning = true
 
-        if (heightManager.viewportElement) oldAxis.setScrollOffset(heightManager.viewport, 0)
-        heightManager.reset()
-        heightManager.flushDerivedHeights()
-        lastVisibleRange = null
-        lastProcessedScrollTop = 0
-        heightManager.scrollTop = 0
-        activeOrientation = nextOrientation
-        height = 0
-        await tick()
-        if (generation !== orientationGeneration || !heightManager.viewportElement) return
-        syncContainerHeight()
+        try {
+            if (heightManager.viewportElement) oldAxis.setScrollOffset(heightManager.viewport, 0)
+            heightManager.reset()
+            heightManager.flushDerivedHeights()
+            lastVisibleRange = null
+            lastProcessedScrollTop = 0
+            heightManager.scrollTop = 0
+            activeOrientation = nextOrientation
+            height = 0
+            await tick()
+            if (generation !== orientationGeneration || !heightManager.viewportElement) return
+            syncContainerHeight()
 
-        if (anchor) {
-            const index = resolveOrientationAnchorIndex(anchor)
-            const estimatedOffset = getScrollOffsetForIndex(
-                heightManager.getHeightCache(),
-                heightManager.averageHeight,
-                index,
-                heightManager.getBlockSums()
-            )
-            syncScrollTop(Math.max(0, estimatedOffset - anchor.inset), true)
-            for (let pass = 0; pass < 10; pass++) {
-                lastVisibleRange = null
-                await tick()
-                await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-                if (generation !== orientationGeneration || !heightManager.viewportElement) return
-                heightManager.flushDerivedHeights()
-                const averageFromTotal =
-                    items.length > 0
-                        ? heightManager.totalHeight / items.length
-                        : heightManager.averageHeight
-                syncScrollTop(Math.max(0, index * averageFromTotal - anchor.inset), true)
-                if (heightManager.measuredCount > 0 && pass >= 2) break
-            }
-            let stableFrames = 0
-            for (let pass = 0; pass < 10; pass++) {
-                await tick()
-                await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-                if (generation !== orientationGeneration || !heightManager.viewportElement) return
-                const anchorElement = heightManager.viewport.querySelector<HTMLElement>(
-                    `[data-original-index="${index}"]`
+            if (anchor && items.length > 0) {
+                const index = resolveOrientationAnchorIndex(anchor)
+                const estimatedOffset = getScrollOffsetForIndex(
+                    heightManager.getHeightCache(),
+                    heightManager.averageHeight,
+                    index,
+                    heightManager.getBlockSums()
                 )
-                if (!anchorElement) continue
-                const viewportStart = axis.getStart(heightManager.viewport.getBoundingClientRect())
-                const currentInset =
-                    axis.getStart(anchorElement.getBoundingClientRect()) - viewportStart
-                syncScrollTop(
-                    axis.getScrollOffset(heightManager.viewport) + currentInset - anchor.inset,
-                    true
-                )
-                stableFrames = Math.abs(currentInset - anchor.inset) <= 0.5 ? stableFrames + 1 : 0
-                if (stableFrames >= 2) break
+                syncScrollTop(Math.max(0, estimatedOffset - anchor.inset), true)
+                for (let pass = 0; pass < 10; pass++) {
+                    lastVisibleRange = null
+                    await tick()
+                    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+                    if (generation !== orientationGeneration || !heightManager.viewportElement)
+                        return
+                    heightManager.flushDerivedHeights()
+                    const measuredOffset = getScrollOffsetForIndex(
+                        heightManager.getHeightCache(),
+                        heightManager.averageHeight,
+                        index,
+                        heightManager.getBlockSums()
+                    )
+                    syncScrollTop(Math.max(0, measuredOffset - anchor.inset), true)
+                    if (heightManager.measuredCount > 0 && pass >= 2) break
+                }
+                let stableFrames = 0
+                for (let pass = 0; pass < 10; pass++) {
+                    await tick()
+                    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+                    if (generation !== orientationGeneration || !heightManager.viewportElement)
+                        return
+                    const anchorElement = itemElements.find(
+                        (element) =>
+                            element?.isConnected && Number(element.dataset.originalIndex) === index
+                    )
+                    if (!anchorElement) continue
+                    const viewportStart = axis.getStart(
+                        heightManager.viewport.getBoundingClientRect()
+                    )
+                    const currentInset =
+                        axis.getStart(anchorElement.getBoundingClientRect()) - viewportStart
+                    syncScrollTop(
+                        axis.getScrollOffset(heightManager.viewport) + currentInset - anchor.inset,
+                        true
+                    )
+                    stableFrames =
+                        Math.abs(currentInset - anchor.inset) <= 0.5 ? stableFrames + 1 : 0
+                    if (stableFrames >= 2) break
+                }
             }
+        } finally {
+            if (generation === orientationGeneration) orientationTransitioning = false
         }
-        if (generation === orientationGeneration) orientationTransitioning = false
     }
 
     $effect.pre(() => {
         const requestedOrientation = orientation
         untrack(() => {
             if (BROWSER && requestedOrientation !== activeOrientation) {
-                void switchOrientation(requestedOrientation)
+                void switchOrientation(requestedOrientation).catch((error: unknown) => {
+                    console.error('SvelteVirtualList: orientation switch failed.', error)
+                })
             }
         })
     })
@@ -492,33 +488,24 @@
         if (Math.abs(axis.getScrollOffset(heightManager.viewport) - currentMaxScrollTop()) <= 2) {
             return { kind: 'bottom' }
         }
-        const viewportStart = axis.getStart(heightManager.viewport.getBoundingClientRect())
-        let intersectingFallback: { index: number; oldOffset: number } | null = null
-        for (const element of itemElements) {
-            if (!element || !element.isConnected) continue
-            const rect = element.getBoundingClientRect()
-            if (axis.getEnd(rect) <= viewportStart) continue
-            const index = parseInt(element.dataset.originalIndex || '-1', 10)
-            if (index < 0) return null
-            const candidate = {
-                kind: 'item',
+        const element = findViewportAnchorElement(
+            itemElements,
+            axis,
+            heightManager.viewport.getBoundingClientRect()
+        )
+        if (!element) return null
+        const index = parseInt(element.dataset.originalIndex || '-1', 10)
+        if (index < 0) return null
+        return {
+            kind: 'item',
+            index,
+            oldOffset: getScrollOffsetForIndex(
+                heightManager.getHeightCache(),
+                heightManager.averageHeight,
                 index,
-                oldOffset: getScrollOffsetForIndex(
-                    heightManager.getHeightCache(),
-                    heightManager.averageHeight,
-                    index,
-                    heightManager.getBlockSums()
-                )
-            } as const
-            // ResizeObserver runs after layout. A predecessor that just grew
-            // can newly overlap the viewport and must not become the anchor:
-            // its own cache offset is unchanged, yielding zero compensation
-            // while shifting the established first-starting item. Prefer the
-            // first item whose start edge is at/after the viewport start.
-            if (axis.getStart(rect) >= viewportStart - 1) return candidate
-            intersectingFallback ??= candidate
+                heightManager.getBlockSums()
+            )
         }
-        return intersectingFallback ? { kind: 'item', ...intersectingFallback } : null
     }
 
     /**
@@ -578,20 +565,26 @@
     }
 
     const assertUniqueItemKeys = (keys: readonly (string | number)[]) => {
-        const seen: Record<string, true> = {}
+        const seen = new SvelteSet<string | number>()
         for (const key of keys) {
-            const identity = `${typeof key}:${String(key)}`
-            if (seen[identity]) {
+            if (seen.has(key)) {
                 throw new Error(`SvelteVirtualList: duplicate itemKey value "${String(key)}"`)
             }
-            seen[identity] = true
+            seen.add(key)
         }
     }
 
     const itemIdentities = $derived.by(() => {
         if (!itemKey) return null
         const keys = items.map(itemKey)
-        if (DEV || debug) assertUniqueItemKeys(keys)
+        if (DEV) assertUniqueItemKeys(keys)
+        else if (debug) {
+            try {
+                assertUniqueItemKeys(keys)
+            } catch (error) {
+                console.warn(error)
+            }
+        }
         return keys
     })
 
@@ -605,10 +598,15 @@
         if (!hasReconciledItems) {
             heightManager.updateItemLength(currentItems.length)
         } else if (currentKeys && previousKeys) {
+            const hasIdenticalKeys =
+                currentKeys.length === previousKeys.length &&
+                previousKeys.every((key, index) => currentKeys[index] === key)
             const isAppendOnly =
                 currentKeys.length >= previousKeys.length &&
                 previousKeys.every((key, index) => currentKeys[index] === key)
-            if (isAppendOnly) heightManager.updateItemLength(currentItems.length)
+            if (hasIdenticalKeys) {
+                // Measurements and length are already synchronized.
+            } else if (isAppendOnly) heightManager.updateItemLength(currentItems.length)
             else heightManager.reconcileItemKeys(previousKeys, currentKeys)
         } else if (!currentKeys && !previousKeys) {
             const commonLength = Math.min(previousItems.length, currentItems.length)
@@ -623,15 +621,19 @@
             if (hasStablePrefix) {
                 heightManager.updateItemLength(currentItems.length)
             } else {
+                const anchor = captureViewportAnchor()
                 heightManager.reset()
                 heightManager.updateItemLength(currentItems.length)
+                if (anchor) restoreViewportAnchor(anchor)
             }
         } else {
+            const anchor = captureViewportAnchor()
             heightManager.reset()
             heightManager.updateItemLength(currentItems.length)
+            if (anchor) restoreViewportAnchor(anchor)
         }
 
-        previousItems = currentItems.slice()
+        previousItems = currentKeys ? [] : currentItems.slice()
         previousKeys = currentKeys
         hasReconciledItems = true
     })
@@ -1092,7 +1094,13 @@
 
         // Resolve only once the scroll has visually finished AND the virtual
         // list has re-rendered for the new position.
-        waitForScrollEnd(heightManager.viewport, scrollTarget, smoothScroll, signal)
+        waitForScrollEnd(
+            heightManager.viewport,
+            scrollTarget,
+            smoothScroll,
+            signal,
+            axis.getScrollOffset
+        )
             .then(async () => {
                 await tick()
                 resolve()
@@ -1296,13 +1304,17 @@
             }
             const target = Math.round(clampValue(offset, 0, currentMaxScrollTop()))
             const finishAfterMeasurement = async () => {
+                const settledOffset = axis.getScrollOffset(heightManager.viewport)
                 await tick()
                 await new Promise<void>((done) => requestAnimationFrame(() => done()))
                 await new Promise<void>((done) => requestAnimationFrame(() => done()))
-                await new Promise<void>((done) => setTimeout(done, 100))
                 if (!signal.aborted && heightManager.viewportElement) {
-                    syncScrollTop(Math.round(clampValue(offset, 0, currentMaxScrollTop())), true)
-                    await tick()
+                    const currentOffset = axis.getScrollOffset(heightManager.viewport)
+                    const correctedTarget = Math.round(clampValue(offset, 0, currentMaxScrollTop()))
+                    if (shouldReassertScrollOffset(settledOffset, currentOffset, correctedTarget)) {
+                        syncScrollTop(correctedTarget, true)
+                        await tick()
+                    }
                 }
                 resolve()
             }

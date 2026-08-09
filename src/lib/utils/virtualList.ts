@@ -23,6 +23,34 @@ import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
 export const getValidHeight = (height: unknown, fallback: number): number =>
     Number.isFinite(height) && (height as number) > 0 ? (height as number) : fallback
 
+export const getItemKeyAtIndex = <TItem>(
+    items: readonly TItem[],
+    index: number,
+    itemKey: (_item: TItem, _index: number) => string | number
+): string | number | null => {
+    if (!Number.isInteger(index) || index < 0 || index >= items.length) return null
+    return itemKey(items[index]!, index)
+}
+
+export const findViewportAnchorElement = (
+    elements: Iterable<HTMLElement>,
+    axis: AxisAdapter,
+    viewportRect: DOMRect
+): HTMLElement | null => {
+    const viewportStart = axis.getStart(viewportRect)
+    const viewportEnd = axis.getEnd(viewportRect)
+    let intersectingFallback: HTMLElement | null = null
+    for (const element of elements) {
+        if (!element?.isConnected) continue
+        const rect = element.getBoundingClientRect()
+        if (axis.getEnd(rect) <= viewportStart) continue
+        if (axis.getStart(rect) >= viewportEnd) continue
+        intersectingFallback ??= element
+        if (axis.getStart(rect) >= viewportStart - 1) return element
+    }
+    return intersectingFallback
+}
+
 const BOTTOM_TOLERANCE_FACTOR = 0.25
 
 /**
@@ -258,11 +286,13 @@ export const measureItemPitch = (
     if (!parent) return axis.getSize(rect)
 
     const next = element.nextElementSibling
-    const pitch = next
-        ? axis.getStart(next.getBoundingClientRect()) - axis.getStart(rect)
-        : axis.getEnd(parent.getBoundingClientRect()) - axis.getStart(rect)
-
     const borderBoxSize = axis.getSize(rect)
+    if (next) {
+        const siblingPitch = axis.getStart(next.getBoundingClientRect()) - axis.getStart(rect)
+        return siblingPitch > 0 ? siblingPitch : borderBoxSize
+    }
+
+    const pitch = axis.getEnd(parent.getBoundingClientRect()) - axis.getStart(rect)
     // An absolutely positioned items layer may resolve its containing-block
     // edge to the full virtual content extent. That is not the final item's
     // pitch; reject such an implausible edge just like a zero layout read.

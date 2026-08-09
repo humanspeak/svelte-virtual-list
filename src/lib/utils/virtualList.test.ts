@@ -7,6 +7,8 @@ import {
     calculateVisibleRange,
     clampValue,
     collectPitchChanges,
+    findViewportAnchorElement,
+    getItemKeyAtIndex,
     getScrollOffsetForIndex,
     getValidHeight
 } from './virtualList.js'
@@ -112,6 +114,35 @@ describe('getValidHeight', () => {
         it('should handle negative fallback', () => {
             expect(getValidHeight(undefined, -10)).toBe(-10)
         })
+    })
+})
+
+describe('anchor and key safety', () => {
+    it('does not call itemKey for an index removed by a simultaneous shrink', () => {
+        const itemKey = (item: { id: string }) => item.id
+        expect(getItemKeyAtIndex([{ id: 'kept' }], 4, itemKey)).toBeNull()
+    })
+
+    it('falls back to a tall intersecting row when the next row starts below the viewport', () => {
+        const tall = document.createElement('div')
+        const below = document.createElement('div')
+        document.body.append(tall, below)
+        tall.getBoundingClientRect = () =>
+            ({ top: -40, bottom: 240, height: 280, left: 0, right: 100, width: 100 }) as DOMRect
+        below.getBoundingClientRect = () =>
+            ({ top: 240, bottom: 280, height: 40, left: 0, right: 100, width: 100 }) as DOMRect
+        const viewportRect = {
+            top: 0,
+            bottom: 200,
+            height: 200,
+            left: 0,
+            right: 100,
+            width: 100
+        } as DOMRect
+
+        expect(
+            findViewportAnchorElement([tall, below], getAxisAdapter('vertical'), viewportRect)
+        ).toBe(tall)
     })
 })
 
@@ -523,6 +554,23 @@ describe('collectPitchChanges', () => {
 
         expect(collectPitchChanges([first], {}, undefined, getAxisAdapter('horizontal'))).toEqual([
             { index: 7, oldHeight: undefined, newHeight: 112 }
+        ])
+    })
+
+    it('preserves a legitimate sibling pitch larger than four border boxes', () => {
+        const parent = document.createElement('div')
+        const first = document.createElement('div')
+        const second = document.createElement('div')
+        first.dataset.originalIndex = '4'
+        parent.append(first, second)
+        document.body.appendChild(parent)
+        first.getBoundingClientRect = () =>
+            ({ left: 0, right: 2, width: 2, top: 0, bottom: 2, height: 2 }) as DOMRect
+        second.getBoundingClientRect = () =>
+            ({ left: 0, right: 2, width: 2, top: 14, bottom: 16, height: 2 }) as DOMRect
+
+        expect(collectPitchChanges([first], {})).toEqual([
+            { index: 4, oldHeight: undefined, newHeight: 14 }
         ])
     })
 

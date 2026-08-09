@@ -1,3 +1,4 @@
+import { SvelteMap } from 'svelte/reactivity'
 import { buildBlockSums } from '../utils/virtualList.js'
 import { RecomputeScheduler } from './RecomputeScheduler.js'
 import type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './types.js'
@@ -578,10 +579,10 @@ export class ReactiveListManager {
         previousKeys: readonly (string | number)[],
         nextKeys: readonly (string | number)[]
     ): void {
-        const previousIndexes: Record<string, number> = {}
+        const previousIndexes = new SvelteMap<string | number, number>()
         for (let index = 0; index < previousKeys.length; index += 1) {
             const key = previousKeys[index]
-            if (key !== undefined) previousIndexes[`${typeof key}:${String(key)}`] = index
+            if (key !== undefined) previousIndexes.set(key, index)
         }
 
         const nextCache: Record<number, number> = {}
@@ -589,7 +590,7 @@ export class ReactiveListManager {
         for (let index = 0; index < nextKeys.length; index += 1) {
             const key = nextKeys[index]
             if (key === undefined) continue
-            const previousIndex = previousIndexes[`${typeof key}:${String(key)}`]
+            const previousIndex = previousIndexes.get(key)
             if (previousIndex === undefined) continue
             const measuredHeight = this._heightCache[previousIndex]
             if (measuredHeight === undefined) continue

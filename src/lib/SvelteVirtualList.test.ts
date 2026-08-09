@@ -252,6 +252,43 @@ describe('SvelteVirtualList Component', () => {
             })
         })
 
+        test('switches orientation when keyed items shrink in the same update', async () => {
+            const items = createMockItems(10)
+            const itemKey = (item: (typeof items)[number]) => item.id
+            const { rerender } = render(TestWrapper, {
+                props: {
+                    testId: 'shrinking-axis-list',
+                    items,
+                    itemKey,
+                    orientation: 'vertical' as const,
+                    defaultEstimatedItemSize: 40
+                }
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            const viewport = screen.getByTestId('shrinking-axis-list-viewport')
+            viewport.scrollTop = 320
+            await fireEvent.scroll(viewport)
+            await vi.runAllTimersAsync()
+            await tick()
+
+            await rerender({
+                testId: 'shrinking-axis-list',
+                items: items.slice(0, 2),
+                itemKey,
+                orientation: 'horizontal' as const,
+                defaultEstimatedItemSize: 40
+            })
+            await vi.runAllTimersAsync()
+            await tick()
+
+            expect(screen.getByTestId('shrinking-axis-list-viewport')).toHaveAttribute(
+                'data-orientation',
+                'horizontal'
+            )
+        })
+
         test('preserves a mid-list scroll position when the runtime estimate changes', async () => {
             vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (
                 this: Element
