@@ -3,17 +3,23 @@
 > **Executor instructions**: This phase is behavior-preserving. Do not enable horizontal
 > rendering yet. Run every gate and update the sibling README.
 >
+> **Revision 2026-08-09**: Rebased after guarded completion of Plans 001–003 at
+> `f3281e1`. Preserve complete reset semantics, item-key reconciliation, and the
+> runtime-estimate anchor path while centralizing geometry. The drift baseline below
+> includes those changes.
+>
 > **Drift check (run first)**:
-> `git diff --stat 0e343e5..HEAD -- src/lib/SvelteVirtualList.svelte src/lib/types.ts src/lib/utils/virtualList.ts src/lib/utils/virtualList.test.ts src/lib/utils/scrollCalculation.ts src/lib/utils/scrollCalculation.test.ts src/lib/reactive-list-manager`
+> `git diff --stat f3281e1..HEAD -- src/lib/SvelteVirtualList.svelte src/lib/types.ts src/lib/utils/virtualList.ts src/lib/utils/virtualList.test.ts src/lib/utils/scrollCalculation.ts src/lib/utils/scrollCalculation.test.ts src/lib/reactive-list-manager`
 
 ## Status
 
 - **Priority**: P1
 - **Effort**: M
 - **Risk**: MED
-- **Depends on**: 001-reset-measurements.md, 003-runtime-estimate.md
+- **Depends on**: 001-reset-measurements.md, 002-item-mutation-cache.md,
+  003-runtime-estimate.md
 - **Category**: direction
-- **Planned at**: commit `0e343e5`, 2026-08-09
+- **Planned at**: commit `f3281e1`, 2026-08-09
 
 ## Why this matters
 
