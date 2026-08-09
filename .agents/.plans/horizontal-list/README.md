@@ -20,7 +20,7 @@ work.
 | 008  | Route conventional lint scripts through Trunk           | P2       | S      | —          | TODO   |
 | 009  | Introduce an axis-neutral geometry foundation           | P1       | M      | 001–003    | DONE   |
 | 010  | Render and measure horizontal virtual lists             | P1       | L      | 002, 009   | DONE   |
-| 011  | Complete responsive horizontal behavior and public docs | P1       | L      | 010        | TODO   |
+| 011  | Complete responsive horizontal behavior and public docs | P1       | L      | 010        | DONE   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with reason) | REJECTED
 (with rationale).
