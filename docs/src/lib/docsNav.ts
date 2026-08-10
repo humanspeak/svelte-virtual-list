@@ -1,4 +1,4 @@
-import type { Breadcrumb, NavSection } from '@humanspeak/docs-kit'
+import type { Breadcrumb, NavSection, PagerItem } from '@humanspeak/docs-kit'
 import Accessibility from '@lucide/svelte/icons/accessibility'
 import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down'
 import Book from '@lucide/svelte/icons/book'
@@ -147,3 +147,10 @@ export const docsSections: NavSection[] = [
         ]
     }
 ]
+
+// Prev/next reading order for PagerV2 on /docs/** — the doc chapters only,
+// so the pager never routes readers out to /blog, /examples, or /compare.
+export const docsPagerItems: PagerItem[] = docsSections
+    .flatMap((section) => section.items)
+    .filter((item) => item.href.startsWith('/docs'))
+    .map((item) => ({ href: item.href, label: `${item.title.toLowerCase()}.` }))

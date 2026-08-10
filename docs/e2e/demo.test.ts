@@ -17,3 +17,15 @@ test('examples index links to the horizontal responsive demo', async ({ page }) 
         'true'
     )
 })
+
+test('props API documents keyed and axis-neutral list configuration', async ({ page }) => {
+    await page.goto('/docs/api/props')
+
+    await expect(page.getByRole('heading', { name: 'itemKey', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'orientation', exact: true })).toBeVisible()
+    await expect(
+        page.getByRole('heading', { name: 'defaultEstimatedItemSize', exact: true })
+    ).toBeVisible()
+    await expect(page.getByText('Use a unique, stable value', { exact: false })).toBeVisible()
+    await expect(page.getByText('vertical and horizontal', { exact: false })).toBeVisible()
+})

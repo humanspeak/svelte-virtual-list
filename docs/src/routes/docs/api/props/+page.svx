@@ -14,7 +14,7 @@ description: "All available props for the SvelteVirtualList component"
     seo.description = 'All available props for the SvelteVirtualList component'
     seo.ogTitle = 'Props API'
     seo.ogTagline = 'All available component props.'
-    seo.ogFeatures = ['items', 'itemHeight', 'overScan']
+    seo.ogFeatures = ['items', 'itemKey', 'orientation', 'estimated item size']
     seo.ogSlug = 'api-props'
   }
 </script>
@@ -23,7 +23,7 @@ description: "All available props for the SvelteVirtualList component"
 
 All available props for the SvelteVirtualList component.
 
-<Example isSmall file="PropsExample.svelte" title="Props API">
+<Example file="PropsExample.svelte" title="Props API">
   <PropsExample />
 </Example>
 
@@ -49,6 +49,28 @@ A Svelte snippet that defines how each item is rendered.
 
 ## Optional Props
 
+### itemKey
+
+Returns a stable identity for each item. The key allows cached measurements, rendered DOM, and viewport anchors to follow the same logical item when the array is reordered or changed.
+
+```typescript
+itemKey?: (item: TItem, index: number) => string | number
+```
+
+Use a unique, stable value from the item rather than its array index:
+
+```svelte
+<SvelteVirtualList {items} itemKey={(item) => item.id}>
+    {#snippet renderItem(item)}
+        <article>{item.title}</article>
+    {/snippet}
+</SvelteVirtualList>
+```
+
+`itemKey` works with both vertical and horizontal lists. It is strongly recommended when items can be prepended, inserted, removed, reordered, replaced immutably, or retained while `orientation` changes. Duplicate keys are invalid. A database ID or another persistent domain identifier is normally the right key; an array index is not stable when the collection changes.
+
+The prop is optional. Without it, append-only and positionally stable collections work normally. If an unkeyed update makes item identity ambiguous, the component discards affected measurements rather than attaching stale geometry to different items.
+
 ### bufferSize
 
 Number of items to render outside the visible viewport for smooth scrolling.
@@ -58,9 +80,31 @@ bufferSize?: number
 // Default: 20
 ```
 
+### orientation
+
+Controls the physical layout and scroll axis. It can change reactively at runtime.
+
+```typescript
+orientation?: 'vertical' | 'horizontal'
+// Default: 'vertical'
+```
+
+Horizontal mode uses LTR `scrollLeft` behavior. RTL horizontal normalization is not currently supported. When switching axes, provide `itemKey` so the list can preserve the same logical visible item while rebuilding axis-specific measurements.
+
+### defaultEstimatedItemSize
+
+Initial estimated size in pixels along the active axis before an item is measured. This means height in vertical mode and width in horizontal mode.
+
+```typescript
+defaultEstimatedItemSize?: number
+// Default: 40
+```
+
+Use this axis-neutral prop for new code, especially when `orientation` can change. If both size props are provided, `defaultEstimatedItemSize` takes precedence.
+
 ### defaultEstimatedItemHeight
 
-Initial height estimate (in pixels) for items before measurement.
+Compatibility alias for the initial item estimate. It remains supported for existing vertical lists; prefer `defaultEstimatedItemSize` for new or axis-switching lists.
 
 ```typescript
 defaultEstimatedItemHeight?: number
