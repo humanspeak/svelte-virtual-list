@@ -29,6 +29,13 @@
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
  */
+/**
+ * Resolves on the next animation frame. Await twice to let a rendered frame
+ * paint and its ResizeObserver callbacks run.
+ */
+export const nextFrame = (): Promise<void> =>
+    new Promise((resolve) => requestAnimationFrame(() => resolve()))
+
 export const createRafScheduler = (): ((_fn: () => void) => void) => {
     let scheduled = false
     let callback: (() => void) | null = null

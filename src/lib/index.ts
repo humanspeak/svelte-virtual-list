@@ -4,7 +4,8 @@ import type {
     SvelteVirtualListProps,
     SvelteVirtualListRangeInfo,
     SvelteVirtualListScrollAlign,
-    SvelteVirtualListScrollOptions
+    SvelteVirtualListScrollOptions,
+    VirtualListOrientation
 } from '$lib/types.js'
 // cleaned: no extra exports for debugging UI
 export type {
@@ -12,7 +13,8 @@ export type {
     SvelteVirtualListProps,
     SvelteVirtualListRangeInfo,
     SvelteVirtualListScrollAlign,
-    SvelteVirtualListScrollOptions
+    SvelteVirtualListScrollOptions,
+    VirtualListOrientation
 }
 
 // Re-export renamed manager from existing package location to avoid churn

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { waitForScrollEnd } from './scrollEnd.js'
+import { shouldReassertScrollOffset, waitForScrollEnd } from './scrollEnd.js'
 
 type FakeViewport = HTMLElement & {
     dispatch: (type: string) => void
@@ -18,10 +18,11 @@ describe('waitForScrollEnd', () => {
         }
     }
 
-    const createViewport = (scrollTop = 0): FakeViewport => {
+    const createViewport = (scrollTop = 0, scrollLeft = 0): FakeViewport => {
         const listeners: Record<string, Set<EventListener>> = {}
         return {
             scrollTop,
+            scrollLeft,
             addEventListener: vi.fn((type: string, cb: EventListener) => {
                 ;(listeners[type] ??= new Set()).add(cb)
             }),
@@ -101,6 +102,49 @@ describe('waitForScrollEnd', () => {
             expect.any(Function),
             expect.anything()
         )
+    })
+
+    it('uses the supplied axis offset for a horizontal smooth no-op', async () => {
+        setScrollendSupport(true)
+        const viewport = createViewport(0, 100)
+        const promise = waitForScrollEnd(
+            viewport,
+            100,
+            true,
+            undefined,
+            (element) => element.scrollLeft
+        )
+
+        flushFrames(1)
+        await promise
+        expect(viewport.addEventListener).not.toHaveBeenCalledWith(
+            'scrollend',
+            expect.any(Function),
+            expect.anything()
+        )
+    })
+
+    it('polls the supplied horizontal offset when scrollend is unavailable', async () => {
+        setScrollendSupport(false)
+        const viewport = createViewport(0, 0)
+        let resolved = false
+        const promise = waitForScrollEnd(
+            viewport,
+            100,
+            true,
+            undefined,
+            (element) => element.scrollLeft
+        ).then(() => {
+            resolved = true
+        })
+
+        viewport.scrollLeft = 50
+        flushFrames(1)
+        expect(resolved).toBe(false)
+        viewport.scrollLeft = 100
+        flushFrames(1)
+        await promise
+        expect(resolved).toBe(true)
     })
 
     it('resolves on the scrollend event when supported', async () => {
@@ -201,5 +245,19 @@ describe('waitForScrollEnd', () => {
         await promise
         expect(resolved).toBe(true)
         expect(viewport.removeEventListener).toHaveBeenCalledWith('scrollend', expect.any(Function))
+    })
+})
+
+describe('shouldReassertScrollOffset', () => {
+    it('allows measurement correction while the viewport remains settled', () => {
+        expect(shouldReassertScrollOffset(100, 100, 120)).toBe(true)
+    })
+
+    it('does not pull the viewport back after user movement', () => {
+        expect(shouldReassertScrollOffset(100, 140, 100)).toBe(false)
+    })
+
+    it('skips a redundant correction already within tolerance', () => {
+        expect(shouldReassertScrollOffset(100, 100, 100.5)).toBe(false)
     })
 })

@@ -1,5 +1,6 @@
 import type { HeightChange } from '$lib/reactive-list-manager/types.js'
 import type { SvelteVirtualListPreviousVisibleRange } from '$lib/types.js'
+import { getAxisAdapter, type AxisAdapter } from '$lib/utils/axis.js'
 import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
 
 /**
@@ -21,6 +22,34 @@ import { isSignificantHeightChange } from '$lib/utils/heightChangeDetection.js'
  */
 export const getValidHeight = (height: unknown, fallback: number): number =>
     Number.isFinite(height) && (height as number) > 0 ? (height as number) : fallback
+
+export const getItemKeyAtIndex = <TItem>(
+    items: readonly TItem[],
+    index: number,
+    itemKey: (_item: TItem, _index: number) => string | number
+): string | number | null => {
+    if (!Number.isInteger(index) || index < 0 || index >= items.length) return null
+    return itemKey(items[index]!, index)
+}
+
+export const findViewportAnchorElement = (
+    elements: Iterable<HTMLElement>,
+    axis: AxisAdapter,
+    viewportRect: DOMRect
+): HTMLElement | null => {
+    const viewportStart = axis.getStart(viewportRect)
+    const viewportEnd = axis.getEnd(viewportRect)
+    let intersectingFallback: HTMLElement | null = null
+    for (const element of elements) {
+        if (!element?.isConnected) continue
+        const rect = element.getBoundingClientRect()
+        if (axis.getEnd(rect) <= viewportStart) continue
+        if (axis.getStart(rect) >= viewportEnd) continue
+        intersectingFallback ??= element
+        if (axis.getStart(rect) >= viewportStart - 1) return element
+    }
+    return intersectingFallback
+}
 
 const BOTTOM_TOLERANCE_FACTOR = 0.25
 
@@ -248,17 +277,26 @@ export const calculateTransformY = (
  * @param {HTMLElement} element - The item wrapper element to measure.
  * @returns {number} The item's layout pitch in pixels.
  */
-export const measureItemPitch = (element: HTMLElement): number => {
+export const measureItemPitch = (
+    element: HTMLElement,
+    axis: AxisAdapter = getAxisAdapter('vertical')
+): number => {
     const rect = element.getBoundingClientRect()
     const parent = element.parentElement
-    if (!parent) return rect.height
+    if (!parent) return axis.getSize(rect)
 
     const next = element.nextElementSibling
-    const pitch = next
-        ? next.getBoundingClientRect().top - rect.top
-        : parent.getBoundingClientRect().bottom - rect.top
+    const borderBoxSize = axis.getSize(rect)
+    if (next) {
+        const siblingPitch = axis.getStart(next.getBoundingClientRect()) - axis.getStart(rect)
+        return siblingPitch > 0 ? siblingPitch : borderBoxSize
+    }
 
-    return pitch > 0 ? pitch : rect.height
+    const pitch = axis.getEnd(parent.getBoundingClientRect()) - axis.getStart(rect)
+    // An absolutely positioned items layer may resolve its containing-block
+    // edge to the full virtual content extent. That is not the final item's
+    // pitch; reject such an implausible edge just like a zero layout read.
+    return pitch > 0 && (borderBoxSize <= 0 || pitch <= borderBoxSize * 4) ? pitch : borderBoxSize
 }
 
 /**
@@ -280,14 +318,15 @@ export const measureItemPitch = (element: HTMLElement): number => {
 export const collectPitchChanges = (
     elements: Iterable<HTMLElement>,
     heightCache: Readonly<Record<number, number>>,
-    tolerance = 0.1
+    tolerance = 0.1,
+    axis: AxisAdapter = getAxisAdapter('vertical')
 ): HeightChange[] => {
     const changes: HeightChange[] = []
     for (const element of elements) {
         if (!element.isConnected) continue
         const index = parseInt(element.dataset.originalIndex || '-1', 10)
         if (index < 0) continue
-        const pitch = measureItemPitch(element)
+        const pitch = measureItemPitch(element, axis)
         if (!Number.isFinite(pitch) || pitch <= 0) continue
         if (!isSignificantHeightChange(index, pitch, heightCache, tolerance)) continue
         changes.push({ index, oldHeight: heightCache[index], newHeight: pitch })

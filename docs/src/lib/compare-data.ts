@@ -15,11 +15,13 @@ const shared = {
         'Dynamic height measurement without requiring a size map up front',
         'Built-in infinite loading hooks for feed and pagination workflows',
         'Imperative scroll method with index and alignment control',
+        'Vertical and horizontal layouts, including reactive orientation switching',
         'SSR-friendly package for SvelteKit apps',
         'Zero runtime dependencies and MIT licensed'
     ],
     consUs: [
-        'Focused on vertical lists, not grids or masonry layouts',
+        'Focused on one-dimensional lists, not grids or masonry layouts',
+        'Horizontal mode is LTR-only in the current release',
         'Requires Svelte 5',
         'Newer package with a smaller ecosystem than older virtualizer projects'
     ]
@@ -67,7 +69,7 @@ export const competitors: Competitor[] = [
             'Bundle includes a core virtualizer dependency'
         ],
         verdict:
-            'Choose TanStack Virtual when you need headless control, grids, tables, or a cross-framework virtualizer strategy. Choose @humanspeak/svelte-virtual-list when you want a compact Svelte 5 component for large vertical lists with dynamic heights and infinite loading already shaped around Svelte snippets.',
+            'Choose TanStack Virtual when you need headless control, grids, tables, or a cross-framework virtualizer strategy. Choose @humanspeak/svelte-virtual-list when you want a compact Svelte 5 component for large vertical or LTR-horizontal lists with dynamic measurement and infinite loading already shaped around Svelte snippets.',
         keywords: [
             'tanstack virtual svelte alternative',
             '@tanstack/svelte-virtual vs svelte virtual list',
@@ -80,7 +82,7 @@ export const competitors: Competitor[] = [
         tagline:
             'virtua is a zero-config multi-framework virtualizer. Svelte Virtual List is narrower and Svelte-specific.',
         description:
-            'virtua ships virtual list and grid components for React, Vue, Solid, and Svelte. Its design emphasizes zero-config virtualization, dynamic size handling, reverse scrolling, horizontal lists, and broad UI scenarios. @humanspeak/svelte-virtual-list deliberately focuses on the Svelte 5 vertical-list path with a small API, Svelte snippets, SSR support, and built-in feed loading.',
+            'virtua ships virtual list and grid components for React, Vue, Solid, and Svelte. Its design emphasizes zero-config virtualization, dynamic size handling, reverse scrolling, and broad UI scenarios. @humanspeak/svelte-virtual-list focuses on a small Svelte 5 list API with vertical and horizontal layouts, Svelte snippets, SSR support, and built-in feed loading.',
         website: 'https://inokawa.github.io/virtua/',
         github: 'https://github.com/inokawa/virtua',
         npm: 'virtua',
@@ -92,7 +94,8 @@ export const competitors: Competitor[] = [
             { name: 'Infinite scroll helpers', us: true, them: 'User-land pattern' },
             { name: 'Programmatic scroll to index', us: true, them: true },
             { name: 'Grid virtualization', us: false, them: true },
-            { name: 'Horizontal / reverse scrolling', us: false, them: true },
+            { name: 'Horizontal scrolling', us: 'LTR', them: true },
+            { name: 'Reverse scrolling', us: false, them: true },
             { name: 'Framework coverage', us: 'Svelte', them: 'React, Vue, Solid, Svelte' },
             { name: 'Runtime dependencies', us: '0', them: '0' }
         ],
@@ -104,7 +107,7 @@ export const competitors: Competitor[] = [
         prosThem: [
             'Very broad virtualization feature set',
             'List and grid components',
-            'Strong fit for reverse, horizontal, RTL, mobile, sticky, and placeholder scenarios',
+            'Strong fit for reverse, RTL, mobile, sticky, and placeholder scenarios',
             'Multi-framework package for teams sharing patterns across stacks'
         ],
         consUs: [...shared.consUs],
@@ -114,7 +117,7 @@ export const competitors: Competitor[] = [
             'Svelte usage shares mindshare with several other framework targets'
         ],
         verdict:
-            'Choose virtua for broad virtualization coverage, grids, reverse or horizontal scrolling, and multi-framework consistency. Choose @humanspeak/svelte-virtual-list when the job is a Svelte 5 vertical list or feed and you want the smallest component API that covers dynamic heights, SSR, scrolling methods, and load-more behavior.',
+            'Choose virtua for broad virtualization coverage, grids, reverse/RTL scrolling, and multi-framework consistency. Choose @humanspeak/svelte-virtual-list for a focused Svelte 5 vertical or LTR-horizontal list with dynamic measurement, responsive axis switching, SSR, scrolling methods, and load-more behavior.',
         keywords: [
             'virtua svelte alternative',
             'virtua vs svelte virtual list',
@@ -137,7 +140,7 @@ export const competitors: Competitor[] = [
             { name: 'Svelte 5 snippets', us: true, them: false },
             { name: 'Dynamic measured heights', us: true, them: 'Explicit sizes / recompute' },
             { name: 'Variable sizes from array/function', us: false, them: true },
-            { name: 'Horizontal lists', us: false, them: true },
+            { name: 'Horizontal lists', us: 'LTR, runtime switchable', them: true },
             { name: 'Infinite scroll helpers', us: true, them: 'Footer slot pattern' },
             { name: 'Programmatic scroll to index', us: true, them: true },
             { name: 'Runtime dependencies', us: '0', them: '0' }
@@ -160,11 +163,57 @@ export const competitors: Competitor[] = [
             'Infinite loading is composed through external footer patterns'
         ],
         verdict:
-            'Choose svelte-tiny-virtual-list when you need horizontal mode or explicit item-size control in an older slot-style Svelte component. Choose @humanspeak/svelte-virtual-list for Svelte 5 snippet ergonomics, automatic dynamic height measurement, SSR-friendly docs, and built-in infinite loading behavior.',
+            'Choose svelte-tiny-virtual-list for explicit size arrays/functions, sticky indices, or its older slot-style API. Choose @humanspeak/svelte-virtual-list for Svelte 5 snippets, automatic dynamic measurement, reactive vertical↔horizontal switching, SSR-friendly docs, and built-in infinite loading.',
         keywords: [
             'svelte-tiny-virtual-list alternative',
             'svelte-tiny-virtual-list vs svelte virtual list',
             'svelte 5 virtual list'
+        ]
+    },
+    {
+        slug: 'svelte-virtuallists',
+        name: 'svelte-virtuallists',
+        tagline:
+            'svelte-virtuallists offers list and table virtualizers. Svelte Virtual List keeps a smaller one-dimensional component API.',
+        description:
+            'svelte-virtuallists documents Svelte 5 virtual list and table components with vertical and horizontal layouts. @humanspeak/svelte-virtual-list concentrates on one list component with automatic dynamic measurement, reactive orientation switching, infinite-loading hooks, and index/offset scrolling.',
+        website: 'https://orefalo.github.io/svelte-virtuallists/',
+        github: 'https://github.com/orefalo/svelte-virtuallists',
+        npm: 'svelte-virtuallists',
+        type: 'Svelte List and Table Virtualizers',
+        approach: 'Dedicated list and table components for Svelte 5',
+        features: [
+            { name: 'Svelte 5 support', us: true, them: true },
+            { name: 'Horizontal and vertical layouts', us: 'List, LTR horizontal', them: true },
+            { name: 'Reactive orientation switching', us: true, them: 'Not documented' },
+            { name: 'Table virtualization', us: false, them: true },
+            { name: 'Dynamic item measurement', us: true, them: true },
+            { name: 'Programmatic index scrolling', us: true, them: true },
+            { name: 'Raw offset scrolling', us: true, them: 'Not documented' },
+            { name: 'Infinite loading hook', us: true, them: 'User-land pattern' }
+        ],
+        prosUs: [
+            ...shared.prosUs,
+            'Single list API for static and responsive orientation',
+            'Built-in load-more and raw-offset methods'
+        ],
+        prosThem: [
+            'Includes virtual table components',
+            'Documents both horizontal and vertical layouts',
+            'Svelte 5-focused package and examples'
+        ],
+        consUs: [...shared.consUs],
+        consThem: [
+            'Broader list/table surface when only a list is needed',
+            'Infinite loading remains application wiring',
+            'Reactive axis-switch anchor behavior is not part of the documented contract'
+        ],
+        verdict:
+            'Choose svelte-virtuallists when virtual tables are central to the UI. Choose @humanspeak/svelte-virtual-list when you want one measured list component with responsive axis switching, built-in loading edges, and both index and raw-offset methods.',
+        keywords: [
+            'svelte-virtuallists alternative',
+            'svelte-virtuallists comparison',
+            'svelte 5 horizontal virtual list'
         ]
     },
     {

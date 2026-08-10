@@ -1,5 +1,9 @@
 import { describe, expectTypeOf, it } from 'vitest'
-import type { SvelteVirtualListProps } from './types.js'
+import type {
+    SvelteVirtualListProps,
+    SvelteVirtualListScrollAlign,
+    VirtualListOrientation
+} from './types.js'
 
 interface Message {
     id: number
@@ -19,6 +23,13 @@ describe('SvelteVirtualList component generic inference', () => {
         expectTypeOf<Args>().toEqualTypeOf<[Message, number]>()
     })
 
+    it('itemKey receives the inferred item and index and returns a stable primitive key', () => {
+        type Props = SvelteVirtualListProps<Message>
+        expectTypeOf<Props['itemKey']>().toEqualTypeOf<
+            ((item: Message, index: number) => string | number) | undefined
+        >()
+    })
+
     it('defaults to any when type parameter is omitted', () => {
         // No generic specified → defaults to any per current public API
         type DefaultProps = SvelteVirtualListProps
@@ -27,5 +38,12 @@ describe('SvelteVirtualList component generic inference', () => {
         expectTypeOf<DefaultProps['items']>().toEqualTypeOf<any[]>()
         expectTypeOf<DefaultArgs[0]>().toEqualTypeOf<any>()
         expectTypeOf<DefaultArgs[1]>().toEqualTypeOf<number>()
+    })
+
+    it('exposes reactive orientation, neutral estimates, and semantic alignment', () => {
+        type Props = SvelteVirtualListProps<Message>
+        expectTypeOf<Props['orientation']>().toEqualTypeOf<VirtualListOrientation | undefined>()
+        expectTypeOf<Props['defaultEstimatedItemSize']>().toEqualTypeOf<number | undefined>()
+        expectTypeOf<'start' | 'end'>().toMatchTypeOf<SvelteVirtualListScrollAlign>()
     })
 })

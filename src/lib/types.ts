@@ -1,5 +1,8 @@
 import type { Snippet } from 'svelte'
 
+/** The physical axis along which a virtual list lays out and scrolls. */
+export type VirtualListOrientation = 'vertical' | 'horizontal'
+
 /**
  * Configuration properties for the SvelteVirtualList component.
  *
@@ -26,6 +29,14 @@ export type SvelteVirtualListProps<TItem = any> = {
      */
     defaultEstimatedItemHeight?: number
     /**
+     * Initial estimated size along the active orientation. When supplied it
+     * takes precedence over `defaultEstimatedItemHeight`.
+     * @default 40
+     */
+    defaultEstimatedItemSize?: number
+    /** Reactive physical axis used to lay out and scroll items. Horizontal mode is LTR-only. */
+    orientation?: VirtualListOrientation
+    /**
      * When true, enables debug mode with additional logging and information.
      * @default false
      */
@@ -38,6 +49,11 @@ export type SvelteVirtualListProps<TItem = any> = {
      * The complete array of items to be virtualized.
      */
     items: TItem[]
+    /**
+     * Returns a stable identity for an item. Supplying a key lets cached
+     * measurements and DOM nodes follow items through reorder, prepend, and removal.
+     */
+    itemKey?: (_item: TItem, _index: number) => string | number
     /**
      * CSS class to apply to individual item containers.
      */
@@ -126,7 +142,8 @@ export type SvelteVirtualListDebugInfo = {
 /**
  * Alignment options for programmatic scrolling.
  */
-export type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest' | 'center'
+export type SvelteVirtualListScrollAlign =
+    'auto' | 'top' | 'bottom' | 'start' | 'end' | 'nearest' | 'center'
 
 /**
  * Options for scrolling to a specific index in the virtual list.
@@ -138,7 +155,7 @@ export interface SvelteVirtualListScrollOptions {
     smoothScroll?: boolean
     /** Whether to throw an error if the index is out of bounds. Default: true */
     shouldThrowOnBounds?: boolean
-    /** Alignment for the scrolled item: 'auto', 'top', 'bottom', 'nearest', or 'center'. Default: 'auto' */
+    /** Semantic start/end work on either axis; top/bottom remain vertical compatibility aliases. */
     align?: SvelteVirtualListScrollAlign
 }
 

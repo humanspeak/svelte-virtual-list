@@ -13,6 +13,14 @@ const STABLE_FRAMES = 3
 /** Pixel tolerance when comparing scroll positions. */
 const POSITION_TOLERANCE = 1
 
+export const shouldReassertScrollOffset = (
+    settledOffset: number,
+    currentOffset: number,
+    correctedTarget: number
+): boolean =>
+    Math.abs(currentOffset - settledOffset) <= POSITION_TOLERANCE &&
+    Math.abs(currentOffset - correctedTarget) > POSITION_TOLERANCE
+
 /**
  * Resolves once a programmatic scroll on `viewport` has visually finished.
  *
@@ -43,13 +51,15 @@ const POSITION_TOLERANCE = 1
  * @param target The desired final `scrollTop` value.
  * @param smooth Whether the scroll was initiated with `behavior: 'smooth'`.
  * @param signal Optional AbortSignal to cancel waiting (e.g. a newer scroll).
+ * @param getOffset Reads the active-axis scroll offset.
  * @returns A promise that resolves when the scroll has finished (or is cancelled).
  */
 export const waitForScrollEnd = (
     viewport: HTMLElement,
     target: number,
     smooth: boolean,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    getOffset: (_viewport: HTMLElement) => number = (element) => element.scrollTop
 ): Promise<void> => {
     return new Promise<void>((resolve) => {
         if (signal?.aborted) {
@@ -57,7 +67,7 @@ export const waitForScrollEnd = (
             return
         }
 
-        const alreadyThere = Math.abs(viewport.scrollTop - target) <= POSITION_TOLERANCE
+        const alreadyThere = Math.abs(getOffset(viewport) - target) <= POSITION_TOLERANCE
         const shouldWaitForSmoothScroll = smooth && !alreadyThere
 
         let rafId = 0
@@ -100,21 +110,21 @@ export const waitForScrollEnd = (
         }
 
         // Fallback (e.g. Safari): poll until `scrollTop` stabilizes or reaches target.
-        let lastTop = viewport.scrollTop
+        let lastOffset = getOffset(viewport)
         let stableFrames = 0
         let hasMoved = false
         const poll = () => {
-            const top = viewport.scrollTop
-            const delta = Math.abs(top - lastTop)
+            const offset = getOffset(viewport)
+            const delta = Math.abs(offset - lastOffset)
             if (delta > POSITION_TOLERANCE) {
                 hasMoved = true
                 stableFrames = 0
             } else {
                 stableFrames += 1
             }
-            lastTop = top
+            lastOffset = offset
 
-            const nearTarget = Math.abs(top - target) <= POSITION_TOLERANCE
+            const nearTarget = Math.abs(offset - target) <= POSITION_TOLERANCE
             if (nearTarget || (hasMoved && stableFrames >= STABLE_FRAMES)) {
                 rafId = 0
                 finish()

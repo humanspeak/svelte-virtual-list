@@ -1,0 +1,52 @@
+---
+title: "Horizontal and Responsive Lists"
+description: "Build static and breakpoint-driven horizontal virtual lists while preserving the visible item"
+---
+
+<script>
+  import Example from '$lib/components/general/Example.svelte'
+  import ResponsiveHorizontalExample from '$lib/examples/horizontal/demos/Default.svelte'
+</script>
+
+# Horizontal and Responsive Lists
+
+Set `orientation="horizontal"` for an LTR horizontal list. The same prop can change at runtime: the component clears measurements from the old axis and restores the same keyed item at its logical viewport position.
+
+<Example file="horizontal/demos/Default.svelte" title="Horizontal and responsive orientation">
+  <ResponsiveHorizontalExample />
+</Example>
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let orientation = $state<'vertical' | 'horizontal'>('horizontal')
+
+    $effect(() => {
+        const query = matchMedia('(max-width: 640px)')
+        const update = () => (orientation = query.matches ? 'horizontal' : 'vertical')
+        update()
+        query.addEventListener('change', update)
+        return () => query.removeEventListener('change', update)
+    })
+</script>
+
+<VirtualList {items} itemKey={(item) => item.id} {orientation}>
+    {#snippet renderItem(item)}<article>{item.title}</article>{/snippet}
+</VirtualList>
+```
+
+## Sizing and migration
+
+- `defaultEstimatedItemSize` is the axis-neutral estimate and takes precedence over the compatibility alias `defaultEstimatedItemHeight` when both are supplied.
+- Items are measured along the active axis, so dynamic widths work like dynamic heights. Axis changes discard incompatible measurements.
+- `itemKey` is strongly recommended when items can be inserted, removed, reordered, or retained across a breakpoint.
+- Existing vertical lists do not need changes; `orientation` defaults to `vertical`.
+
+## Scrolling, loading, and keys
+
+`scroll()` alignment values `start`, `end`, `nearest`, and `center` are axis-neutral. The older `top` and `bottom` values remain vertical compatibility aliases. `scrollToOffset()` also follows the active axis. Infinite loading triggers at the logical end in either orientation.
+
+When a horizontal viewport is focused, Left/Right move by 40px, Home/End go to the logical edges, and Page Up/Page Down plus Space/Shift+Space move by one viewport page with a 40px overlap. Up/Down remain available to the page and interactive descendants keep their native key behavior.
+
+Horizontal mode is LTR-only in this release. RTL normalization is not yet supported.

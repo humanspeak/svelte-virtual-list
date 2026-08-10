@@ -71,5 +71,5 @@ Test routes live at `src/routes/tests/` with pages covering basic rendering, scr
 
 - Commit messages follow **conventional commits** (`feat:`, `fix:`, `docs:`, `build:`, etc.)
 - PRs target `main` branch
-- The docs sidebar navigation is defined in `docs/src/lib/utils/docsNav.ts`
+- The docs sidebar navigation is defined in `docs/src/lib/docsNav.ts`
 - The docs sidebar component uses `@humanspeak/svelte-motion` for animations and `runed` for persisted state

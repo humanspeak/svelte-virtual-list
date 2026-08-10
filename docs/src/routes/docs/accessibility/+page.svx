@@ -23,7 +23,7 @@ description: 'Keyboard navigation and assistive-technology support in Svelte Vir
 
 The scroll viewport is a focusable, labeled region that handles the standard scroll keys itself — so keyboard users get the same experience in every browser, and assistive technology announces the list meaningfully.
 
-<Example isSmall file="AccessibilityExample.svelte" title="Keyboard navigation">
+<Example file="AccessibilityExample.svelte" title="Keyboard navigation">
   <AccessibilityExample />
 </Example>
 

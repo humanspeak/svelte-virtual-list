@@ -110,10 +110,10 @@
      *    - Improved separation of concerns and maintainability
      *    - Simplified initialization (removed unnecessary chunked processing)
      *
-     * 9. Future Improvements (Planned)
-     *    - Add horizontal scrolling support
+     * 9. Axis Support ✓
+     *    - Added horizontal scrolling and reactive orientation switching
      *    - Implement variable-sized item caching
-     *    - Add keyboard navigation support
+     *    - Extend keyboard navigation with item-level focus management
      *    - Support for dynamic item updates
      *    - Add accessibility enhancements
      *
@@ -151,25 +151,27 @@
         type SvelteVirtualListRangeInfo,
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
-    import { createRafScheduler } from '$lib/utils/raf.js'
+    import { createRafScheduler, nextFrame } from '$lib/utils/raf.js'
+    import { getAxisAdapter } from '$lib/utils/axis.js'
     import {
         calculateTransformY,
         calculateVisibleRange,
         clampValue,
         collectPitchChanges,
+        findViewportAnchorElement,
+        getItemKeyAtIndex,
         getScrollOffsetForIndex
     } from '$lib/utils/virtualList.js'
     import { createDebugInfo, shouldShowDebugInfo } from '$lib/utils/virtualListDebug.js'
     import {
         calculateKeyboardScrollTarget,
         calculateScrollTarget,
-        isKeyboardScrollKey,
         resolveAnchorScrollTarget
     } from '$lib/utils/scrollCalculation.js'
-    import { waitForScrollEnd } from '$lib/utils/scrollEnd.js'
+    import { shouldReassertScrollOffset, waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { ReactiveListManager } from '$lib/index.js'
-    import { BROWSER } from 'esm-env'
-    import { onMount, tick } from 'svelte'
+    import { BROWSER, DEV } from 'esm-env'
+    import { onMount, tick, untrack } from 'svelte'
 
     const rafSchedule = createRafScheduler()
     // Package-specific debug flag - safe for library distribution
@@ -186,7 +188,10 @@
      */
     const {
         items = [], // Array of items to be rendered in the virtual list
-        defaultEstimatedItemHeight = 40, // Initial height estimate for items before measurement
+        itemKey, // Stable identity used to preserve measurements through mutations
+        defaultEstimatedItemHeight, // Compatibility alias for the initial size estimate
+        defaultEstimatedItemSize, // Axis-neutral initial size estimate
+        orientation = 'vertical',
         debug = false, // Enable debug logging
         renderItem, // Function to render each item
         containerClass, // Custom class for the container element
@@ -202,6 +207,21 @@
         hasMore = true, // Set false when all data loaded
         onRangeChange // Public callback for visible-range / scroll-edge changes
     }: SvelteVirtualListProps<TItem> = $props()
+
+    let activeOrientation = $state(orientation)
+    const axis = $derived(getAxisAdapter(activeOrientation))
+    const initialEstimatedItemSize = defaultEstimatedItemSize ?? defaultEstimatedItemHeight ?? 40
+
+    if (
+        (DEV || debug) &&
+        defaultEstimatedItemSize !== undefined &&
+        defaultEstimatedItemHeight !== undefined &&
+        defaultEstimatedItemSize !== defaultEstimatedItemHeight
+    ) {
+        console.warn(
+            'SvelteVirtualList: defaultEstimatedItemSize takes precedence over defaultEstimatedItemHeight.'
+        )
+    }
 
     /**
      * DOM References and Core State
@@ -238,10 +258,129 @@
      */
     const heightManager = new ReactiveListManager({
         itemLength: items.length,
-        itemHeight: defaultEstimatedItemHeight,
+        itemHeight: initialEstimatedItemSize,
         internalDebug: INTERNAL_DEBUG
     })
     const instanceId = Math.random().toString(36).slice(2, 7)
+    let previousItems: TItem[] = []
+    let previousKeys: (string | number)[] | null = null
+    let hasReconciledItems = false
+    let orientationGeneration = 0
+    let orientationTransitioning = false
+
+    type OrientationAnchor = {
+        index: number
+        key: string | number | null
+        inset: number
+    }
+
+    const captureOrientationAnchor = (): OrientationAnchor | null => {
+        if (!heightManager.viewportElement) return null
+        const viewportRect = heightManager.viewport.getBoundingClientRect()
+        const element = findViewportAnchorElement(itemElements, axis, viewportRect)
+        if (!element) return null
+        const index = Number(element.dataset.originalIndex)
+        if (!Number.isInteger(index) || index < 0) return null
+        return {
+            index,
+            key: itemKey ? getItemKeyAtIndex(items, index, itemKey) : null,
+            inset: axis.getStart(element.getBoundingClientRect()) - axis.getStart(viewportRect)
+        }
+    }
+
+    const resolveOrientationAnchorIndex = (anchor: OrientationAnchor): number => {
+        if (!itemKey || anchor.key === null) return Math.min(anchor.index, items.length - 1)
+        const index = items.findIndex((item, itemIndex) => itemKey(item, itemIndex) === anchor.key)
+        return index < 0 ? Math.min(anchor.index, items.length - 1) : index
+    }
+
+    const switchOrientation = async (nextOrientation: typeof activeOrientation) => {
+        if (nextOrientation === activeOrientation) return
+        const generation = ++orientationGeneration
+        const oldAxis = axis
+        const anchor = captureOrientationAnchor()
+        scrollAbortController?.abort()
+        programmaticScrollDepth = 0
+        orientationTransitioning = true
+
+        try {
+            if (heightManager.viewportElement) oldAxis.setScrollOffset(heightManager.viewport, 0)
+            heightManager.reset()
+            heightManager.flushDerivedHeights()
+            lastVisibleRange = null
+            lastProcessedScrollTop = 0
+            heightManager.scrollTop = 0
+            activeOrientation = nextOrientation
+            height = 0
+            await tick()
+            if (generation !== orientationGeneration || !heightManager.viewportElement) return
+            syncContainerHeight()
+
+            if (anchor && items.length > 0) {
+                const index = resolveOrientationAnchorIndex(anchor)
+                const estimatedOffset = getScrollOffsetForIndex(
+                    heightManager.getHeightCache(),
+                    heightManager.averageHeight,
+                    index,
+                    heightManager.getBlockSums()
+                )
+                syncScrollTop(Math.max(0, estimatedOffset - anchor.inset), true)
+                for (let pass = 0; pass < 10; pass++) {
+                    lastVisibleRange = null
+                    await tick()
+                    await nextFrame()
+                    if (generation !== orientationGeneration || !heightManager.viewportElement)
+                        return
+                    heightManager.flushDerivedHeights()
+                    const measuredOffset = getScrollOffsetForIndex(
+                        heightManager.getHeightCache(),
+                        heightManager.averageHeight,
+                        index,
+                        heightManager.getBlockSums()
+                    )
+                    syncScrollTop(Math.max(0, measuredOffset - anchor.inset), true)
+                    if (heightManager.measuredCount > 0 && pass >= 2) break
+                }
+                let stableFrames = 0
+                for (let pass = 0; pass < 10; pass++) {
+                    await tick()
+                    await nextFrame()
+                    if (generation !== orientationGeneration || !heightManager.viewportElement)
+                        return
+                    const anchorElement = itemElements.find(
+                        (element) =>
+                            element?.isConnected && Number(element.dataset.originalIndex) === index
+                    )
+                    if (!anchorElement) continue
+                    const viewportStart = axis.getStart(
+                        heightManager.viewport.getBoundingClientRect()
+                    )
+                    const currentInset =
+                        axis.getStart(anchorElement.getBoundingClientRect()) - viewportStart
+                    syncScrollTop(
+                        axis.getScrollOffset(heightManager.viewport) + currentInset - anchor.inset,
+                        true
+                    )
+                    stableFrames =
+                        Math.abs(currentInset - anchor.inset) <= 0.5 ? stableFrames + 1 : 0
+                    if (stableFrames >= 2) break
+                }
+            }
+        } finally {
+            if (generation === orientationGeneration) orientationTransitioning = false
+        }
+    }
+
+    $effect.pre(() => {
+        const requestedOrientation = orientation
+        untrack(() => {
+            if (BROWSER && requestedOrientation !== activeOrientation) {
+                void switchOrientation(requestedOrientation).catch((error: unknown) => {
+                    console.error('SvelteVirtualList: orientation switch failed.', error)
+                })
+            }
+        })
+    })
 
     // Centralized debug logger gated by flags
     const log = (tag: string, payload?: unknown) => {
@@ -267,7 +406,7 @@
     const syncScrollTop = (value: number, round = false) => {
         if (!heightManager.viewportElement) return
         const scrollValue = round ? Math.round(value) : value
-        heightManager.viewport.scrollTop = scrollValue
+        axis.setScrollOffset(heightManager.viewport, scrollValue)
         heightManager.scrollTop = scrollValue
     }
 
@@ -286,15 +425,15 @@
         if (!heightManager.viewportElement) return
         // Gate BEFORE the layout reads below: unhandled keys must not force
         // a reflow on every press.
-        if (!isKeyboardScrollKey(event.key)) return
+        if (!axis.isScrollKey(event.key)) return
 
         const viewport = heightManager.viewport
         const target = calculateKeyboardScrollTarget({
             key: event.key,
             shiftKey: event.shiftKey,
-            scrollTop: viewport.scrollTop,
-            clientHeight: viewport.clientHeight,
-            scrollHeight: viewport.scrollHeight
+            scrollTop: axis.getScrollOffset(viewport),
+            clientHeight: axis.getViewportSize(viewport),
+            scrollHeight: axis.getScrollSize(viewport)
         })
         if (target === null) return
         event.preventDefault()
@@ -336,6 +475,7 @@
 
     const captureViewportAnchor = (): ViewportAnchor | null => {
         if (!heightManager.isReady) return null
+        if (orientationTransitioning) return null
         if (programmaticScrollDepth > 0) return null
         // Exactly at the bottom (a few px — where a scroll-to-bottom lands),
         // corrections must be END-stable: keep the view pinned to the bottom
@@ -343,28 +483,27 @@
         // an option — an uncompensated at-bottom batch leaves scroll state
         // inconsistent with the new totals, and the first scroll step away
         // from the bottom then paints the difference as a jump.
-        if (Math.abs(heightManager.viewport.scrollTop - currentMaxScrollTop()) <= 2) {
+        if (Math.abs(axis.getScrollOffset(heightManager.viewport) - currentMaxScrollTop()) <= 2) {
             return { kind: 'bottom' }
         }
-        const viewportTop = heightManager.viewport.getBoundingClientRect().top
-        for (const element of itemElements) {
-            if (!element || !element.isConnected) continue
-            const rect = element.getBoundingClientRect()
-            if (rect.bottom <= viewportTop) continue
-            const index = parseInt(element.dataset.originalIndex || '-1', 10)
-            if (index < 0) return null
-            return {
-                kind: 'item',
+        const element = findViewportAnchorElement(
+            itemElements,
+            axis,
+            heightManager.viewport.getBoundingClientRect()
+        )
+        if (!element) return null
+        const index = parseInt(element.dataset.originalIndex || '-1', 10)
+        if (index < 0) return null
+        return {
+            kind: 'item',
+            index,
+            oldOffset: getScrollOffsetForIndex(
+                heightManager.getHeightCache(),
+                heightManager.averageHeight,
                 index,
-                oldOffset: getScrollOffsetForIndex(
-                    heightManager.getHeightCache(),
-                    heightManager.averageHeight,
-                    index,
-                    heightManager.getBlockSums()
-                )
-            }
+                heightManager.getBlockSums()
+            )
         }
-        return null
     }
 
     /**
@@ -403,12 +542,12 @@
                           heightManager.getBlockSums()
                       )
                   },
-            heightManager.viewport.scrollTop,
+            axis.getScrollOffset(heightManager.viewport),
             currentMaxScrollTop()
         )
         if (target === null) return
         syncScrollTop(target, true)
-        const applied = heightManager.viewport.scrollTop
+        const applied = axis.getScrollOffset(heightManager.viewport)
         if (Math.abs(applied - target) > 1) {
             // The DOM clamped the write against the pre-flush scrollHeight
             // (totals grew). Re-assert once the new height has flushed —
@@ -417,15 +556,103 @@
             tick().then(() => {
                 if (!heightManager.viewportElement) return
                 if (programmaticScrollDepth > 0) return
-                if (Math.abs(heightManager.viewport.scrollTop - applied) > 1) return
+                if (Math.abs(axis.getScrollOffset(heightManager.viewport) - applied) > 1) return
                 syncScrollTop(target, true)
             })
         }
     }
 
-    // Keep height manager synchronized with items length
+    const assertUniqueItemKeys = (keys: readonly (string | number)[]) => {
+        // Plain Set on purpose: a SvelteSet creates a reactive source per key,
+        // and in dev each source captures a stack trace — ~10s of main-thread
+        // stall for a 10k-item list before hydration can finish.
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient validation, never observed by Svelte
+        const seen = new Set<string | number>()
+        for (const key of keys) {
+            if (seen.has(key)) {
+                throw new Error(`SvelteVirtualList: duplicate itemKey value "${String(key)}"`)
+            }
+            seen.add(key)
+        }
+    }
+
+    const itemIdentities = $derived.by(() => {
+        if (!itemKey) return null
+        const keys = items.map(itemKey)
+        if (DEV) assertUniqueItemKeys(keys)
+        else if (debug) {
+            try {
+                assertUniqueItemKeys(keys)
+            } catch (error) {
+                console.warn(error)
+            }
+        }
+        return keys
+    })
+
+    // Keep the manager synchronized with item identity as well as length. A
+    // shared prefix is the O(1) append/suffix-removal path; all ambiguous
+    // unkeyed mutations discard measurements rather than applying stale sizes.
     $effect(() => {
-        heightManager.updateItemLength(items.length)
+        const currentItems = items
+        const currentKeys = itemIdentities
+
+        if (!hasReconciledItems) {
+            heightManager.updateItemLength(currentItems.length)
+        } else if (currentKeys && previousKeys) {
+            const sharesPrefix = previousKeys.every((key, index) => currentKeys[index] === key)
+            const hasIdenticalKeys = sharesPrefix && currentKeys.length === previousKeys.length
+            const isAppendOnly = sharesPrefix && currentKeys.length >= previousKeys.length
+            if (hasIdenticalKeys) {
+                // Measurements and length are already synchronized.
+            } else if (isAppendOnly) heightManager.updateItemLength(currentItems.length)
+            else heightManager.reconcileItemKeys(previousKeys, currentKeys)
+        } else if (!currentKeys && !previousKeys) {
+            const commonLength = Math.min(previousItems.length, currentItems.length)
+            let hasStablePrefix = true
+            for (let index = 0; index < commonLength; index += 1) {
+                if (previousItems[index] !== currentItems[index]) {
+                    hasStablePrefix = false
+                    break
+                }
+            }
+
+            if (hasStablePrefix) {
+                heightManager.updateItemLength(currentItems.length)
+            } else {
+                const anchor = captureViewportAnchor()
+                heightManager.reset()
+                heightManager.updateItemLength(currentItems.length)
+                if (anchor) restoreViewportAnchor(anchor)
+            }
+        } else {
+            const anchor = captureViewportAnchor()
+            heightManager.reset()
+            heightManager.updateItemLength(currentItems.length)
+            if (anchor) restoreViewportAnchor(anchor)
+        }
+
+        previousItems = currentKeys ? [] : currentItems.slice()
+        previousKeys = currentKeys
+        hasReconciledItems = true
+    })
+
+    // Keep the estimate for unmeasured items synchronized with its reactive
+    // prop. Invalid estimates are ignored so runtime updates cannot poison
+    // total-size and scroll calculations; the last positive finite value
+    // remains active.
+    $effect(() => {
+        const nextEstimatedHeight = defaultEstimatedItemSize ?? defaultEstimatedItemHeight ?? 40
+        if (!Number.isFinite(nextEstimatedHeight) || nextEstimatedHeight <= 0) return
+        if (nextEstimatedHeight === heightManager.itemHeight) return
+
+        const anchor = captureViewportAnchor()
+        heightManager.updateEstimatedHeight(nextEstimatedHeight)
+        // Anchor restoration and content geometry must observe the new total
+        // in the same reactive turn rather than waiting for the scheduler.
+        heightManager.flushDerivedHeights()
+        lastVisibleRange = null
+        if (anchor) restoreViewportAnchor(anchor)
     })
 
     // Infinite scroll: trigger onLoadMore when approaching end of list
@@ -488,7 +715,7 @@
         if (!last) return
         const v = heightManager.viewport.getBoundingClientRect()
         const r = last.getBoundingClientRect()
-        const bottomDistance = Math.round(Math.abs(r.bottom - v.bottom))
+        const bottomDistance = Math.round(Math.abs(axis.getEnd(r) - axis.getEnd(v)))
         if (INTERNAL_DEBUG) {
             console.info('[SVL] bottomDistance(px):', bottomDistance)
         }
@@ -503,7 +730,7 @@
      */
     const syncContainerHeight = () => {
         if (!heightManager.isReady) return
-        const h = heightManager.container.getBoundingClientRect().height
+        const h = axis.getSize(heightManager.container.getBoundingClientRect())
         if (!Number.isFinite(h) || h <= 0 || h === height) return
         height = h
         // The visible-range memo reuses the cached range for small nonzero
@@ -630,7 +857,7 @@
         if (!BROWSER || !heightManager.viewportElement) return
 
         rafSchedule(() => {
-            const current = heightManager.viewport.scrollTop
+            const current = axis.getScrollOffset(heightManager.viewport)
             heightManager.scrollTop = current
             // Update last processed scroll position for delta threshold optimization
             // Only update when we actually process a scroll (i.e., recalculate visible range)
@@ -667,7 +894,9 @@
         itemResizeObserver = new ResizeObserver((entries) => {
             const changes = collectPitchChanges(
                 entries.map((entry) => entry.target as HTMLElement),
-                heightManager.getHeightCache()
+                heightManager.getHeightCache(),
+                undefined,
+                axis
             )
             if (changes.length === 0) return
             log('item-resize-sync', { changes: changes.length })
@@ -702,6 +931,19 @@
                 resizeObserver.observe(heightManager.container)
             } else {
                 log('container-resize-unobserved', 'container not bound at mount')
+            }
+
+            // A mid-scroll refresh can hand us a viewport whose offset the
+            // browser already restored onto the SSR DOM (Firefox does this
+            // before hydration, so the restore's scroll event fired before
+            // our listener attached). Adopt the pre-existing offset so the
+            // rendered window matches where the viewport actually sits
+            // (issue #427).
+            if (
+                heightManager.viewportElement &&
+                axis.getScrollOffset(heightManager.viewport) !== heightManager.scrollTop
+            ) {
+                handleScroll()
             }
 
             // Cleanup on component destruction
@@ -841,10 +1083,7 @@
         // scrollTop write would cancel the smooth scroll mid-flight.
         programmaticScrollDepth++
 
-        heightManager.viewport.scrollTo({
-            top: scrollTarget,
-            behavior: smoothScroll ? 'smooth' : 'auto'
-        })
+        axis.scrollTo(heightManager.viewport, scrollTarget, smoothScroll ? 'smooth' : 'auto')
 
         // Update scrollTop state in next frame to avoid synchronous re-renders
         requestAnimationFrame(() => {
@@ -855,7 +1094,8 @@
             if (INTERNAL_DEBUG && heightManager.viewportElement) {
                 const domMax = Math.max(
                     0,
-                    heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+                    axis.getScrollSize(heightManager.viewport) -
+                        axis.getViewportSize(heightManager.viewport)
                 )
                 console.info('[SVL] scroll-after-call', {
                     scrollTop: heightManager.scrollTop,
@@ -866,7 +1106,13 @@
 
         // Resolve only once the scroll has visually finished AND the virtual
         // list has re-rendered for the new position.
-        waitForScrollEnd(heightManager.viewport, scrollTarget, smoothScroll, signal)
+        waitForScrollEnd(
+            heightManager.viewport,
+            scrollTarget,
+            smoothScroll,
+            signal,
+            axis.getScrollOffset
+        )
             .then(async () => {
                 await tick()
                 resolve()
@@ -982,7 +1228,8 @@
             if (INTERNAL_DEBUG && heightManager.viewportElement) {
                 const domMax = Math.max(
                     0,
-                    heightManager.viewport.scrollHeight - heightManager.viewport.clientHeight
+                    axis.getScrollSize(heightManager.viewport) -
+                        axis.getViewportSize(heightManager.viewport)
                 )
                 console.info('[SVL] scroll-intent', {
                     targetIndex,
@@ -995,7 +1242,48 @@
                 })
             }
 
-            executeScrollToTarget(scrollTarget, smoothScroll ?? true, signal, resolve, reject)
+            const finishAfterMeasurement = async () => {
+                // The target window was initially positioned from estimates.
+                // Let its ResizeObserver measurements land, then perform one
+                // exact re-alignment so end/center do not retain estimate error.
+                await tick()
+                await nextFrame()
+                await nextFrame()
+                if (signal.aborted || !heightManager.viewportElement) {
+                    resolve()
+                    return
+                }
+                const correctedRange = visibleItems
+                const correctedTarget = calculateScrollTarget({
+                    align: align || 'auto',
+                    targetIndex,
+                    itemsLength: items.length,
+                    calculatedItemHeight: heightManager.averageHeight,
+                    height,
+                    scrollTop: axis.getScrollOffset(heightManager.viewport),
+                    firstVisibleIndex: correctedRange.start,
+                    lastVisibleIndex: correctedRange.end,
+                    heightCache: heightManager.getHeightCache(),
+                    blockSums: heightManager.getBlockSums(),
+                    maxScrollTop: currentMaxScrollTop()
+                })
+                if (
+                    correctedTarget !== null &&
+                    Math.abs(correctedTarget - axis.getScrollOffset(heightManager.viewport)) > 1
+                ) {
+                    syncScrollTop(correctedTarget, true)
+                    await tick()
+                }
+                resolve()
+            }
+
+            executeScrollToTarget(
+                scrollTarget,
+                smoothScroll ?? true,
+                signal,
+                finishAfterMeasurement,
+                reject
+            )
         })
     }
 
@@ -1027,7 +1315,22 @@
                 return
             }
             const target = Math.round(clampValue(offset, 0, currentMaxScrollTop()))
-            executeScrollToTarget(target, smoothScroll, signal, resolve, reject)
+            const finishAfterMeasurement = async () => {
+                const settledOffset = axis.getScrollOffset(heightManager.viewport)
+                await tick()
+                await nextFrame()
+                await nextFrame()
+                if (!signal.aborted && heightManager.viewportElement) {
+                    const currentOffset = axis.getScrollOffset(heightManager.viewport)
+                    const correctedTarget = Math.round(clampValue(offset, 0, currentMaxScrollTop()))
+                    if (shouldReassertScrollOffset(settledOffset, currentOffset, correctedTarget)) {
+                        syncScrollTop(correctedTarget, true)
+                        await tick()
+                    }
+                }
+                resolve()
+            }
+            executeScrollToTarget(target, smoothScroll, signal, finishAfterMeasurement, reject)
         })
     }
 
@@ -1064,6 +1367,8 @@
     id="virtual-list-container"
     {...testId ? { 'data-testid': `${testId}-container` } : {}}
     class={containerClass ?? 'virtual-list-container'}
+    data-orientation={activeOrientation}
+    data-svl-container
     bind:this={heightManager.containerElement}
 >
     <!-- Viewport handles scrolling. Focusable labeled region so keyboard
@@ -1072,6 +1377,8 @@
         id="virtual-list-viewport"
         {...testId ? { 'data-testid': `${testId}-viewport` } : {}}
         class={viewportClass ?? 'virtual-list-viewport'}
+        data-orientation={activeOrientation}
+        data-svl-viewport
         bind:this={heightManager.viewportElement}
         role="region"
         aria-label={viewportLabel}
@@ -1085,21 +1392,26 @@
             id="virtual-list-content"
             {...testId ? { 'data-testid': `${testId}-content` } : {}}
             class={contentClass ?? 'virtual-list-content'}
-            style:height="{contentHeight}px"
+            data-orientation={activeOrientation}
+            data-svl-content
+            style={axis.contentSizeStyle(contentHeight)}
         >
             <!-- Items container is translated to show correct items -->
             <div
                 id="virtual-list-items"
                 {...testId ? { 'data-testid': `${testId}-items` } : {}}
                 class={itemsClass ?? 'virtual-list-items'}
-                style:transform="translateY({transformY}px)"
+                data-orientation={activeOrientation}
+                data-svl-items
+                style:transform={axis.transform(transformY)}
             >
-                {#each displayItems as currentItemWithIndex, _i (currentItemWithIndex.originalIndex)}
+                {#each displayItems as currentItemWithIndex, _i (itemIdentities ? itemIdentities[currentItemWithIndex.originalIndex] : currentItemWithIndex.originalIndex)}
                     <!-- Render each visible item -->
                     <div
                         bind:this={itemElements[currentItemWithIndex.sliceIndex]}
                         use:autoObserveItemResize
                         data-original-index={currentItemWithIndex.originalIndex}
+                        data-svl-item
                         {...testId
                             ? {
                                   'data-testid': `${testId}-item-${currentItemWithIndex.originalIndex}`
@@ -1169,5 +1481,30 @@
     .virtual-list-items > div {
         width: 100%;
         display: block;
+    }
+
+    /* Required axis layout uses stable internal attributes because consumer
+       class props replace (rather than extend) the default class names. */
+    [data-svl-viewport][data-orientation='horizontal'] {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    [data-svl-content][data-orientation='horizontal'] {
+        height: 100%;
+        min-height: 0;
+    }
+
+    [data-svl-items][data-orientation='horizontal'] {
+        display: flex;
+        width: max-content;
+        height: 100%;
+    }
+
+    [data-svl-items][data-orientation='horizontal'] > [data-svl-item] {
+        display: block;
+        flex: 0 0 auto;
+        width: max-content;
+        height: 100%;
     }
 </style>

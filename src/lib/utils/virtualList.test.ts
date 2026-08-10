@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { getAxisAdapter } from './axis.js'
 import {
     buildBlockSums,
     calculateScrollPosition,
@@ -6,6 +7,8 @@ import {
     calculateVisibleRange,
     clampValue,
     collectPitchChanges,
+    findViewportAnchorElement,
+    getItemKeyAtIndex,
     getScrollOffsetForIndex,
     getValidHeight
 } from './virtualList.js'
@@ -111,6 +114,35 @@ describe('getValidHeight', () => {
         it('should handle negative fallback', () => {
             expect(getValidHeight(undefined, -10)).toBe(-10)
         })
+    })
+})
+
+describe('anchor and key safety', () => {
+    it('does not call itemKey for an index removed by a simultaneous shrink', () => {
+        const itemKey = (item: { id: string }) => item.id
+        expect(getItemKeyAtIndex([{ id: 'kept' }], 4, itemKey)).toBeNull()
+    })
+
+    it('falls back to a tall intersecting row when the next row starts below the viewport', () => {
+        const tall = document.createElement('div')
+        const below = document.createElement('div')
+        document.body.append(tall, below)
+        tall.getBoundingClientRect = () =>
+            ({ top: -40, bottom: 240, height: 280, left: 0, right: 100, width: 100 }) as DOMRect
+        below.getBoundingClientRect = () =>
+            ({ top: 240, bottom: 280, height: 40, left: 0, right: 100, width: 100 }) as DOMRect
+        const viewportRect = {
+            top: 0,
+            bottom: 200,
+            height: 200,
+            left: 0,
+            right: 100,
+            width: 100
+        } as DOMRect
+
+        expect(
+            findViewportAnchorElement([tall, below], getAxisAdapter('vertical'), viewportRect)
+        ).toBe(tall)
     })
 })
 
@@ -505,6 +537,56 @@ describe('collectPitchChanges', () => {
         expect(changes).toEqual([
             { index: 1, oldHeight: undefined, newHeight: 40 },
             { index: 3, oldHeight: 40, newHeight: 80 }
+        ])
+    })
+
+    it('measures horizontal pitch from sibling left deltas including gaps', () => {
+        const parent = document.createElement('div')
+        const first = document.createElement('div')
+        const second = document.createElement('div')
+        first.dataset.originalIndex = '7'
+        parent.append(first, second)
+        document.body.appendChild(parent)
+        first.getBoundingClientRect = () =>
+            ({ left: 20, right: 100, width: 80, top: 0, bottom: 20, height: 20 }) as DOMRect
+        second.getBoundingClientRect = () =>
+            ({ left: 132, right: 200, width: 68, top: 0, bottom: 20, height: 20 }) as DOMRect
+
+        expect(collectPitchChanges([first], {}, undefined, getAxisAdapter('horizontal'))).toEqual([
+            { index: 7, oldHeight: undefined, newHeight: 112 }
+        ])
+    })
+
+    it('preserves a legitimate sibling pitch larger than four border boxes', () => {
+        const parent = document.createElement('div')
+        const first = document.createElement('div')
+        const second = document.createElement('div')
+        first.dataset.originalIndex = '4'
+        parent.append(first, second)
+        document.body.appendChild(parent)
+        first.getBoundingClientRect = () =>
+            ({ left: 0, right: 2, width: 2, top: 0, bottom: 2, height: 2 }) as DOMRect
+        second.getBoundingClientRect = () =>
+            ({ left: 0, right: 2, width: 2, top: 14, bottom: 16, height: 2 }) as DOMRect
+
+        expect(collectPitchChanges([first], {})).toEqual([
+            { index: 4, oldHeight: undefined, newHeight: 14 }
+        ])
+    })
+
+    it('measures the final horizontal pitch to its parent right edge', () => {
+        const parent = document.createElement('div')
+        const item = document.createElement('div')
+        item.dataset.originalIndex = '8'
+        parent.appendChild(item)
+        document.body.appendChild(parent)
+        item.getBoundingClientRect = () =>
+            ({ left: 200, right: 280, width: 80, top: 0, bottom: 20, height: 20 }) as DOMRect
+        parent.getBoundingClientRect = () =>
+            ({ left: 200, right: 296, width: 96, top: 0, bottom: 20, height: 20 }) as DOMRect
+
+        expect(collectPitchChanges([item], {}, undefined, getAxisAdapter('horizontal'))).toEqual([
+            { index: 8, oldHeight: undefined, newHeight: 96 }
         ])
     })
 })

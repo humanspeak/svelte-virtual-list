@@ -1,4 +1,4 @@
-import type { Breadcrumb, NavSection } from '@humanspeak/docs-kit'
+import type { Breadcrumb, NavSection, PagerItem } from '@humanspeak/docs-kit'
 import Accessibility from '@lucide/svelte/icons/accessibility'
 import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down'
 import Book from '@lucide/svelte/icons/book'
@@ -94,6 +94,7 @@ export const docsSections: NavSection[] = [
         icon: Code,
         items: [
             { title: 'Variable Heights', href: '/docs/variable-heights', icon: ArrowUpDown },
+            { title: 'Horizontal & Responsive', href: '/docs/horizontal', icon: SlidersHorizontal },
             { title: 'Infinite Scroll', href: '/docs/infinite-scroll', icon: InfinityIcon },
             { title: 'Scroll Methods', href: '/docs/scroll-methods', icon: Crosshair },
             { title: 'Keyboard & Accessibility', href: '/docs/accessibility', icon: Accessibility },
@@ -132,6 +133,7 @@ export const docsSections: NavSection[] = [
             { title: 'All Comparisons', href: '/compare', icon: Swords, exact: true },
             { title: 'vs TanStack Virtual', href: '/compare/tanstack-virtual', icon: Swords },
             { title: 'vs virtua', href: '/compare/virtua', icon: Swords },
+            { title: 'vs svelte-virtuallists', href: '/compare/svelte-virtuallists', icon: Swords },
             {
                 title: 'vs svelte-tiny-virtual-list',
                 href: '/compare/svelte-tiny-virtual-list',
@@ -145,3 +147,10 @@ export const docsSections: NavSection[] = [
         ]
     }
 ]
+
+// Prev/next reading order for PagerV2 on /docs/** — the doc chapters only,
+// so the pager never routes readers out to /blog, /examples, or /compare.
+export const docsPagerItems: PagerItem[] = docsSections
+    .flatMap((section) => section.items)
+    .filter((item) => item.href.startsWith('/docs'))
+    .map((item) => ({ href: item.href, label: `${item.title.toLowerCase()}.` }))

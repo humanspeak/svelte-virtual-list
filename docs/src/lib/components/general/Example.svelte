@@ -4,7 +4,6 @@
 
     type ExampleProps = {
         children: Snippet
-        isSmall?: boolean
         file?: string
         exampleUrl?: string
         title?: string

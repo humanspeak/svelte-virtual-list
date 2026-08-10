@@ -1,4 +1,5 @@
 import type { SvelteVirtualListScrollAlign } from '$lib/types.js'
+import { horizontalScrollKeys, verticalScrollKeys } from './axis.js'
 import { clampValue, getScrollOffsetForIndex } from './virtualList.js'
 
 /**
@@ -16,13 +17,13 @@ export const alignToEdge = (
     itemBottom: number,
     scrollTop: number,
     viewportHeight: number,
-    align: 'top' | 'bottom' | 'nearest'
+    align: 'top' | 'bottom' | 'start' | 'end' | 'nearest'
 ): number | null => {
-    if (align === 'top') {
+    if (align === 'top' || align === 'start') {
         return itemTop
     }
 
-    if (align === 'bottom') {
+    if (align === 'bottom' || align === 'end') {
         return clampValue(itemBottom - viewportHeight, 0, Infinity)
     }
 
@@ -90,15 +91,7 @@ export const alignVisibleToNearestEdge = (
  */
 export const KEYBOARD_LINE_SCROLL_PX = 40
 
-const KEYBOARD_SCROLL_KEYS = new Set([
-    'ArrowDown',
-    'ArrowUp',
-    'PageDown',
-    'PageUp',
-    ' ',
-    'Home',
-    'End'
-])
+const KEYBOARD_SCROLL_KEYS = new Set([...verticalScrollKeys, ...horizontalScrollKeys])
 
 /**
  * Whether a KeyboardEvent.key is one of the standard scroll keys the
@@ -133,9 +126,11 @@ export const calculateKeyboardScrollTarget = (params: KeyboardScrollParams): num
     let target: number | null = null
     switch (key) {
         case 'ArrowDown':
+        case 'ArrowRight':
             target = scrollTop + KEYBOARD_LINE_SCROLL_PX
             break
         case 'ArrowUp':
+        case 'ArrowLeft':
             target = scrollTop - KEYBOARD_LINE_SCROLL_PX
             break
         case 'PageDown':
@@ -163,8 +158,7 @@ export const calculateKeyboardScrollTarget = (params: KeyboardScrollParams): num
  * measurement correction.
  */
 export type AnchorScrollIntent =
-    | { kind: 'bottom' }
-    | { kind: 'item'; oldOffset: number; newOffset: number }
+    { kind: 'bottom' } | { kind: 'item'; oldOffset: number; newOffset: number }
 
 /**
  * Pure decision math for anchor restoration: given the anchor intent and the
@@ -349,7 +343,13 @@ const calculateTopToBottomScrollTarget = (params: TopToBottomScrollParams): numb
         return Math.round(clampValue(target, 0, maxScrollTop ?? Infinity))
     }
 
-    if (align === 'top' || align === 'bottom' || align === 'nearest') {
+    if (
+        align === 'top' ||
+        align === 'bottom' ||
+        align === 'start' ||
+        align === 'end' ||
+        align === 'nearest'
+    ) {
         return alignToEdge(itemTop, itemBottom, scrollTop, height, align)
     }
 

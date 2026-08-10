@@ -31,7 +31,7 @@ jobs:
         timeout-minutes: 10
         steps:
             - name: Checkout
-              uses: actions/checkout@v6 # zizmor: ignore[unpinned-uses]
+              uses: actions/checkout@v7 # zizmor: ignore[unpinned-uses]
               with:
                   persist-credentials: false
                   fetch-depth: 1
@@ -39,12 +39,12 @@ jobs:
             - uses: pnpm/action-setup@v6 # zizmor: ignore[unpinned-uses]
 
             - name: Use Node.js - 24
-              uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses]
+              uses: actions/setup-node@v7 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: 24
 
             - name: Cache build artifacts
-              uses: actions/cache@v5 # zizmor: ignore[unpinned-uses]
+              uses: actions/cache@v6 # zizmor: ignore[unpinned-uses]
               with:
                   path: |
                       .svelte-kit
@@ -54,7 +54,7 @@ jobs:
                       ${{ runner.os }}-build-
 
             - name: Cache vitest artifacts
-              uses: actions/cache@v5 # zizmor: ignore[unpinned-uses]
+              uses: actions/cache@v6 # zizmor: ignore[unpinned-uses]
               with:
                   path: |
                       node_modules/.vitest
@@ -73,7 +73,7 @@ jobs:
 
             - name: Upload unit test results
               if: always()
-              uses: actions/upload-artifact@v4 # zizmor: ignore[unpinned-uses]
+              uses: actions/upload-artifact@v7 # zizmor: ignore[unpinned-uses]
               with:
                   name: unit-test-results
                   path: |
@@ -96,7 +96,7 @@ jobs:
                       shard_name: 2-2
         steps:
             - name: Checkout
-              uses: actions/checkout@v6 # zizmor: ignore[unpinned-uses]
+              uses: actions/checkout@v7 # zizmor: ignore[unpinned-uses]
               with:
                   persist-credentials: false
                   fetch-depth: 1
@@ -104,7 +104,7 @@ jobs:
             - uses: pnpm/action-setup@v6 # zizmor: ignore[unpinned-uses]
 
             - name: Use Node.js - 24
-              uses: actions/setup-node@v6 # zizmor: ignore[unpinned-uses]
+              uses: actions/setup-node@v7 # zizmor: ignore[unpinned-uses]
               with:
                   node-version: 24
 
@@ -112,7 +112,7 @@ jobs:
               run: pnpm install --filter . --frozen-lockfile --config.engine-strict=false
 
             - name: Cache Playwright browsers
-              uses: actions/cache@v5 # zizmor: ignore[unpinned-uses]
+              uses: actions/cache@v6 # zizmor: ignore[unpinned-uses]
               with:
                   path: ~/.cache/ms-playwright
                   key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
@@ -132,7 +132,7 @@ jobs:
 
             - name: Upload Playwright artifacts
               if: always()
-              uses: actions/upload-artifact@v4 # zizmor: ignore[unpinned-uses]
+              uses: actions/upload-artifact@v7 # zizmor: ignore[unpinned-uses]
               with:
                   name: playwright-artifacts-${{ matrix.shard_name }}
                   path: |

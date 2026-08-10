@@ -1,5 +1,9 @@
 import { describe, expectTypeOf, it } from 'vitest'
-import type { SvelteVirtualListProps } from './types.js'
+import type {
+    SvelteVirtualListProps,
+    SvelteVirtualListScrollOptions,
+    VirtualListOrientation
+} from './types.js'
 
 interface Message {
     id: number
@@ -28,5 +32,24 @@ describe('SvelteVirtualList generics', () => {
         expectTypeOf<DefaultProps['items']>().toEqualTypeOf<any[]>()
         expectTypeOf<DefaultArgs[0]>().toEqualTypeOf<any>()
         expectTypeOf<DefaultArgs[1]>().toEqualTypeOf<number>()
+    })
+
+    it('keeps legacy estimates and alignments compatible with the axis-neutral API', () => {
+        const vertical: SvelteVirtualListProps<Message> = {
+            items: [],
+            orientation: 'vertical' satisfies VirtualListOrientation,
+            defaultEstimatedItemHeight: 40,
+            renderItem: (() => {}) as unknown as SvelteVirtualListProps<Message>['renderItem']
+        }
+        const horizontal: Partial<SvelteVirtualListProps<Message>> = {
+            orientation: 'horizontal',
+            defaultEstimatedItemSize: 80
+        }
+        const oldScroll: SvelteVirtualListScrollOptions = { index: 1, align: 'top' }
+        const semanticScroll: SvelteVirtualListScrollOptions = { index: 1, align: 'end' }
+        expectTypeOf(vertical).toMatchTypeOf<SvelteVirtualListProps<Message>>()
+        expectTypeOf(horizontal).toMatchTypeOf<Partial<SvelteVirtualListProps<Message>>>()
+        expectTypeOf(oldScroll).toMatchTypeOf<SvelteVirtualListScrollOptions>()
+        expectTypeOf(semanticScroll).toMatchTypeOf<SvelteVirtualListScrollOptions>()
     })
 })

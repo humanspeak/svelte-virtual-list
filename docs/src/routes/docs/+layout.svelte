@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { DocsLayoutV2 } from '@humanspeak/docs-kit'
+    import { DocsLayoutV2, PagerV2 } from '@humanspeak/docs-kit'
     import { docsConfig } from '$lib/docs-config'
-    import { buildBreadcrumbs, docsSections, headerNav } from '$lib/docsNav'
+    import { buildBreadcrumbs, docsPagerItems, docsSections, headerNav } from '$lib/docsNav'
     import favicon from '$lib/assets/logo.svg'
     import sitemapManifest from '$lib/sitemap-manifest.json'
     import rootPkg from '../../../../package.json'
@@ -24,4 +24,5 @@
     sitemapManifest={sitemapManifest as Record<string, string>}
 >
     {@render children()}
+    <PagerV2 items={docsPagerItems} counterLabel="doc" />
 </DocsLayoutV2>

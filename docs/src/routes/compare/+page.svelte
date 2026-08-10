@@ -6,5 +6,5 @@
 <CompareIndexV2
     {competitors}
     {ours}
-    introHtml="Honest, side-by-side comparisons of <b>@humanspeak/svelte-virtual-list</b> against the Svelte virtualizer packages you are most likely to evaluate: <b>TanStack Virtual</b>, <b>virtua</b>, <b>svelte-tiny-virtual-list</b>, and the legacy <b>@sveltejs/svelte-virtual-list</b>."
+    introHtml="Honest, source-linked comparisons of <b>@humanspeak/svelte-virtual-list</b> against Svelte virtualizers including <b>TanStack Virtual</b>, <b>virtua</b>, <b>svelte-virtuallists</b>, <b>svelte-tiny-virtual-list</b>, and the legacy <b>@sveltejs/svelte-virtual-list</b>."
 />

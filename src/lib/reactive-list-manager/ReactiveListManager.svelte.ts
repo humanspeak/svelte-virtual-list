@@ -545,12 +545,71 @@ export class ReactiveListManager {
      * @param newLength - New total number of items
      */
     updateItemLength(newLength: number): void {
+        if (newLength < this._itemLength) {
+            let removedHeight = 0
+            let removedCount = 0
+
+            for (const indexKey of Object.keys(this._heightCache)) {
+                const index = Number(indexKey)
+                if (index >= newLength) {
+                    removedHeight += this._heightCache[index] ?? 0
+                    removedCount += 1
+                    delete this._heightCache[index]
+                }
+            }
+
+            this._totalMeasuredHeight -= removedHeight
+            this._measuredCount -= removedCount
+        }
         this._itemLength = newLength
         this._measuredFlags = new Uint8Array(Math.max(0, newLength))
         // Reset block sums since length changed
         this._blockSums = []
         this._blockSumsValid = false
         // Immediate recompute so new items become visible without delay
+        this.recomputeDerivedHeights()
+    }
+
+    /**
+     * Move cached measurements to the new indexes of stable item keys.
+     * Measurements whose keys no longer exist are discarded.
+     */
+    reconcileItemKeys(
+        previousKeys: readonly (string | number)[],
+        nextKeys: readonly (string | number)[]
+    ): void {
+        // Plain Map on purpose: a SvelteMap creates a reactive source per
+        // entry, which stalls dev builds for seconds on 10k-item reconciles.
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient lookup, never observed by Svelte
+        const previousIndexes = new Map<string | number, number>()
+        for (let index = 0; index < previousKeys.length; index += 1) {
+            const key = previousKeys[index]
+            if (key !== undefined) previousIndexes.set(key, index)
+        }
+
+        const nextCache: Record<number, number> = {}
+        let nextMeasuredHeight = 0
+        for (let index = 0; index < nextKeys.length; index += 1) {
+            const key = nextKeys[index]
+            if (key === undefined) continue
+            const previousIndex = previousIndexes.get(key)
+            if (previousIndex === undefined) continue
+            const measuredHeight = this._heightCache[previousIndex]
+            if (measuredHeight === undefined) continue
+            nextCache[index] = measuredHeight
+            nextMeasuredHeight += measuredHeight
+        }
+
+        this._heightCache = nextCache
+        this._totalMeasuredHeight = nextMeasuredHeight
+        this._measuredCount = Object.keys(nextCache).length
+        this._itemLength = nextKeys.length
+        this._measuredFlags = new Uint8Array(Math.max(0, nextKeys.length))
+        for (const indexKey of Object.keys(nextCache)) {
+            this._measuredFlags[Number(indexKey)] = 1
+        }
+        this._blockSums = []
+        this._blockSumsValid = false
         this.recomputeDerivedHeights()
     }
 
@@ -593,6 +652,7 @@ export class ReactiveListManager {
     reset(): void {
         this._totalMeasuredHeight = 0
         this._measuredCount = 0
+        this._heightCache = {}
         this._measuredFlags = this._itemLength > 0 ? new Uint8Array(this._itemLength) : null
         // Reset block sums
         this._blockSums = []
