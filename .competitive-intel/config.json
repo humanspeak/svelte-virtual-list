@@ -1,0 +1,55 @@
+{
+    "project": "@humanspeak/svelte-virtual-list",
+    "category": "Svelte 5 virtual list / list virtualization component",
+
+    "self_npm": "@humanspeak/svelte-virtual-list",
+    "self_repo": "humanspeak/svelte-virtual-list",
+
+    "github_handle": "jaysin586",
+    "repo_triage": {
+        "enabled": true,
+        "_comment": "Open PRs/issues not opened by jaysin586, plus threads awaiting reply. Uses self_repo."
+    },
+
+    "self_features": [
+        "Svelte 5-native component API with snippets and TypeScript generics",
+        "Dynamic height measurement without requiring a size map up front",
+        "Built-in infinite loading hooks for feed and pagination workflows",
+        "Imperative scroll method with index and alignment control (scroll / scrollToOffset)",
+        "Vertical and horizontal layouts, including reactive orientation switching",
+        "Visible-range observation hook",
+        "SSR-friendly for SvelteKit",
+        "Zero runtime dependencies, MIT licensed",
+        "DOM recycling for large datasets"
+    ],
+
+    "non_goals": [
+        "Grid / masonry / 2-D virtualization (focused on one-dimensional lists)",
+        "RTL horizontal mode (horizontal is LTR-only in the current release)",
+        "Svelte 3/4 support (requires Svelte 5)"
+    ],
+
+    "competitors": [
+        { "npm": "@tanstack/svelte-virtual", "repo": "TanStack/virtual" },
+        { "npm": "svelte-tiny-virtual-list", "repo": "jonasgeiler/svelte-tiny-virtual-list" },
+        { "npm": "svelte-virtuallists", "repo": "orefalo/svelte-virtuallists" },
+        { "npm": "@sveltejs/svelte-virtual-list", "repo": "sveltejs/svelte-virtual-list" }
+    ],
+
+    "watchlist": [
+        {
+            "npm": "virtua",
+            "repo": "inokawa/virtua",
+            "note": "cross-framework virtualizer (React/Vue/Solid/Svelte); strong momentum; Svelte support worth watching"
+        }
+    ],
+
+    "compare_data_paths": ["docs/src/lib/compare-data.ts"],
+    "page_validation": {
+        "download_tolerance": 0.3,
+        "_comment": "compare-data.ts drives the /compare 'vs' pages (5 competitors). Validator checks svelte_peer for framework claims, hardcoded download/star figures, dormant/active framing, and them: feature cells on version bumps."
+    },
+
+    "slack_channel": "C0BP5BF1UTX",
+    "_slack_channel_comment": "#claude-reports (human-speak). Delivery uses the shared webhook in ~/.config/competitive-intel/common.env; this ID is for reference / interactive MCP posting."
+}
