@@ -32,3 +32,18 @@
   `docs/.gitignore` from Scope was a plan defect.
 - Action: added `docs/.gitignore` to Scope and required the
   `static/compare/` rule plus a `git check-ignore` gate.
+
+## Checkpoint 4 — 2026-08-11 09:52 — ON TRACK
+
+`7fbbd18` · final consumer close-out after test hardening
+
+- Guard found and corrected through the executor a vacuous canonical-link
+  substring assertion; the final test requires the exact llmstxt.org
+  `.md`-target plus `: canonical HTML` line shape.
+- Guard reproduced docs check (0 errors, 6 pre-existing warnings), fresh build,
+  all 5 Playwright tests, Trunk, diff checks, ignore rules, six generated
+  mirrors, priority ordering, and comparison bodies in `llms-full.txt`.
+- Scope audit found only the six amended implementation files; generated
+  comparison and LLM artifacts remain ignored.
+- Action: Plan 003 marked DONE and batch closed. No PR opened per operator's
+  request to eye test the branch first.
