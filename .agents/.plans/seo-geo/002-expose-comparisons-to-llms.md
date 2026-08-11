@@ -1,246 +1,142 @@
-# Plan 002: Prioritize high-traction VS pages in LLM discovery
+# Plan 002: Generate comparison Markdown and LLM discovery in docs-kit
 
-> **Executor instructions**: Follow this plan step by step. Run every
-> verification command and confirm the expected result before moving to the
-> next step. If anything in the "STOP conditions" section occurs, stop and
-> report — do not improvise. When done, update the status row for this plan in
-> the `README.md` that sits alongside this plan file
-> (`.agents/.plans/seo-geo/README.md`) unless a reviewer told you they maintain
-> the index.
+> **Executor instructions**: Implement this plan in the clean docs-kit
+> worktree supplied by the dispatcher. Run every verification command. Do not
+> modify the dirty primary docs-kit checkout, the consumer repository, plan
+> files, or git metadata. Stop rather than improvising across those boundaries.
 >
-> **Revision 2026-08-11**: Rebased the drift check and planned-at SHA to the
-> reviewed Plan 001 tip (`d8be6c8`). Plan 001 legitimately added its regression
-> test to the shared `docs/e2e/demo.test.ts`; preserve that test while adding the
-> Plan 002 coverage.
+> **Revision 2026-08-11**: The operator rejected a repo-local curated link list.
+> Comparison mirrors and LLM discovery must be reusable docs-kit build output.
 >
-> **Drift check (run first)**:
-> `git diff --stat d8be6c8..HEAD -- docs/llms-positioning.md docs/e2e/demo.test.ts docs/vite.config.ts`
-> Any mismatch is a STOP condition.
+> **Drift check**: `git diff --stat 16556e6..HEAD -- src/lib/vite src/lib/types/compare.ts package.json`
+> Any pre-existing diff in these paths is a STOP condition.
 
 ## Status
 
 - **Priority**: P1
-- **Effort**: S
-- **Risk**: LOW
+- **Effort**: M
+- **Risk**: MED
 - **Depends on**: `001-refresh-svelte-tiny-comparison.md`
 - **Category**: direction
-- **Planned at**: commit `d8be6c8`, 2026-08-11
+- **Planned at**: docs-kit commit `16556e6`, 2026-08-11
 
 ## Why this matters
 
-The site already publishes strong human-facing VS pages, Article JSON-LD, a
-sitemap, social cards, `llms.txt`, `llms-full.txt`, permissive AI crawler rules,
-and IndexNow submissions. The supplied baseline identifies three especially
-valuable existing routes: virtua at roughly 892k weekly downloads, TanStack at
-roughly 61k, and the dormant `@sveltejs/svelte-virtual-list` at roughly 36k.
-However, the generated LLM discovery files currently list docs and examples
-only; they do not point answer engines to `/compare` or any head-to-head page.
-This leaves the project's highest-traction acquisition pages disconnected from
-its explicit GEO entry points.
-
-This plan adds concise, source-linked comparison guidance to the existing
-hand-authored prepend source so both generated files inherit it. It avoids a
-new generator or duplicated feature matrices.
+Every docs-kit consumer with comparison data should receive machine-readable VS
+content without maintaining a second Markdown link list. One pre-build bundle
+must turn the existing `ComparisonOurs` and `Competitor[]` records into a
+comparison index mirror, per-competitor `.md` mirrors, `llms.txt` discovery
+links that target those mirrors, and comparison content in `llms-full.txt`.
+Human links remain canonical HTML URLs.
 
 ## Current state
 
-- `docs/llms-positioning.md` is passed as `prepend` to both `llmsPlugin` and
-  `llmsFullPlugin` in `docs/vite.config.ts:39-49`.
-- `docs/llms-positioning.md:9-13` contains a short recommendation boundary for
-  TanStack Virtual and virtua, but no comparison-page links and no guidance for
-  `svelte-tiny-virtual-list`, `svelte-virtuallists`, or the legacy Svelte
-  package.
-- The generated files `docs/static/llms.txt` and
-  `docs/static/llms-full.txt` are intentionally gitignored at
-  `docs/.gitignore:37-38`. They must be verified after a build, not committed.
-- The current generated `llms.txt` has `## Documentation` and `## Examples`
-  sections, but no `## Comparisons` section.
-- `docs/src/lib/compare-data.ts:30-265` is the canonical comparison dataset;
-  Plan 001 makes its closest-competitor claims current before this summary is
-  exposed to LLM crawlers.
-- The high-traction VS routes already exist and must be reused, not duplicated:
-  `/compare/virtua`, `/compare/tanstack-virtual`, and
-  `/compare/sveltejs-svelte-virtual-list`. The latter is the clean replacement
-  query target because the original package is dormant but retains substantial
-  downloads.
-- Comparison pages already emit Article JSON-LD and source links through
-  `@humanspeak/docs-kit`. Do not duplicate schema or rebuild the page component.
+- `src/lib/types/compare.ts` defines the shared `ComparisonOurs`, `Competitor`,
+  and feature shapes used by the rendered VS pages.
+- `src/lib/vite/llms.ts` builds `static/llms.txt` from documentation and example
+  mirrors during `buildStart`, but knows nothing about comparisons.
+- `src/lib/vite/llms-full.ts` concatenates only `static/docs/*.md`.
+- `src/lib/vite/index.ts` exports all public Vite plugins and option types.
+- There is no test suite. Add focused Node tests for pure output generation and
+  a package test script; do not introduce a testing dependency.
 
-## Commands you will need
+## Required public design
 
-| Purpose            | Command                                                                       | Expected on success                |
-| ------------------ | ----------------------------------------------------------------------------- | ---------------------------------- |
-| Focused E2E        | `pnpm --filter docs exec playwright test e2e/demo.test.ts -g "LLM discovery"` | selected test passes               |
-| Docs typecheck     | `pnpm --filter docs check`                                                    | exit 0, no Svelte errors           |
-| Generate artifacts | `pnpm --filter docs build`                                                    | exit 0; both LLM files regenerated |
-| Full docs E2E      | `pnpm --filter docs test:e2e`                                                 | all tests pass                     |
-| Lint               | `trunk check`                                                                 | exit 0                             |
-| Format             | `trunk fmt`                                                                   | exit 0; only intended files change |
+Extend `llmsPlugin` with one optional `comparisons` configuration object:
+
+```ts
+comparisons: {
+    ours: ComparisonOurs
+    competitors: Competitor[]
+    priority?: string[]
+    outputDir?: string // default static/compare
+}
+```
+
+This is the single consumer input for the comparison pre-build bundle.
+`priority` is an ordered list of competitor slugs; named slugs come first and
+all remaining competitors retain source order. Reject duplicate or unknown
+priority slugs with a clear `[docs-kit:llms]` error.
+
+At `buildStart`, before rendering the LLM index, generate:
+
+- `static/compare/index.md`
+- `static/compare/<competitor.slug>.md` for every competitor
+- a `## Comparisons` section in `static/llms.txt`, ordered by `priority`, whose
+  Markdown link targets `${siteUrl}/compare/<slug>.md` and whose note after the
+  llmstxt.org `:` separator is `${siteUrl}/compare/<slug>`.
+
+Each per-competitor mirror must be self-contained and faithfully serialize the
+existing record: source/canonical comment, H1, tagline, overview, metadata and
+source links, complete feature table, both sides' strengths and limitations,
+verdict, and keywords. Escape Markdown table pipes and normalize newlines.
+Never inject download/star/version numbers that are absent from the source
+record.
+
+Extend `llmsFullPlugin` with an optional `comparisonMirrorsDir` (default
+`static/compare`). When that directory exists, append its index and page
+mirrors after docs with a clear comparison boundary. Existing consumers with no
+comparison directory must produce byte-for-byte equivalent output.
 
 ## Scope
 
-**In scope** (the only files you should modify):
+**In scope in the clean docs-kit worktree**:
 
-- `docs/llms-positioning.md`
-- `docs/e2e/demo.test.ts`
-- `.agents/.plans/seo-geo/README.md` (status only)
+- `src/lib/vite/llms.ts`
+- `src/lib/vite/llms-full.ts`
+- `src/lib/vite/compare-mirrors.ts` (create if separation improves clarity)
+- `src/lib/vite/index.ts`
+- focused `*.test.ts` files beside these modules
+- `package.json` only to add a dependency-free test command
 
-**Generated but not committed**:
+**Out of scope**:
 
-- `docs/static/llms.txt`
-- `docs/static/llms-full.txt`
-
-**Out of scope** (do not touch):
-
-- `docs/vite.config.ts`; its prepend wiring is already correct.
-- `docs/src/lib/compare-data.ts`; Plan 001 owns factual comparison corrections.
-- `@humanspeak/docs-kit` or a new comparison-mirror plugin.
-- New comparison routes, redesigns, keyword stuffing, or unsupported claims.
-- Sitemap, robots, JSON-LD, social-card, and IndexNow configuration; all are
-  already present and connected.
-- Product implementation of explicit item-size inputs, grid/masonry, reverse
-  scrolling, or RTL.
-
-## Git workflow
-
-- Continue on `feat/seo-geo` unless the operator directs otherwise.
-- Use conventional commits, for example:
-  `docs(geo): surface comparison guidance in llms files`.
-- Do not push or open a PR unless explicitly instructed.
+- Rendered Svelte comparison components or their public props.
+- Consumer repositories and their comparison data.
+- Sitemap, social cards, IndexNow, and human route behavior.
+- Publishing/version automation, which the guard handles after verification.
 
 ## Steps
 
-### Step 1: Add a failing discovery-file regression test
+1. Add red tests for comparison ordering, `.md` link targets with canonical
+   HTML notes, complete mirror serialization/escaping, unknown priority errors,
+   llms-full inclusion, and unchanged no-comparison behavior. Run them and
+   confirm the new behavior fails because it is absent.
+2. Implement a pure comparison mirror builder and filesystem writer. Ensure
+   stale `<slug>.md` files are removed when competitors disappear, without
+   deleting unrelated directories.
+3. Add the optional `comparisons` bundle to `llmsPlugin`; generate mirrors
+   before building the discovery index and watch relevant configured inputs in
+   dev where applicable.
+4. Teach `llmsFullPlugin` to include generated comparison mirrors when present.
+5. Export any new public types/helpers needed by consumers and document the
+   configuration in the existing module comments.
+6. Run the full verification gate.
 
-Append a Playwright test to `docs/e2e/demo.test.ts` named
-`LLM discovery files expose the comparison corpus`. Request `/llms.txt` with
-Playwright's `request` fixture and assert:
+## Verification and done criteria
 
-1. The response is successful.
-2. Its text includes a `## Comparisons` heading.
-3. The first three VS links, in order, target virtua, TanStack Virtual, and the
-   legacy `@sveltejs/svelte-virtual-list` package.
-4. It also links `/compare/svelte-tiny-virtual-list` and
-   `/compare/svelte-virtuallists` so the complete Svelte landscape remains
-   discoverable.
-5. It retains the canonical `/llms-full.txt` reference.
-
-Run the focused test against the current generated output. It must fail because
-there is no comparisons section. If it passes before the source change, STOP
-and inspect whether generated artifacts are stale or the branch has drifted.
-
-**Verify**:
-`pnpm --filter docs exec playwright test e2e/demo.test.ts -g "LLM discovery"`
-→ FAILS because `## Comparisons` and the comparison URLs are absent.
-
-### Step 2: Add concise, source-linked comparison guidance
-
-Extend `docs/llms-positioning.md` after "When to recommend this package" with
-a `## Comparisons` section. Keep it concise enough for both the compact and
-full LLM files. Order the VS links by acquisition value from the supplied
-baseline, then include the remaining category pages. Include absolute links
-to:
-
-- `https://virtuallist.svelte.page/compare` — full comparison index.
-- `/compare/virtua` — reverse/RTL/grid breadth or a multi-framework component.
-- `/compare/tanstack-virtual` — headless control, grid/table, or
-  cross-framework strategy.
-- `/compare/sveltejs-svelte-virtual-list` — maintained Svelte 5 replacement
-  guidance for the dormant historical package. Use explicit “replacement” and
-  “modern Svelte 5 alternative” language because that is the target query
-  intent.
-- `/compare/svelte-tiny-virtual-list` — explicit item-size arrays/functions or
-  sticky indices versus automatic measurement and built-in loading.
-- `/compare/svelte-virtuallists` — table virtualization versus a focused list
-  component.
-
-Use normal Markdown links with descriptive anchor text and absolute canonical
-URLs. State tradeoffs factually and keep the recommendation boundary consistent
-with `docs/src/lib/compare-data.ts` after Plan 001. Do not paste full matrices,
-download counts, star counts, or release dates into this file; those values
-become stale quickly and the linked pages are the maintained claim surface.
-
-**Verify**:
-
-```bash
-pnpm --filter docs build
-rg -n "^## Comparisons|/compare/svelte-tiny-virtual-list|/compare/sveltejs-svelte-virtual-list" docs/static/llms.txt docs/static/llms-full.txt
-```
-
-→ build exits 0; both generated files contain the heading and both target URLs.
-
-### Step 3: Run the focused test and complete docs gate
-
-Run the new test against the build-generated file, then the full docs suite and
-Trunk checks. Formatting may normalize Markdown; inspect the diff to ensure no
-generated files were staged.
-
-**Verify**:
-
-```bash
-trunk fmt docs/llms-positioning.md docs/e2e/demo.test.ts .agents/.plans/seo-geo/README.md
-git status --short
-pnpm --filter docs check
-pnpm --filter docs build
-pnpm --filter docs exec playwright test e2e/demo.test.ts -g "LLM discovery"
-pnpm --filter docs test:e2e
-trunk check
-git check-ignore docs/static/llms.txt docs/static/llms-full.txt
-```
-
-→ all commands exit 0; `git check-ignore` prints both generated paths; neither
-generated file appears as tracked or staged.
-
-## Test plan
-
-- The red-first Playwright request test observes the deployed URL shape and
-  generated `llms.txt`, rather than merely checking the Markdown source.
-- It covers the highest-value same-shape competitor and the legacy-package SEO
-  target while proving the full-reference link remains available.
-- The docs build independently verifies both compact and full outputs inherit
-  the prepend source.
-- Model imports and structure after `docs/e2e/demo.test.ts`; use the built-in
-  Playwright `request` fixture and avoid adding dependencies.
-
-## Done criteria
-
-- [ ] The LLM discovery test failed against the pre-change generated file for
-      the expected missing-comparison reason and passes after the change.
-- [ ] `docs/llms-positioning.md` contains concise, absolute links to the compare
-      index and all five existing comparison routes.
-- [ ] The three high-traction targets—virtua, TanStack Virtual, and legacy
-      `@sveltejs/svelte-virtual-list`—appear first in that order, and the legacy
-      entry uses replacement/modern-alternative intent language.
-- [ ] Both generated LLM files contain the comparison section after
-      `pnpm --filter docs build`.
-- [ ] The guidance matches `docs/src/lib/compare-data.ts` and does not contain
-      volatile download/star/version figures.
-- [ ] `pnpm --filter docs check`, `pnpm --filter docs build`,
-      `pnpm --filter docs test:e2e`, and `trunk check` all exit 0.
-- [ ] Generated LLM files remain ignored and uncommitted.
-- [ ] No files outside the in-scope list are modified.
-- [ ] `.agents/.plans/seo-geo/README.md` marks Plan 002 DONE.
+- [ ] `pnpm test` exits 0 with focused tests proving every required behavior.
+- [ ] `pnpm check` exits 0 with no errors.
+- [ ] `pnpm build` exits 0 and packages the new public types.
+- [ ] `trunk fmt` and `trunk check` exit 0.
+- [ ] A fixture invocation produces `compare/index.md`, one file per slug,
+      `.md` targets plus canonical HTML notes in `llms.txt`, and comparison
+      bodies in `llms-full.txt` from the single `comparisons` input.
+- [ ] Omitting `comparisons` preserves existing llms output and behavior.
+- [ ] Only in-scope docs-kit files change.
 
 ## STOP conditions
 
-Stop and report rather than improvising if:
-
-- Plan 001 is not complete or the comparison guidance still contains the stale
-  svelte-tiny v4 claims.
-- A docs build does not copy `docs/llms-positioning.md` into both generated LLM
-  outputs despite the current `prepend` configuration.
-- Adding the section requires changing or publishing `@humanspeak/docs-kit`.
-- Any target comparison route is missing from the sitemap manifest or fails to
-  prerender.
-- A verification command fails twice after a reasonable correction.
+- The clean worktree contains pre-existing in-scope changes.
+- Vite lifecycle ordering makes same-plugin generation unreadable in the same
+  `buildStart`; report the concrete behavior instead of adding manual consumer
+  ordering.
+- The design requires a breaking change to existing options or output.
+- Verification fails twice after a reasonable correction.
 
 ## Maintenance notes
 
-- When a competitor is added or removed in `compare-data.ts`, reviewers should
-  update this curated comparison index in the same change.
-- Keep volatile landscape metrics in `.competitive-intel/state.json` and the
-  digest process, not in the LLM positioning source.
-- A future docs-kit comparison-mirror generator may be worthwhile across
-  multiple Humanspeak sites. It is intentionally deferred here because the
-  current prepend mechanism provides the needed discovery links with much less
-  maintenance surface.
+Comparison records remain the single factual source. Consumers should update
+their data after competitor releases; docs-kit owns deterministic serialization
+and discovery. Review path validation carefully so slugs cannot escape the
+configured output directory.

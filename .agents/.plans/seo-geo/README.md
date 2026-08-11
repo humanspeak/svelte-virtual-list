@@ -9,7 +9,8 @@ conditions, and update its status row when done.
 | Plan | Title                                                        | Priority | Effort | Depends on | Status |
 | ---- | ------------------------------------------------------------ | -------- | ------ | ---------- | ------ |
 | 001  | Make the svelte-tiny-virtual-list comparison accurate for v4 | P1       | S      | —          | DONE   |
-| 002  | Prioritize high-traction VS pages in LLM discovery           | P1       | S      | 001        | TODO   |
+| 002  | Generate comparison Markdown and LLM discovery in docs-kit   | P1       | M      | 001        | TODO   |
+| 003  | Consume the released docs-kit comparison bundle              | P1       | S      | 002        | TODO   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
@@ -18,8 +19,9 @@ REJECTED (with one-line rationale).
 
 - Plan 001 lands first so the closest-competitor claims are accurate before
   Plan 002 promotes the comparison corpus to answer engines.
-- Both plans extend `docs/e2e/demo.test.ts`; the Plan 002 executor must preserve
-  and build on Plan 001's test.
+- Plan 002 lands directly on docs-kit `main`; GA automation creates the tag that
+  unblocks Plan 003 in this repository.
+- Plan 003 extends `docs/e2e/demo.test.ts` and must preserve Plan 001's test.
 
 ## Scope rationale
 
