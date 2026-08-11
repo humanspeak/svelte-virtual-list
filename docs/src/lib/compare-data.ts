@@ -130,18 +130,18 @@ export const competitors: Competitor[] = [
         tagline:
             'svelte-tiny-virtual-list is older, tiny, and flexible. Svelte Virtual List is built around Svelte 5 ergonomics.',
         description:
-            'svelte-tiny-virtual-list is a dependency-free virtual list inspired by react-tiny-virtual-list. It supports fixed or variable item sizes, horizontal lists, scroll-to-index props, header and footer slots, and a recomputeSizes method. @humanspeak/svelte-virtual-list targets Svelte 5 directly with snippets, dynamic measurement, SSR, and a smaller set of modern list-feed primitives.',
+            'svelte-tiny-virtual-list is a dependency-free virtual list inspired by react-tiny-virtual-list. It supports fixed or variable item sizes, horizontal lists, scroll-to-index props, header and footer snippets, and a recomputeSizes method. @humanspeak/svelte-virtual-list targets Svelte 5 directly with snippets, dynamic measurement, SSR, and a smaller set of modern list-feed primitives.',
         website: 'https://github.com/jonasgeiler/svelte-tiny-virtual-list#readme',
         github: 'https://github.com/jonasgeiler/svelte-tiny-virtual-list',
         npm: 'svelte-tiny-virtual-list',
         type: 'Svelte Virtual List Component',
-        approach: 'Slot-based component with explicit size inputs',
+        approach: 'Svelte 5 snippet API with explicit size inputs',
         features: [
-            { name: 'Svelte 5 snippets', us: true, them: false },
+            { name: 'Svelte 5 snippets', us: true, them: true },
             { name: 'Dynamic measured heights', us: true, them: 'Explicit sizes / recompute' },
             { name: 'Variable sizes from array/function', us: false, them: true },
             { name: 'Horizontal lists', us: 'LTR, runtime switchable', them: true },
-            { name: 'Infinite scroll helpers', us: true, them: 'Footer slot pattern' },
+            { name: 'Infinite scroll helpers', us: true, them: 'Footer snippet pattern' },
             { name: 'Programmatic scroll to index', us: true, them: true },
             { name: 'Runtime dependencies', us: '0', them: '0' }
         ],
@@ -153,17 +153,16 @@ export const competitors: Competitor[] = [
         prosThem: [
             'Small and dependency-free',
             'Supports fixed, variable, vertical, and horizontal modes',
-            'Header and footer slots are useful for wrappers and loaders',
+            'Header and footer snippets are useful for wrappers and loaders',
             'Mature package with a long release history'
         ],
         consUs: [...shared.consUs],
         consThem: [
-            'API predates Svelte 5 snippets',
             'Variable sizes are primarily supplied by itemSize data or recomputeSizes',
             'Infinite loading is composed through external footer patterns'
         ],
         verdict:
-            'Choose svelte-tiny-virtual-list for explicit size arrays/functions, sticky indices, or its older slot-style API. Choose @humanspeak/svelte-virtual-list for Svelte 5 snippets, automatic dynamic measurement, reactive vertical↔horizontal switching, SSR-friendly docs, and built-in infinite loading.',
+            'Choose svelte-tiny-virtual-list for its Svelte 5 snippet API with explicit size arrays/functions and sticky indices. Choose @humanspeak/svelte-virtual-list for automatic dynamic measurement, reactive vertical↔horizontal switching, SSR-friendly docs, and built-in infinite loading.',
         keywords: [
             'svelte-tiny-virtual-list alternative',
             'svelte-tiny-virtual-list vs svelte virtual list',
