@@ -4,8 +4,12 @@
 > pushed to docs-kit `main`, and the GA automation has created a consumable tag.
 > Do not use a local path or unpublished commit in the final dependency.
 >
-> **Drift check**: Re-stamp this plan to the current `feat/seo-geo` tip before
-> dispatch because Plan 002's release tag is not known yet.
+> **Revision 2026-08-11**: Docs-kit Plan 002 passed at `cb29390`; GA workflow
+> `31496812608` published tag `2026.8.1`. Use that exact tag.
+>
+> **Drift check**:
+> `git diff --stat cac2749..HEAD -- docs/package.json pnpm-lock.yaml docs/vite.config.ts docs/e2e/demo.test.ts`
+> Any mismatch is a STOP condition.
 
 ## Status
 
@@ -14,7 +18,7 @@
 - **Risk**: LOW
 - **Depends on**: `002-expose-comparisons-to-llms.md`
 - **Category**: docs
-- **Planned at**: pending docs-kit GA tag, 2026-08-11
+- **Planned at**: commit `cac2749`, docs-kit tag `2026.8.1`, 2026-08-11
 
 ## Why this matters
 
