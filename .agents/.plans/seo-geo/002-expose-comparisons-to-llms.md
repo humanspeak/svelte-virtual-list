@@ -8,10 +8,14 @@
 > (`.agents/.plans/seo-geo/README.md`) unless a reviewer told you they maintain
 > the index.
 >
+> **Revision 2026-08-11**: Rebased the drift check and planned-at SHA to the
+> reviewed Plan 001 tip (`d8be6c8`). Plan 001 legitimately added its regression
+> test to the shared `docs/e2e/demo.test.ts`; preserve that test while adding the
+> Plan 002 coverage.
+>
 > **Drift check (run first)**:
-> `git diff --stat 2dd2a8c..HEAD -- docs/llms-positioning.md docs/e2e/demo.test.ts docs/vite.config.ts`
-> Plan 001 is expected to change `docs/e2e/demo.test.ts`; reconcile that addition
-> before proceeding. Any other mismatch is a STOP condition.
+> `git diff --stat d8be6c8..HEAD -- docs/llms-positioning.md docs/e2e/demo.test.ts docs/vite.config.ts`
+> Any mismatch is a STOP condition.
 
 ## Status
 
@@ -20,7 +24,7 @@
 - **Risk**: LOW
 - **Depends on**: `001-refresh-svelte-tiny-comparison.md`
 - **Category**: direction
-- **Planned at**: commit `2dd2a8c`, 2026-08-11
+- **Planned at**: commit `d8be6c8`, 2026-08-11
 
 ## Why this matters
 
