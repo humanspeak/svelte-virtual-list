@@ -67,8 +67,9 @@ test('LLM files advertise and bundle complete comparison mirrors', async ({ requ
         expect(mirrorResponse.ok()).toBe(true)
         const mirror = await mirrorResponse.text()
 
-        expect(llms).toContain(`/compare/${competitor.slug}.md`)
-        expect(llms).toContain(`/compare/${competitor.slug}`)
+        expect(llms).toContain(
+            `- [${competitor.name}](https://virtuallist.svelte.page/compare/${competitor.slug}.md): https://virtuallist.svelte.page/compare/${competitor.slug}\n`
+        )
         expect(mirror).toContain(competitor.verdict)
         for (const feature of competitor.features) expect(mirror).toContain(feature.name)
         expect(llmsFull).toContain(competitor.verdict)
