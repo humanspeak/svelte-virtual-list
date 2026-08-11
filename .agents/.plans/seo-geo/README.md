@@ -8,7 +8,7 @@ conditions, and update its status row when done.
 
 | Plan | Title                                                        | Priority | Effort | Depends on | Status |
 | ---- | ------------------------------------------------------------ | -------- | ------ | ---------- | ------ |
-| 001  | Make the svelte-tiny-virtual-list comparison accurate for v4 | P1       | S      | —          | TODO   |
+| 001  | Make the svelte-tiny-virtual-list comparison accurate for v4 | P1       | S      | —          | DONE   |
 | 002  | Prioritize high-traction VS pages in LLM discovery           | P1       | S      | 001        | TODO   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
