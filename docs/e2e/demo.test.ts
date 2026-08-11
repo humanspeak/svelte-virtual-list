@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { competitors } from '../src/lib/compare-data'
 
 test('home page has expected h1', async ({ page }) => {
     await page.goto('/')
@@ -43,4 +44,33 @@ test('svelte-tiny comparison reflects its Svelte 5 snippet API', async ({ page }
     await expect(
         page.getByText('Variable sizes from array/function', { exact: true })
     ).toBeVisible()
+})
+
+test('LLM files advertise and bundle complete comparison mirrors', async ({ request }) => {
+    const llmsResponse = await request.get('/llms.txt')
+    expect(llmsResponse.ok()).toBe(true)
+    const llms = await llmsResponse.text()
+
+    const prioritySlugs = ['virtua', 'tanstack-virtual', 'sveltejs-svelte-virtual-list'] as const
+    const priorityPositions = prioritySlugs.map((slug) =>
+        llms.indexOf(`https://virtuallist.svelte.page/compare/${slug}.md`)
+    )
+    expect(priorityPositions.every((position) => position >= 0)).toBe(true)
+    expect(priorityPositions).toEqual([...priorityPositions].sort((a, b) => a - b))
+
+    const llmsFullResponse = await request.get('/llms-full.txt')
+    expect(llmsFullResponse.ok()).toBe(true)
+    const llmsFull = await llmsFullResponse.text()
+
+    for (const competitor of competitors) {
+        const mirrorResponse = await request.get(`/compare/${competitor.slug}.md`)
+        expect(mirrorResponse.ok()).toBe(true)
+        const mirror = await mirrorResponse.text()
+
+        expect(llms).toContain(`/compare/${competitor.slug}.md`)
+        expect(llms).toContain(`/compare/${competitor.slug}`)
+        expect(mirror).toContain(competitor.verdict)
+        for (const feature of competitor.features) expect(mirror).toContain(feature.name)
+        expect(llmsFull).toContain(competitor.verdict)
+    }
 })

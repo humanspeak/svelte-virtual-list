@@ -34,6 +34,7 @@ src/lib/demo-loaders.ts
 src/lib/demo-virtual.d.ts
 src/lib/github-stats.json
 static/docs/
+static/compare/
 static/llms.txt
 static/llms-full.txt
 
