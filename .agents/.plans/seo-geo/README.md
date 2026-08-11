@@ -9,7 +9,7 @@ conditions, and update its status row when done.
 | Plan | Title                                                        | Priority | Effort | Depends on | Status |
 | ---- | ------------------------------------------------------------ | -------- | ------ | ---------- | ------ |
 | 001  | Make the svelte-tiny-virtual-list comparison accurate for v4 | P1       | S      | —          | DONE   |
-| 002  | Generate comparison Markdown and LLM discovery in docs-kit   | P1       | M      | 001        | TODO   |
+| 002  | Generate comparison Markdown and LLM discovery in docs-kit   | P1       | M      | 001        | DONE   |
 | 003  | Consume the released docs-kit comparison bundle              | P1       | S      | 002        | TODO   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |

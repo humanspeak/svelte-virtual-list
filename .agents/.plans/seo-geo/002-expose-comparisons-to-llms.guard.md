@@ -23,3 +23,17 @@
 - Plan 003 now owns consumption of the GA-generated docs-kit tag in this repo.
 - Action: interrupted the original executor, had it revert all Plan 002 source
   edits, and amended the batch before redispatch.
+
+## Checkpoint 3 — 2026-08-11 09:34 — ON TRACK
+
+`cb29390` · final docs-kit close-out and release
+
+- Guard reproduced 6 focused Node tests, docs-kit check with 0 errors/warnings,
+  package build, Trunk checks, and clean diff checks.
+- Full diff inspection confirmed one `comparisons` input generates the index
+  and per-slug Markdown mirrors, `.md` discovery links with canonical HTML
+  notes, and optional `llms-full.txt` inclusion while preserving legacy output.
+- Scope audit found only the six docs-kit files authorized by the plan.
+- Direct push advanced docs-kit `main` from `16556e6` to `cb29390`; GA workflow
+  run `31496812608` passed and published tag `2026.8.1` at that commit.
+- Action: Plan 002 marked DONE; tag `2026.8.1` unblocks Plan 003.
