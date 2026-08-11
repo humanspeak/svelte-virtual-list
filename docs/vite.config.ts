@@ -61,12 +61,7 @@ export default defineConfig({
                 ogSlug: `compare-${competitor.slug}`,
                 ogTitle: `vs ${competitor.name}`,
                 ogTagline: competitor.tagline,
-                ogFeatures: [
-                    'Feature Comparison',
-                    'Pros & Cons',
-                    'Migration Guide',
-                    'Honest Verdict'
-                ]
+                ogFeatures: ['Feature Comparison', 'Pros & Cons', 'Source Linked', 'Honest Verdict']
             }))
         }),
         // Pings IndexNow with the sitemap manifest's URLs after a build run

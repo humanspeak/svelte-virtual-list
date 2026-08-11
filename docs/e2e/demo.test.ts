@@ -19,6 +19,17 @@ test('examples index links to the horizontal responsive demo', async ({ page }) 
     )
 })
 
+test('example markdown mirrors include the runnable demo implementation', async ({ request }) => {
+    const response = await request.get('/examples/basic-list.md')
+    expect(response.ok()).toBe(true)
+
+    const mirror = await response.text()
+    expect(mirror).toContain('#### Default.svelte')
+    expect(mirror).toContain("import VirtualList from '@humanspeak/svelte-virtual-list'")
+    expect(mirror).toContain('{#snippet renderItem(item)}')
+    expect(mirror).toContain('class="demo-row"')
+})
+
 test('props API documents keyed and axis-neutral list configuration', async ({ page }) => {
     await page.goto('/docs/api/props')
 
