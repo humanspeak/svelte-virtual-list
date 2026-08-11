@@ -1,0 +1,327 @@
+{
+    "project": "@humanspeak/svelte-virtual-list",
+    "last_run": "2026-08-11",
+    "run_type": "baseline",
+    "snapshot": {
+        "fetched_at": "2026-08-11T12:43:12Z",
+        "project": "@humanspeak/svelte-virtual-list",
+        "self": {
+            "npm": "@humanspeak/svelte-virtual-list",
+            "repo": "humanspeak/svelte-virtual-list",
+            "latest_version": "0.5.14",
+            "last_publish": "2026-08-10",
+            "first_publish": "2025-01-04",
+            "weekly_downloads": 5267,
+            "peer_deps": {
+                "svelte": "^5.0.0"
+            },
+            "svelte_peer": "^5.0.0",
+            "error": null,
+            "stars": 99,
+            "archived": false,
+            "pushed_at": "2026-08-10",
+            "last_release": "2026-08-10",
+            "recent_releases": [
+                {
+                    "version": "v0.5.14",
+                    "date": "2026-08-10"
+                },
+                {
+                    "version": "v0.5.13",
+                    "date": "2026-07-23"
+                },
+                {
+                    "version": "v0.5.12",
+                    "date": "2026-07-16"
+                },
+                {
+                    "version": "v0.5.11",
+                    "date": "2026-07-14"
+                },
+                {
+                    "version": "v0.5.10",
+                    "date": "2026-07-14"
+                },
+                {
+                    "version": "v0.5.9",
+                    "date": "2026-07-03"
+                },
+                {
+                    "version": "v0.5.8",
+                    "date": "2026-07-03"
+                },
+                {
+                    "version": "v0.5.7",
+                    "date": "2026-07-03"
+                },
+                {
+                    "version": "v0.5.6",
+                    "date": "2026-07-03"
+                },
+                {
+                    "version": "v0.5.5",
+                    "date": "2026-07-02"
+                },
+                {
+                    "version": "v0.5.4",
+                    "date": "2026-06-25"
+                },
+                {
+                    "version": "v0.5.3",
+                    "date": "2026-06-17"
+                },
+                {
+                    "version": "v0.5.2",
+                    "date": "2026-05-29"
+                },
+                {
+                    "version": "v0.5.1",
+                    "date": "2026-05-28"
+                },
+                {
+                    "version": "v0.5.0",
+                    "date": "2026-05-26"
+                }
+            ]
+        },
+        "competitors": [
+            {
+                "npm": "@tanstack/svelte-virtual",
+                "repo": "TanStack/virtual",
+                "latest_version": "3.13.35",
+                "last_publish": "2026-07-28",
+                "first_publish": "2022-07-19",
+                "weekly_downloads": 61153,
+                "peer_deps": {
+                    "svelte": "^3.48.0 || ^4.0.0 || ^5.0.0"
+                },
+                "svelte_peer": "^3.48.0 || ^4.0.0 || ^5.0.0",
+                "error": null,
+                "stars": 7057,
+                "archived": false,
+                "pushed_at": "2026-08-09",
+                "last_release": "2026-07-28",
+                "recent_releases": [
+                    {
+                        "version": "@tanstack/vue-virtual@3.13.35",
+                        "date": "2026-07-28"
+                    },
+                    {
+                        "version": "@tanstack/virtual-core@3.17.7",
+                        "date": "2026-07-28"
+                    },
+                    {
+                        "version": "@tanstack/svelte-virtual@3.13.35",
+                        "date": "2026-07-28"
+                    },
+                    {
+                        "version": "@tanstack/solid-virtual@3.13.36",
+                        "date": "2026-07-28"
+                    },
+                    {
+                        "version": "@tanstack/react-virtual@3.14.9",
+                        "date": "2026-07-28"
+                    },
+                    {
+                        "version": "@tanstack/marko-virtual@3.15.0",
+                        "date": "2026-07-28"
+                    },
+                    {
+                        "version": "@tanstack/lit-virtual@3.13.36",
+                        "date": "2026-07-28"
+                    },
+                    {
+                        "version": "@tanstack/angular-virtual@6.0.2",
+                        "date": "2026-07-28"
+                    },
+                    {
+                        "version": "@tanstack/vue-virtual@3.13.34",
+                        "date": "2026-07-22"
+                    },
+                    {
+                        "version": "@tanstack/virtual-core@3.17.6",
+                        "date": "2026-07-22"
+                    },
+                    {
+                        "version": "@tanstack/svelte-virtual@3.13.34",
+                        "date": "2026-07-22"
+                    },
+                    {
+                        "version": "@tanstack/solid-virtual@3.13.35",
+                        "date": "2026-07-22"
+                    },
+                    {
+                        "version": "@tanstack/react-virtual@3.14.8",
+                        "date": "2026-07-22"
+                    },
+                    {
+                        "version": "@tanstack/marko-virtual@3.14.3",
+                        "date": "2026-07-22"
+                    },
+                    {
+                        "version": "@tanstack/lit-virtual@3.13.35",
+                        "date": "2026-07-22"
+                    }
+                ]
+            },
+            {
+                "npm": "svelte-tiny-virtual-list",
+                "repo": "jonasgeiler/svelte-tiny-virtual-list",
+                "latest_version": "4.0.0",
+                "last_publish": "2026-08-11",
+                "first_publish": "2020-12-14",
+                "weekly_downloads": 26829,
+                "peer_deps": {
+                    "svelte": "^5.0.0"
+                },
+                "svelte_peer": "^5.0.0",
+                "error": null,
+                "stars": 643,
+                "archived": false,
+                "pushed_at": "2026-08-11",
+                "last_release": "2026-08-11",
+                "recent_releases": [
+                    {
+                        "version": "v4.0.0",
+                        "date": "2026-08-11"
+                    }
+                ]
+            },
+            {
+                "npm": "svelte-virtuallists",
+                "repo": "orefalo/svelte-virtuallists",
+                "latest_version": "1.4.2",
+                "last_publish": "2025-03-01",
+                "first_publish": "2024-06-16",
+                "weekly_downloads": 1368,
+                "peer_deps": {
+                    "svelte": "^5.20.5"
+                },
+                "svelte_peer": "^5.20.5",
+                "error": null,
+                "stars": 163,
+                "archived": false,
+                "pushed_at": "2025-03-03",
+                "last_release": "2025-03-01",
+                "recent_releases": []
+            },
+            {
+                "npm": "@sveltejs/svelte-virtual-list",
+                "repo": "sveltejs/svelte-virtual-list",
+                "latest_version": "3.0.1",
+                "last_publish": "2019-08-22",
+                "first_publish": "2018-04-03",
+                "weekly_downloads": 35870,
+                "peer_deps": null,
+                "svelte_peer": null,
+                "error": null,
+                "stars": 772,
+                "archived": false,
+                "pushed_at": "2023-03-01",
+                "last_release": null,
+                "recent_releases": []
+            }
+        ],
+        "watchlist": [
+            {
+                "npm": "virtua",
+                "repo": "inokawa/virtua",
+                "latest_version": "0.50.1",
+                "last_publish": "2026-08-07",
+                "first_publish": "2022-10-22",
+                "weekly_downloads": 892415,
+                "peer_deps": {
+                    "@angular/common": ">=20.0.0",
+                    "@angular/core": ">=20.0.0",
+                    "react": ">=16.14.0",
+                    "react-dom": ">=16.14.0",
+                    "solid-js": ">=1.0",
+                    "svelte": ">=5.0",
+                    "vue": ">=3.2"
+                },
+                "svelte_peer": ">=5.0",
+                "error": null,
+                "stars": 3711,
+                "archived": false,
+                "pushed_at": "2026-08-07",
+                "last_release": "2026-08-07",
+                "recent_releases": [
+                    {
+                        "version": "0.50.1",
+                        "date": "2026-08-07"
+                    },
+                    {
+                        "version": "0.50.0",
+                        "date": "2026-07-25"
+                    },
+                    {
+                        "version": "0.49.3",
+                        "date": "2026-07-11"
+                    },
+                    {
+                        "version": "0.49.2",
+                        "date": "2026-06-29"
+                    },
+                    {
+                        "version": "0.49.1",
+                        "date": "2026-04-12"
+                    },
+                    {
+                        "version": "0.49.0",
+                        "date": "2026-03-30"
+                    },
+                    {
+                        "version": "0.48.8",
+                        "date": "2026-03-13"
+                    },
+                    {
+                        "version": "0.48.7",
+                        "date": "2026-03-12"
+                    },
+                    {
+                        "version": "0.48.6",
+                        "date": "2026-02-16"
+                    },
+                    {
+                        "version": "0.48.5",
+                        "date": "2026-01-26"
+                    },
+                    {
+                        "version": "0.48.4",
+                        "date": "2026-01-26"
+                    },
+                    {
+                        "version": "0.48.3",
+                        "date": "2026-01-15"
+                    }
+                ]
+            }
+        ]
+    },
+    "open_gaps": [
+        {
+            "gap": "variable item sizes from array/function",
+            "held_by": "svelte-tiny-virtual-list",
+            "why": "we do runtime dynamic measurement instead of an upfront size map",
+            "worth_doing": "evaluate an explicit-size fast path"
+        }
+    ],
+    "compare_validation": {
+        "@tanstack/svelte-virtual": {
+            "validated_against_version": "3.13.35"
+        },
+        "svelte-tiny-virtual-list": {
+            "validated_against_version": "4.0.0",
+            "note": "v4.0.0 (2026-08-11) added Svelte 5 snippets \u2014 page cells Svelte-5-snippets:them:false and con \"predates snippets\" are STALE, flagged for update"
+        },
+        "svelte-virtuallists": {
+            "validated_against_version": "1.4.2"
+        },
+        "@sveltejs/svelte-virtual-list": {
+            "validated_against_version": "3.0.1"
+        },
+        "virtua": {
+            "validated_against_version": "0.50.1"
+        }
+    }
+}

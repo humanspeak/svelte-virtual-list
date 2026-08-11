@@ -13,7 +13,7 @@ import { sentrySvelteKit } from '@sentry/sveltekit'
 import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vitest/config'
-import { competitors } from './src/lib/compare-data'
+import { competitors, ours } from './src/lib/compare-data'
 import { docsConfig } from './src/lib/docs-config'
 
 // IndexNow verification key — not a secret: the protocol requires the
@@ -40,7 +40,12 @@ export default defineConfig({
             siteUrl: docsConfig.url,
             pkgName: docsConfig.name,
             description: docsConfig.description,
-            prepend: 'llms-positioning.md'
+            prepend: 'llms-positioning.md',
+            comparisons: {
+                ours,
+                competitors,
+                priority: ['virtua', 'tanstack-virtual', 'sveltejs-svelte-virtual-list']
+            }
         }),
         llmsFullPlugin({
             siteUrl: docsConfig.url,
@@ -56,12 +61,7 @@ export default defineConfig({
                 ogSlug: `compare-${competitor.slug}`,
                 ogTitle: `vs ${competitor.name}`,
                 ogTagline: competitor.tagline,
-                ogFeatures: [
-                    'Feature Comparison',
-                    'Pros & Cons',
-                    'Migration Guide',
-                    'Honest Verdict'
-                ]
+                ogFeatures: ['Feature Comparison', 'Pros & Cons', 'Source Linked', 'Honest Verdict']
             }))
         }),
         // Pings IndexNow with the sitemap manifest's URLs after a build run

@@ -16,6 +16,8 @@ export const docsConfig: DocsKitConfig = {
         'performance',
         'typescript'
     ],
+    softwareRequirements: 'Svelte 5',
+    programmingLanguages: ['TypeScript', 'Svelte'],
     defaultFeatures: ['Dynamic Heights', 'Infinite Scrolling', 'TypeScript Support', '5kb Gzipped'],
     fallbackStars: 100
 }
