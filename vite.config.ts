@@ -27,6 +27,8 @@ export default defineConfig({
         exclude: [...configDefaults.exclude, '**/docs/**/*'],
         testTimeout: 10000,
         hookTimeout: 10000,
+        // junit feeds the trunk analytics uploader in CI (junit-vitest.xml
+        // matches the workflow's junit-paths)
         reporters: ['verbose', ['junit', { outputFile: './junit-vitest.xml' }]]
     },
     build: {
