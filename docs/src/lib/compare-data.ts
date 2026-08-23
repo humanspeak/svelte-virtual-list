@@ -205,7 +205,8 @@ export const competitors: Competitor[] = [
         consThem: [
             'Broader list/table surface when only a list is needed',
             'Infinite loading remains application wiring',
-            'Reactive axis-switch anchor behavior is not part of the documented contract'
+            'Reactive axis-switch anchor behavior is not part of the documented contract',
+            'No release since March 2025, a maintenance gap of roughly 18 months'
         ],
         verdict:
             'Choose svelte-virtuallists when virtual tables are central to the UI. Choose @humanspeak/svelte-virtual-list when you want one measured list component with responsive axis switching, built-in loading edges, and both index and raw-offset methods.',
