@@ -5,6 +5,12 @@
     "self_npm": "@humanspeak/svelte-virtual-list",
     "self_repo": "humanspeak/svelte-virtual-list",
 
+    "ahrefs_project_id": 8934905,
+    "seo": {
+        "enabled": true,
+        "gsc_dir": ".competitive-intel/gsc",
+        "gsc_staleness_days": 30
+    },
     "github_handle": "jaysin586",
     "repo_triage": {
         "enabled": true,

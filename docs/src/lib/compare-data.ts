@@ -82,7 +82,7 @@ export const competitors: Competitor[] = [
         tagline:
             'virtua is a zero-config multi-framework virtualizer. Svelte Virtual List is narrower and Svelte-specific.',
         description:
-            'virtua ships virtual list and grid components for React, Vue, Solid, and Svelte. Its design emphasizes zero-config virtualization, dynamic size handling, reverse scrolling, and broad UI scenarios. @humanspeak/svelte-virtual-list focuses on a small Svelte 5 list API with vertical and horizontal layouts, Svelte snippets, SSR support, and built-in feed loading.',
+            'virtua ships virtual list and grid components for React, Vue, Solid, and Svelte. Its design emphasizes zero-config virtualization, dynamic size handling, reverse scrolling, and broad UI scenarios. @humanspeak/svelte-virtual-list focuses on a small Svelte 5 list API with vertical and horizontal layouts, Svelte snippets, SSR-friendly hydration without a manual item-count prop, and built-in feed loading.',
         website: 'https://inokawa.github.io/virtua/',
         github: 'https://github.com/inokawa/virtua',
         npm: 'virtua',
@@ -117,7 +117,7 @@ export const competitors: Competitor[] = [
             'Svelte usage shares mindshare with several other framework targets'
         ],
         verdict:
-            'Choose virtua for broad virtualization coverage, grids, reverse/RTL scrolling, and multi-framework consistency. Choose @humanspeak/svelte-virtual-list for a focused Svelte 5 vertical or LTR-horizontal list with dynamic measurement, responsive axis switching, SSR, scrolling methods, and load-more behavior.',
+            'Choose virtua for broad virtualization coverage, grids, reverse/RTL scrolling, and multi-framework consistency. Choose @humanspeak/svelte-virtual-list for a focused Svelte 5 vertical or LTR-horizontal list with dynamic measurement, responsive axis switching, SSR-friendly hydration without a manual item-count prop, scrolling methods, and load-more behavior.',
         keywords: [
             'virtua svelte alternative',
             'virtua vs svelte virtual list',
@@ -205,7 +205,8 @@ export const competitors: Competitor[] = [
         consThem: [
             'Broader list/table surface when only a list is needed',
             'Infinite loading remains application wiring',
-            'Reactive axis-switch anchor behavior is not part of the documented contract'
+            'Reactive axis-switch anchor behavior is not part of the documented contract',
+            'No release since March 2025, a maintenance gap of roughly 18 months'
         ],
         verdict:
             'Choose svelte-virtuallists when virtual tables are central to the UI. Choose @humanspeak/svelte-virtual-list when you want one measured list component with responsive axis switching, built-in loading edges, and both index and raw-offset methods.',
