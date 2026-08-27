@@ -77,7 +77,10 @@ export const docsSections: NavSection[] = [
     {
         title: 'Get Started',
         icon: Rocket,
-        items: [{ title: 'Introduction', href: '/docs', icon: Rocket, exact: true }]
+        items: [
+            { title: 'Introduction', href: '/docs', icon: Rocket, exact: true },
+            { title: 'Install', href: '/install', icon: Code, exact: true }
+        ]
     },
     {
         title: 'API Reference',

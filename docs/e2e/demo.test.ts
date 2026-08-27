@@ -6,6 +6,32 @@ test('home page has expected h1', async ({ page }) => {
     await expect(page.locator('h1')).toBeVisible()
 })
 
+test('install intent page exposes package metadata and onboarding links', async ({ page }) => {
+    await page.goto('/install')
+
+    await expect(page).toHaveTitle('Svelte Virtual List npm Package — Install for Svelte 5')
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+        'content',
+        'Install @humanspeak/svelte-virtual-list for Svelte 5. Copy the npm command, see requirements, and render your first virtual list in minutes.'
+    )
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'https://virtuallist.svelte.page/install'
+    )
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Install Svelte Virtual List')
+    const installHero = page.locator('main section').first()
+    await expect(
+        installHero.getByText('npm install @humanspeak/svelte-virtual-list', { exact: true })
+    ).toBeVisible()
+
+    await page.goto('/docs')
+    await expect(page.getByRole('link', { name: /install/i }).first()).toHaveAttribute(
+        'href',
+        '/install'
+    )
+})
+
 test('examples index links to the horizontal responsive demo', async ({ page }) => {
     await page.goto('/examples')
     const link = page.getByRole('link', { name: /horizontal/i })

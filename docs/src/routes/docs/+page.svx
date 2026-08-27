@@ -24,6 +24,8 @@ description: "A high-performance virtual list component for Svelte 5 that effici
 
 **Svelte Virtual List** is a high-performance virtual list component for Svelte 5 applications that efficiently renders large datasets with minimal memory usage.
 
+New project? Start with the dedicated [installation guide](/install) for requirements, package-manager commands, and a minimal example.
+
 ## Features
 
 - **Dynamic item height handling** - no fixed height required
