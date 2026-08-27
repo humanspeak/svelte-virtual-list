@@ -1,9 +1,9 @@
 {
     "project": "@humanspeak/svelte-virtual-list",
-    "last_run": "2026-08-23",
+    "last_run": "2026-08-27",
     "run_type": "delta",
     "snapshot": {
-        "fetched_at": "2026-08-23T07:30:31Z",
+        "fetched_at": "2026-08-27T07:30:15Z",
         "project": "@humanspeak/svelte-virtual-list",
         "self": {
             "npm": "@humanspeak/svelte-virtual-list",
@@ -11,7 +11,7 @@
             "latest_version": "0.5.14",
             "last_publish": "2026-08-10",
             "first_publish": "2025-01-04",
-            "weekly_downloads": 3383,
+            "weekly_downloads": 3208,
             "peer_deps": {
                 "svelte": "^5.0.0"
             },
@@ -19,7 +19,7 @@
             "error": null,
             "stars": 102,
             "archived": false,
-            "pushed_at": "2026-08-12",
+            "pushed_at": "2026-08-26",
             "last_release": "2026-08-10",
             "recent_releases": [
                 {
@@ -137,15 +137,15 @@
                 "latest_version": "3.13.36",
                 "last_publish": "2026-08-18",
                 "first_publish": "2022-07-19",
-                "weekly_downloads": 82514,
+                "weekly_downloads": 79963,
                 "peer_deps": {
                     "svelte": "^3.48.0 || ^4.0.0 || ^5.0.0"
                 },
                 "svelte_peer": "^3.48.0 || ^4.0.0 || ^5.0.0",
                 "error": null,
-                "stars": 7080,
+                "stars": 7090,
                 "archived": false,
-                "pushed_at": "2026-08-18",
+                "pushed_at": "2026-08-26",
                 "last_release": "2026-08-18",
                 "recent_releases": [
                     {
@@ -261,15 +261,15 @@
                 "latest_version": "4.0.0",
                 "last_publish": "2026-08-11",
                 "first_publish": "2020-12-14",
-                "weekly_downloads": 29655,
+                "weekly_downloads": 27354,
                 "peer_deps": {
                     "svelte": "^5.0.0"
                 },
                 "svelte_peer": "^5.0.0",
                 "error": null,
-                "stars": 643,
+                "stars": 644,
                 "archived": false,
-                "pushed_at": "2026-08-20",
+                "pushed_at": "2026-08-27",
                 "last_release": "2026-08-11",
                 "recent_releases": [
                     {
@@ -287,7 +287,7 @@
                 "latest_version": "1.4.2",
                 "last_publish": "2025-03-01",
                 "first_publish": "2024-06-16",
-                "weekly_downloads": 1556,
+                "weekly_downloads": 1545,
                 "peer_deps": {
                     "svelte": "^5.20.5"
                 },
@@ -305,7 +305,7 @@
                 "latest_version": "3.0.1",
                 "last_publish": "2019-08-22",
                 "first_publish": "2018-04-03",
-                "weekly_downloads": 35845,
+                "weekly_downloads": 37342,
                 "peer_deps": null,
                 "svelte_peer": null,
                 "error": null,
@@ -320,10 +320,10 @@
             {
                 "npm": "virtua",
                 "repo": "inokawa/virtua",
-                "latest_version": "0.50.4",
-                "last_publish": "2026-08-22",
+                "latest_version": "0.50.5",
+                "last_publish": "2026-08-24",
                 "first_publish": "2022-10-22",
-                "weekly_downloads": 985222,
+                "weekly_downloads": 1022177,
                 "peer_deps": {
                     "@angular/common": ">=20.0.0",
                     "@angular/core": ">=20.0.0",
@@ -335,11 +335,18 @@
                 },
                 "svelte_peer": ">=5.0",
                 "error": null,
-                "stars": 3722,
+                "stars": 3728,
                 "archived": false,
-                "pushed_at": "2026-08-23",
-                "last_release": "2026-08-22",
+                "pushed_at": "2026-08-25",
+                "last_release": "2026-08-24",
                 "recent_releases": [
+                    {
+                        "version": "0.50.5",
+                        "date": "2026-08-24",
+                        "notes": "## What's Changed\n* Refactor driver by @inokawa in https://github.com/inokawa/virtua/pull/927\n* Fix bug that estimated size can be 0 by @inokawa in https://github.com/inokawa/virtua/pull/929\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.50.4...0.50.5",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.50.5"
+                    },
                     {
                         "version": "0.50.4",
                         "date": "2026-08-22",
@@ -437,13 +444,6 @@
                         "notes": "## What's Changed\n* Setup prettier by @inokawa in https://github.com/inokawa/virtua/pull/848\n* feat: add svelte ssr count prop by @shuaixr in https://github.com/inokawa/virtua/pull/849\n\n## New Contributors\n* @shuaixr made their first contribution in https://github.com/inokawa/virtua/pull/849\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.48.3...0.48.4",
                         "notes_truncated": false,
                         "url": "https://github.com/inokawa/virtua/releases/tag/0.48.4"
-                    },
-                    {
-                        "version": "0.48.3",
-                        "date": "2026-01-15",
-                        "notes": "## What's Changed\n* Add Vue Chat story by @inokawa in https://github.com/inokawa/virtua/pull/833\n* Add Solid Chat story by @inokawa in https://github.com/inokawa/virtua/pull/834\n* Refactor scroller by @inokawa in https://github.com/inokawa/virtua/pull/835\n* Allow Mutiple Children in Vue Components by @sasial-dev in https://github.com/inokawa/virtua/pull/846\n\n## New Contributors\n* @sasial-dev made their first contribution in https://github.com/inokawa/virtua/pull/846\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.48.2...0.48.3",
-                        "notes_truncated": false,
-                        "url": "https://github.com/inokawa/virtua/releases/tag/0.48.3"
                     }
                 ]
             }
@@ -472,47 +472,247 @@
         },
         "svelte-virtuallists": {
             "validated_against_version": "1.4.2",
-            "note": "dormant ~18mo as of 2026-08-23; dormancy note in consThem flagged for a second run"
+            "note": "dormancy claim (no release since 2025-03) re-checked 2026-08-27 and still accurate"
         },
         "@sveltejs/svelte-virtual-list": {
             "validated_against_version": "3.0.1"
         },
         "virtua": {
-            "validated_against_version": "0.50.4",
-            "note": "0.50.2/0.50.4 improved Svelte SSR + ssrCount; SSR-as-differentiator wording on the virtua compare page flagged for review 2026-08-23"
+            "validated_against_version": "0.50.5",
+            "note": "SSR wording rewritten in 64c9eba to 'without a manual item-count prop'; still correct after virtua's ssrCount in 0.50.4. 0.50.5 was an internal refactor + estimated-size-0 fix, flips no them: cell."
         }
     },
     "rank_tracker": {
         "project_id": 8934905,
         "summary": {
-            "tracked": 2,
-            "ranked": 2,
-            "top3": 0,
-            "top10": 0,
-            "top100": 2,
+            "tracked": 17,
+            "ranked": 17,
+            "top3": 2,
+            "top10": 13,
+            "top100": 17,
             "improved": 1,
-            "declined": 1,
-            "avg_position": 18.0
+            "declined": 16,
+            "avg_position": 8.6
         },
         "rows": [
             {
-                "keyword": "svelte virtual list",
-                "volume": 20,
-                "position": 13,
-                "position_diff": -1,
-                "position_prev": 14,
+                "keyword": "svelte virtual list comparison",
+                "volume": 0,
+                "position": 2,
+                "position_diff": 2,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/",
+                "kd": 3
+            },
+            {
+                "keyword": "svelte-virtuallists comparison",
+                "volume": 0,
+                "position": 3,
+                "position_diff": 3,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-virtuallists",
+                "kd": 2
+            },
+            {
+                "keyword": "svelte virtua compare",
+                "volume": 0,
+                "position": 4,
+                "position_diff": 4,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "kd": 11
+            },
+            {
+                "keyword": "virtua vs svelte virtual list",
+                "volume": 0,
+                "position": 4,
+                "position_diff": 4,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "kd": 1
+            },
+            {
+                "keyword": "svelte 5 horizontal virtual list",
+                "volume": 0,
+                "position": 5,
+                "position_diff": 5,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "kd": 2
+            },
+            {
+                "keyword": "sveltejs virtual list replacement",
+                "volume": 0,
+                "position": 5,
+                "position_diff": 5,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/",
+                "kd": 4
+            },
+            {
+                "keyword": "svelte-tiny-virtual-list alternative",
+                "volume": 0,
+                "position": 6,
+                "position_diff": 6,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "kd": 0
+            },
+            {
+                "keyword": "@sveltejs/svelte-virtual-list alternative",
+                "volume": 0,
+                "position": 7,
+                "position_diff": 7,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "kd": 1
+            },
+            {
+                "keyword": "@tanstack/svelte-virtual vs svelte virtual list",
+                "volume": 0,
+                "position": 7,
+                "position_diff": 7,
+                "position_prev": null,
                 "url": "https://virtuallist.svelte.page/",
                 "kd": 2
             },
             {
+                "keyword": "svelte 5 virtual list",
+                "volume": 0,
+                "position": 7,
+                "position_diff": 7,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/",
+                "kd": 4
+            },
+            {
+                "keyword": "svelte-tiny-virtual-list vs svelte virtual list",
+                "volume": 0,
+                "position": 7,
+                "position_diff": 7,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "kd": 0
+            },
+            {
+                "keyword": "svelte-virtuallists alternative",
+                "volume": 0,
+                "position": 9,
+                "position_diff": 9,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-virtuallists",
+                "kd": 0
+            },
+            {
+                "keyword": "tanstack virtual svelte alternative",
+                "volume": 0,
+                "position": 10,
+                "position_diff": 10,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/",
+                "kd": 5
+            },
+            {
+                "keyword": "svelte virtual list",
+                "volume": 10,
+                "position": 12,
+                "position_diff": -1,
+                "position_prev": 13,
+                "url": "https://virtuallist.svelte.page/",
+                "kd": 1
+            },
+            {
+                "keyword": "virtua svelte alternative",
+                "volume": 0,
+                "position": 13,
+                "position_diff": 13,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "kd": 0
+            },
+            {
+                "keyword": "modern svelte virtual list",
+                "volume": 0,
+                "position": 20,
+                "position_diff": 20,
+                "position_prev": null,
+                "url": "https://virtuallist.svelte.page/Compare",
+                "kd": 9
+            },
+            {
                 "keyword": "svelte infinite scroll",
                 "volume": 10,
-                "position": 23,
-                "position_diff": 1,
-                "position_prev": 22,
-                "url": "https://virtuallist.svelte.page/examples/infinite-scroll",
+                "position": 25,
+                "position_diff": 2,
+                "position_prev": 23,
+                "url": "https://virtuallist.svelte.page/",
                 "kd": 1
             }
+        ]
+    },
+    "seo": {
+        "export_date": "2026-08-22",
+        "striking_distance": [
+            {
+                "query": "svelte virtual list",
+                "impressions": 191.0,
+                "position": 8.32
+            },
+            {
+                "query": "npm svelte-virtual package",
+                "impressions": 72.0,
+                "position": 8.6
+            },
+            {
+                "query": "svelte-virtual",
+                "impressions": 50.0,
+                "position": 6.16
+            },
+            {
+                "query": "svelte-virtual-list",
+                "impressions": 48.0,
+                "position": 9.06
+            },
+            {
+                "query": "\"svelte-virtual\" npm",
+                "impressions": 31.0,
+                "position": 7.97
+            },
+            {
+                "query": "svelte-virtual npm",
+                "impressions": 30.0,
+                "position": 8.3
+            },
+            {
+                "query": "svelte virtual",
+                "impressions": 28.0,
+                "position": 7.5
+            },
+            {
+                "query": "svelte virtual scroll",
+                "impressions": 27.0,
+                "position": 7.0
+            },
+            {
+                "query": "svelte-tiny-virtual-list",
+                "impressions": 26.0,
+                "position": 11.04
+            }
+        ],
+        "underperforming_pages": [
+            {
+                "page": "https://virtuallist.svelte.page/examples",
+                "impressions": 157.0,
+                "position": 20.8,
+                "ctr": 0.64
+            }
+        ],
+        "recommendations_open": [
+            "fix npm-intent cluster: install-led landing copy for 'npm svelte-virtual package' / 'svelte-virtual npm' (0% CTR on ~180 impressions)",
+            "add to Ahrefs rank tracker: npm svelte-virtual package, svelte-virtual, svelte virtual scroll, svelte-tiny-virtual-list",
+            "push /compare/svelte-tiny-virtual-list from pos 11 into top 10 (competitor-name capture intent)",
+            "rewrite /examples title+meta and add internal links from compare pages (157 impr, 0.64% CTR, pos 20.8)",
+            "verify https://virtuallist.svelte.page/Compare (capital C) resolves and isn't splitting signal with /compare"
         ]
     }
 }

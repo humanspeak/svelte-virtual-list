@@ -129,8 +129,9 @@ export const competitors: Competitor[] = [
         name: 'svelte-tiny-virtual-list',
         tagline:
             'svelte-tiny-virtual-list is older, tiny, and flexible. Svelte Virtual List is built around Svelte 5 ergonomics.',
+        seoTitle: 'svelte-tiny-virtual-list Alternative for Svelte 5',
         description:
-            'svelte-tiny-virtual-list is a dependency-free virtual list inspired by react-tiny-virtual-list. It supports fixed or variable item sizes, horizontal lists, scroll-to-index props, header and footer snippets, and a recomputeSizes method. @humanspeak/svelte-virtual-list targets Svelte 5 directly with snippets, dynamic measurement, SSR, and a smaller set of modern list-feed primitives.',
+            'Compare svelte-tiny-virtual-list and @humanspeak/svelte-virtual-list for Svelte 5: sizing, dynamic heights, horizontal lists, scrolling, and infinite loading.',
         website: 'https://github.com/jonasgeiler/svelte-tiny-virtual-list#readme',
         github: 'https://github.com/jonasgeiler/svelte-tiny-virtual-list',
         npm: 'svelte-tiny-virtual-list',

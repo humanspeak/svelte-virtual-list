@@ -6,8 +6,51 @@ test('home page has expected h1', async ({ page }) => {
     await expect(page.locator('h1')).toBeVisible()
 })
 
+test('install intent page exposes package metadata and onboarding links', async ({ page }) => {
+    await page.goto('/docs/install')
+
+    await expect(page).toHaveTitle('Svelte Virtual List npm Package — Install for Svelte 5')
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+        'content',
+        'Install @humanspeak/svelte-virtual-list for Svelte 5. Copy the npm command, see requirements, and render your first virtual list in minutes.'
+    )
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'https://virtuallist.svelte.page/docs/install'
+    )
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Install Svelte Virtual List')
+    const npmCommand = page
+        .getByRole('main')
+        .locator('pre')
+        .filter({ hasText: 'npm install @humanspeak/svelte-virtual-list' })
+        .first()
+    await expect(npmCommand).toBeVisible()
+    await expect(npmCommand).toContainText('npm install @humanspeak/svelte-virtual-list')
+
+    await page.goto('/docs')
+    await expect(page.getByRole('link', { name: /install/i }).first()).toHaveAttribute(
+        'href',
+        '/docs/install'
+    )
+})
+
 test('examples index links to the horizontal responsive demo', async ({ page }) => {
     await page.goto('/examples')
+
+    await expect(page).toHaveTitle('Svelte Virtual List Examples — Svelte 5 Demos')
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+        'content',
+        'Explore Svelte 5 virtual list examples for 10,000 items, variable heights, infinite scroll, horizontal lists, and programmatic scrolling.'
+    )
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'https://virtuallist.svelte.page/examples'
+    )
+    await expect(
+        page.getByRole('heading', { level: 1, name: /Svelte Virtual List Examples/i })
+    ).toHaveCount(1)
+
     const link = page.getByRole('link', { name: /horizontal/i })
     await expect(link).toHaveAttribute('href', '/examples/horizontal')
     await link.click()
@@ -44,6 +87,28 @@ test('props API documents keyed and axis-neutral list configuration', async ({ p
 
 test('svelte-tiny comparison reflects its Svelte 5 snippet API', async ({ page }) => {
     await page.goto('/compare/svelte-tiny-virtual-list')
+
+    await expect(page).toHaveTitle('svelte-tiny-virtual-list Alternative for Svelte 5')
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+        'content',
+        'Compare svelte-tiny-virtual-list and @humanspeak/svelte-virtual-list for Svelte 5: sizing, dynamic heights, horizontal lists, scrolling, and infinite loading.'
+    )
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list'
+    )
+    const competitorHeading = page.getByRole('heading', {
+        level: 1,
+        name: /svelte-tiny-virtual-list/i
+    })
+    await expect(competitorHeading).toHaveCount(1)
+    await expect(page.getByRole('link', { name: /install/i }).first()).toHaveAttribute(
+        'href',
+        '/docs/install'
+    )
+    await expect(
+        page.getByRole('main').getByRole('link', { name: 'examples', exact: true })
+    ).toHaveAttribute('href', '/examples')
 
     const snippetsRow = page.getByRole('row').filter({ hasText: 'Svelte 5 snippets' })
     const snippetsCells = snippetsRow.getByRole('cell')

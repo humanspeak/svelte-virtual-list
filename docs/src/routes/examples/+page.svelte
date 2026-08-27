@@ -1,5 +1,19 @@
 <script lang="ts">
-    import { BrutIndexV2 } from '@humanspeak/docs-kit'
+    import { BrutIndexV2, getSeoContext } from '@humanspeak/docs-kit'
+
+    const title = 'Svelte Virtual List Examples — Svelte 5 Demos'
+    const description =
+        'Explore Svelte 5 virtual list examples for 10,000 items, variable heights, infinite scroll, horizontal lists, and programmatic scrolling.'
+
+    const seo = getSeoContext()
+    if (seo) {
+        seo.title = title
+        seo.description = description
+        seo.ogTitle = 'Svelte Virtual List Examples'
+        seo.ogTagline = 'Interactive Svelte 5 demos for common virtual list patterns.'
+        seo.ogFeatures = ['10,000 Items', 'Variable Heights', 'Infinite Scroll', 'Horizontal Lists']
+        seo.ogSlug = 'examples'
+    }
 
     const hero = {
         figLabel: 'FIG-001 · EXAMPLES',
@@ -15,9 +29,9 @@
         ],
         metaFooter: '// pick a sheet',
         kicker: '// examples / virtual list patterns',
-        title: { prefix: 'live ', accent: 'examples', end: '.' },
+        title: { prefix: '', accent: 'Svelte Virtual List Examples', end: '.' },
         subHtml:
-            'Interactive demos for fixed rows, horizontal orientation, dynamic measurement, infinite loading, and imperative scrolling. Each page includes the exact source behind the preview.',
+            'Explore Svelte 5 virtual list examples for 10,000 items, variable heights, infinite scroll, horizontal lists, and programmatic scrolling. Each page includes the exact source behind the preview.',
         ctas: [
             { label: 'basic list ↗', href: '/examples/basic-list', primary: true },
             { label: 'docs', href: '/docs' },
