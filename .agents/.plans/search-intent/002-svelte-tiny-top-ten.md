@@ -4,7 +4,10 @@
 > condition. Update `.agents/.plans/search-intent/README.md` when complete.
 >
 > **Drift check (run first)**:
-> `git diff --stat be42bba..HEAD -- docs/src/lib/compare-data.ts docs/src/routes/compare docs/e2e/demo.test.ts`
+> `git diff --stat a4c51b9..HEAD -- docs/src/lib/compare-data.ts docs/src/routes/compare docs/e2e/demo.test.ts`
+>
+> Revision 2026-08-27: re-baselined after Plan 001 passed and added the shared
+> install-intent E2E coverage plus the canonical `/install` destination.
 
 ## Status
 
@@ -13,7 +16,7 @@
 - **Risk**: LOW
 - **Depends on**: `001-npm-install-intent.md`
 - **Category**: direction
-- **Planned at**: commit `be42bba`, 2026-08-27
+- **Planned at**: commit `a4c51b9`, 2026-08-27
 
 ## Why this matters
 
