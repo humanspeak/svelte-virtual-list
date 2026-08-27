@@ -8,7 +8,7 @@ each plan fully, honor its STOP conditions, and update the status row when done.
 | Plan | Title                                            | Priority | Effort | Depends on | Status |
 | ---- | ------------------------------------------------ | -------- | ------ | ---------- | ------ |
 | 001  | Capture npm install intent                       | P1       | M      | —          | DONE   |
-| 002  | Move the svelte-tiny comparison into the top ten | P1       | S      | 001        | TODO   |
+| 002  | Move the svelte-tiny comparison into the top ten | P1       | S      | 001        | DONE   |
 | 003  | Improve `/examples` CTR and contextual links     | P1       | S      | 001        | TODO   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
