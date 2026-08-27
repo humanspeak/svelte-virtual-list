@@ -4,10 +4,15 @@
 > condition. Update `.agents/.plans/search-intent/README.md` when complete.
 >
 > **Drift check (run first)**:
-> `git diff --stat a4c51b9..HEAD -- docs/src/routes/examples/+page.svelte docs/src/routes/compare docs/src/lib/compare-data.ts docs/e2e/demo.test.ts`
+> `git diff --stat 0ec6f50..HEAD -- docs/src/routes/examples/+page.svelte docs/src/routes/compare docs/src/lib/compare-data.ts docs/e2e/demo.test.ts`
 >
 > Revision 2026-08-27: re-baselined after Plan 001 passed and added the shared
 > install-intent E2E coverage plus the canonical `/install` destination.
+>
+> Revision 2026-08-27: re-baselined after Plan 002 and resolved the contextual
+> link conditional. Installed docs-kit exposes only the existing hard-coded
+> `examples` CTA, not a typed descriptive-link slot. Preserve that CTA; do not
+> add duplicate custom markup or a descriptive-anchor assertion in this plan.
 
 ## Status
 
@@ -16,7 +21,7 @@
 - **Risk**: LOW
 - **Depends on**: `001-npm-install-intent.md`
 - **Category**: direction
-- **Planned at**: commit `a4c51b9`, 2026-08-27
+- **Planned at**: commit `0ec6f50`, 2026-08-27
 
 ## Why this matters
 
@@ -81,11 +86,10 @@ Suggested branch `advisor/003-examples-ctr-links`; conventional commit
 
 Extend the existing examples-index E2E test to assert the exact target title,
 description, self-canonical, and an accessible H1 containing
-`Svelte Virtual List Examples`. Add an assertion that at least the svelte-tiny
-comparison exposes a descriptive crawlable anchor to `/examples` (anchor accessible
-name must contain `Svelte virtual list examples`, case-insensitive).
+`Svelte Virtual List Examples`. Retain the existing comparison-page `/examples`
+CTA coverage; do not add the now-resolved descriptive-anchor assertion.
 
-**Verify**: focused E2E → FAILS on metadata, H1, and descriptive anchor. If not, STOP.
+**Verify**: focused E2E → FAILS on metadata and H1. If not, STOP.
 
 ### Step 2: Set route-specific metadata and clarify the H1
 
@@ -99,19 +103,13 @@ opening paragraph naturally mentions the concrete scenarios in the description.
 
 ### Step 3: Add contextual links without duplicate boilerplate
 
-Inspect the live docs-kit component API after Plan 001. If it supports a typed
-resource slot/CTA with custom labels, add a shared comparison-page link named
-`Svelte virtual list examples` to `/examples`, ideally near the verdict/next-step
-area. If the only available API remains `examplesHref` with a hard-coded generic
-label, do not add duplicate custom markup: record this sub-step as blocked-by-upstream
-and retain the already-present masthead link. Do not edit `node_modules`.
+The installed docs-kit API limitation is confirmed. Retain the existing generic
+comparison masthead link to `/examples`; do not add duplicate markup, edit docs-kit,
+or add a descriptive-anchor assertion. Record this as an intentionally deferred
+upstream enhancement in the guard report, not as a blocker for this plan.
 
-Where per-competitor destinations add value, link to the closest demo (for example,
-the variable-height or horizontal demo) rather than always linking to the index, but
-keep at least one descriptive anchor to `/examples` for the asserted hub signal.
-
-**Verify**: focused E2E passes, or the descriptive-anchor assertion is explicitly
-removed with a batch README BLOCKED note explaining the docs-kit API limitation.
+**Verify**: the existing svelte-tiny comparison E2E still passes and its generic
+`/examples` CTA remains present in rendered output.
 
 ### Step 4: Run SSR and full gates
 
