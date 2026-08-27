@@ -34,6 +34,20 @@ test('install intent page exposes package metadata and onboarding links', async 
 
 test('examples index links to the horizontal responsive demo', async ({ page }) => {
     await page.goto('/examples')
+
+    await expect(page).toHaveTitle('Svelte Virtual List Examples — Svelte 5 Demos')
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+        'content',
+        'Explore Svelte 5 virtual list examples for 10,000 items, variable heights, infinite scroll, horizontal lists, and programmatic scrolling.'
+    )
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'https://virtuallist.svelte.page/examples'
+    )
+    await expect(
+        page.getByRole('heading', { level: 1, name: /Svelte Virtual List Examples/i })
+    ).toHaveCount(1)
+
     const link = page.getByRole('link', { name: /horizontal/i })
     await expect(link).toHaveAttribute('href', '/examples/horizontal')
     await link.click()
@@ -89,6 +103,9 @@ test('svelte-tiny comparison reflects its Svelte 5 snippet API', async ({ page }
         'href',
         '/install'
     )
+    await expect(
+        page.getByRole('main').getByRole('link', { name: 'examples', exact: true })
+    ).toHaveAttribute('href', '/examples')
 
     const snippetsRow = page.getByRole('row').filter({ hasText: 'Svelte 5 snippets' })
     const snippetsCells = snippetsRow.getByRole('cell')
