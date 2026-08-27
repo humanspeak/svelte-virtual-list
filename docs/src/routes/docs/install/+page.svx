@@ -1,0 +1,56 @@
+---
+title: "Svelte Virtual List npm Package — Install for Svelte 5"
+description: "Install @humanspeak/svelte-virtual-list for Svelte 5. Copy the npm command, see requirements, and render your first virtual list in minutes."
+---
+
+<script>
+  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+
+  const seo = getSeoContext()
+  if (seo) {
+    seo.title = 'Svelte Virtual List npm Package — Install for Svelte 5'
+    seo.description = 'Install @humanspeak/svelte-virtual-list for Svelte 5. Copy the npm command, see requirements, and render your first virtual list in minutes.'
+    seo.ogTitle = 'Install Svelte Virtual List'
+    seo.ogTagline = 'Add a dependency-free virtual list to a Svelte 5 project.'
+    seo.ogFeatures = ['Svelte 5', 'Zero Runtime Dependencies', 'TypeScript', 'SSR Ready']
+    seo.ogSlug = 'docs-install'
+  }
+</script>
+
+# Install Svelte Virtual List
+
+Install **@humanspeak/svelte-virtual-list** in a Svelte 5 project:
+
+```bash
+npm install @humanspeak/svelte-virtual-list
+```
+
+The package has zero runtime dependencies, includes TypeScript definitions, and supports SvelteKit SSR.
+
+## Other package managers
+
+```bash
+# pnpm
+pnpm add @humanspeak/svelte-virtual-list
+
+# yarn
+yarn add @humanspeak/svelte-virtual-list
+```
+
+## Render your first virtual list
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    const items = Array.from({ length: 10_000 }, (_, id) => ({ id }))
+</script>
+
+<VirtualList {items}>
+    {#snippet renderItem(item)}
+        <div>Item {item.id}</div>
+    {/snippet}
+</VirtualList>
+```
+
+Next, open the [basic list example](/examples/basic-list) or continue to the [props reference](/docs/api/props).

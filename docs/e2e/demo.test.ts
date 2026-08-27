@@ -7,7 +7,7 @@ test('home page has expected h1', async ({ page }) => {
 })
 
 test('install intent page exposes package metadata and onboarding links', async ({ page }) => {
-    await page.goto('/install')
+    await page.goto('/docs/install')
 
     await expect(page).toHaveTitle('Svelte Virtual List npm Package — Install for Svelte 5')
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
@@ -16,19 +16,22 @@ test('install intent page exposes package metadata and onboarding links', async 
     )
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
         'href',
-        'https://virtuallist.svelte.page/install'
+        'https://virtuallist.svelte.page/docs/install'
     )
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Install Svelte Virtual List')
-    const installHero = page.locator('main section').first()
-    await expect(
-        installHero.getByText('npm install @humanspeak/svelte-virtual-list', { exact: true })
-    ).toBeVisible()
+    const npmCommand = page
+        .getByRole('main')
+        .locator('pre')
+        .filter({ hasText: 'npm install @humanspeak/svelte-virtual-list' })
+        .first()
+    await expect(npmCommand).toBeVisible()
+    await expect(npmCommand).toContainText('npm install @humanspeak/svelte-virtual-list')
 
     await page.goto('/docs')
     await expect(page.getByRole('link', { name: /install/i }).first()).toHaveAttribute(
         'href',
-        '/install'
+        '/docs/install'
     )
 })
 
@@ -101,7 +104,7 @@ test('svelte-tiny comparison reflects its Svelte 5 snippet API', async ({ page }
     await expect(competitorHeading).toHaveCount(1)
     await expect(page.getByRole('link', { name: /install/i }).first()).toHaveAttribute(
         'href',
-        '/install'
+        '/docs/install'
     )
     await expect(
         page.getByRole('main').getByRole('link', { name: 'examples', exact: true })
