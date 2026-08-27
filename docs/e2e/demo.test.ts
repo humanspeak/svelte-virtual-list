@@ -71,6 +71,25 @@ test('props API documents keyed and axis-neutral list configuration', async ({ p
 test('svelte-tiny comparison reflects its Svelte 5 snippet API', async ({ page }) => {
     await page.goto('/compare/svelte-tiny-virtual-list')
 
+    await expect(page).toHaveTitle('svelte-tiny-virtual-list Alternative for Svelte 5')
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+        'content',
+        'Compare svelte-tiny-virtual-list and @humanspeak/svelte-virtual-list for Svelte 5: sizing, dynamic heights, horizontal lists, scrolling, and infinite loading.'
+    )
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list'
+    )
+    const competitorHeading = page.getByRole('heading', {
+        level: 1,
+        name: /svelte-tiny-virtual-list/i
+    })
+    await expect(competitorHeading).toHaveCount(1)
+    await expect(page.getByRole('link', { name: /install/i }).first()).toHaveAttribute(
+        'href',
+        '/install'
+    )
+
     const snippetsRow = page.getByRole('row').filter({ hasText: 'Svelte 5 snippets' })
     const snippetsCells = snippetsRow.getByRole('cell')
     await expect(snippetsCells).toHaveCount(3)
