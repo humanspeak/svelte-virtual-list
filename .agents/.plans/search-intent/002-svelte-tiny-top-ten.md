@@ -8,6 +8,10 @@
 >
 > Revision 2026-08-27: re-baselined after Plan 001 passed and added the shared
 > install-intent E2E coverage plus the canonical `/install` destination.
+>
+> Revision 2026-08-27: added `docs/src/routes/compare/[slug]/+page.svelte` to
+> scope after execution proved it is the consumer-owned file that configures
+> the existing ComparisonPageV2 CTA. Editing docs-kit remains out of scope.
 
 ## Status
 
@@ -56,7 +60,8 @@ page as the competitor's official site.
 
 ## Scope
 
-**In scope**: `docs/src/lib/compare-data.ts`, `docs/e2e/demo.test.ts`.
+**In scope**: `docs/src/lib/compare-data.ts`,
+`docs/src/routes/compare/[slug]/+page.svelte`, and `docs/e2e/demo.test.ts`.
 
 **Out of scope**: other competitor facts, comparison component layout, docs-kit,
 redirects, backlinks, paid promotion, or changing claims without primary-source
