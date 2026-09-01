@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
     unit-tests:
-        runs-on: blacksmith-2vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
+        runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
             - name: Checkout
@@ -84,7 +84,7 @@ jobs:
 
     e2e-tests:
         needs: unit-tests
-        runs-on: blacksmith-4vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
+        runs-on: ubuntu-latest
         timeout-minutes: 25
         strategy:
             fail-fast: false

@@ -50,7 +50,7 @@ on:
 jobs:
     # Quick validation
     validate:
-        runs-on: blacksmith-2vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
+        runs-on: ubuntu-latest
         steps:
             - name: Checkout
               uses: actions/checkout@v7 # zizmor: ignore[unpinned-uses]
@@ -80,7 +80,7 @@ jobs:
     # Prerelease publishing
     publish-prerelease:
         needs: validate
-        runs-on: blacksmith-2vcpu-ubuntu-2404 # trunk-ignore(actionlint/runner-label)
+        runs-on: ubuntu-latest
         permissions:
             contents: write
             packages: write
