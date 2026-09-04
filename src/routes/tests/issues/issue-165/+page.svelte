@@ -148,7 +148,9 @@
             <strong>How it's measured:</strong> the first probe scrolls to item {CENTER_INDEX} with center
             alignment and compares its rendered center with the viewport center. The second probe calls
             <code>scrollToOffset</code>
-            with {RESTORE_OFFSET_PX}px and reads the viewport's actual <code>scrollTop</code>.
+            with {RESTORE_OFFSET_PX}px and reads the viewport's actual <code>scrollTop</code>. The
+            viewport deliberately has <code>scroll-behavior: smooth</code>; both calls disable
+            smooth scrolling and must override that page-level CSS.
         </p>
         <p>
             <strong>Timing:</strong> the probes run automatically {PROBE_DELAY_MS}ms after load (and
@@ -329,6 +331,10 @@
     .test-container {
         width: 100%;
         background: #ffc2c2;
+    }
+
+    :global([data-testid='issue-165-list-viewport']) {
+        scroll-behavior: smooth;
     }
 
     .fixed-item {

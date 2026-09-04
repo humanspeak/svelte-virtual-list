@@ -1083,7 +1083,9 @@
         // scrollTop write would cancel the smooth scroll mid-flight.
         programmaticScrollDepth++
 
-        axis.scrollTo(heightManager.viewport, scrollTarget, smoothScroll ? 'smooth' : 'auto')
+        // `auto` follows the viewport's computed `scroll-behavior`; use
+        // `instant` so smoothScroll: false cannot be overridden by page CSS.
+        axis.scrollTo(heightManager.viewport, scrollTarget, smoothScroll ? 'smooth' : 'instant')
 
         // Update scrollTop state in next frame to avoid synchronous re-renders
         requestAnimationFrame(() => {
