@@ -36,7 +36,14 @@ const verticalAxis: AxisAdapter = {
     orientation: 'vertical',
     getScrollOffset: (element) => element.scrollTop,
     setScrollOffset: (element, offset) => {
-        element.scrollTop = offset
+        // `scrollTop = offset` uses CSSOM's "auto" behavior, which can inherit
+        // `scroll-behavior: smooth` from consumer CSS. Internal position
+        // corrections must always land synchronously when scrollTo is available.
+        if (typeof element.scrollTo === 'function') {
+            element.scrollTo({ top: offset, behavior: 'instant' })
+        } else {
+            element.scrollTop = offset
+        }
     },
     getViewportSize: (element) => element.clientHeight,
     getScrollSize: (element) => element.scrollHeight,
@@ -53,7 +60,11 @@ const horizontalAxis: AxisAdapter = {
     orientation: 'horizontal',
     getScrollOffset: (element) => element.scrollLeft,
     setScrollOffset: (element, offset) => {
-        element.scrollLeft = offset
+        if (typeof element.scrollTo === 'function') {
+            element.scrollTo({ left: offset, behavior: 'instant' })
+        } else {
+            element.scrollLeft = offset
+        }
     },
     getViewportSize: (element) => element.clientWidth,
     getScrollSize: (element) => element.scrollWidth,

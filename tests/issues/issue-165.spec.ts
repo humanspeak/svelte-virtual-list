@@ -7,10 +7,13 @@ import { readStats, stat } from '../../src/lib/test/utils/statsLine.js'
  * Before the fix, align: 'center' fell through the scroll-target calculation
  * and returned null, silently leaving the list in place. The fixture scrolls
  * to item 500, reports the absolute delta between its center and the viewport
- * center, then restores a raw 12345px position through scrollToOffset. It also
- * records how long the warning-red backdrop (unrendered viewport area) stayed
- * visible across both jumps, so a regression that leaves the viewport blank
- * after a programmatic jump fails here instead of being eyeballed.
+ * center, then restores a raw 12345px position through scrollToOffset. The
+ * viewport has CSS smooth scrolling enabled while both API calls explicitly
+ * disable it, proving page-level CSS cannot turn an intended jump into an
+ * animation. It also records how long the warning-red backdrop (unrendered
+ * viewport area) stayed visible across both jumps, so a regression that leaves
+ * the viewport blank after a programmatic jump fails here instead of being
+ * eyeballed.
  */
 test.describe('Issue 165 - center-aligned programmatic scrolling', () => {
     test.beforeEach(async ({ page }) => {

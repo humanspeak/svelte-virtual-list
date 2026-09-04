@@ -30,7 +30,7 @@ describe('axis adapter', () => {
         expect(axis.isScrollKey('ArrowRight')).toBe(false)
 
         axis.setScrollOffset(element, 55)
-        expect(element.scrollTop).toBe(55)
+        expect(element.scrollTo).toHaveBeenCalledWith({ top: 55, behavior: 'instant' })
         axis.scrollTo(element, 80, 'smooth')
         expect(element.scrollTo).toHaveBeenCalledWith({ top: 80, behavior: 'smooth' })
     })
@@ -52,8 +52,8 @@ describe('axis adapter', () => {
         expect(axis.isScrollKey('ArrowDown')).toBe(false)
 
         axis.setScrollOffset(element, 55)
-        expect(element.scrollLeft).toBe(55)
-        axis.scrollTo(element, 80, 'auto')
-        expect(element.scrollTo).toHaveBeenCalledWith({ left: 80, behavior: 'auto' })
+        expect(element.scrollTo).toHaveBeenCalledWith({ left: 55, behavior: 'instant' })
+        axis.scrollTo(element, 80, 'instant')
+        expect(element.scrollTo).toHaveBeenCalledWith({ left: 80, behavior: 'instant' })
     })
 })

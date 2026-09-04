@@ -1,22 +1,211 @@
 {
     "project": "@humanspeak/svelte-virtual-list",
     "category": "Svelte 5 virtual list / list virtualization component",
-
     "self_npm": "@humanspeak/svelte-virtual-list",
     "self_repo": "humanspeak/svelte-virtual-list",
-
     "ahrefs_project_id": 8934905,
     "seo": {
         "enabled": true,
         "gsc_dir": ".competitive-intel/gsc",
-        "gsc_staleness_days": 30
+        "gsc_staleness_days": 30,
+        "tracked_keywords": [
+            {
+                "keyword": "npm svelte-virtual package",
+                "volume": 60,
+                "kd": 6,
+                "position": null,
+                "url": null,
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte infinite scroll",
+                "volume": 10,
+                "kd": 1,
+                "position": 25,
+                "url": "https://virtuallist.svelte.page/",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte virtual list",
+                "volume": 10,
+                "kd": 2,
+                "position": 13,
+                "url": "https://virtuallist.svelte.page/",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "@sveltejs/svelte-virtual-list alternative",
+                "volume": 0,
+                "kd": 1,
+                "position": 5,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "@tanstack/svelte-virtual vs svelte virtual list",
+                "volume": 0,
+                "kd": 0,
+                "position": 7,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "modern svelte virtual list",
+                "volume": 0,
+                "kd": 4,
+                "position": 17,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte 5 horizontal virtual list",
+                "volume": 0,
+                "kd": 2,
+                "position": 5,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte 5 virtual list",
+                "volume": 0,
+                "kd": 4,
+                "position": 8,
+                "url": "https://virtuallist.svelte.page/",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte virtua compare",
+                "volume": 0,
+                "kd": 8,
+                "position": 6,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte virtual list comparison",
+                "volume": 0,
+                "kd": 3,
+                "position": 4,
+                "url": "https://virtuallist.svelte.page/",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte virtual scroll",
+                "volume": 0,
+                "kd": 3,
+                "position": null,
+                "url": null,
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte-tiny-virtual-list",
+                "volume": 0,
+                "kd": 0,
+                "position": 7,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte-tiny-virtual-list alternative",
+                "volume": 0,
+                "kd": 0,
+                "position": 7,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte-tiny-virtual-list vs svelte virtual list",
+                "volume": 0,
+                "kd": 0,
+                "position": 7,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte-virtual",
+                "volume": 0,
+                "kd": 4,
+                "position": 28,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte-virtuallists alternative",
+                "volume": 0,
+                "kd": 2,
+                "position": 9,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "svelte-virtuallists comparison",
+                "volume": 0,
+                "kd": 2,
+                "position": 3,
+                "url": "https://virtuallist.svelte.page/compare/svelte-virtuallists",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "sveltejs virtual list replacement",
+                "volume": 0,
+                "kd": 2,
+                "position": 5,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "tanstack virtual svelte alternative",
+                "volume": 0,
+                "kd": 2,
+                "position": 12,
+                "url": "https://virtuallist.svelte.page/",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "virtua svelte alternative",
+                "volume": 0,
+                "kd": 0,
+                "position": 13,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            },
+            {
+                "keyword": "virtua vs svelte virtual list",
+                "volume": 0,
+                "kd": 1,
+                "position": 5,
+                "url": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
+                "location": "United States",
+                "language": "en"
+            }
+        ],
+        "_tracked_keywords_comment": "Exported from Ahrefs Rank Tracker project 8934905 on 2026-09-03 before cancelling the subscription. volume/kd/position are a point-in-time snapshot — kd especially is not reproducible from free sources. This is the curated target list; GSC now supplies ongoing position/impression movement."
     },
     "github_handle": "jaysin586",
     "repo_triage": {
         "enabled": true,
         "_comment": "Open PRs/issues not opened by jaysin586, plus threads awaiting reply. Uses self_repo."
     },
-
     "self_features": [
         "Svelte 5-native component API with snippets and TypeScript generics",
         "Dynamic height measurement without requiring a size map up front",
@@ -28,20 +217,29 @@
         "Zero runtime dependencies, MIT licensed",
         "DOM recycling for large datasets"
     ],
-
     "non_goals": [
         "Grid / masonry / 2-D virtualization (focused on one-dimensional lists)",
         "RTL horizontal mode (horizontal is LTR-only in the current release)",
         "Svelte 3/4 support (requires Svelte 5)"
     ],
-
     "competitors": [
-        { "npm": "@tanstack/svelte-virtual", "repo": "TanStack/virtual" },
-        { "npm": "svelte-tiny-virtual-list", "repo": "jonasgeiler/svelte-tiny-virtual-list" },
-        { "npm": "svelte-virtuallists", "repo": "orefalo/svelte-virtuallists" },
-        { "npm": "@sveltejs/svelte-virtual-list", "repo": "sveltejs/svelte-virtual-list" }
+        {
+            "npm": "@tanstack/svelte-virtual",
+            "repo": "TanStack/virtual"
+        },
+        {
+            "npm": "svelte-tiny-virtual-list",
+            "repo": "jonasgeiler/svelte-tiny-virtual-list"
+        },
+        {
+            "npm": "svelte-virtuallists",
+            "repo": "orefalo/svelte-virtuallists"
+        },
+        {
+            "npm": "@sveltejs/svelte-virtual-list",
+            "repo": "sveltejs/svelte-virtual-list"
+        }
     ],
-
     "watchlist": [
         {
             "npm": "virtua",
@@ -49,13 +247,11 @@
             "note": "cross-framework virtualizer (React/Vue/Solid/Svelte); strong momentum; Svelte support worth watching"
         }
     ],
-
     "compare_data_paths": ["docs/src/lib/compare-data.ts"],
     "page_validation": {
         "download_tolerance": 0.3,
         "_comment": "compare-data.ts drives the /compare 'vs' pages (5 competitors). Validator checks svelte_peer for framework claims, hardcoded download/star figures, dormant/active framing, and them: feature cells on version bumps."
     },
-
     "slack_channel": "C0BP5BF1UTX",
     "_slack_channel_comment": "#claude-reports (human-speak). Delivery uses the shared webhook in ~/.config/competitive-intel/common.env; this ID is for reference / interactive MCP posting."
 }
