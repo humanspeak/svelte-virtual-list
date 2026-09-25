@@ -8,11 +8,7 @@ minimumReleaseAge: 2880
 minimumReleaseAgeExclude:
     - '@humanspeak/*'
 allowBuilds:
-    # pnpm 11.9 matches git-hosted deps by name@resolved-url (pnpm#10522) — a
-    # plain package-name key does NOT match. This key embeds the resolved
-    # commit of docs-kit#<tag>, so it must be refreshed whenever the docs-kit
-    # tag in docs/package.json bumps (pnpm approve-builds will prompt).
-    '@humanspeak/docs-kit@https://codeload.github.com/humanspeak/docs-kit/tar.gz/7f9018cb91c5497c7ebd2bfca2c28aab9e1116ae': true
+    '@humanspeak/docs-kit@git+https://github.com/humanspeak/docs-kit.git': true
     '@sentry/cli': true
     esbuild: true
     sharp: true
