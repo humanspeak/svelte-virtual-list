@@ -24,5 +24,7 @@
     sitemapManifest={sitemapManifest as Record<string, string>}
 >
     {@render children()}
-    <PagerV2 items={docsPagerItems} counterLabel="doc" />
+    {#snippet pager()}
+        <PagerV2 items={docsPagerItems} counterLabel="doc" ariaLabel="Docs pagination" />
+    {/snippet}
 </DocsLayoutV2>
