@@ -156,4 +156,4 @@ export const docsSections: NavSection[] = [
 export const docsPagerItems: PagerItem[] = docsSections
     .flatMap((section) => section.items)
     .filter((item) => item.href.startsWith('/docs'))
-    .map((item) => ({ href: item.href, label: `${item.title.toLowerCase()}.` }))
+    .map((item) => ({ href: item.href, label: `${item.title}.` }))
