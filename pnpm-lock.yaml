@@ -139,8 +139,8 @@ importers:
         specifier: ^5.3.0
         version: 5.3.0
       '@humanspeak/docs-kit':
-        specifier: github:humanspeak/docs-kit#2026.9.8
-        version: https://codeload.github.com/humanspeak/docs-kit/tar.gz/47475084e800eba2b8eaf5d783b1b9bdf3f65278(@humanspeak/svelte-markdown@1.8.7(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@humanspeak/svelte-motion@0.9.3(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@internationalized/date@3.12.3)(@lucide/svelte@1.33.0(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.56.10(@typescript-eslint/types@8.67.0))(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)))(svelte@5.56.10(@typescript-eslint/types@8.67.0))(typescript@6.0.3)(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)))(mode-watcher@1.1.0(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0))(zod@4.4.3)
+        specifier: github:humanspeak/docs-kit#2026.9.10
+        version: https://codeload.github.com/humanspeak/docs-kit/tar.gz/9650ea563bc94ed534543644d5a46c5ab540b62f(@humanspeak/svelte-markdown@1.8.7(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@humanspeak/svelte-motion@0.9.3(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@internationalized/date@3.12.3)(@lucide/svelte@1.33.0(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.56.10(@typescript-eslint/types@8.67.0))(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)))(svelte@5.56.10(@typescript-eslint/types@8.67.0))(typescript@6.0.3)(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)))(mode-watcher@1.1.0(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0))(zod@4.4.3)
       '@humanspeak/svelte-markdown':
         specifier: ^1.8.7
         version: 1.8.7(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0))
@@ -927,8 +927,8 @@ packages:
     resolution: {integrity: sha512-ZZ1w0aoQkwuUuC7Yf+7sdeaNfqQiiLcSRbfI08oAxqLtpXQr9AIVX7Ay7HLDuiLYAaFPu8oBYNq/QIi9URHJ3Q==}
     engines: {node: '>=18.18.0'}
 
-  '@humanspeak/docs-kit@https://codeload.github.com/humanspeak/docs-kit/tar.gz/47475084e800eba2b8eaf5d783b1b9bdf3f65278':
-    resolution: {gitHosted: true, integrity: sha512-tnyFBF+RMr4kUW53WlcE5pJjhtwQ4nbbnNgwAoIxZKFxfUjJRvyGJnfVL5YcSXvPdk4CjJs2gZXerU6xdaEmOw==, tarball: https://codeload.github.com/humanspeak/docs-kit/tar.gz/47475084e800eba2b8eaf5d783b1b9bdf3f65278}
+  '@humanspeak/docs-kit@https://codeload.github.com/humanspeak/docs-kit/tar.gz/9650ea563bc94ed534543644d5a46c5ab540b62f':
+    resolution: {gitHosted: true, integrity: sha512-9e2Cw11KrfEFrxo/jtDMcJ+c4D2s6nMj7MXhLNSvtfddiqhl18BLwyPEmedAV/L3Y/eMxjRE0Sw+7l1PglNCew==, tarball: https://codeload.github.com/humanspeak/docs-kit/tar.gz/9650ea563bc94ed534543644d5a46c5ab540b62f}
     version: 0.0.0
     peerDependencies:
       '@humanspeak/svelte-markdown': '>=1.0.0'
@@ -5021,7 +5021,7 @@ snapshots:
 
   '@humanfs/types@0.15.0': {}
 
-  '@humanspeak/docs-kit@https://codeload.github.com/humanspeak/docs-kit/tar.gz/47475084e800eba2b8eaf5d783b1b9bdf3f65278(@humanspeak/svelte-markdown@1.8.7(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@humanspeak/svelte-motion@0.9.3(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@internationalized/date@3.12.3)(@lucide/svelte@1.33.0(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.56.10(@typescript-eslint/types@8.67.0))(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)))(svelte@5.56.10(@typescript-eslint/types@8.67.0))(typescript@6.0.3)(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)))(mode-watcher@1.1.0(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0))(zod@4.4.3)':
+  '@humanspeak/docs-kit@https://codeload.github.com/humanspeak/docs-kit/tar.gz/9650ea563bc94ed534543644d5a46c5ab540b62f(@humanspeak/svelte-markdown@1.8.7(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@humanspeak/svelte-motion@0.9.3(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@internationalized/date@3.12.3)(@lucide/svelte@1.33.0(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.56.10(@typescript-eslint/types@8.67.0))(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)))(svelte@5.56.10(@typescript-eslint/types@8.67.0))(typescript@6.0.3)(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)))(mode-watcher@1.1.0(svelte@5.56.10(@typescript-eslint/types@8.67.0)))(shiki@4.4.3)(svelte@5.56.10(@typescript-eslint/types@8.67.0))(zod@4.4.3)':
     dependencies:
       '@humanspeak/svelte-motion': 0.9.3(svelte@5.56.10(@typescript-eslint/types@8.67.0))
       '@humanspeak/svelte-satori-fix': 0.0.6(svelte@5.56.10(@typescript-eslint/types@8.67.0))
