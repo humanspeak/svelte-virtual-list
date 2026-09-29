@@ -90,15 +90,17 @@
             "held_by": "virtua (watchlist)",
             "why": "virtua stabilized CacheSnapshot 2026-08-20; we restore scroll by index/offset but not measured sizes, so a deep restore re-measures",
             "worth_doing": "low urgency; only matters for lists restored deep into long dynamic-height datasets"
-        },
+        }
+    ],
+    "closed_gaps": [
         {
             "gap": "end-anchored scroll compensation recovery when the browser clamps the write",
             "held_by": "@tanstack/svelte-virtual (virtual-core 3.17.9, 3.17.10, 3.17.11)",
             "why": "resizeItem writes scrollTop before the new total size is committed; browser clamps to the old scroll max and the bottom pin is lost with no scroll event to correct it. We use the same compensation pattern with dynamic measurement. 3.17.10 (2026-09-11) also keeps an end-pinned list following appends when older items are trimmed in the same update with no count increase, and preserves reading anchors for users scrolled away from the end. 3.17.11 (2026-09-14) skips the prepend anchor scrollTop sync while a smooth programmatic scrollToIndex is in flight (an instant write cancels the smooth animation and Chromium drops a re-issued smooth request), and the debounced scroll-end fallback reads the live scroll offset instead of stale state.",
-            "worth_doing": "yes: fix/smooth-scroll-programmatic so far only carries the CSS smooth-scroll override (issue-165); still add tests for smooth scroll() while items above measure/prepend, bottom-pinned list with growing last item, and append+trim at constant count"
+            "closed_on": "2026-09-29",
+            "resolution": "Covered by tests/other/scroll-compensation.spec.ts (8 probes, chromium+firefox+webkit). Clamped end-pin writes and smooth scroll() during measurement were already handled and are now regression-tested. Keyed mutations were the real gap: reconcileItemKeys never compensated scroll, so a keyed prepend or front trim moved the reading position by the full height of the changed rows (1979-2000px in the fixture) and an end-pinned list stopped following on append+trim (735px). Fixed by anchoring on the item key before the DOM updates."
         }
     ],
-    "closed_gaps": [],
     "compare_validation": {
         "@tanstack/svelte-virtual": {
             "validated_against_version": "3.13.39",
