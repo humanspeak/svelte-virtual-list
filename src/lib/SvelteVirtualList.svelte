@@ -718,22 +718,58 @@
         if (anchor) restoreViewportAnchor(anchor)
     })
 
+    // Where the last load that added no items left the list. Plain `let`,
+    // not $state: it is only read by the effect below, which re-runs on the
+    // isLoadingMore reset that follows every write.
+    let loadStall: { items: TItem[]; length: number; end: number } | null = null
+
     // Infinite scroll: trigger onLoadMore when approaching end of list
     $effect(() => {
-        if (!BROWSER || !onLoadMore || !hasMore || isLoadingMore) return
+        if (!BROWSER || !onLoadMore) return
+        // hasMore going false ends any stall, so toggling it back on is an
+        // explicit retry.
+        if (!hasMore) {
+            loadStall = null
+            return
+        }
+        if (isLoadingMore) return
 
         const range = visibleItems
         // Also covers short lists: with items.length < loadMoreThreshold the
         // right side is negative, so any range.end qualifies and more data
         // loads until the list can fill the viewport.
         const atLoadingEdge = range.end >= items.length - loadMoreThreshold
-
-        if (atLoadingEdge) {
-            isLoadingMore = true
-            Promise.resolve(onLoadMore()).finally(() => {
-                isLoadingMore = false
-            })
+        // Leaving the edge ends a stall: scrolling back to it is a retry.
+        if (!atLoadingEdge) {
+            loadStall = null
+            return
         }
+
+        // A load that added nothing (an empty page, a failed request) leaves
+        // the range where it was, so asking again at once would repeat
+        // forever — a microtask loop that freezes the page for a sync or fast
+        // loader. Wait until the items change or the range moves.
+        const requestedItems = items
+        const requestedLength = items.length
+        if (
+            loadStall &&
+            loadStall.items === requestedItems &&
+            loadStall.length === requestedLength &&
+            loadStall.end === range.end
+        ) {
+            return
+        }
+        loadStall = null
+
+        isLoadingMore = true
+        Promise.resolve(onLoadMore()).finally(() => {
+            // Identity AND length: a reassigned array is new data even at the
+            // same length, and an in-place push keeps the identity.
+            if (items === requestedItems && items.length === requestedLength) {
+                loadStall = { items: requestedItems, length: requestedLength, end: range.end }
+            }
+            isLoadingMore = false
+        })
     })
 
     /**
