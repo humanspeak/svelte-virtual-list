@@ -928,7 +928,7 @@ packages:
     engines: {node: '>=18.18.0'}
 
   '@humanspeak/docs-kit@https://codeload.github.com/humanspeak/docs-kit/tar.gz/9650ea563bc94ed534543644d5a46c5ab540b62f':
-    resolution: {gitHosted: true, integrity: sha512-tnyFBF+RMr4kUW53WlcE5pJjhtwQ4nbbnNgwAoIxZKFxfUjJRvyGJnfVL5YcSXvPdk4CjJs2gZXerU6xdaEmOw==, tarball: https://codeload.github.com/humanspeak/docs-kit/tar.gz/9650ea563bc94ed534543644d5a46c5ab540b62f}
+    resolution: {gitHosted: true, integrity: sha512-9e2Cw11KrfEFrxo/jtDMcJ+c4D2s6nMj7MXhLNSvtfddiqhl18BLwyPEmedAV/L3Y/eMxjRE0Sw+7l1PglNCew==, tarball: https://codeload.github.com/humanspeak/docs-kit/tar.gz/9650ea563bc94ed534543644d5a46c5ab540b62f}
     version: 0.0.0
     peerDependencies:
       '@humanspeak/svelte-markdown': '>=1.0.0'
