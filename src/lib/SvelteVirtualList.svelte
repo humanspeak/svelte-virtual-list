@@ -166,7 +166,8 @@
     import {
         calculateKeyboardScrollTarget,
         calculateScrollTarget,
-        resolveAnchorScrollTarget
+        resolveAnchorScrollTarget,
+        resolveKeyedAnchorIndex
     } from '$lib/utils/scrollCalculation.js'
     import { shouldReassertScrollOffset, waitForScrollEnd } from '$lib/utils/scrollEnd.js'
     import { ReactiveListManager } from '$lib/index.js'
@@ -473,19 +474,15 @@
     // relative to the cache mutation (pre- vs post-correction totals).
     const currentMaxScrollTop = () => Math.max(0, heightManager.totalHeight - (height || 0))
 
-    const captureViewportAnchor = (): ViewportAnchor | null => {
-        if (!heightManager.isReady) return null
-        if (orientationTransitioning) return null
-        if (programmaticScrollDepth > 0) return null
-        // Exactly at the bottom (a few px — where a scroll-to-bottom lands),
-        // corrections must be END-stable: keep the view pinned to the bottom
-        // rather than pinning the top edge. Skipping compensation here is not
-        // an option — an uncompensated at-bottom batch leaves scroll state
-        // inconsistent with the new totals, and the first scroll step away
-        // from the bottom then paints the difference as a jump.
-        if (Math.abs(axis.getScrollOffset(heightManager.viewport) - currentMaxScrollTop()) <= 2) {
-            return { kind: 'bottom' }
-        }
+    const canAnchorViewport = () =>
+        heightManager.isReady && !orientationTransitioning && programmaticScrollDepth === 0
+
+    // Within a few px of the bottom — where a scroll-to-bottom lands.
+    const isPinnedToEnd = () =>
+        Math.abs(axis.getScrollOffset(heightManager.viewport) - currentMaxScrollTop()) <= 2
+
+    /** Index of the first rendered item at or below the viewport's top edge. */
+    const findViewportAnchorIndex = (): number | null => {
         const element = findViewportAnchorElement(
             itemElements,
             axis,
@@ -493,17 +490,67 @@
         )
         if (!element) return null
         const index = parseInt(element.dataset.originalIndex || '-1', 10)
-        if (index < 0) return null
-        return {
-            kind: 'item',
+        return index < 0 ? null : index
+    }
+
+    const cacheOffsetForIndex = (index: number) =>
+        getScrollOffsetForIndex(
+            heightManager.getHeightCache(),
+            heightManager.averageHeight,
             index,
-            oldOffset: getScrollOffsetForIndex(
-                heightManager.getHeightCache(),
-                heightManager.averageHeight,
-                index,
-                heightManager.getBlockSums()
-            )
+            heightManager.getBlockSums()
+        )
+
+    const captureViewportAnchor = (): ViewportAnchor | null => {
+        if (!canAnchorViewport()) return null
+        // Exactly at the bottom, corrections must be END-stable: keep the
+        // view pinned to the bottom rather than pinning the top edge.
+        // Skipping compensation here is not an option — an uncompensated
+        // at-bottom batch leaves scroll state inconsistent with the new
+        // totals, and the first scroll step away from the bottom then paints
+        // the difference as a jump.
+        if (isPinnedToEnd()) return { kind: 'bottom' }
+        const index = findViewportAnchorIndex()
+        if (index === null) return null
+        return { kind: 'item', index, oldOffset: cacheOffsetForIndex(index) }
+    }
+
+    /**
+     * Captures the anchor for a keyed mutation that moves items to new
+     * indexes (prepend, trim, insert, reorder). Must run BEFORE the DOM
+     * re-renders and before the cache is reconciled: the anchor is found in
+     * the pre-mutation DOM, its offset comes from the pre-mutation cache, and
+     * its index is re-targeted at wherever its key lands afterwards — so
+     * {@link restoreViewportAnchor} holds the same ITEM still, not the same
+     * index. When the anchor itself was removed, its surviving neighbour
+     * takes its place (see {@link resolveKeyedAnchorIndex}).
+     *
+     * Edge positions keep their own meaning instead of an item anchor:
+     * - At the start nothing is anchored, so content added above shows
+     *   (the platform's scroll anchoring makes the same exception).
+     * - At the end the view stays pinned to the end, so a list trimmed and
+     *   appended in one update keeps following its newest items. Infinite
+     *   loaders are excluded: their end is a loading edge, and re-pinning to
+     *   it after each page would skip the page and request the next.
+     */
+    const captureKeyedMutationAnchor = (
+        previousKeys: readonly (string | number)[],
+        currentKeys: readonly (string | number)[]
+    ): ViewportAnchor | null => {
+        if (!canAnchorViewport()) return null
+        if (axis.getScrollOffset(heightManager.viewport) <= 0) return null
+        if (!onLoadMore && isPinnedToEnd()) return { kind: 'bottom' }
+        const anchorIndex = findViewportAnchorIndex()
+        if (anchorIndex === null) return null
+        // Plain Map on purpose — see assertUniqueItemKeys.
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient lookup, never observed by Svelte
+        const currentIndexes = new Map<string | number, number>()
+        for (let index = 0; index < currentKeys.length; index += 1) {
+            currentIndexes.set(currentKeys[index]!, index)
         }
+        const index = resolveKeyedAnchorIndex(previousKeys, currentIndexes, anchorIndex)
+        if (index === null) return null
+        return { kind: 'item', index, oldOffset: cacheOffsetForIndex(anchorIndex) }
     }
 
     /**
@@ -593,10 +640,7 @@
     // Keep the manager synchronized with item identity as well as length. A
     // shared prefix is the O(1) append/suffix-removal path; all ambiguous
     // unkeyed mutations discard measurements rather than applying stale sizes.
-    $effect(() => {
-        const currentItems = items
-        const currentKeys = itemIdentities
-
+    const reconcileItems = (currentItems: TItem[], currentKeys: (string | number)[] | null) => {
         if (!hasReconciledItems) {
             heightManager.updateItemLength(currentItems.length)
         } else if (currentKeys && previousKeys) {
@@ -606,7 +650,15 @@
             if (hasIdenticalKeys) {
                 // Measurements and length are already synchronized.
             } else if (isAppendOnly) heightManager.updateItemLength(currentItems.length)
-            else heightManager.reconcileItemKeys(previousKeys, currentKeys)
+            else {
+                const anchor = captureKeyedMutationAnchor(previousKeys, currentKeys)
+                heightManager.reconcileItemKeys(previousKeys, currentKeys)
+                // Offsets moved under the same indexes: the visible-range
+                // memo must not serve the pre-mutation window for a small
+                // compensating scroll delta.
+                lastVisibleRange = null
+                if (anchor) restoreViewportAnchor(anchor)
+            }
         } else if (!currentKeys && !previousKeys) {
             const commonLength = Math.min(previousItems.length, currentItems.length)
             let hasStablePrefix = true
@@ -635,6 +687,17 @@
         previousItems = currentKeys ? [] : currentItems.slice()
         previousKeys = currentKeys
         hasReconciledItems = true
+    }
+
+    // Runs BEFORE the DOM updates: anchors are captured from the rendered
+    // pre-mutation list, and the render that follows derives its window from
+    // the reconciled cache and restored scroll position in one pass — a
+    // post-render effect would first render the new items through the old
+    // cache. Untracked so only the items themselves re-run it.
+    $effect.pre(() => {
+        const currentItems = items
+        const currentKeys = itemIdentities
+        untrack(() => reconcileItems(currentItems, currentKeys))
     })
 
     // Keep the estimate for unmeasured items synchronized with its reactive

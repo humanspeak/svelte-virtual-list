@@ -184,6 +184,31 @@ export const resolveAnchorScrollTarget = (
     return Math.abs(target - scrollTop) < 1 ? null : target
 }
 
+/**
+ * Resolves where a keyed mutation (prepend, trim, insert, reorder) moved the
+ * viewport anchor's slot: the anchor's new index when its key survived, else
+ * the slot its neighbours closed around — the next surviving item takes the
+ * anchor's place, or, when nothing after it survived, the slot just past the
+ * nearest surviving item before it. Returns null when no previous key
+ * survived.
+ */
+export const resolveKeyedAnchorIndex = (
+    previousKeys: readonly (string | number)[],
+    nextIndexes: ReadonlyMap<string | number, number>,
+    anchorIndex: number
+): number | null => {
+    const start = clampValue(Math.floor(anchorIndex), 0, previousKeys.length - 1)
+    for (let index = start; index < previousKeys.length; index += 1) {
+        const nextIndex = nextIndexes.get(previousKeys[index]!)
+        if (nextIndex !== undefined) return nextIndex
+    }
+    for (let index = start - 1; index >= 0; index -= 1) {
+        const nextIndex = nextIndexes.get(previousKeys[index]!)
+        if (nextIndex !== undefined) return nextIndex + 1
+    }
+    return null
+}
+
 export interface ScrollTargetParams {
     align: SvelteVirtualListScrollAlign
     targetIndex: number
