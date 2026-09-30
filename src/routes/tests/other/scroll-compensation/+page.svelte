@@ -82,7 +82,15 @@
     let readRemovedList = $state<SvelteVirtualList<Item>>()
     let loaderList = $state<SvelteVirtualList<Item>>()
 
-    const settle = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+    // Wall-clock time AND a few rendered frames: the component corrects on
+    // animation frames, and an unfocused or occluded window throttles those
+    // (2 fps in an embedded preview), so a timeout alone reads too early.
+    const SETTLE_FRAMES = 4
+    const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()))
+    const settle = async (ms: number) => {
+        await new Promise<void>((r) => setTimeout(r, ms))
+        for (let frame = 0; frame < SETTLE_FRAMES; frame += 1) await nextFrame()
+    }
 
     const viewportOf = (name: string): HTMLElement =>
         document.querySelector(`[data-testid="${name}-viewport"]`) as HTMLElement
