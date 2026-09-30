@@ -718,10 +718,25 @@
         if (anchor) restoreViewportAnchor(anchor)
     })
 
-    // Where the last load that added no items left the list. Plain `let`,
-    // not $state: it is only read by the effect below, which re-runs on the
-    // isLoadingMore reset that follows every write.
-    let loadStall: { items: TItem[]; length: number; end: number } | null = null
+    // What the list held when the last load added nothing, and where the
+    // range ended. Compared by content, not array identity: the documented
+    // loader shape `items = [...items, ...newItems]` returns a NEW array even
+    // for an empty page. Same length plus the same first and last rows means
+    // nothing arrived; a push changes the length, and a trim-and-append at a
+    // constant count changes the last row. Plain `let`, not $state: only the
+    // effect below reads it, and it re-runs on the isLoadingMore reset that
+    // follows every write.
+    type LoadSnapshot = { length: number; first: TItem | undefined; last: TItem | undefined }
+    let loadStall: (LoadSnapshot & { end: number }) | null = null
+
+    const snapshotItems = (list: TItem[]): LoadSnapshot => ({
+        length: list.length,
+        first: list[0],
+        last: list[list.length - 1]
+    })
+
+    const isSameSnapshot = (a: LoadSnapshot, b: LoadSnapshot) =>
+        a.length === b.length && a.first === b.first && a.last === b.last
 
     // Infinite scroll: trigger onLoadMore when approaching end of list
     $effect(() => {
@@ -749,25 +764,16 @@
         // the range where it was, so asking again at once would repeat
         // forever — a microtask loop that freezes the page for a sync or fast
         // loader. Wait until the items change or the range moves.
-        const requestedItems = items
-        const requestedLength = items.length
-        if (
-            loadStall &&
-            loadStall.items === requestedItems &&
-            loadStall.length === requestedLength &&
-            loadStall.end === range.end
-        ) {
+        const requested = snapshotItems(items)
+        if (loadStall && loadStall.end === range.end && isSameSnapshot(loadStall, requested)) {
             return
         }
         loadStall = null
 
         isLoadingMore = true
         Promise.resolve(onLoadMore()).finally(() => {
-            // Identity AND length: a reassigned array is new data even at the
-            // same length, and an in-place push keeps the identity.
-            if (items === requestedItems && items.length === requestedLength) {
-                loadStall = { items: requestedItems, length: requestedLength, end: range.end }
-            }
+            const loaded = snapshotItems(items)
+            if (isSameSnapshot(loaded, requested)) loadStall = { ...loaded, end: range.end }
             isLoadingMore = false
         })
     })

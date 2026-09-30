@@ -15,8 +15,9 @@ import { readStats, stat } from '../../src/lib/test/utils/statsLine.js'
  * the loop at 50 (capped=1). No scrolling happens, so each loader should be
  * called once. List (d) then receives items out of band and must be asked
  * again exactly once; list (e) fails at its end and must retry exactly once
- * when the user scrolls away and back. These specs assert on the fixture's
- * own stats.
+ * when the user scrolls away and back. List (f) uses the docs' loader shape,
+ * `items = [...items, ...newItems]`, which reassigns items even when the
+ * page is empty. These specs assert on the fixture's own stats.
  */
 
 test.describe('onLoadMore stall loop', () => {
@@ -28,7 +29,7 @@ test.describe('onLoadMore stall loop', () => {
         })
     })
 
-    for (const key of ['syncEmpty', 'asyncEmpty', 'rejected'] as const) {
+    for (const key of ['syncEmpty', 'asyncEmpty', 'rejected', 'spreadEmpty'] as const) {
         test(`${key}: a load that adds nothing is not re-requested`, async ({ page }) => {
             const { calls, capped } = await readStats(page, key)
             expect(capped).toBe(0)

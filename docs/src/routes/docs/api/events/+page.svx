@@ -69,7 +69,7 @@ onLoadMore?: () => void | Promise<void>
 
 If a load finishes without adding items — an empty page, or a request that fails — the list does not call `onLoadMore` again straight away. It asks again when:
 
-- `items` changes (for example, data arrives from somewhere else),
+- new items arrive — the list gets longer, or its first or last item changes (for example, data arrives from somewhere else),
 - the user scrolls away from the end of the list and back, or
 - `hasMore` is set to `false` and then back to `true`, which you can use for a retry button.
 

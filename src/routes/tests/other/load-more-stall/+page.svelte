@@ -19,9 +19,17 @@
     const makeItems = (count: number): Item[] => Array.from({ length: count }, (_, id) => ({ id }))
     const settle = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
-    type ProbeKey = 'syncEmpty' | 'asyncEmpty' | 'rejected' | 'recovers' | 'rescroll'
+    type ProbeKey =
+        'syncEmpty' | 'asyncEmpty' | 'rejected' | 'recovers' | 'rescroll' | 'spreadEmpty'
     type Probe = { calls: number; capped: boolean; done: boolean }
-    const probeKeys: ProbeKey[] = ['syncEmpty', 'asyncEmpty', 'rejected', 'recovers', 'rescroll']
+    const probeKeys: ProbeKey[] = [
+        'syncEmpty',
+        'asyncEmpty',
+        'rejected',
+        'recovers',
+        'rescroll',
+        'spreadEmpty'
+    ]
 
     const freshProbes = (): Record<ProbeKey, Probe> =>
         Object.fromEntries(
@@ -34,7 +42,8 @@
         asyncEmpty: true,
         rejected: true,
         recovers: true,
-        rescroll: true
+        rescroll: true,
+        spreadEmpty: true
     })
     let recoversItems = $state.raw(makeItems(START_ITEMS))
     let recoversPhase = $state<'stall' | 'deliver'>('stall')
@@ -43,6 +52,7 @@
     // (e) calls made by scrolling away from the end and back after a stall.
     let callsAfterRescroll = $state<number | null>(null)
     let rescrollList = $state<SvelteVirtualList<Item>>()
+    let spreadItems = $state.raw(makeItems(START_ITEMS))
     let running = $state(false)
     let generation = $state(0)
 
@@ -90,6 +100,16 @@
 
     // (e) A long list whose load at the end fails: scrolling away from the
     // end and back is the user's retry and must ask exactly once more.
+    // (f) The loader shape the docs recommend: always reassign
+    // `items = [...items, ...newItems]`. An empty page still produces a NEW
+    // array of the same length and the same rows.
+    const loadSpreadEmpty = async () => {
+        count('spreadEmpty')
+        await settle(20)
+        const newItems: Item[] = []
+        spreadItems = [...spreadItems, ...newItems]
+    }
+
     const loadRescroll = async () => {
         count('rescroll')
         await settle(20)
@@ -105,11 +125,12 @@
         recoversPhase = 'stall'
         callsAfterItemsArrive = null
         callsAfterRescroll = null
+        spreadItems = makeItems(START_ITEMS)
         generation += 1
 
         // Lists mount and each loader stalls; nothing else happens.
         await settle(OBSERVE_MS)
-        for (const key of ['syncEmpty', 'asyncEmpty', 'rejected'] as const) {
+        for (const key of ['syncEmpty', 'asyncEmpty', 'rejected', 'spreadEmpty'] as const) {
             probes[key].done = true
         }
 
@@ -177,6 +198,11 @@
             key: 'rescroll',
             label: '(e) fails at end, user scrolls back',
             expected: `1× while sitting at the end, then 1× more after leaving and returning`
+        },
+        {
+            key: 'spreadEmpty',
+            label: '(f) docs-style loader, empty page',
+            expected: `items = [...items, ...[]] — a new array with the same rows; called ${EXPECTED_CALLS}× in ${OBSERVE_MS}ms`
         }
     ]
 
@@ -224,7 +250,8 @@
             fixture sets <code>hasMore=false</code> to break the loop (<code>capped=1</code>). No
             scrolling happens, so a working component calls each loader once. List (d) then receives
             items out of band and must be asked for more again. List (e) is long: its load at the
-            end fails, and scrolling away and back must retry exactly once.
+            end fails, and scrolling away and back must retry exactly once. List (f) uses the loader
+            shape the docs recommend, which reassigns <code>items</code> even when the page is empty.
         </p>
     </div>
 
@@ -308,6 +335,18 @@
                         onLoadMore={loadRescroll}
                         hasMore={hasMore.rescroll}
                         testId="lms-rescroll"
+                        renderItem={renderRow}
+                    />
+                </div>
+            </section>
+            <section>
+                <h2>(f) docs-style, empty page</h2>
+                <div class="test-container">
+                    <SvelteVirtualList
+                        items={spreadItems}
+                        onLoadMore={loadSpreadEmpty}
+                        hasMore={hasMore.spreadEmpty}
+                        testId="lms-spread-empty"
                         renderItem={renderRow}
                     />
                 </div>
@@ -430,7 +469,7 @@
 
     .grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 12px;
     }
 
