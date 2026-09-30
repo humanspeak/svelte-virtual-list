@@ -33,6 +33,8 @@ export const competitors: Competitor[] = [
         name: 'TanStack Virtual',
         tagline:
             'TanStack Virtual is a powerful headless virtualizer. Svelte Virtual List is the smaller Svelte-first component.',
+        seoDescription:
+            'TanStack Virtual is a headless virtualizer; Svelte Virtual List is a ready-made Svelte 5 component. Compare setup, row heights, infinite scroll, and grids.',
         description:
             'TanStack Virtual provides headless virtualizer primitives across several frameworks, including Svelte. It is a strong fit when you want to own markup, measurement wiring, and advanced composition. @humanspeak/svelte-virtual-list packages the common Svelte list workflow as a component with snippets, dynamic measurement, infinite loading, and scroll methods built in.',
         website: 'https://tanstack.com/virtual/latest/docs/framework/svelte',
@@ -77,10 +79,62 @@ export const competitors: Competitor[] = [
         ]
     },
     {
+        slug: 'svelte-virtual',
+        name: 'svelte-virtual',
+        tagline:
+            'svelte-virtual renders fixed-size lists and grids. Svelte Virtual List measures rows automatically and supports Svelte 5 in its stable release.',
+        seoTitle: 'svelte-virtual npm Package Alternative for Svelte 5',
+        seoDescription:
+            'The svelte-virtual npm package supports Svelte 5 only in a 2024 prerelease and needs fixed item sizes. Compare it with Svelte Virtual List for Svelte 5.',
+        description:
+            'svelte-virtual provides List and Grid components that render only the visible rows, from an itemCount and a fixed itemSize. Its stable 0.6 release (February 2024) supports Svelte 3 and 4; Svelte 5 support is in the 1.0.0-next prerelease, last published in November 2024. @humanspeak/svelte-virtual-list is a stable Svelte 5 component that measures each row as it renders, loads more data near the end of the list, and scrolls to any index or offset.',
+        website: 'https://www.npmjs.com/package/svelte-virtual',
+        github: 'https://github.com/ghostebony/svelte-virtual',
+        npm: 'svelte-virtual',
+        type: 'Svelte List and Grid Virtualizer',
+        approach: 'Fixed-size List and Grid components driven by itemCount',
+        features: [
+            { name: 'Svelte 5 support', us: 'Stable release', them: 'Prerelease (1.0.0-next)' },
+            { name: 'Dynamic measured heights', us: true, them: 'Fixed itemSize' },
+            { name: 'Grid virtualization', us: false, them: true },
+            { name: 'Horizontal lists', us: 'LTR, runtime switchable', them: true },
+            { name: 'Sticky rows', us: false, them: true },
+            { name: 'Infinite scroll helpers', us: true, them: 'User-land pattern' },
+            { name: 'Programmatic scroll to index', us: true, them: true },
+            { name: 'Runtime dependencies', us: '0', them: '0' }
+        ],
+        prosUs: [
+            ...shared.prosUs,
+            'Rows of different heights need no size data up front',
+            'Svelte 5 support in a stable, maintained release'
+        ],
+        prosThem: [
+            'List and Grid components in one package',
+            'Sticky indices for pinned rows',
+            'Simple itemCount and itemSize API for uniform rows',
+            'Scroll-to-index and scroll-to-position methods'
+        ],
+        consUs: [...shared.consUs],
+        consThem: [
+            'Svelte 5 support is only in a prerelease, last published November 2024',
+            'Every row shares one fixed size; there is no automatic height measurement',
+            'Infinite loading is wired in application code'
+        ],
+        verdict:
+            'Choose svelte-virtual when every row has the same fixed size, or when you need a virtual grid or sticky rows. Choose @humanspeak/svelte-virtual-list for Svelte 5 lists whose rows vary in height, with infinite loading and scroll methods in a stable release.',
+        keywords: [
+            'svelte-virtual alternative',
+            'svelte-virtual npm',
+            'svelte-virtual vs svelte virtual list'
+        ]
+    },
+    {
         slug: 'virtua',
         name: 'virtua',
         tagline:
             'virtua is a zero-config multi-framework virtualizer. Svelte Virtual List is narrower and Svelte-specific.',
+        seoDescription:
+            'virtua virtualizes lists and grids for React, Vue, Solid, and Svelte; Svelte Virtual List is Svelte 5 only. Compare features and when to choose each.',
         description:
             'virtua ships virtual list and grid components for React, Vue, Solid, and Svelte. Its design emphasizes zero-config virtualization, dynamic size handling, reverse scrolling, and broad UI scenarios. @humanspeak/svelte-virtual-list focuses on a small Svelte 5 list API with vertical and horizontal layouts, Svelte snippets, SSR-friendly hydration without a manual item-count prop, and built-in feed loading.',
         website: 'https://inokawa.github.io/virtua/',
@@ -129,9 +183,11 @@ export const competitors: Competitor[] = [
         name: 'svelte-tiny-virtual-list',
         tagline:
             'svelte-tiny-virtual-list is older, tiny, and flexible. Svelte Virtual List is built around Svelte 5 ergonomics.',
-        seoTitle: 'svelte-tiny-virtual-list Alternative for Svelte 5',
+        seoTitle: 'svelte-tiny-virtual-list vs Svelte Virtual List (Svelte 5)',
+        seoDescription:
+            'A svelte-tiny-virtual-list alternative: it needs item sizes up front, while Svelte Virtual List measures rows automatically. See features and trade-offs.',
         description:
-            'Compare svelte-tiny-virtual-list and @humanspeak/svelte-virtual-list for Svelte 5: sizing, dynamic heights, horizontal lists, scrolling, and infinite loading.',
+            'svelte-tiny-virtual-list is a small, dependency-free Svelte 5 list that renders rows from sizes you supply: a fixed itemSize, an array, or a function, with recomputeSizes when they change. @humanspeak/svelte-virtual-list measures each row as it renders instead, and adds built-in infinite loading, reactive vertical↔horizontal switching, and index and offset scrolling.',
         website: 'https://github.com/jonasgeiler/svelte-tiny-virtual-list#readme',
         github: 'https://github.com/jonasgeiler/svelte-tiny-virtual-list',
         npm: 'svelte-tiny-virtual-list',
@@ -175,6 +231,9 @@ export const competitors: Competitor[] = [
         name: 'svelte-virtuallists',
         tagline:
             'svelte-virtuallists offers list and table virtualizers. Svelte Virtual List keeps a smaller one-dimensional component API.',
+        seoTitle: 'svelte-virtuallists vs Svelte Virtual List: Lists and Tables',
+        seoDescription:
+            'svelte-virtuallists adds virtual tables; Svelte Virtual List is one measured list component. Compare Svelte 5 support, maintenance, and features.',
         description:
             'svelte-virtuallists documents Svelte 5 virtual list and table components with vertical and horizontal layouts. @humanspeak/svelte-virtual-list concentrates on one list component with automatic dynamic measurement, reactive orientation switching, infinite-loading hooks, and index/offset scrolling.',
         website: 'https://orefalo.github.io/svelte-virtuallists/',
@@ -214,7 +273,7 @@ export const competitors: Competitor[] = [
         keywords: [
             'svelte-virtuallists alternative',
             'svelte-virtuallists comparison',
-            'svelte 5 horizontal virtual list'
+            'svelte-virtuallists vs svelte virtual list'
         ]
     },
     {
@@ -222,6 +281,8 @@ export const competitors: Competitor[] = [
         name: '@sveltejs/svelte-virtual-list',
         tagline:
             'The legacy Svelte package proved the pattern. Svelte Virtual List modernizes it for Svelte 5.',
+        seoDescription:
+            '@sveltejs/svelte-virtual-list was last published in 2019. Svelte Virtual List is a maintained Svelte 5 replacement built on the same simple component idea.',
         description:
             '@sveltejs/svelte-virtual-list is the historical Svelte virtual list demo package. It renders visible items from an `items` array and uses classic slot syntax. It has not been published in years. @humanspeak/svelte-virtual-list keeps the simple component idea but updates the API for Svelte 5 snippets, TypeScript, dynamic height measurement, infinite loading, methods, and current SvelteKit documentation.',
         website: 'https://www.npmjs.com/package/@sveltejs/svelte-virtual-list',
@@ -264,6 +325,23 @@ export const competitors: Competitor[] = [
         ]
     }
 ]
+
+/**
+ * The example each comparison links to from its masthead, with a
+ * descriptive anchor instead of a generic "examples" link: the example that
+ * best shows where we differ from that competitor.
+ */
+export const exampleLinks: Record<string, { href: string; label: string }> = {
+    'tanstack-virtual': { href: '/examples/infinite-scroll', label: 'infinite scroll example' },
+    'svelte-virtual': { href: '/examples/variable-height', label: 'variable height example' },
+    virtua: { href: '/examples/variable-height', label: 'variable height example' },
+    'svelte-tiny-virtual-list': {
+        href: '/examples/variable-height',
+        label: 'dynamic height example'
+    },
+    'svelte-virtuallists': { href: '/examples/horizontal', label: 'horizontal list example' },
+    'sveltejs-svelte-virtual-list': { href: '/examples/basic-list', label: 'basic list example' }
+}
 
 export function getCompetitor(slug: string): Competitor | undefined {
     return competitors.find((competitor) => competitor.slug === slug)

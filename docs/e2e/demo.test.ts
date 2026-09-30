@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { competitors } from '../src/lib/compare-data'
+import { competitors, exampleLinks } from '../src/lib/compare-data'
 
 test('home page has expected h1', async ({ page }) => {
     await page.goto('/')
@@ -88,10 +88,10 @@ test('props API documents keyed and axis-neutral list configuration', async ({ p
 test('svelte-tiny comparison reflects its Svelte 5 snippet API', async ({ page }) => {
     await page.goto('/compare/svelte-tiny-virtual-list')
 
-    await expect(page).toHaveTitle('svelte-tiny-virtual-list Alternative for Svelte 5')
+    await expect(page).toHaveTitle('svelte-tiny-virtual-list vs Svelte Virtual List (Svelte 5)')
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
         'content',
-        'Compare svelte-tiny-virtual-list and @humanspeak/svelte-virtual-list for Svelte 5: sizing, dynamic heights, horizontal lists, scrolling, and infinite loading.'
+        'A svelte-tiny-virtual-list alternative: it needs item sizes up front, while Svelte Virtual List measures rows automatically. See features and trade-offs.'
     )
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
         'href',
@@ -107,8 +107,8 @@ test('svelte-tiny comparison reflects its Svelte 5 snippet API', async ({ page }
         '/docs/install'
     )
     await expect(
-        page.getByRole('main').getByRole('link', { name: 'examples', exact: true })
-    ).toHaveAttribute('href', '/examples')
+        page.getByRole('main').getByRole('link', { name: 'dynamic height example', exact: true })
+    ).toHaveAttribute('href', '/examples/variable-height')
 
     const snippetsRow = page.getByRole('row').filter({ hasText: 'Svelte 5 snippets' })
     const snippetsCells = snippetsRow.getByRole('cell')
@@ -120,6 +120,41 @@ test('svelte-tiny comparison reflects its Svelte 5 snippet API', async ({ page }
     await expect(
         page.getByText('Variable sizes from array/function', { exact: true })
     ).toBeVisible()
+})
+
+// Search snippets cut off around 155-160 characters; the overview paragraph
+// (`description`) is longer, so every comparison needs its own short one.
+for (const competitor of competitors) {
+    test(`${competitor.slug} comparison has a search-length description and example link`, async ({
+        page
+    }) => {
+        expect(competitor.seoDescription, 'seoDescription').toBeTruthy()
+        expect(competitor.seoDescription!.length).toBeLessThanOrEqual(160)
+        const example = exampleLinks[competitor.slug]
+        expect(example, 'exampleLinks entry').toBeTruthy()
+
+        await page.goto(`/compare/${competitor.slug}`)
+        await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+            'content',
+            competitor.seoDescription!
+        )
+        await expect(
+            page.getByRole('main').getByRole('link', { name: example!.label, exact: true })
+        ).toHaveAttribute('href', example!.href)
+    })
+}
+
+test('svelte-virtual comparison targets the npm package search', async ({ page }) => {
+    await page.goto('/compare/svelte-virtual')
+
+    await expect(page).toHaveTitle('svelte-virtual npm Package Alternative for Svelte 5')
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'https://virtuallist.svelte.page/compare/svelte-virtual'
+    )
+    await expect(page.getByRole('heading', { level: 1, name: /svelte-virtual/i })).toHaveCount(1)
+    const svelte5Row = page.getByRole('row').filter({ hasText: 'Svelte 5 support' })
+    await expect(svelte5Row.getByRole('cell').nth(2)).toHaveText('Prerelease (1.0.0-next)')
 })
 
 test('LLM files advertise and bundle complete comparison mirrors', async ({ request }) => {
