@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte'
     import SvelteVirtualList from '$lib/index.js'
+    import { nextFrame } from '$lib/utils/raf.js'
 
     type Item = {
         id: number
@@ -86,7 +87,6 @@
     // animation frames, and an unfocused or occluded window throttles those
     // (2 fps in an embedded preview), so a timeout alone reads too early.
     const SETTLE_FRAMES = 4
-    const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()))
     const settle = async (ms: number) => {
         await new Promise<void>((r) => setTimeout(r, ms))
         for (let frame = 0; frame < SETTLE_FRAMES; frame += 1) await nextFrame()
@@ -176,47 +176,37 @@
         }
     }
 
-    /** Shared body for the reader-anchor probes (d) and (e). */
+    /**
+     * Shared body for the reader-anchor probes (d), (e), (f), (h): scroll to
+     * a reading position, note the item at the top edge, mutate, and report
+     * how far the tracked item moved. `mutate` returns the id to track
+     * afterwards when that is not the anchor itself (f).
+     */
     const probeReading = async (
         name: string,
         list: SvelteVirtualList<Item>,
-        mutate: () => void
+        mutate: (_anchorId: number) => number | void,
+        atEnd = false
     ): Promise<Probe> => {
         const viewport = viewportOf(name)
-        await list.scroll({ index: READ_INDEX, smoothScroll: false, align: 'top' })
-        await settle(400)
-        const anchor = readingAnchor(viewport)
-        if (!anchor) return { stats: { driftPx: MISSING }, value: MISSING }
-        mutate()
-        await settle(400)
-        const after = itemTop(viewport, anchor.id)
-        const driftPx = after === null ? MISSING : round(Math.abs(after - anchor.top))
-        return { stats: { anchorId: anchor.id, driftPx }, value: driftPx }
-    }
-
-    // (f) Reader mid-list, and the item being read is removed along with
-    // its neighbours: the next surviving item must take its place.
-    const probeReadRemoved = async () => {
-        const viewport = viewportOf('sc-read-removed')
-        await readRemovedList!.scroll({ index: READ_INDEX, smoothScroll: false, align: 'top' })
-        await settle(400)
-        const anchor = readingAnchor(viewport)
-        if (!anchor) {
-            probes.readRemoved = { stats: { driftPx: MISSING }, value: MISSING }
-            return
-        }
-        const from = anchor.id - BATCH / 2
-        const survivorId = from + BATCH
-        readRemovedItems = readRemovedItems.filter(
-            (item) => item.id < from || item.id >= survivorId
+        await list.scroll(
+            atEnd
+                ? { index: LIST_LENGTH - 1, smoothScroll: false, align: 'bottom' }
+                : { index: READ_INDEX, smoothScroll: false, align: 'top' }
         )
         await settle(400)
-        const after = itemTop(viewport, survivorId)
+        const pinnedBefore = bottomGap(viewport)
+        const anchor = readingAnchor(viewport)
+        if (!anchor) return { stats: { driftPx: MISSING }, value: MISSING }
+        const trackedId = mutate(anchor.id) ?? anchor.id
+        await settle(400)
+        const after = itemTop(viewport, trackedId)
         const driftPx = after === null ? MISSING : round(Math.abs(after - anchor.top))
-        probes.readRemoved = {
-            stats: { removedId: anchor.id, survivorId, driftPx },
-            value: driftPx
-        }
+        const stats: Record<string, number> = { anchorId: anchor.id }
+        if (trackedId !== anchor.id) stats.survivorId = trackedId
+        if (atEnd) stats.pinnedBefore = pinnedBefore
+        stats.driftPx = driftPx
+        return { stats, value: atEnd ? Math.max(pinnedBefore, driftPx) : driftPx }
     }
 
     // (g) Resting at the start, keyed prepend: nothing is being read past,
@@ -232,32 +222,6 @@
         probes.startPrepend = {
             stats: { scrollTop, firstOffPx },
             value: Math.max(scrollTop, firstOffPx)
-        }
-    }
-
-    // (h) Infinite loader resting at the end, append + trim: the end is a
-    // loading edge, so the reading position must hold — re-pinning to the
-    // end would skip the new page and request the next one.
-    const probeLoaderTrim = async () => {
-        const viewport = viewportOf('sc-loader')
-        await loaderList!.scroll({ index: LIST_LENGTH - 1, smoothScroll: false, align: 'bottom' })
-        await settle(400)
-        const pinnedBefore = bottomGap(viewport)
-        const anchor = readingAnchor(viewport)
-        if (!anchor) {
-            probes.loaderTrim = { stats: { driftPx: MISSING }, value: MISSING }
-            return
-        }
-        const last = loaderItems[loaderItems.length - 1].id
-        loaderItems = [...loaderItems.slice(BATCH), ...makeItems(last + 1, BATCH)]
-        loaderHasMore = false
-        deliverPage?.()
-        await settle(400)
-        const after = itemTop(viewport, anchor.id)
-        const driftPx = after === null ? MISSING : round(Math.abs(after - anchor.top))
-        probes.loaderTrim = {
-            stats: { pinnedBefore, anchorId: anchor.id, driftPx },
-            value: Math.max(pinnedBefore, driftPx)
         }
     }
 
@@ -296,9 +260,31 @@
                 ...readPrependItems
             ]
         })
-        await probeReadRemoved()
+        // (f) Reader mid-list, and the item being read is removed along with
+        // its neighbours: the next surviving item must take its place.
+        probes.readRemoved = await probeReading('sc-read-removed', readRemovedList!, (anchorId) => {
+            const from = anchorId - BATCH / 2
+            const survivorId = from + BATCH
+            readRemovedItems = readRemovedItems.filter(
+                (item) => item.id < from || item.id >= survivorId
+            )
+            return survivorId
+        })
         await probeStartPrepend()
-        await probeLoaderTrim()
+        // (h) Infinite loader resting at the end, append + trim: the end is a
+        // loading edge, so the reading position must hold — re-pinning to the
+        // end would skip the new page and request the next one.
+        probes.loaderTrim = await probeReading(
+            'sc-loader',
+            loaderList!,
+            () => {
+                const last = loaderItems[loaderItems.length - 1].id
+                loaderItems = [...loaderItems.slice(BATCH), ...makeItems(last + 1, BATCH)]
+                loaderHasMore = false
+                deliverPage?.()
+            },
+            true
+        )
         running = false
     }
 

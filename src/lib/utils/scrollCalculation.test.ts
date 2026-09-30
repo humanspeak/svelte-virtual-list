@@ -10,7 +10,7 @@ import {
     resolveAnchorScrollTarget,
     resolveKeyedAnchorIndex
 } from './scrollCalculation.js'
-import { buildBlockSums, getValidHeight } from './virtualList.js'
+import { buildBlockSums, buildKeyIndex, getValidHeight } from './virtualList.js'
 
 describe('alignToEdge', () => {
     // Common test setup: item at position 400-450, viewport 400px tall
@@ -768,8 +768,7 @@ describe('calculateScrollTarget blockSums equivalence', () => {
 })
 
 describe('resolveKeyedAnchorIndex', () => {
-    const indexesOf = (keys: readonly (string | number)[]) =>
-        new Map(keys.map((key, index) => [key, index] as const))
+    const indexesOf = buildKeyIndex
     const previousKeys = ['a', 'b', 'c', 'd', 'e']
 
     it('follows the anchor to its new index after a prepend', () => {

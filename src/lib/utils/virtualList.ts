@@ -32,6 +32,13 @@ export const getItemKeyAtIndex = <TItem>(
     return itemKey(items[index]!, index)
 }
 
+/** Maps each item key to its index. Keys are unique (duplicates are invalid). */
+export const buildKeyIndex = (keys: readonly (string | number)[]): Map<string | number, number> => {
+    const indexes = new Map<string | number, number>()
+    for (let index = 0; index < keys.length; index += 1) indexes.set(keys[index]!, index)
+    return indexes
+}
+
 export const findViewportAnchorElement = (
     elements: Iterable<HTMLElement>,
     axis: AxisAdapter,

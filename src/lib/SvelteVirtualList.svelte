@@ -154,6 +154,7 @@
     import { createRafScheduler, nextFrame } from '$lib/utils/raf.js'
     import { getAxisAdapter } from '$lib/utils/axis.js'
     import {
+        buildKeyIndex,
         calculateTransformY,
         calculateVisibleRange,
         clampValue,
@@ -266,6 +267,10 @@
     let previousItems: TItem[] = []
     let previousKeys: (string | number)[] | null = null
     let hasReconciledItems = false
+    // Bumped whenever reconcileItems sees items that actually changed — new,
+    // removed, replaced, or moved. Keyed lists compare keys, so rows rebuilt
+    // as new objects with the same keys do not count.
+    let itemsRevision = 0
     let orientationGeneration = 0
     let orientationTransitioning = false
 
@@ -535,19 +540,13 @@
      */
     const captureKeyedMutationAnchor = (
         previousKeys: readonly (string | number)[],
-        currentKeys: readonly (string | number)[]
+        currentIndexes: ReadonlyMap<string | number, number>
     ): ViewportAnchor | null => {
         if (!canAnchorViewport()) return null
         if (axis.getScrollOffset(heightManager.viewport) <= 0) return null
         if (!onLoadMore && isPinnedToEnd()) return { kind: 'bottom' }
         const anchorIndex = findViewportAnchorIndex()
         if (anchorIndex === null) return null
-        // Plain Map on purpose — see assertUniqueItemKeys.
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient lookup, never observed by Svelte
-        const currentIndexes = new Map<string | number, number>()
-        for (let index = 0; index < currentKeys.length; index += 1) {
-            currentIndexes.set(currentKeys[index]!, index)
-        }
         const index = resolveKeyedAnchorIndex(previousKeys, currentIndexes, anchorIndex)
         if (index === null) return null
         return { kind: 'item', index, oldOffset: cacheOffsetForIndex(anchorIndex) }
@@ -641,6 +640,7 @@
     // shared prefix is the O(1) append/suffix-removal path; all ambiguous
     // unkeyed mutations discard measurements rather than applying stale sizes.
     const reconcileItems = (currentItems: TItem[], currentKeys: (string | number)[] | null) => {
+        let unchanged = false
         if (!hasReconciledItems) {
             heightManager.updateItemLength(currentItems.length)
         } else if (currentKeys && previousKeys) {
@@ -649,10 +649,12 @@
             const isAppendOnly = sharesPrefix && currentKeys.length >= previousKeys.length
             if (hasIdenticalKeys) {
                 // Measurements and length are already synchronized.
+                unchanged = true
             } else if (isAppendOnly) heightManager.updateItemLength(currentItems.length)
             else {
-                const anchor = captureKeyedMutationAnchor(previousKeys, currentKeys)
-                heightManager.reconcileItemKeys(previousKeys, currentKeys)
+                const currentIndexes = buildKeyIndex(currentKeys)
+                const anchor = captureKeyedMutationAnchor(previousKeys, currentIndexes)
+                heightManager.reconcileItemKeys(previousKeys, currentKeys, currentIndexes)
                 // Offsets moved under the same indexes: the visible-range
                 // memo must not serve the pre-mutation window for a small
                 // compensating scroll delta.
@@ -670,6 +672,7 @@
             }
 
             if (hasStablePrefix) {
+                unchanged = currentItems.length === previousItems.length
                 heightManager.updateItemLength(currentItems.length)
             } else {
                 const anchor = captureViewportAnchor()
@@ -684,6 +687,7 @@
             if (anchor) restoreViewportAnchor(anchor)
         }
 
+        if (!unchanged) itemsRevision += 1
         previousItems = currentKeys ? [] : currentItems.slice()
         previousKeys = currentKeys
         hasReconciledItems = true
@@ -718,33 +722,11 @@
         if (anchor) restoreViewportAnchor(anchor)
     })
 
-    // What the list held when the last load added nothing, and where the
-    // range ended. Compared by content, not array identity: the documented
-    // loader shape `items = [...items, ...newItems]` returns a NEW array even
-    // for an empty page. Same length plus the same first and last rows means
-    // nothing arrived; a push changes the length, and a trim-and-append at a
-    // constant count changes the last row. Rows are compared by itemKey when
-    // there is one — apps that rebuild row objects on every update (e.g.
-    // `items={rows.map(toRow)}`) keep their keys but not their objects —
-    // and by object identity otherwise. Plain `let`, not $state: only the
-    // effect below reads it, and it re-runs on the isLoadingMore reset that
-    // follows every write.
-    type LoadSnapshot = { length: number; first: unknown; last: unknown }
-    let loadStall: (LoadSnapshot & { end: number }) | null = null
-
-    const rowIdentity = (list: TItem[], index: number): unknown => {
-        if (index < 0 || index >= list.length) return undefined
-        return itemKey ? itemKey(list[index]!, index) : list[index]
-    }
-
-    const snapshotItems = (list: TItem[]): LoadSnapshot => ({
-        length: list.length,
-        first: rowIdentity(list, 0),
-        last: rowIdentity(list, list.length - 1)
-    })
-
-    const isSameSnapshot = (a: LoadSnapshot, b: LoadSnapshot) =>
-        a.length === b.length && a.first === b.first && a.last === b.last
+    // Where the list stood when the last load added nothing: the items
+    // revision and the range end. Plain `let`, not $state: only the effect
+    // below reads it, and it re-runs on the isLoadingMore reset that follows
+    // every write.
+    let loadStall: { revision: number; end: number } | null = null
 
     // Infinite scroll: trigger onLoadMore when approaching end of list
     $effect(() => {
@@ -772,16 +754,20 @@
         // the range where it was, so asking again at once would repeat
         // forever — a microtask loop that freezes the page for a sync or fast
         // loader. Wait until the items change or the range moves.
-        const requested = snapshotItems(items)
-        if (loadStall && loadStall.end === range.end && isSameSnapshot(loadStall, requested)) {
+        if (loadStall && loadStall.revision === itemsRevision && loadStall.end === range.end) {
             return
         }
         loadStall = null
 
+        const requestedRevision = itemsRevision
         isLoadingMore = true
         Promise.resolve(onLoadMore()).finally(() => {
-            const loaded = snapshotItems(items)
-            if (isSameSnapshot(loaded, requested)) loadStall = { ...loaded, end: range.end }
+            // Unchanged revision: the load added nothing. If the items effect
+            // has not run yet, it bumps the revision before this effect's
+            // next pass, which then asks again as it should.
+            if (itemsRevision === requestedRevision) {
+                loadStall = { revision: requestedRevision, end: range.end }
+            }
             isLoadingMore = false
         })
     })

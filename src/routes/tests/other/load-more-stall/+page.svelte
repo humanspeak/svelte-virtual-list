@@ -44,15 +44,9 @@
         ) as Record<ProbeKey, Probe>
 
     let probes = $state(freshProbes())
-    let hasMore = $state<Record<ProbeKey, boolean>>({
-        syncEmpty: true,
-        asyncEmpty: true,
-        rejected: true,
-        recovers: true,
-        rescroll: true,
-        spreadEmpty: true,
-        remapEmpty: true
-    })
+    const allHaveMore = () =>
+        Object.fromEntries(probeKeys.map((key) => [key, true])) as Record<ProbeKey, boolean>
+    let hasMore = $state(allHaveMore())
     let recoversItems = $state.raw(makeItems(START_ITEMS))
     let recoversPhase = $state<'stall' | 'deliver'>('stall')
     // After the stall, a page that does arrive must be requested again.
@@ -89,12 +83,27 @@
         await settle(20)
     }
 
-    // (c) An async loader whose request fails — the docs' own example
-    // leaves hasMore=true when fetchMoreItems() throws.
-    const loadRejected = async () => {
-        count('rejected')
+    // An async loader whose request fails — the docs' own example leaves
+    // hasMore=true when fetchMoreItems() throws. Used by (c) and (e).
+    const failingLoader = (key: ProbeKey) => async () => {
+        count(key)
         await settle(20)
         throw new Error('network down (expected in this fixture)')
+    }
+
+    // (c) Fails while the list is short, so it sits at the loading edge.
+    const loadRejected = failingLoader('rejected')
+
+    // (e) A long list whose load at the end fails: scrolling away from the
+    // end and back is the user's retry and must ask exactly once more.
+    const loadRescroll = failingLoader('rescroll')
+
+    /** Appends a page of START_ITEMS new rows to list (d). */
+    const appendRecoversPage = () => {
+        recoversItems = [
+            ...recoversItems,
+            ...makeItems(START_ITEMS).map((item) => ({ id: item.id + recoversItems.length }))
+        ]
     }
 
     // (d) Stalls once, then data arrives: loading must resume.
@@ -102,16 +111,11 @@
         count('recovers')
         await settle(20)
         if (recoversPhase === 'deliver') {
-            recoversItems = [
-                ...recoversItems,
-                ...makeItems(START_ITEMS).map((item) => ({ id: item.id + recoversItems.length }))
-            ]
+            appendRecoversPage()
             hasMore.recovers = false
         }
     }
 
-    // (e) A long list whose load at the end fails: scrolling away from the
-    // end and back is the user's retry and must ask exactly once more.
     // (f) The loader shape the docs recommend: always reassign
     // `items = [...items, ...newItems]`. An empty page still produces a NEW
     // array of the same length and the same rows.
@@ -131,17 +135,11 @@
         remapRows = [...remapRows, ...newRows]
     }
 
-    const loadRescroll = async () => {
-        count('rescroll')
-        await settle(20)
-        throw new Error('network down (expected in this fixture)')
-    }
-
     const runProbes = async () => {
         if (running) return
         running = true
         probes = freshProbes()
-        for (const key of probeKeys) hasMore[key] = true
+        hasMore = allHaveMore()
         recoversItems = makeItems(START_ITEMS)
         recoversPhase = 'stall'
         callsAfterItemsArrive = null
@@ -166,10 +164,7 @@
         // items grow, so the component may ask again.
         const callsBefore = probes.recovers.calls
         recoversPhase = 'deliver'
-        recoversItems = [
-            ...recoversItems,
-            ...makeItems(START_ITEMS).map((item) => ({ id: item.id + recoversItems.length }))
-        ]
+        appendRecoversPage()
         await settle(OBSERVE_MS)
         callsAfterItemsArrive = probes.recovers.calls - callsBefore
         probes.recovers.done = true
