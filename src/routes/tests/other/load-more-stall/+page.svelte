@@ -20,7 +20,13 @@
     const settle = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
     type ProbeKey =
-        'syncEmpty' | 'asyncEmpty' | 'rejected' | 'recovers' | 'rescroll' | 'spreadEmpty'
+        | 'syncEmpty'
+        | 'asyncEmpty'
+        | 'rejected'
+        | 'recovers'
+        | 'rescroll'
+        | 'spreadEmpty'
+        | 'remapEmpty'
     type Probe = { calls: number; capped: boolean; done: boolean }
     const probeKeys: ProbeKey[] = [
         'syncEmpty',
@@ -28,7 +34,8 @@
         'rejected',
         'recovers',
         'rescroll',
-        'spreadEmpty'
+        'spreadEmpty',
+        'remapEmpty'
     ]
 
     const freshProbes = (): Record<ProbeKey, Probe> =>
@@ -43,7 +50,8 @@
         rejected: true,
         recovers: true,
         rescroll: true,
-        spreadEmpty: true
+        spreadEmpty: true,
+        remapEmpty: true
     })
     let recoversItems = $state.raw(makeItems(START_ITEMS))
     let recoversPhase = $state<'stall' | 'deliver'>('stall')
@@ -53,6 +61,10 @@
     let callsAfterRescroll = $state<number | null>(null)
     let rescrollList = $state<SvelteVirtualList<Item>>()
     let spreadItems = $state.raw(makeItems(START_ITEMS))
+    // (g) The app keeps its own rows and hands the list freshly mapped
+    // objects on every update, identified by itemKey.
+    let remapRows = $state.raw(makeItems(START_ITEMS))
+    const remapItems = $derived(remapRows.map((row) => ({ ...row })))
     let running = $state(false)
     let generation = $state(0)
 
@@ -110,6 +122,15 @@
         spreadItems = [...spreadItems, ...newItems]
     }
 
+    // (g) Same empty page, but every update remaps the rows into new
+    // objects: only the keys stay the same.
+    const loadRemapEmpty = async () => {
+        count('remapEmpty')
+        await settle(20)
+        const newRows: Item[] = []
+        remapRows = [...remapRows, ...newRows]
+    }
+
     const loadRescroll = async () => {
         count('rescroll')
         await settle(20)
@@ -126,11 +147,18 @@
         callsAfterItemsArrive = null
         callsAfterRescroll = null
         spreadItems = makeItems(START_ITEMS)
+        remapRows = makeItems(START_ITEMS)
         generation += 1
 
         // Lists mount and each loader stalls; nothing else happens.
         await settle(OBSERVE_MS)
-        for (const key of ['syncEmpty', 'asyncEmpty', 'rejected', 'spreadEmpty'] as const) {
+        for (const key of [
+            'syncEmpty',
+            'asyncEmpty',
+            'rejected',
+            'spreadEmpty',
+            'remapEmpty'
+        ] as const) {
             probes[key].done = true
         }
 
@@ -203,6 +231,11 @@
             key: 'spreadEmpty',
             label: '(f) docs-style loader, empty page',
             expected: `items = [...items, ...[]] — a new array with the same rows; called ${EXPECTED_CALLS}× in ${OBSERVE_MS}ms`
+        },
+        {
+            key: 'remapEmpty',
+            label: '(g) remapped rows, empty page',
+            expected: `rows rebuilt as new objects each update, same keys; called ${EXPECTED_CALLS}× in ${OBSERVE_MS}ms`
         }
     ]
 
@@ -251,7 +284,9 @@
             scrolling happens, so a working component calls each loader once. List (d) then receives
             items out of band and must be asked for more again. List (e) is long: its load at the
             end fails, and scrolling away and back must retry exactly once. List (f) uses the loader
-            shape the docs recommend, which reassigns <code>items</code> even when the page is empty.
+            shape the docs recommend, which reassigns <code>items</code> even when the page is
+            empty. List (g) rebuilds every row as a new object on each update and identifies rows
+            with <code>itemKey</code>.
         </p>
     </div>
 
@@ -347,6 +382,19 @@
                         onLoadMore={loadSpreadEmpty}
                         hasMore={hasMore.spreadEmpty}
                         testId="lms-spread-empty"
+                        renderItem={renderRow}
+                    />
+                </div>
+            </section>
+            <section>
+                <h2>(g) remapped rows, empty page</h2>
+                <div class="test-container">
+                    <SvelteVirtualList
+                        items={remapItems}
+                        itemKey={(item) => item.id}
+                        onLoadMore={loadRemapEmpty}
+                        hasMore={hasMore.remapEmpty}
+                        testId="lms-remap-empty"
                         renderItem={renderRow}
                     />
                 </div>

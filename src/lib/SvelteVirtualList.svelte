@@ -723,16 +723,24 @@
     // loader shape `items = [...items, ...newItems]` returns a NEW array even
     // for an empty page. Same length plus the same first and last rows means
     // nothing arrived; a push changes the length, and a trim-and-append at a
-    // constant count changes the last row. Plain `let`, not $state: only the
+    // constant count changes the last row. Rows are compared by itemKey when
+    // there is one — apps that rebuild row objects on every update (e.g.
+    // `items={rows.map(toRow)}`) keep their keys but not their objects —
+    // and by object identity otherwise. Plain `let`, not $state: only the
     // effect below reads it, and it re-runs on the isLoadingMore reset that
     // follows every write.
-    type LoadSnapshot = { length: number; first: TItem | undefined; last: TItem | undefined }
+    type LoadSnapshot = { length: number; first: unknown; last: unknown }
     let loadStall: (LoadSnapshot & { end: number }) | null = null
+
+    const rowIdentity = (list: TItem[], index: number): unknown => {
+        if (index < 0 || index >= list.length) return undefined
+        return itemKey ? itemKey(list[index]!, index) : list[index]
+    }
 
     const snapshotItems = (list: TItem[]): LoadSnapshot => ({
         length: list.length,
-        first: list[0],
-        last: list[list.length - 1]
+        first: rowIdentity(list, 0),
+        last: rowIdentity(list, list.length - 1)
     })
 
     const isSameSnapshot = (a: LoadSnapshot, b: LoadSnapshot) =>

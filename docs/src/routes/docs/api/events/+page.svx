@@ -75,6 +75,8 @@ If a load finishes without adding items — an empty page, or a request that fai
 
 Set `hasMore` to `false` once there is no more data.
 
+If you build new item objects on every update (for example `items={rows.map(toRow)}`), set `itemKey`. The list then compares items by key, so it can still tell that an empty page added nothing.
+
 ### Related Props
 
 | Prop | Description |

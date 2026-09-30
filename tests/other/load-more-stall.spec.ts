@@ -17,7 +17,8 @@ import { readStats, stat } from '../../src/lib/test/utils/statsLine.js'
  * again exactly once; list (e) fails at its end and must retry exactly once
  * when the user scrolls away and back. List (f) uses the docs' loader shape,
  * `items = [...items, ...newItems]`, which reassigns items even when the
- * page is empty. These specs assert on the fixture's own stats.
+ * page is empty; list (g) rebuilds every row as a new object on each update
+ * and relies on itemKey. These specs assert on the fixture's own stats.
  */
 
 test.describe('onLoadMore stall loop', () => {
@@ -29,7 +30,13 @@ test.describe('onLoadMore stall loop', () => {
         })
     })
 
-    for (const key of ['syncEmpty', 'asyncEmpty', 'rejected', 'spreadEmpty'] as const) {
+    for (const key of [
+        'syncEmpty',
+        'asyncEmpty',
+        'rejected',
+        'spreadEmpty',
+        'remapEmpty'
+    ] as const) {
         test(`${key}: a load that adds nothing is not re-requested`, async ({ page }) => {
             const { calls, capped } = await readStats(page, key)
             expect(capped).toBe(0)
