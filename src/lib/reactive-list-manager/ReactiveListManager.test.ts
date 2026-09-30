@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { buildKeyIndex } from '../utils/virtualList.js'
 import { ReactiveListManager } from './index.js'
 import type { HeightChange } from './types.js'
 
@@ -641,6 +642,22 @@ describe('ReactiveListManager (alias)', () => {
             expect(manager.totalMeasuredHeight).toBe(120)
             expect(manager.averageHeight).toBe(60)
             expect(manager.totalHeight).toBe(180)
+        })
+
+        it('uses a caller-built key index when one is passed', () => {
+            const manager = new ReactiveListManager({ itemLength: 3, itemHeight: 40 })
+            manager.processDirtyHeights([
+                { index: 0, oldHeight: undefined, newHeight: 20 },
+                { index: 2, oldHeight: undefined, newHeight: 60 }
+            ])
+            const nextKeys = ['x', 'c', 'a', 'b']
+
+            manager.reconcileItemKeys(['a', 'b', 'c'], nextKeys, buildKeyIndex(nextKeys))
+
+            expect(manager.itemLength).toBe(4)
+            expect(manager.getHeightCache()).toEqual({ 1: 60, 2: 20 })
+            expect(manager.measuredCount).toBe(2)
+            expect(manager.totalMeasuredHeight).toBe(80)
         })
 
         it('getHeightCache exposure does not affect totals when mutated externally', () => {

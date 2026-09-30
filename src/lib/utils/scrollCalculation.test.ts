@@ -7,9 +7,10 @@ import {
     calculateKeyboardScrollTarget,
     calculateScrollTarget,
     isKeyboardScrollKey,
-    resolveAnchorScrollTarget
+    resolveAnchorScrollTarget,
+    resolveKeyedAnchorIndex
 } from './scrollCalculation.js'
-import { buildBlockSums, getValidHeight } from './virtualList.js'
+import { buildBlockSums, buildKeyIndex, getValidHeight } from './virtualList.js'
 
 describe('alignToEdge', () => {
     // Common test setup: item at position 400-450, viewport 400px tall
@@ -763,5 +764,55 @@ describe('calculateScrollTarget blockSums equivalence', () => {
                 expect(accelerated, `align=${align} target=${targetIndex}`).toBe(legacy)
             }
         }
+    })
+})
+
+describe('resolveKeyedAnchorIndex', () => {
+    const indexesOf = buildKeyIndex
+    const previousKeys = ['a', 'b', 'c', 'd', 'e']
+
+    it('follows the anchor to its new index after a prepend', () => {
+        const next = indexesOf(['x', 'y', ...previousKeys])
+        expect(resolveKeyedAnchorIndex(previousKeys, next, 2)).toBe(4)
+    })
+
+    it('follows the anchor to its new index after a front trim', () => {
+        const next = indexesOf(['c', 'd', 'e', 'f', 'g'])
+        expect(resolveKeyedAnchorIndex(previousKeys, next, 3)).toBe(1)
+    })
+
+    it('follows the anchor through a reorder', () => {
+        const next = indexesOf(['e', 'd', 'c', 'b', 'a'])
+        expect(resolveKeyedAnchorIndex(previousKeys, next, 1)).toBe(3)
+    })
+
+    it('gives the slot of a removed anchor to the next surviving item', () => {
+        const next = indexesOf(['a', 'd', 'e'])
+        expect(resolveKeyedAnchorIndex(previousKeys, next, 1)).toBe(1)
+    })
+
+    it('uses the slot past the preceding survivor when nothing after survived', () => {
+        const next = indexesOf(['a', 'b', 'z'])
+        expect(resolveKeyedAnchorIndex(previousKeys, next, 3)).toBe(2)
+    })
+
+    it('prefers a following survivor over a nearer preceding one', () => {
+        const next = indexesOf(['b', 'e'])
+        expect(resolveKeyedAnchorIndex(previousKeys, next, 2)).toBe(1)
+    })
+
+    it('returns null when no previous key survived', () => {
+        expect(resolveKeyedAnchorIndex(previousKeys, indexesOf(['x', 'y']), 2)).toBeNull()
+        expect(resolveKeyedAnchorIndex(previousKeys, indexesOf([]), 2)).toBeNull()
+    })
+
+    it('returns null for an empty previous list', () => {
+        expect(resolveKeyedAnchorIndex([], indexesOf(['a']), 0)).toBeNull()
+    })
+
+    it('clamps an out-of-range anchor index', () => {
+        const next = indexesOf(previousKeys)
+        expect(resolveKeyedAnchorIndex(previousKeys, next, 99)).toBe(4)
+        expect(resolveKeyedAnchorIndex(previousKeys, next, -3)).toBe(0)
     })
 })

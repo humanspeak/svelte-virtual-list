@@ -69,6 +69,11 @@ Use a unique, stable value from the item rather than its array index:
 
 `itemKey` works with both vertical and horizontal lists. It is strongly recommended when items can be prepended, inserted, removed, reordered, replaced immutably, or retained while `orientation` changes. Duplicate keys are invalid. A database ID or another persistent domain identifier is normally the right key; an array index is not stable when the collection changes.
 
+With `itemKey`, the scroll position follows the content through those changes. When items are added or removed above the viewport, the item at the top of the viewport stays where it is; if that item is itself removed, the next remaining item takes its place. The two ends of the list behave differently:
+
+- **At the start**, items added before the first item are shown rather than scrolled out of view.
+- **At the end**, the view stays at the end when an update removes or moves items — for example a log that adds new rows and trims old ones in one update. A plain append does not move the view. Lists that use `onLoadMore` hold the reading position instead, so a newly loaded page is not skipped.
+
 The prop is optional. Without it, append-only and positionally stable collections work normally. If an unkeyed update makes item identity ambiguous, the component discards affected measurements rather than attaching stale geometry to different items.
 
 ### bufferSize

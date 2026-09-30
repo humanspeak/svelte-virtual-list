@@ -65,6 +65,18 @@ onLoadMore?: () => void | Promise<void>
 </VirtualList>
 ```
 
+### When a load adds nothing
+
+If a load finishes without adding items — an empty page, or a request that fails — the list does not call `onLoadMore` again straight away. It asks again when:
+
+- new items arrive — the list gets longer, or its first or last item changes (for example, data arrives from somewhere else),
+- the user scrolls away from the end of the list and back, or
+- `hasMore` is set to `false` and then back to `true`, which you can use for a retry button.
+
+Set `hasMore` to `false` once there is no more data.
+
+If you build new item objects on every update (for example `items={rows.map(toRow)}`), set `itemKey`. The list then compares items by key, so it can still tell that an empty page added nothing.
+
 ### Related Props
 
 | Prop | Description |

@@ -108,9 +108,12 @@ test.describe('Issue 427 - static LTR horizontal virtualization', () => {
     test('native deep scrolling moves the rendered horizontal window', async ({ page }) => {
         await page.getByTestId('deep-scroll').click()
         await expect(page.getByTestId('diag-scroll-left')).not.toHaveText('0')
-        expect(await number(page, 'diag-first-index')).toBeGreaterThan(4000)
+        // The fixture samples scrollLeft every frame, but the component moves
+        // its render window a frame after the scroll event — poll instead of
+        // reading once (WebKit intermittently read first-index=0 here).
+        await expect.poll(() => number(page, 'diag-first-index')).toBeGreaterThan(4000)
+        await expect.poll(() => number(page, 'diag-transform-x')).toBeGreaterThan(400_000)
         expect(await number(page, 'diag-rendered-count')).toBeLessThan(100)
-        expect(await number(page, 'diag-transform-x')).toBeGreaterThan(400_000)
     })
 
     test('raw offset API lands on an exact horizontal scalar', async ({ page }) => {
@@ -212,11 +215,24 @@ test.describe('Issue 427 - static LTR horizontal virtualization', () => {
 
         await viewport.press('Home')
         await expect.poll(() => number(page, 'diag-scroll-left')).toBe(0)
+        // A key pressed inside an interactive child must stay native: the
+        // component's handler must not claim it. Assert on that directly —
+        // what the browser then does natively is engine-specific (WebKit
+        // rubber-bands ArrowLeft at scrollLeft 0, briefly reading -1), and at
+        // 0 the component's own clamp would land on 0 anyway.
+        await page.evaluate(() => {
+            const w = window as unknown as { childKeyPrevented?: boolean }
+            window.addEventListener('keydown', (event) => {
+                w.childKeyPrevented = event.defaultPrevented
+            })
+        })
         const button = page.getByTestId('interactive-child')
         await button.focus()
-        const before = await number(page, 'diag-scroll-left')
         await button.press('ArrowLeft')
-        await page.waitForTimeout(100)
-        expect(await number(page, 'diag-scroll-left')).toBe(before)
+        expect(
+            await page.evaluate(
+                () => (window as unknown as { childKeyPrevented?: boolean }).childKeyPrevented
+            )
+        ).toBe(false)
     })
 })

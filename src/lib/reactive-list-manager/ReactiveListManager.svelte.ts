@@ -1,4 +1,4 @@
-import { buildBlockSums } from '../utils/virtualList.js'
+import { buildBlockSums, buildKeyIndex } from '../utils/virtualList.js'
 import { RecomputeScheduler } from './RecomputeScheduler.js'
 import type { HeightChange, ListManagerConfig, ListManagerDebugInfo } from './types.js'
 
@@ -572,31 +572,26 @@ export class ReactiveListManager {
 
     /**
      * Move cached measurements to the new indexes of stable item keys.
-     * Measurements whose keys no longer exist are discarded.
+     * Measurements whose keys no longer exist are discarded. Pass
+     * `nextIndexes` when the caller already built it (see buildKeyIndex).
      */
     reconcileItemKeys(
         previousKeys: readonly (string | number)[],
-        nextKeys: readonly (string | number)[]
+        nextKeys: readonly (string | number)[],
+        nextIndexes: ReadonlyMap<string | number, number> = buildKeyIndex(nextKeys)
     ): void {
-        // Plain Map on purpose: a SvelteMap creates a reactive source per
-        // entry, which stalls dev builds for seconds on 10k-item reconciles.
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient lookup, never observed by Svelte
-        const previousIndexes = new Map<string | number, number>()
-        for (let index = 0; index < previousKeys.length; index += 1) {
-            const key = previousKeys[index]
-            if (key !== undefined) previousIndexes.set(key, index)
-        }
-
+        // Only measured rows carry anything to move — usually a few hundred
+        // entries, not the whole list.
         const nextCache: Record<number, number> = {}
         let nextMeasuredHeight = 0
-        for (let index = 0; index < nextKeys.length; index += 1) {
-            const key = nextKeys[index]
-            if (key === undefined) continue
-            const previousIndex = previousIndexes.get(key)
-            if (previousIndex === undefined) continue
-            const measuredHeight = this._heightCache[previousIndex]
-            if (measuredHeight === undefined) continue
-            nextCache[index] = measuredHeight
+        for (const indexKey of Object.keys(this._heightCache)) {
+            const index = Number(indexKey)
+            const measuredHeight = this._heightCache[index]
+            const key = previousKeys[index]
+            if (measuredHeight === undefined || key === undefined) continue
+            const nextIndex = nextIndexes.get(key)
+            if (nextIndex === undefined) continue
+            nextCache[nextIndex] = measuredHeight
             nextMeasuredHeight += measuredHeight
         }
 
