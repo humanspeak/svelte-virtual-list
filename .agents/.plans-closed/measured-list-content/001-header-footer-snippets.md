@@ -16,7 +16,7 @@
 - Depends on: none; fixed/known-size mode is not a prerequisite
 - Category: direction
 - Planned at: `c1d0389f044938ea99428dda9c49b644759623a0`, 2026-10-05
-- Status: TODO
+- Status: DONE — guard PASS at `8515135`, 2026-10-05
 
 ## Why this matters
 
@@ -300,14 +300,14 @@ Vitest tests; component API assertions follow existing `expectTypeOf` patterns.
 
 ## Done criteria
 
-- [ ] Public `header?: Snippet` and `footer?: Snippet` compile through ComponentProps.
-- [ ] New geometry/unit tests and all ten browser scenarios exist and pass.
-- [ ] Typecheck, all units, complete E2E with zero retries, both builds, Trunk and
+- [x] Public `header?: Snippet` and `footer?: Snippet` compile through ComponentProps.
+- [x] New geometry/unit tests and all ten browser scenarios exist and pass.
+- [x] Typecheck, all units, complete E2E with zero retries, both builds, Trunk and
       whitespace gates exit zero; existing warnings are separately listed.
-- [ ] Row count/indices/averages exclude snippets; DOM and reported total include them.
-- [ ] No source files outside Scope were changed (`git diff --name-only`).
-- [ ] Execution notes include baseline SHA, exact commands and results.
-- [ ] Batch README status is updated truthfully.
+- [x] Row count/indices/averages exclude snippets; DOM and reported total include them.
+- [x] No source files outside Scope were changed (`git diff --name-only`).
+- [x] Execution notes include baseline SHA, exact commands and results.
+- [x] Batch README status is updated truthfully.
 
 ## STOP conditions
 
@@ -326,3 +326,40 @@ Review header resize invalidation and orientation-transition anchors particularl
 carefully: stale memos and double-counted leading size can pass simple demos while
 breaking deep scrolling. A future shared chat engine is a separate initiative with
 its own characterization tests; no consolidation is authorized by this plan.
+
+## Execution notes — 2026-10-05
+
+Source baseline `c1d0389f044938ea99428dda9c49b644759623a0`; plan commit `1ed9523`.
+Sol implemented the feature; guard snapshot `33a64ab` reproduced a composed
+end-anchor defect on both axes (200px gap). A separate Sol correction passed
+targeted tests; guard reviewed final source snapshot
+`851513520cdf6e41d3ff16eb4d674b4350f51be9`. No plan scope or criteria changed.
+
+Executor baseline: `pnpm run check` exited 0 with 11 existing warnings;
+`pnpm test` passed 361 tests. The existing focused browser command (without the
+new header/footer path) passed 105/105 across five projects. New geometry tests
+initially failed on the missing module/nonzero-offset contract before implementation.
+
+Guard independently reproduced final gates:
+
+- `pnpm run check`: exit 0, zero errors, the same 11 warnings.
+- `pnpm test`: exit 0, 20 files / 381 tests passed.
+- `pnpm exec vitest run src/lib/utils/contentGeometry.test.ts src/lib/utils/scrollCalculation.test.ts src/lib/component-types.test.ts`:
+  exit 0, 3 files / 102 tests passed.
+- `CI=1 pnpm exec playwright test --retries=0 --reporter=line`: exit 0,
+  670 passed / 5 existing external-docs smoke skips / zero failures, 20.8 minutes.
+  This includes all 130 new header/footer cases and the entire 235-case focused
+  group on the final snapshot; a duplicate focused browser run was unnecessary.
+- `pnpm build`: exit 0, publint passed.
+- `pnpm --filter docs build`: exit 0, favicon verification passed.
+- `trunk check` on all 15 changed source/test/docs paths: exit 0, no issues.
+  Executor Trunk formatting and snapshot pre-commit formatting/checks also passed.
+- `git diff --check` and the source scope audit: clean.
+
+The unchanged external-docs smoke test expects old homepage demo selectors;
+the built homepage returns HTTP 200 but lacks both selectors, so its existing
+conditional skip remains. No assertions were relaxed. The extra docs dev-server
+attempt failed on missing generated `docs/static/docs/api/events.md`; production
+build/preview succeeded. These existing docs-test/dev limitations are follow-ups,
+not failures of the required build or library gates. See the sibling guard report
+for warnings, scope, correction evidence and residual risk. No PR or push performed.

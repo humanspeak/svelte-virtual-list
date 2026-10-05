@@ -1,14 +1,18 @@
 # Measured list content plans
 
+> CLOSED 2026-10-05 — Plan 001 PASS. Measured header/footer snippets, documentation
+> and regression coverage delivered locally. PR publication remains the user's
+> next decision; existing external-docs smoke/dev limitations remain follow-ups.
+
 Prepared with the improve skill on 2026-10-05 at `c1d0389`.
 The user selected measured header/footer snippets from the feature-direction review.
-Only planning files were written; source implementation has not begun.
+Implementation and independent guard verification are complete at `8515135`.
 
 ## Execution order and status
 
 | Plan                                 | Title                               | Priority | Effort | Risk     | Depends on | Status |
 | ------------------------------------ | ----------------------------------- | -------- | ------ | -------- | ---------- | ------ |
-| [001](001-header-footer-snippets.md) | Add measured header/footer snippets | P1       | L      | MED/HIGH | None       | TODO   |
+| [001](001-header-footer-snippets.md) | Add measured header/footer snippets | P1       | L      | MED/HIGH | None       | DONE   |
 
 ## Dependency notes
 
@@ -36,9 +40,9 @@ multi-day and implementation risk is MED/HIGH because scroll geometry changes.
 
 ## Review scope and limitations
 
-Focused planning covered list props, rendering, row/full-content geometry,
-measurement, scroll targets, anchor rules, range callbacks, testing conventions,
-Trunk configuration and sibling chat's snippet reference. No new runtime tests,
-builds, performance benchmarks, dependency/security audit or implementation ran
-in this planning pass. Prior focused tests/typecheck results are context, not a
-claim that the complete current suite has been revalidated.
+Guard independently reproduced 381 unit tests, 102 focused tests, typecheck,
+both builds and Trunk. Complete E2E exited 0: 670 passed, 5 unchanged external-docs
+smoke skips, no failures or retries; all 130 new header/footer cases passed.
+See [execution notes](001-header-footer-snippets.md#execution-notes--2026-10-05)
+and [guard report](001-header-footer-snippets.guard-report.md).
+No dependency/security audit or dedicated feature benchmark was performed.
