@@ -45,25 +45,46 @@ test.describe('TopToBottom Infinite Scroll', () => {
         expect(statusAfter).toContain('Items: 100')
     })
 
-    test('should stop loading when hasMore becomes false', async ({ page }, testInfo) => {
+    test('should stop loading when hasMore becomes false', async ({ page }) => {
         await page.waitForSelector('[data-testid="list-item-0"]')
 
         const viewport = page.locator('[data-testid="infinite-list-viewport"]')
+        const status = page.locator('[data-testid="load-status"]')
 
-        // Keep scrolling until hasMore becomes false (500 items max)
-        for (let i = 0; i < 15; i++) {
-            await scrollByWheel(page, viewport, 0, 5000, testInfo)
-            await rafWait(page, 2)
-            await page.waitForTimeout(300)
+        // Wait for hydration and any initial load before driving the next batch.
+        await rafWait(page, 2)
+        await expect(status).toContainText('Loading: false')
 
-            const status = await page.locator('[data-testid="load-status"]').textContent()
-            if (status?.includes('Has More: false')) break
+        // Nine 50-item loads exhaust the fixture. Synchronize with each completed
+        // batch: fixed sleeps can spend scroll attempts on a still-pending load.
+        for (let batch = 0; batch < 9; batch++) {
+            const currentStatus = (await status.textContent()) ?? ''
+            const itemCount = Number(currentStatus.match(/Items: (\d+)/)?.[1])
+            expect(itemCount).toBeGreaterThanOrEqual(50)
+            if (itemCount === 500) break
+
+            await viewport.evaluate((el) => {
+                el.scrollTop = el.scrollHeight
+            })
+            await expect(status).toContainText(`Items: ${itemCount + 50} |`)
+            await expect(status).toContainText('Loading: false')
         }
 
-        // Verify hasMore is false
-        const finalStatus = await page.locator('[data-testid="load-status"]').textContent()
-        expect(finalStatus).toContain('Has More: false')
-        expect(finalStatus).toContain('Items: 500')
+        const exhaustedStatus = 'Items: 500 | Loads: 9 | Has More: false | Loading: false'
+        await expect(status).toHaveText(exhaustedStatus)
+
+        // Re-enter the loading edge after exhaustion. Observe longer than the
+        // fixture's 200ms loader delay so an unwanted tenth load would be visible.
+        await viewport.evaluate((el) => {
+            el.scrollTop = 0
+        })
+        await rafWait(page, 2)
+        await viewport.evaluate((el) => {
+            el.scrollTop = el.scrollHeight
+        })
+        await rafWait(page, 2)
+        await page.waitForTimeout(300)
+        await expect(status).toHaveText(exhaustedStatus)
     })
 
     test('should trigger initial load with few items', async ({ page }) => {

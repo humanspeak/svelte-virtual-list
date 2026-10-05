@@ -29,7 +29,7 @@
         items.push(...newItems)
         loadCount++
 
-        // Stop after 10 loads (500 items total)
+        // Stop after nine loads plus the initial batch (500 items total)
         if (items.length >= 500) {
             hasMore = false
         }
