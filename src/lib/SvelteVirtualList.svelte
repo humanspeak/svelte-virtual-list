@@ -314,6 +314,7 @@
     const switchOrientation = async (nextOrientation: typeof activeOrientation) => {
         if (nextOrientation === activeOrientation) return
         const generation = ++orientationGeneration
+        pendingAnchorCorrection = null
         const oldAxis = axis
         const anchor = captureOrientationAnchor()
         scrollAbortController?.abort()
@@ -455,6 +456,7 @@
         })
         if (target === null) return
         event.preventDefault()
+        pendingAnchorCorrection = null
         // User input supersedes a programmatic scroll() the same way a newer
         // scroll() call would — abort it so its completion machinery cannot
         // re-assert a stale target over the keyboard position.
@@ -498,6 +500,14 @@
     const canAnchorViewport = () =>
         heightManager.isReady && !orientationTransitioning && programmaticScrollDepth === 0
 
+    // End intent lasts only through the current layout flush. A second geometry
+    // change must see it even when the first DOM write hit the old scroll extent.
+    let pendingAnchorCorrection: { kind: ViewportAnchor['kind']; applied: number } | null = null
+    const hasPendingEndAnchor = () =>
+        pendingAnchorCorrection?.kind === 'bottom' &&
+        Math.abs(axis.getScrollOffset(heightManager.viewport) - pendingAnchorCorrection.applied) <=
+            1
+
     // Within a few px of the bottom — where a scroll-to-bottom lands.
     const isPinnedToEnd = () =>
         Math.abs(axis.getScrollOffset(heightManager.viewport) - currentMaxScrollTop()) <= 2
@@ -530,7 +540,7 @@
         // at-bottom batch leaves scroll state inconsistent with the new
         // totals, and the first scroll step away from the bottom then paints
         // the difference as a jump.
-        if (isPinnedToEnd()) return { kind: 'bottom' }
+        if (hasPendingEndAnchor() || isPinnedToEnd()) return { kind: 'bottom' }
         const index = findViewportAnchorIndex()
         if (index === null) return null
         return { kind: 'item', index, oldOffset: cacheOffsetForIndex(index) }
@@ -560,7 +570,7 @@
     ): ViewportAnchor | null => {
         if (!canAnchorViewport()) return null
         if (axis.getScrollOffset(heightManager.viewport) <= 0) return null
-        if (!onLoadMore && isPinnedToEnd()) return { kind: 'bottom' }
+        if (!onLoadMore && (hasPendingEndAnchor() || isPinnedToEnd())) return { kind: 'bottom' }
         const anchorIndex = findViewportAnchorIndex()
         if (anchorIndex === null) return null
         const index = resolveKeyedAnchorIndex(previousKeys, currentIndexes, anchorIndex)
@@ -615,19 +625,26 @@
         )
         if (target === null) return
         syncScrollTop(target, true)
-        const applied = axis.getScrollOffset(heightManager.viewport)
-        if (Math.abs(applied - target) > 1) {
-            // The DOM clamped the write against the pre-flush scrollHeight
-            // (totals grew). Re-assert once the new height has flushed —
-            // tick() resolves in this task's microtask queue, so no scroll
-            // event can interleave; bail anyway if the position moved.
-            tick().then(() => {
-                if (!heightManager.viewportElement) return
-                if (programmaticScrollDepth > 0) return
-                if (Math.abs(axis.getScrollOffset(heightManager.viewport) - applied) > 1) return
-                syncScrollTop(target, true)
-            })
+        const correction = {
+            kind: anchor.kind,
+            applied: axis.getScrollOffset(heightManager.viewport)
         }
+        pendingAnchorCorrection = correction
+        // Every restore supersedes its predecessor, including successful writes.
+        // Bottom targets are computed again after the flush: another measurement
+        // in this flush can shrink or grow the extent after this restore ran.
+        tick().then(() => {
+            if (pendingAnchorCorrection !== correction) return
+            pendingAnchorCorrection = null
+            if (!heightManager.viewportElement || !canAnchorViewport()) return
+            if (Math.abs(axis.getScrollOffset(heightManager.viewport) - correction.applied) > 1)
+                return
+            if (anchor.kind === 'bottom') {
+                syncScrollTop(currentMaxScrollTop(), true)
+            } else if (Math.abs(correction.applied - target) > 1) {
+                syncScrollTop(Math.min(target, currentMaxScrollTop()), true)
+            }
+        })
     }
 
     let nonItemScrollRemainder = 0
@@ -644,7 +661,7 @@
             if (offset <= 0) {
                 nonItemScrollRemainder = 0
                 anchor = { kind: 'physical', oldOffset: 0, newOffset: 0 }
-            } else if (isPinnedToEnd()) {
+            } else if (hasPendingEndAnchor() || isPinnedToEnd()) {
                 nonItemScrollRemainder = 0
                 anchor = { kind: 'bottom' }
             } else {
@@ -1174,6 +1191,7 @@
 
             // Cleanup on component destruction
             return () => {
+                pendingAnchorCorrection = null
                 if (resizeObserver) {
                     resizeObserver.disconnect()
                 }
@@ -1318,6 +1336,7 @@
     ) => {
         // Suspend anchor preservation while this scroll animates — a
         // scrollTop write would cancel the smooth scroll mid-flight.
+        pendingAnchorCorrection = null
         programmaticScrollDepth++
 
         // `auto` follows the viewport's computed `scroll-behavior`; use
