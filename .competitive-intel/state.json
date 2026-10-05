@@ -1,20 +1,26 @@
 {
     "project": "@humanspeak/svelte-virtual-list",
-    "last_run": "2026-09-30",
+    "last_run": "2026-10-05",
     "run_type": "delta",
     "snapshot": {
-        "fetched_at": "2026-09-30T05:00:50Z",
+        "fetched_at": "2026-10-05T08:51:49Z",
         "project": "@humanspeak/svelte-virtual-list",
         "self": {
             "npm": "@humanspeak/svelte-virtual-list",
             "repo": "humanspeak/svelte-virtual-list",
             "latest_version": "0.5.14",
-            "last_release": "2026-08-10",
-            "weekly_downloads": 4836,
-            "stars": 106,
-            "archived": false,
+            "last_publish": "2026-08-10",
+            "first_publish": "2025-01-04",
+            "weekly_downloads": 3914,
+            "peer_deps": {
+                "svelte": "^5.0.0"
+            },
             "svelte_peer": "^5.0.0",
-            "error": null
+            "error": null,
+            "stars": 107,
+            "archived": false,
+            "pushed_at": "2026-10-02",
+            "last_release": "2026-08-10"
         },
         "upstream": [],
         "competitors": [
@@ -22,61 +28,112 @@
                 "npm": "@tanstack/svelte-virtual",
                 "repo": "TanStack/virtual",
                 "latest_version": "3.13.39",
-                "last_release": "2026-09-14",
-                "weekly_downloads": 88403,
-                "stars": 7126,
-                "archived": false,
+                "last_publish": "2026-09-14",
+                "first_publish": "2022-07-19",
+                "weekly_downloads": 96090,
+                "peer_deps": {
+                    "svelte": "^3.48.0 || ^4.0.0 || ^5.0.0"
+                },
                 "svelte_peer": "^3.48.0 || ^4.0.0 || ^5.0.0",
-                "error": null
+                "error": null,
+                "stars": 7128,
+                "archived": false,
+                "pushed_at": "2026-09-21",
+                "last_release": "2026-09-14"
             },
             {
                 "npm": "svelte-tiny-virtual-list",
                 "repo": "jonasgeiler/svelte-tiny-virtual-list",
                 "latest_version": "4.0.0",
-                "last_release": "2026-08-11",
-                "weekly_downloads": 12474,
-                "stars": 646,
-                "archived": false,
+                "last_publish": "2026-08-11",
+                "first_publish": "2020-12-14",
+                "weekly_downloads": 14146,
+                "peer_deps": {
+                    "svelte": "^5.0.0"
+                },
                 "svelte_peer": "^5.0.0",
-                "error": null
+                "error": null,
+                "stars": 645,
+                "archived": false,
+                "pushed_at": "2026-10-05",
+                "last_release": "2026-08-11"
             },
             {
                 "npm": "svelte-virtuallists",
                 "repo": "orefalo/svelte-virtuallists",
                 "latest_version": "1.4.2",
-                "last_release": "2025-03-01",
-                "weekly_downloads": 1674,
+                "last_publish": "2025-03-01",
+                "first_publish": "2024-06-16",
+                "weekly_downloads": 1610,
+                "peer_deps": {
+                    "svelte": "^5.20.5"
+                },
+                "svelte_peer": "^5.20.5",
+                "error": null,
                 "stars": 163,
                 "archived": false,
-                "svelte_peer": "^5.20.5",
-                "error": null
+                "pushed_at": "2025-03-03",
+                "last_release": "2025-03-01"
             },
             {
                 "npm": "@sveltejs/svelte-virtual-list",
                 "repo": "sveltejs/svelte-virtual-list",
                 "latest_version": "3.0.1",
-                "last_release": null,
-                "weekly_downloads": 39945,
+                "last_publish": "2019-08-22",
+                "first_publish": "2018-04-03",
+                "weekly_downloads": 42771,
+                "peer_deps": null,
+                "svelte_peer": null,
+                "error": null,
                 "stars": 773,
                 "archived": false,
-                "svelte_peer": null,
-                "error": null
+                "pushed_at": "2023-03-01",
+                "last_release": null
+            },
+            {
+                "npm": "svelte-virtual",
+                "repo": "ghostebony/svelte-virtual",
+                "latest_version": "0.6.3",
+                "last_publish": "2024-02-26",
+                "first_publish": "2022-07-22",
+                "weekly_downloads": 5548,
+                "peer_deps": {
+                    "svelte": "^3.54.0 || ^4.0.0"
+                },
+                "svelte_peer": "^3.54.0 || ^4.0.0",
+                "error": null,
+                "stars": 73,
+                "archived": false,
+                "pushed_at": "2026-04-16",
+                "last_release": "2022-12-15"
             }
         ],
         "watchlist": [
             {
                 "npm": "virtua",
                 "repo": "inokawa/virtua",
-                "latest_version": "0.52.10",
-                "last_release": "2026-09-29",
-                "weekly_downloads": 1246773,
+                "latest_version": "0.53.1",
+                "last_publish": "2026-10-05",
+                "first_publish": "2022-10-22",
+                "weekly_downloads": 1299864,
+                "peer_deps": {
+                    "vue": ">=3.2",
+                    "react": ">=16.14.0",
+                    "svelte": ">=5.0",
+                    "solid-js": ">=1.0",
+                    "react-dom": ">=16.14.0",
+                    "@angular/core": ">=20.0.0",
+                    "@angular/common": ">=20.0.0"
+                },
+                "svelte_peer": ">=5.0",
+                "error": null,
                 "stars": 3748,
                 "archived": false,
-                "svelte_peer": ">=5.0",
-                "error": null
+                "pushed_at": "2026-10-05",
+                "last_release": "2026-10-05"
             }
         ],
-        "note": "Broad download rise again vs 2026-09-26 (self +39%, tanstack +26%, virtua +24%, sveltejs +18%; tiny -15%); likely npm counter noise."
+        "note": "No tracked npm latest-version changes since the earlier 2026-10-05 baseline. npm last_publish is the authoritative latest-version publication date; last_release can refer to an older GitHub tag (notably svelte-virtual). Downloads are package-wide; virtua totals cover multiple frameworks."
     },
     "open_gaps": [
         {
@@ -90,6 +147,19 @@
             "held_by": "virtua (watchlist)",
             "why": "virtua stabilized CacheSnapshot 2026-08-20; we restore scroll by index/offset but not measured sizes, so a deep restore re-measures",
             "worth_doing": "low urgency; only matters for lists restored deep into long dynamic-height datasets"
+        },
+        {
+            "id": "sticky-indices",
+            "gap": "virtualization-aware sticky row indices",
+            "held_by": "svelte-tiny-virtual-list; svelte-virtual",
+            "why": "Grouped lists can retain section headers while ordinary offscreen rows unmount; SvelteVirtualListProps has no sticky-row or keep-mounted API.",
+            "worth_doing": "Evaluate only with a concrete grouped-list use case; no implementation commitment.",
+            "opened": "2026-10-05",
+            "evidence": [
+                "https://github.com/jonasgeiler/svelte-tiny-virtual-list#props",
+                "https://github.com/ghostebony/svelte-virtual",
+                "SvelteVirtualListProps"
+            ]
         }
     ],
     "closed_gaps": [
@@ -118,18 +188,30 @@
             "validated_against_version": "3.0.1"
         },
         "virtua": {
-            "validated_against_version": "0.52.10",
-            "note": "0.52.8 end jump-compensation regression fix + layout refactor; 0.52.9 React Compiler opt-out; 0.52.10 blank viewport after hide/detach fix. No them: cell flips."
+            "validated_against_version": "0.53.1",
+            "note": "Svelte exports at 0.53.1 confirm VGrid and VMasonry. Existing grid cell remains accurate. Framework coverage prose/cell omits Angular (now supported); flag for editorial review. Masonry remains a non-goal.",
+            "findings": [
+                {
+                    "claim": "Framework coverage: React, Vue, Solid, Svelte",
+                    "finding": "Angular is also supported at 0.53.1.",
+                    "evidence": "https://github.com/inokawa/virtua/blob/0.53.1/README.md"
+                }
+            ]
+        },
+        "svelte-virtual": {
+            "validated_against_version": "0.6.3",
+            "note": "npm confirms stable 0.6.3 published 2024-02-26 (Svelte ^3.54.0 || ^4.0.0), next 1.0.0-next.22 published 2024-11-11 (Svelte ^5.0.0). Comparison dates/support are correct; GitHub last_release 2022-12-15 is not the npm latest publication date.",
+            "evidence": "https://registry.npmjs.org/svelte-virtual"
         }
     },
     "seo": {
-        "export_date": "2026-09-30",
-        "trends_latest_date": "2026-09-27",
+        "export_date": "2026-10-05",
+        "trends_latest_date": "2026-10-02",
         "striking_distance": [
             {
                 "query": "svelte virtual list",
-                "impressions": 252.0,
-                "position": 8.1
+                "impressions": 258.0,
+                "position": 8.01
             },
             {
                 "query": "npm svelte-virtual package",
@@ -138,23 +220,23 @@
             },
             {
                 "query": "svelte-virtual",
-                "impressions": 81.0,
-                "position": 7.89
+                "impressions": 84.0,
+                "position": 7.71
             },
             {
                 "query": "svelte-virtual-list",
-                "impressions": 61.0,
-                "position": 8.21
+                "impressions": 62.0,
+                "position": 8.15
             },
             {
                 "query": "svelte virtual scroll",
-                "impressions": 50.0,
-                "position": 8.02
+                "impressions": 53.0,
+                "position": 7.77
             },
             {
                 "query": "svelte-tiny-virtual-list",
-                "impressions": 50.0,
-                "position": 12.54
+                "impressions": 52.0,
+                "position": 12.29
             },
             {
                 "query": "\"svelte-virtual\" npm",
@@ -175,37 +257,42 @@
         "underperforming_pages": [
             {
                 "page": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
-                "impressions": 267.0,
-                "position": 11.66,
+                "impressions": 272.0,
+                "position": 11.54,
                 "ctr": 0.0
             },
             {
                 "page": "https://virtuallist.svelte.page/examples",
-                "impressions": 227.0,
-                "position": 20.86,
-                "ctr": 0.44
+                "impressions": 234.0,
+                "position": 20.44,
+                "ctr": 0.85
             },
             {
                 "page": "https://virtuallist.svelte.page/compare/svelte-virtuallists",
-                "impressions": 193.0,
-                "position": 12.31,
+                "impressions": 203.0,
+                "position": 11.92,
+                "ctr": 0.0
+            },
+            {
+                "page": "https://virtuallist.svelte.page/docs",
+                "impressions": 102.0,
+                "position": 7.69,
                 "ctr": 0.0
             }
         ],
         "recommendations_open": [
-            "fix npm-intent cluster: make /docs/install the target for 'npm svelte-virtual package' / 'svelte-virtual npm' (HUM-48)",
-            "rewrite /compare/svelte-tiny-virtual-list title+meta and push into top 10 (HUM-49)",
-            "fix off-target queries on /compare/svelte-virtuallists (HUM-50)",
-            "rewrite /examples title+meta and add internal links from compare pages (HUM-51)",
-            "add 'svelte-virtual-list', 'svelte-virtual npm', 'svelte virtual' to config.seo.tracked_keywords"
+            "fix npm-intent cluster (HUM-48; 063e84a answered with /compare/svelte-virtual - re-scope)",
+            "/compare/svelte-tiny-virtual-list title+meta (HUM-49; live, awaiting clicks)",
+            "/compare/svelte-virtuallists off-target queries (HUM-50; live, awaiting clicks)",
+            "/examples title+meta (HUM-51; 28d meets Done-when on 1 click, close next run if held)"
         ],
-        "note": "28d to 2026-09-27 (QueryHippo evidence 74837292-cbc4-4dd6-bf96-58196a88ce3b, low_volume): 6 clicks (-10), 684 impr, pos 9.2 (was 15.3). svelte-tiny-virtual-list 16.4->9.5; svelte-virtual 7.5->11.0; svelte virtual scroll 6.6->9.7. '/ vs /examples split' dropped: 'svelte virtual list' improved 9.1->7.1 with clicks."
+        "note": "QueryHippo 28d to 2026-09-29 (evidence 841d20fb-1904-402e-9b84-a551838fced8, low_volume): 7 clicks (-8), 600 impr (-26%), pos 8.0 (was 15.3). GSC 28d to 2026-10-02: svelte virtual list 10.2->5.5; svelte-tiny-virtual-list 15.5->8.5; svelte-virtual-list 12.6->5.7; svelte virtual scroll 6.5->9.3. /docs entered underperforming (102 impr, 0 clicks, pos 7.7) - too thin per query to ticket. Tracked-keyword additions done."
     },
     "queryhippo": {
         "property_id": "22990673-2bae-41e5-9551-229df5ce4163"
     },
     "tickets": {
-        "last_checked": "2026-09-30",
+        "last_checked": "2026-10-05",
         "known": {
             "seo-npm-intent-landing": {
                 "identifier": "HUM-48",
@@ -222,7 +309,40 @@
             "seo-examples-title-meta": {
                 "identifier": "HUM-51",
                 "status": "todo"
+            },
+            "watchlist-svelte-virtual-scroll-list": {
+                "identifier": "HUM-99",
+                "status": "todo"
             }
         }
+    },
+    "analysis": {
+        "date": "2026-10-05",
+        "base_commit": "6c89c07675c1d05d43634fcb46334a69833429c0",
+        "baseline_last_run": "2026-10-05",
+        "release_changes": [],
+        "recent_context": "virtua 0.53.0 added VMasonry and changed horizontal VList default display to block; 0.53.1 added VMasonry keepMounted. Already reflected in the earlier same-day baseline.",
+        "release_evidence": [
+            "https://github.com/inokawa/virtua/releases/tag/0.53.0",
+            "https://github.com/inokawa/virtua/releases/tag/0.53.1"
+        ],
+        "seo": "Read original checkout GSC export/history without modifying them. No new export or history date relative to same-day baseline (2026-10-05 / 2026-10-02); existing recommendations retained.",
+        "repo_triage": {
+            "repo": "humanspeak/svelte-virtual-list",
+            "me": "jaysin586",
+            "since": "2026-10-05",
+            "fetched_at": "2026-10-05T08:52:08Z",
+            "authenticated": false,
+            "new_external_prs": [],
+            "new_external_issues": [],
+            "awaiting_your_reply": [],
+            "bots": {
+                "prs": 0,
+                "issues": 0
+            },
+            "errors": []
+        },
+        "discovery": "Light discovery confirmed the existing svelte-virtual-scroll-list candidate; no newly verified entrant promoted to config.",
+        "scope": "Research only; no package code, comparison prose, tickets, or external messages changed."
     }
 }
