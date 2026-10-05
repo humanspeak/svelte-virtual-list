@@ -91,6 +91,33 @@ yarn add @humanspeak/svelte-virtual-list
 | `hasMore`                    | `boolean`                           | `true`              | Set to `false` when all data has been loaded                                  |
 | `onRangeChange`              | `(range) => void`                   | -                   | Fires when the rendered range or at-top/at-bottom state changes               |
 
+### Measured header and footer
+
+Optional `header?: Snippet` and `footer?: Snippet` take no arguments. They stay mounted
+outside the virtualized rows and scroll with content; they are not sticky. In horizontal
+mode they are leading and trailing content. Their wrappers isolate child margins and
+add no spacing; snippets provide their own visual dimensions.
+
+```svelte
+<SvelteVirtualList {items}>
+    {#snippet header()}<h2>Results</h2>{/snippet}
+    {#snippet renderItem(item)}<article>{item.title}</article>{/snippet}
+    {#snippet footer()}<p>End of results</p>{/snippet}
+</SvelteVirtualList>
+```
+
+Content extent is measured header + estimated/measured rows + measured footer.
+Short lists stay at the start, with spare viewport space after the footer. Row counts,
+indices, averages and loading thresholds exclude snippets. Header/footer resize preserves
+the visible reading row, physical start stays at zero, and a pinned physical end stays
+pinned. Replacement, removal and orientation changes remeasure the content.
+
+Index alignment includes the header offset. Aligning the last row to `end` leaves the
+footer below that row; `scrollToOffset` addresses the entire content from zero, and the
+End key reaches its physical end. Both `onRangeChange.atBottom` and debug `atBottom`
+include the footer. Debug `totalHeight` reports the full content extent on the active
+axis; `averageItemHeight` and counts remain row-only.
+
 ### Observing the visible range
 
 `onRangeChange` delivers a `{ start, end, atTop, atBottom }` snapshot whenever the rendered

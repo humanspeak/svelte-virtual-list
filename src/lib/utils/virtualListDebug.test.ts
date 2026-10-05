@@ -116,3 +116,17 @@ describe('virtualListDebug utilities', () => {
         })
     })
 })
+
+describe('physical end with measured non-item content', () => {
+    it('reports full extent while keeping row metrics independent', () => {
+        const finalRow = createDebugInfo({ start: 4, end: 5 }, 5, 5, 40, 100, 160, 340)
+        expect(finalRow).toMatchObject({
+            totalHeight: 340,
+            totalItems: 5,
+            processedItems: 5,
+            averageItemHeight: 40,
+            atBottom: false
+        })
+        expect(createDebugInfo({ start: 4, end: 5 }, 5, 5, 40, 180, 160, 340).atBottom).toBe(true)
+    })
+})

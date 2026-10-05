@@ -149,6 +149,12 @@ scrollToOffset(options: {
 }): Promise<void>
 ```
 
+Offsets address the entire physical content from zero, including measured header and
+footer snippets. In horizontal mode this is the leading-edge offset. Index alignment
+uses the row coordinate after the header: aligning the final row to `end` excludes
+the footer, while a sufficiently large raw offset or the End key reaches the footer's
+physical end.
+
 The offset is clamped to the list's valid scroll range, so values beyond the end simply settle at the bottom. The returned promise resolves once scrolling has visually finished.
 
 ### Options

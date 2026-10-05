@@ -816,3 +816,35 @@ describe('resolveKeyedAnchorIndex', () => {
         expect(resolveKeyedAnchorIndex(previousKeys, next, -3)).toBe(0)
     })
 })
+
+describe('non-item leading content', () => {
+    const params = {
+        targetIndex: 4,
+        itemsLength: 5,
+        calculatedItemHeight: 40,
+        height: 160,
+        scrollTop: 0,
+        firstVisibleIndex: 0,
+        lastVisibleIndex: 2,
+        heightCache: {},
+        contentStartOffset: 60,
+        maxScrollTop: 180
+    }
+    it.each([
+        ['start', 180],
+        ['top', 180],
+        ['end', 100],
+        ['bottom', 100],
+        ['center', 160],
+        ['auto', 100],
+        ['nearest', 100]
+    ] as const)('aligns %s in physical coordinates', (align, target) => {
+        expect(calculateScrollTarget({ ...params, align })).toBe(target)
+    })
+    it('aligns the first row after the header', () => {
+        expect(calculateScrollTarget({ ...params, targetIndex: 0, align: 'start' })).toBe(60)
+    })
+    it('keeps a physically visible nearest target still', () => {
+        expect(calculateScrollTarget({ ...params, scrollTop: 100, align: 'nearest' })).toBeNull()
+    })
+})

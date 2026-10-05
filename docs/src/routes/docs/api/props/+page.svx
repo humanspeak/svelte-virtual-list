@@ -49,6 +49,30 @@ A Svelte snippet that defines how each item is rendered.
 
 ## Optional Props
 
+### header and footer
+
+**Type:** `Snippet | undefined` (no arguments)
+
+Always-mounted content before and after the virtualized rows. Both snippets scroll
+with the list and are not sticky; horizontal mode treats them as leading/trailing
+content. Border-box measurements include their active-axis sizes in content extent,
+scroll targets and the physical end. Wrappers isolate child margins without adding
+spacing. Snippets own their dimensions, including zero-size content.
+
+```svelte
+<SvelteVirtualList {items}>
+    {#snippet header()}<h2>Results</h2>{/snippet}
+    {#snippet renderItem(item)}<article>{item.title}</article>{/snippet}
+    {#snippet footer()}<p>End of results</p>{/snippet}
+</SvelteVirtualList>
+```
+
+Short lists place spare space after the footer. Resizing or replacing snippets
+preserves the visible reading row, keeps physical start at zero and preserves a
+pinned physical end. Removal and orientation changes refresh measurements. Snippets
+never consume row indices, alter row averages or count as new data for loading.
+
+
 ### itemKey
 
 Returns a stable identity for each item. The key allows cached measurements, rendered DOM, and viewport anchors to follow the same logical item when the array is reordered or changed.

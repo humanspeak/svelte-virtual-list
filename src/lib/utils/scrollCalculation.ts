@@ -223,6 +223,8 @@ export interface ScrollTargetParams {
     blockSums?: number[]
     /** Optional maximum scroll position used to clamp centered targets. */
     maxScrollTop?: number
+    /** Physical leading extent before row zero. Defaults to zero. */
+    contentStartOffset?: number
 }
 
 /**
@@ -264,10 +266,11 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
         lastVisibleIndex,
         heightCache,
         blockSums,
-        maxScrollTop
+        maxScrollTop,
+        contentStartOffset = 0
     } = params
 
-    return calculateTopToBottomScrollTarget({
+    const target = calculateTopToBottomScrollTarget({
         align,
         targetIndex,
         calculatedItemHeight,
@@ -277,8 +280,10 @@ export const calculateScrollTarget = (params: ScrollTargetParams): number | null
         lastVisibleIndex,
         heightCache,
         blockSums,
-        maxScrollTop
+        maxScrollTop,
+        contentStartOffset
     })
+    return target === null ? null : clampValue(target, 0, maxScrollTop ?? Infinity)
 }
 
 /**
@@ -307,6 +312,8 @@ interface TopToBottomScrollParams {
     blockSums?: number[]
     /** Optional maximum scroll position used to clamp centered targets. */
     maxScrollTop?: number
+    /** Physical leading extent before row zero. Defaults to zero. */
+    contentStartOffset?: number
 }
 
 /**
@@ -331,22 +338,17 @@ const calculateTopToBottomScrollTarget = (params: TopToBottomScrollParams): numb
         lastVisibleIndex,
         heightCache,
         blockSums,
-        maxScrollTop
+        maxScrollTop,
+        contentStartOffset = 0
     } = params
 
     // Calculate item boundaries
-    const itemTop = getScrollOffsetForIndex(
-        heightCache,
-        calculatedItemHeight,
-        targetIndex,
-        blockSums
-    )
-    const itemBottom = getScrollOffsetForIndex(
-        heightCache,
-        calculatedItemHeight,
-        targetIndex + 1,
-        blockSums
-    )
+    const itemTop =
+        contentStartOffset +
+        getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex, blockSums)
+    const itemBottom =
+        contentStartOffset +
+        getScrollOffsetForIndex(heightCache, calculatedItemHeight, targetIndex + 1, blockSums)
 
     if (align === 'auto') {
         // If item is above the viewport, align to top
