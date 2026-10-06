@@ -15,48 +15,60 @@
         seo.ogSlug = 'examples'
     }
 
-    const examples = [
+    type Example = {
+        slug: string
+        title: string
+        tag: string
+        description: string
+    }
+
+    const examples: Example[] = [
         {
-            href: '/examples/basic-list',
+            slug: 'basic-list',
             title: 'basic list.',
             tag: 'FIXED ROWS',
-            line: 'Render 10,000 items while keeping only visible rows in the DOM.'
+            description: 'Render 10,000 items while keeping only visible rows in the DOM.'
         },
         {
-            href: '/examples/infinite-scroll',
+            slug: 'infinite-scroll',
             title: 'infinite scroll.',
             tag: 'PAGINATION',
-            line: 'Load the next page as the virtual range approaches the end.'
+            description: 'Load the next page as the virtual range approaches the end.'
         },
         {
-            href: '/examples/scroll-to-item',
+            slug: 'scroll-to-item',
             title: 'scroll to item.',
             tag: 'METHODS',
-            line: 'Jump to any index with top, bottom, nearest, or auto alignment.'
+            description: 'Jump to any index with top, bottom, nearest, or auto alignment.'
         },
         {
-            href: '/examples/variable-height',
+            slug: 'variable-height',
             title: 'variable height.',
             tag: 'MEASUREMENT',
-            line: 'Expand rows and let the list keep offsets correct as heights change.'
+            description: 'Expand rows and let the list keep offsets correct as heights change.'
         },
         {
-            href: '/examples/horizontal',
+            slug: 'horizontal',
             title: 'horizontal list.',
             tag: 'ORIENTATION',
-            line: 'Virtualize 10,000 variable-width items and switch axes without losing your place.'
+            description:
+                'Virtualize 10,000 variable-width items and switch axes without losing your place.'
         },
         {
-            href: '/examples/header-footer',
+            slug: 'header-footer',
             title: 'headers & footers.',
             tag: 'MEASURED CONTENT',
-            line: 'Resize header and footer snippets, keep your reading position, and explore empty lists.'
+            description:
+                'Resize header and footer snippets, keep your reading position, and explore empty lists.'
         }
     ]
 
     const pad = (n: number) => String(n).padStart(2, '0')
     const items = examples.map((example, i) => ({
-        ...example,
+        href: `/examples/${example.slug}`,
+        title: example.title,
+        tag: example.tag,
+        line: example.description,
         id: `№ ${pad(i + 1)} / ${pad(examples.length)}`
     }))
 
