@@ -152,6 +152,11 @@
         type SvelteVirtualListScrollOptions
     } from '$lib/types.js'
     import { createRafScheduler, nextFrame } from '$lib/utils/raf.js'
+    import {
+        accumulateResizeOffset,
+        contentGeometry,
+        projectRowViewport
+    } from '$lib/utils/contentGeometry.js'
     import { getAxisAdapter } from '$lib/utils/axis.js'
     import {
         buildKeyIndex,
@@ -195,6 +200,8 @@
         defaultEstimatedItemSize, // Axis-neutral initial size estimate
         orientation = 'vertical',
         debug = false, // Enable debug logging
+        header,
+        footer,
         renderItem, // Function to render each item
         containerClass, // Custom class for the container element
         viewportClass, // Custom class for the viewport element
@@ -212,6 +219,10 @@
 
     let activeOrientation = $state(orientation)
     const axis = $derived(getAxisAdapter(activeOrientation))
+    let headerElement = $state<HTMLElement>()
+    let footerElement = $state<HTMLElement>()
+    let headerSize = $state(0)
+    let footerSize = $state(0)
     const initialEstimatedItemSize = defaultEstimatedItemSize ?? defaultEstimatedItemHeight ?? 40
 
     if (
@@ -303,6 +314,7 @@
     const switchOrientation = async (nextOrientation: typeof activeOrientation) => {
         if (nextOrientation === activeOrientation) return
         const generation = ++orientationGeneration
+        pendingAnchorCorrection = null
         const oldAxis = axis
         const anchor = captureOrientationAnchor()
         scrollAbortController?.abort()
@@ -321,6 +333,7 @@
             await tick()
             if (generation !== orientationGeneration || !heightManager.viewportElement) return
             syncContainerHeight()
+            measureNonItemContent()
 
             if (anchor && items.length > 0) {
                 const index = resolveOrientationAnchorIndex(anchor)
@@ -330,7 +343,7 @@
                     index,
                     heightManager.getBlockSums()
                 )
-                syncScrollTop(Math.max(0, estimatedOffset - anchor.inset), true)
+                syncScrollTop(Math.max(0, headerSize + estimatedOffset - anchor.inset), true)
                 for (let pass = 0; pass < 10; pass++) {
                     lastVisibleRange = null
                     await tick()
@@ -344,7 +357,7 @@
                         index,
                         heightManager.getBlockSums()
                     )
-                    syncScrollTop(Math.max(0, measuredOffset - anchor.inset), true)
+                    syncScrollTop(Math.max(0, headerSize + measuredOffset - anchor.inset), true)
                     if (heightManager.measuredCount > 0 && pass >= 2) break
                 }
                 let stableFrames = 0
@@ -443,6 +456,7 @@
         })
         if (target === null) return
         event.preventDefault()
+        pendingAnchorCorrection = null
         // User input supersedes a programmatic scroll() the same way a newer
         // scroll() call would — abort it so its completion machinery cannot
         // re-assert a stale target over the keyboard position.
@@ -473,14 +487,26 @@
      * unmounts the anchor element entirely, so a DOM-based restore would
      * silently bail exactly when the jump is worst.
      */
-    type ViewportAnchor = { kind: 'bottom' } | { kind: 'item'; index: number; oldOffset: number }
+    type ViewportAnchor =
+        | { kind: 'bottom' }
+        | { kind: 'item'; index: number; oldOffset: number }
+        | { kind: 'physical'; oldOffset: number; newOffset: number }
 
     // Computed on demand, not hoisted: callers read it at different times
     // relative to the cache mutation (pre- vs post-correction totals).
-    const currentMaxScrollTop = () => Math.max(0, heightManager.totalHeight - (height || 0))
+    const currentMaxScrollTop = () =>
+        contentGeometry(headerSize, heightManager.totalHeight, footerSize, height || 0).maxOffset
 
     const canAnchorViewport = () =>
         heightManager.isReady && !orientationTransitioning && programmaticScrollDepth === 0
+
+    // End intent lasts only through the current layout flush. A second geometry
+    // change must see it even when the first DOM write hit the old scroll extent.
+    let pendingAnchorCorrection: { kind: ViewportAnchor['kind']; applied: number } | null = null
+    const hasPendingEndAnchor = () =>
+        pendingAnchorCorrection?.kind === 'bottom' &&
+        Math.abs(axis.getScrollOffset(heightManager.viewport) - pendingAnchorCorrection.applied) <=
+            1
 
     // Within a few px of the bottom — where a scroll-to-bottom lands.
     const isPinnedToEnd = () =>
@@ -514,7 +540,7 @@
         // at-bottom batch leaves scroll state inconsistent with the new
         // totals, and the first scroll step away from the bottom then paints
         // the difference as a jump.
-        if (isPinnedToEnd()) return { kind: 'bottom' }
+        if (hasPendingEndAnchor() || isPinnedToEnd()) return { kind: 'bottom' }
         const index = findViewportAnchorIndex()
         if (index === null) return null
         return { kind: 'item', index, oldOffset: cacheOffsetForIndex(index) }
@@ -544,7 +570,7 @@
     ): ViewportAnchor | null => {
         if (!canAnchorViewport()) return null
         if (axis.getScrollOffset(heightManager.viewport) <= 0) return null
-        if (!onLoadMore && isPinnedToEnd()) return { kind: 'bottom' }
+        if (!onLoadMore && (hasPendingEndAnchor() || isPinnedToEnd())) return { kind: 'bottom' }
         const anchorIndex = findViewportAnchorIndex()
         if (anchorIndex === null) return null
         const index = resolveKeyedAnchorIndex(previousKeys, currentIndexes, anchorIndex)
@@ -578,35 +604,141 @@
         const target = resolveAnchorScrollTarget(
             anchor.kind === 'bottom'
                 ? anchor
-                : {
-                      kind: 'item',
-                      oldOffset: anchor.oldOffset,
-                      newOffset: getScrollOffsetForIndex(
-                          heightManager.getHeightCache(),
-                          heightManager.averageHeight,
-                          anchor.index,
-                          heightManager.getBlockSums()
-                      )
-                  },
+                : anchor.kind === 'physical'
+                  ? {
+                        kind: 'item' as const,
+                        oldOffset: anchor.oldOffset,
+                        newOffset: anchor.newOffset
+                    }
+                  : {
+                        kind: 'item',
+                        oldOffset: anchor.oldOffset,
+                        newOffset: getScrollOffsetForIndex(
+                            heightManager.getHeightCache(),
+                            heightManager.averageHeight,
+                            anchor.index,
+                            heightManager.getBlockSums()
+                        )
+                    },
             axis.getScrollOffset(heightManager.viewport),
             currentMaxScrollTop()
         )
         if (target === null) return
         syncScrollTop(target, true)
-        const applied = axis.getScrollOffset(heightManager.viewport)
-        if (Math.abs(applied - target) > 1) {
-            // The DOM clamped the write against the pre-flush scrollHeight
-            // (totals grew). Re-assert once the new height has flushed —
-            // tick() resolves in this task's microtask queue, so no scroll
-            // event can interleave; bail anyway if the position moved.
-            tick().then(() => {
-                if (!heightManager.viewportElement) return
-                if (programmaticScrollDepth > 0) return
-                if (Math.abs(axis.getScrollOffset(heightManager.viewport) - applied) > 1) return
-                syncScrollTop(target, true)
-            })
+        const correction = {
+            kind: anchor.kind,
+            applied: axis.getScrollOffset(heightManager.viewport)
+        }
+        pendingAnchorCorrection = correction
+        // Every restore supersedes its predecessor, including successful writes.
+        // Bottom targets are computed again after the flush: another measurement
+        // in this flush can shrink or grow the extent after this restore ran.
+        tick().then(() => {
+            if (pendingAnchorCorrection !== correction) return
+            pendingAnchorCorrection = null
+            if (!heightManager.viewportElement || !canAnchorViewport()) return
+            if (Math.abs(axis.getScrollOffset(heightManager.viewport) - correction.applied) > 1)
+                return
+            if (anchor.kind === 'bottom') {
+                syncScrollTop(currentMaxScrollTop(), true)
+            } else if (Math.abs(correction.applied - target) > 1) {
+                syncScrollTop(Math.min(target, currentMaxScrollTop()), true)
+            }
+        })
+    }
+
+    let nonItemScrollRemainder = 0
+
+    // Non-item measurements have their own coordinate boundary and never enter
+    // the row manager. Capture the previous physical geometry before replacing it.
+    const updateNonItemSizes = (nextHeader: number, nextFooter: number) => {
+        if (nextHeader === headerSize && nextFooter === footerSize) return
+        const oldHeader = headerSize
+        let anchor: ViewportAnchor | null = null
+        if (!canAnchorViewport()) nonItemScrollRemainder = 0
+        if (canAnchorViewport()) {
+            const offset = axis.getScrollOffset(heightManager.viewport)
+            if (offset <= 0) {
+                nonItemScrollRemainder = 0
+                anchor = { kind: 'physical', oldOffset: 0, newOffset: 0 }
+            } else if (hasPendingEndAnchor() || isPinnedToEnd()) {
+                nonItemScrollRemainder = 0
+                anchor = { kind: 'bottom' }
+            } else {
+                const rect = heightManager.viewport.getBoundingClientRect()
+                const visible = itemElements.some((element) => {
+                    if (!element?.isConnected) return false
+                    const row = element.getBoundingClientRect()
+                    return (
+                        axis.getEnd(row) > axis.getStart(rect) &&
+                        axis.getStart(row) < axis.getEnd(rect)
+                    )
+                })
+                if (visible) {
+                    const correction = accumulateResizeOffset(
+                        offset,
+                        nextHeader - oldHeader,
+                        nonItemScrollRemainder,
+                        contentGeometry(
+                            nextHeader,
+                            heightManager.totalHeight,
+                            nextFooter,
+                            height || 0
+                        ).maxOffset
+                    )
+                    nonItemScrollRemainder = correction.remainder
+                    anchor = { kind: 'physical', oldOffset: offset, newOffset: correction.target }
+                } else {
+                    nonItemScrollRemainder = 0
+                    anchor = { kind: 'physical', oldOffset: 0, newOffset: 0 }
+                }
+            }
+        }
+        headerSize = nextHeader
+        footerSize = nextFooter
+        lastVisibleRange = null
+        if (anchor) {
+            // With no visible row preserve/clamp the physical position. Start
+            // wins over end for content that did not previously overflow.
+            if (
+                anchor.kind === 'physical' &&
+                anchor.oldOffset === 0 &&
+                anchor.newOffset === 0 &&
+                heightManager.viewportElement
+            ) {
+                const offset = axis.getScrollOffset(heightManager.viewport)
+                anchor.newOffset = Math.min(offset, currentMaxScrollTop()) - offset
+            }
+            restoreViewportAnchor(anchor)
         }
     }
+
+    const measureNonItemContent = () => {
+        if (!BROWSER) return
+        updateNonItemSizes(
+            header && headerElement ? axis.getSize(headerElement.getBoundingClientRect()) : 0,
+            footer && footerElement ? axis.getSize(footerElement.getBoundingClientRect()) : 0
+        )
+    }
+
+    // Measure binding/removal after keyed pre-effects have restored their row
+    // anchor. Rows still use the previous leading extent until this update,
+    // so simultaneous snippet removal and reorder cannot change the captured key.
+    $effect(() => {
+        const leading = headerElement
+        const trailing = footerElement
+        const currentOrientation = activeOrientation
+        if (!BROWSER) return
+        untrack(() => {
+            // Force an axis re-read even when the border box itself did not resize.
+            void currentOrientation
+            measureNonItemContent()
+        })
+        const observer = new ResizeObserver(() => untrack(measureNonItemContent))
+        if (leading) observer.observe(leading, { box: 'border-box' })
+        if (trailing) observer.observe(trailing, { box: 'border-box' })
+        return () => observer.disconnect()
+    })
 
     const assertUniqueItemKeys = (keys: readonly (string | number)[]) => {
         // Plain Set on purpose: a SvelteSet creates a reactive source per key,
@@ -802,7 +934,9 @@
      * This getter is reactive and updates whenever heightManager's internal state changes.
      * Used by scroll corrections and maxScrollTop calculations.
      */
-    const totalHeight = $derived(heightManager.totalHeight)
+    const rowTotal = $derived(heightManager.totalHeight)
+    const geometry = $derived(contentGeometry(headerSize, rowTotal, footerSize, height || 0))
+    const totalHeight = $derived(geometry.total)
 
     let lastVisibleRange: SvelteVirtualListPreviousVisibleRange | null = null
 
@@ -866,7 +1000,14 @@
      */
     const visibleItems = $derived.by((): SvelteVirtualListPreviousVisibleRange => {
         if (!items.length) return { start: 0, end: 0 } as SvelteVirtualListPreviousVisibleRange
-        const viewportHeight = height || 0
+        const projected = projectRowViewport(
+            heightManager.scrollTop,
+            height || 0,
+            headerSize,
+            rowTotal
+        )
+        // Read both non-item dimensions so their changes invalidate this derived window.
+        void footerSize
 
         // Scroll delta threshold optimization: skip recalculation if scroll delta is less than
         // half the average item height and we have a cached range. This reduces unnecessary
@@ -882,12 +1023,12 @@
         }
 
         lastVisibleRange = calculateVisibleRange({
-            scrollTop: heightManager.scrollTop,
-            viewportHeight,
+            scrollTop: projected.start,
+            viewportHeight: projected.size,
             itemHeight: heightManager.averageHeight,
             totalItems: items.length,
             bufferSize,
-            totalContentHeight: totalHeight,
+            totalContentHeight: rowTotal,
             heightCache: heightManager.getHeightCache(),
             blockSums: heightManager.getBlockSums()
         })
@@ -900,7 +1041,7 @@
      * Uses the maximum of container height and total content height to ensure
      * proper scrolling behavior.
      */
-    const contentHeight = $derived(Math.max(height, totalHeight))
+    const contentHeight = $derived(geometry.laidOut)
 
     /**
      * Computed transform Y value for positioning the visible items.
@@ -910,13 +1051,16 @@
         const visibleRange = visibleItems
 
         // Use precise offset using measured heights when available.
-        return Math.round(
-            calculateTransformY(
-                items.length,
-                visibleRange.start,
-                heightManager.averageHeight,
-                heightManager.getHeightCache(),
-                heightManager.getBlockSums()
+        return (
+            headerSize +
+            Math.round(
+                calculateTransformY(
+                    items.length,
+                    visibleRange.start,
+                    heightManager.averageHeight,
+                    heightManager.getHeightCache(),
+                    heightManager.getBlockSums()
+                )
             )
         )
     })
@@ -1047,6 +1191,7 @@
 
             // Cleanup on component destruction
             return () => {
+                pendingAnchorCorrection = null
                 if (resizeObserver) {
                     resizeObserver.disconnect()
                 }
@@ -1067,12 +1212,22 @@
         }
     })
 
+    let previousDebugGeometry: { total: number; atTop: boolean; atBottom: boolean } | null = null
+
     // Call debugFunction in an effect to avoid state_unsafe_mutation when
     // the callback writes to $state (which is forbidden during render effects)
     $effect(() => {
         if (!debug) return
         const currentVisibleRange = visibleItems
+        const currentDebugGeometry = {
+            total: totalHeight,
+            atTop: heightManager.scrollTop <= 1,
+            atBottom: heightManager.scrollTop >= totalHeight - (height || 0) - 1
+        }
         if (
+            previousDebugGeometry?.total === currentDebugGeometry.total &&
+            previousDebugGeometry.atTop === currentDebugGeometry.atTop &&
+            previousDebugGeometry.atBottom === currentDebugGeometry.atBottom &&
             !shouldShowDebugInfo(
                 prevVisibleRange,
                 currentVisibleRange,
@@ -1082,6 +1237,7 @@
         )
             return
 
+        previousDebugGeometry = currentDebugGeometry
         const info = createDebugInfo(
             currentVisibleRange,
             items.length,
@@ -1180,6 +1336,7 @@
     ) => {
         // Suspend anchor preservation while this scroll animates — a
         // scrollTop write would cancel the smooth scroll mid-flight.
+        pendingAnchorCorrection = null
         programmaticScrollDepth++
 
         // `auto` follows the viewport's computed `scroll-behavior`; use
@@ -1317,7 +1474,8 @@
                 lastVisibleIndex,
                 heightCache: heightManager.getHeightCache(),
                 blockSums: heightManager.getBlockSums(),
-                maxScrollTop: currentMaxScrollTop()
+                maxScrollTop: currentMaxScrollTop(),
+                contentStartOffset: headerSize
             })
 
             // Handle early return for 'nearest' alignment when item is already visible
@@ -1366,7 +1524,8 @@
                     lastVisibleIndex: correctedRange.end,
                     heightCache: heightManager.getHeightCache(),
                     blockSums: heightManager.getBlockSums(),
-                    maxScrollTop: currentMaxScrollTop()
+                    maxScrollTop: currentMaxScrollTop(),
+                    contentStartOffset: headerSize
                 })
                 if (
                     correctedTarget !== null &&
@@ -1497,6 +1656,11 @@
             data-svl-content
             style={axis.contentSizeStyle(contentHeight)}
         >
+            {#if header}
+                <div data-svl-header data-orientation={activeOrientation} bind:this={headerElement}>
+                    {@render header()}
+                </div>
+            {/if}
             <!-- Items container is translated to show correct items -->
             <div
                 id="virtual-list-items"
@@ -1526,11 +1690,35 @@
                     </div>
                 {/each}
             </div>
+            {#if footer}
+                <div
+                    data-svl-footer
+                    data-orientation={activeOrientation}
+                    bind:this={footerElement}
+                    style:transform={axis.transform(geometry.footerOffset)}
+                >
+                    {@render footer()}
+                </div>
+            {/if}
         </div>
     </div>
 </div>
 
 <style>
+    [data-svl-header],
+    [data-svl-footer] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: flow-root;
+        width: 100%;
+    }
+    [data-svl-header][data-orientation='horizontal'],
+    [data-svl-footer][data-orientation='horizontal'] {
+        width: max-content;
+        height: 100%;
+    }
+
     /* Container establishes positioning context */
     .virtual-list-container {
         position: relative;

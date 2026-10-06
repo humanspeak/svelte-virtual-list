@@ -15,12 +15,57 @@
         seo.ogSlug = 'examples'
     }
 
+    const examples = [
+        {
+            href: '/examples/basic-list',
+            title: 'basic list.',
+            tag: 'FIXED ROWS',
+            line: 'Render 10,000 items while keeping only visible rows in the DOM.'
+        },
+        {
+            href: '/examples/infinite-scroll',
+            title: 'infinite scroll.',
+            tag: 'PAGINATION',
+            line: 'Load the next page as the virtual range approaches the end.'
+        },
+        {
+            href: '/examples/scroll-to-item',
+            title: 'scroll to item.',
+            tag: 'METHODS',
+            line: 'Jump to any index with top, bottom, nearest, or auto alignment.'
+        },
+        {
+            href: '/examples/variable-height',
+            title: 'variable height.',
+            tag: 'MEASUREMENT',
+            line: 'Expand rows and let the list keep offsets correct as heights change.'
+        },
+        {
+            href: '/examples/horizontal',
+            title: 'horizontal list.',
+            tag: 'ORIENTATION',
+            line: 'Virtualize 10,000 variable-width items and switch axes without losing your place.'
+        },
+        {
+            href: '/examples/header-footer',
+            title: 'headers & footers.',
+            tag: 'MEASURED CONTENT',
+            line: 'Resize header and footer snippets, keep your reading position, and explore empty lists.'
+        }
+    ]
+
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const items = examples.map((example, i) => ({
+        ...example,
+        id: `№ ${pad(i + 1)} / ${pad(examples.length)}`
+    }))
+
     const hero = {
         figLabel: 'FIG-001 · EXAMPLES',
         figId: 'FIG-001',
         sheetLabel: 'SHEET 01 / 02',
         meta: [
-            { k: 'examples', v: '5' },
+            { k: 'examples', v: String(items.length) },
             { k: 'format', v: 'live demos' },
             { k: 'library', v: '@humanspeak/svelte-virtual-list' },
             { rule: 'dashed' as const },
@@ -44,44 +89,6 @@
         title: { prefix: 'choose a ', accent: 'scenario', suffix: '.' },
         body: 'Start with the smallest list, then explore horizontal orientation, loading, programmatic scroll, and measured dynamic rows.'
     }
-
-    const items = [
-        {
-            href: '/examples/basic-list',
-            id: '№ 01 / 05',
-            title: 'basic list.',
-            tag: 'FIXED ROWS',
-            line: 'Render 10,000 items while keeping only visible rows in the DOM.'
-        },
-        {
-            href: '/examples/infinite-scroll',
-            id: '№ 02 / 05',
-            title: 'infinite scroll.',
-            tag: 'PAGINATION',
-            line: 'Load the next page as the virtual range approaches the end.'
-        },
-        {
-            href: '/examples/scroll-to-item',
-            id: '№ 03 / 05',
-            title: 'scroll to item.',
-            tag: 'METHODS',
-            line: 'Jump to any index with top, bottom, nearest, or auto alignment.'
-        },
-        {
-            href: '/examples/variable-height',
-            id: '№ 04 / 05',
-            title: 'variable height.',
-            tag: 'MEASUREMENT',
-            line: 'Expand rows and let the list keep offsets correct as heights change.'
-        },
-        {
-            href: '/examples/horizontal',
-            id: '№ 05 / 05',
-            title: 'horizontal list.',
-            tag: 'ORIENTATION',
-            line: 'Virtualize 10,000 variable-width items and switch axes without losing your place.'
-        }
-    ]
 </script>
 
 <BrutIndexV2

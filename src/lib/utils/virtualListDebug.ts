@@ -65,6 +65,7 @@ export const shouldShowDebugInfo = (
  * @param averageItemHeight - Current calculated average height per item in pixels
  * @param scrollTop - Current scroll position in pixels
  * @param viewportHeight - Height of the viewport in pixels
+ * @param totalHeight - Physical active-axis content extent, including header/footer; counts and averages stay row-only
  * @returns {SvelteVirtualListDebugInfo} A structured debug information object
  *
  * @example

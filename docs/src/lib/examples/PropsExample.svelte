@@ -62,29 +62,27 @@
         </div>
     </div>
 
-    <div class="min-h-0 flex-1 p-3">
-        <div class="demo-frame">
-            <div class="demo-section-label">out / rendered props</div>
-            <div class="h-[calc(100%-35px)]">
-                {#key `${bufferSize}-${estimatedHeight}-${debug}`}
-                    <VirtualList
-                        {items}
-                        {bufferSize}
-                        defaultEstimatedItemHeight={estimatedHeight}
-                        {debug}
-                        debugFunction={handleDebug}
-                    >
-                        {#snippet renderItem(item)}
-                            <div class="demo-row">
-                                <span class="demo-row-title">Item {item.id}</span>
-                                <span class="demo-row-note">
-                                    {item.note}
-                                </span>
-                            </div>
-                        {/snippet}
-                    </VirtualList>
-                {/key}
-            </div>
+    <div class="demo-frame">
+        <div class="demo-section-label">out / rendered props</div>
+        <div class="demo-viewport">
+            {#key `${bufferSize}-${estimatedHeight}-${debug}`}
+                <VirtualList
+                    {items}
+                    {bufferSize}
+                    defaultEstimatedItemHeight={estimatedHeight}
+                    {debug}
+                    debugFunction={handleDebug}
+                >
+                    {#snippet renderItem(item)}
+                        <div class="demo-row">
+                            <span class="demo-row-title">Item {item.id}</span>
+                            <span class="demo-row-note">
+                                {item.note}
+                            </span>
+                        </div>
+                    {/snippet}
+                </VirtualList>
+            {/key}
         </div>
     </div>
 
@@ -173,25 +171,36 @@
     }
 
     .demo-frame {
-        height: 100%;
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
         overflow: hidden;
-        border: 1px solid var(--brut-rule);
         background: var(--brut-bg);
     }
 
+    .demo-viewport {
+        flex: 1;
+        min-height: 0;
+    }
+
     .demo-section-label {
+        flex-shrink: 0;
         border-bottom: 1px solid var(--brut-rule);
         padding: 8px 16px;
         letter-spacing: 0.2em;
     }
 
     .demo-row {
+        box-sizing: border-box;
         display: flex;
+        min-height: 32px;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
         border-bottom: 1px solid var(--brut-rule);
-        padding: 12px 16px;
+        padding: 5px 12px;
+        line-height: 20px;
     }
 
     .demo-row:hover {
@@ -230,8 +239,7 @@
 
     @media (max-width: 720px) {
         .demo-shell {
-            height: auto;
-            min-height: 420px;
+            height: 420px;
         }
 
         .demo-meta {

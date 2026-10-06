@@ -35,6 +35,8 @@ Configuration props for the component.
 type SvelteVirtualListProps<TItem = any> = {
     items: TItem[]
     renderItem: Snippet<[item: TItem, index: number]>
+    header?: Snippet
+    footer?: Snippet
     bufferSize?: number
     defaultEstimatedItemHeight?: number
     debug?: boolean
@@ -73,7 +75,9 @@ type SvelteVirtualListScrollAlign = 'auto' | 'top' | 'bottom' | 'nearest' | 'cen
 
 ## SvelteVirtualListDebugInfo
 
-Debug information provided by the component.
+Debug information provided by the component. `totalHeight` is the full active-axis
+content extent (header + rows + footer), and `atBottom` is the physical content end.
+Indices, counts and `averageItemHeight` describe only rows.
 
 ```typescript
 type SvelteVirtualListDebugInfo = {

@@ -1,4 +1,6 @@
+import type { ComponentProps, Snippet } from 'svelte'
 import { describe, expectTypeOf, it } from 'vitest'
+import SvelteVirtualList from './SvelteVirtualList.svelte'
 import type {
     SvelteVirtualListProps,
     SvelteVirtualListScrollAlign,
@@ -45,5 +47,13 @@ describe('SvelteVirtualList component generic inference', () => {
         expectTypeOf<Props['orientation']>().toEqualTypeOf<VirtualListOrientation | undefined>()
         expectTypeOf<Props['defaultEstimatedItemSize']>().toEqualTypeOf<number | undefined>()
         expectTypeOf<'start' | 'end'>().toMatchTypeOf<SvelteVirtualListScrollAlign>()
+    })
+})
+
+describe('measured content component exports', () => {
+    it('accepts optional argument-free snippets through ComponentProps', () => {
+        type Props = ComponentProps<typeof SvelteVirtualList>
+        expectTypeOf<Props['header']>().toEqualTypeOf<Snippet | undefined>()
+        expectTypeOf<Props['footer']>().toEqualTypeOf<Snippet | undefined>()
     })
 })

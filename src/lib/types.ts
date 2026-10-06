@@ -62,6 +62,10 @@ export type SvelteVirtualListProps<TItem = any> = {
      * Svelte snippet function that defines how each item should be rendered. Receives the item and its index as arguments.
      */
     renderItem: Snippet<[item: TItem, index: number]>
+    /** Always-mounted, measured content before the rows; scrolls with the list. */
+    header?: Snippet
+    /** Always-mounted, measured content after the rows; scrolls with the list. */
+    footer?: Snippet
     /**
      * Base test ID for component elements to facilitate testing.
      */
@@ -136,6 +140,7 @@ export type SvelteVirtualListDebugInfo = {
     averageItemHeight: number
     atTop: boolean
     atBottom: boolean
+    /** Full active-axis content extent, including measured header and footer. */
     totalHeight: number
 }
 
