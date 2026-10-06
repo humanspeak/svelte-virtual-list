@@ -77,7 +77,9 @@ for (const axis of ['vertical', 'horizontal'] as const) {
         })
         test.afterEach(() => expect(errors).toEqual([]))
         const open = async (page: Page, query = '') => {
-            const response = await page.goto(`/tests/other/header-footer?axis=${axis}&${query}`)
+            const response = await page.goto(
+                `/tests/other/header-footer?axis=${axis}&compact=1&${query}`
+            )
             expect(response?.ok()).toBe(true)
             await expect
                 .poll(async () => (await state(page)).info?.totalHeight)
