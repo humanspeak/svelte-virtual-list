@@ -126,7 +126,8 @@ export const docsSections: NavSection[] = [
             { title: 'Basic List', href: '/examples/basic-list', icon: List },
             { title: 'Infinite Scroll', href: '/examples/infinite-scroll', icon: InfinityIcon },
             { title: 'Scroll to Item', href: '/examples/scroll-to-item', icon: Crosshair },
-            { title: 'Variable Height', href: '/examples/variable-height', icon: ArrowUpDown }
+            { title: 'Variable Height', href: '/examples/variable-height', icon: ArrowUpDown },
+            { title: 'Headers & Footers', href: '/examples/header-footer', icon: SlidersHorizontal }
         ]
     },
     {

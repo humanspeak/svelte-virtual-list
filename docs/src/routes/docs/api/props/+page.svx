@@ -51,6 +51,8 @@ A Svelte snippet that defines how each item is rendered.
 
 ### header and footer
 
+Try the [interactive header and footer example](/examples/header-footer) to resize snippets, preserve your reading position, and explore an empty list.
+
 **Type:** `Snippet | undefined` (no arguments)
 
 Always-mounted content before and after the virtualized rows. Both snippets scroll
