@@ -6,6 +6,8 @@ interface __BaseEnv_Env {
 	PUBLIC_ENVIRONMENT: "production";
 	ENVIRONMENT: "production";
 	NODE_ENV: "production";
+	PUBLIC_POSTHOG_PROJECT_TOKEN: "phc_BSsedkPGGccrrb92BZMMqGwJb9n6E54e2Te8PCTRzSF8";
+	PUBLIC_POSTHOG_HOST: "https://t.svelte.page";
 	PUBLIC_SENTRY_DSN: string;
 }
 declare namespace Cloudflare {
@@ -19,7 +21,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "PUBLIC_ENVIRONMENT" | "ENVIRONMENT" | "NODE_ENV" | "PUBLIC_SENTRY_DSN">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "PUBLIC_ENVIRONMENT" | "ENVIRONMENT" | "NODE_ENV" | "PUBLIC_POSTHOG_PROJECT_TOKEN" | "PUBLIC_POSTHOG_HOST" | "PUBLIC_SENTRY_DSN">> {}
 }
 
 // Begin runtime types

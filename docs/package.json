@@ -32,6 +32,7 @@
         "@humanspeak/svelte-markdown": "^1.8.7",
         "@humanspeak/svelte-motion": "^0.9.3",
         "@humanspeak/svelte-virtual-list": "workspace:*",
+        "posthog-js": "^1.438.1",
         "runed": "^0.37.1"
     },
     "devDependencies": {
