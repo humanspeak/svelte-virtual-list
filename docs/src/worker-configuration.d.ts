@@ -6,8 +6,8 @@ interface __BaseEnv_Env {
 	PUBLIC_ENVIRONMENT: "production";
 	ENVIRONMENT: "production";
 	NODE_ENV: "production";
-	PUBLIC_POSTHOG_PROJECT_TOKEN: "phc_BSsedkPGGccrrb92BZMMqGwJb9n6E54e2Te8PCTRzSF8";
-	PUBLIC_POSTHOG_HOST: "https://t.svelte.page";
+	PUBLIC_POSTHOG_PROJECT_TOKEN: "phc_tBE8o3PGJCMTakz7BHQySBj8QJmKRXe7jFyrQXF4SEmT";
+	PUBLIC_POSTHOG_HOST: "https://q.svelte.page";
 	PUBLIC_SENTRY_DSN: string;
 }
 declare namespace Cloudflare {

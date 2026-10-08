@@ -73,7 +73,7 @@ const config = {
                 'script-src': [
                     'self',
                     'https://*.ahrefs.com',
-                    'https://t.svelte.page',
+                    'https://q.svelte.page',
                     'unsafe-inline',
                     'wasm-unsafe-eval'
                 ],
