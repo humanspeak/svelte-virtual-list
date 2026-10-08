@@ -36,7 +36,7 @@
         "runed": "^0.37.1"
     },
     "devDependencies": {
-        "@cloudflare/workers-types": "^5.20260821.1",
+        "@cloudflare/workers-types": "^5.20261006.1",
         "@eslint/compat": "^2.1.0",
         "@internationalized/date": "^3.12.3",
         "@lucide/svelte": "^1.33.0",
@@ -88,7 +88,7 @@
         "vaul-svelte": "1.0.0-next.7",
         "vite": "^8.2.2",
         "vitest": "^4.1.11",
-        "wrangler": "^4.125.0",
+        "wrangler": "^4.148.0",
         "zod": "^4.4.3"
     },
     "volta": {
