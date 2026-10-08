@@ -10,6 +10,7 @@ minimumReleaseAgeExclude:
 allowBuilds:
     '@humanspeak/docs-kit@git+https://github.com/humanspeak/docs-kit.git': true
     '@sentry/cli': true
+    core-js: false
     esbuild: true
     sharp: true
     workerd: true
