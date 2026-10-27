@@ -1,7 +1,7 @@
 <script lang="ts">
     import '../app.css'
     import { RootLayout } from '@humanspeak/docs-kit'
-    import { docsConfig } from '$lib/docs-config'
+    import { docsConfig } from '#lib/docs-config.js'
     const { children } = $props()
 </script>
 

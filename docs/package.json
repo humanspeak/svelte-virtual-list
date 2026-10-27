@@ -2,6 +2,10 @@
     "name": "docs",
     "version": "0.0.1",
     "type": "module",
+    "imports": {
+        "#lib": "./src/lib/index.js",
+        "#lib/*": "./src/lib/*"
+    },
     "scripts": {
         "build": "tsx ./scripts/fetch-github-stats.ts && vite build && node ./scripts/check-favicon.mjs",
         "build:indexnow": "tsx ./scripts/fetch-github-stats.ts && vite build --mode indexnow && node ./scripts/check-favicon.mjs",
@@ -20,15 +24,10 @@
         "test:e2e": "playwright test",
         "test:unit": "vitest"
     },
-    "overrides": {
-        "@sveltejs/kit": {
-            "cookie": "^0.7.0"
-        }
-    },
     "dependencies": {
         "@fontsource-variable/inter": "^5.3.0",
         "@fontsource-variable/jetbrains-mono": "^5.3.0",
-        "@humanspeak/docs-kit": "github:humanspeak/docs-kit#2026.9.13",
+        "@humanspeak/docs-kit": "github:humanspeak/docs-kit#2026.10.1",
         "@humanspeak/svelte-markdown": "^1.8.7",
         "@humanspeak/svelte-motion": "^0.9.3",
         "@humanspeak/svelte-virtual-list": "workspace:*",
@@ -41,10 +40,10 @@
         "@internationalized/date": "^3.12.3",
         "@lucide/svelte": "^1.33.0",
         "@playwright/test": "^1.62.1",
-        "@sentry/sveltekit": "^10.70.0",
-        "@sveltejs/adapter-auto": "^7.0.1",
-        "@sveltejs/adapter-cloudflare": "^7.2.9",
-        "@sveltejs/kit": "^2.70.3",
+        "@sentry/sveltekit": "^11.0.0",
+        "@sveltejs/adapter-auto": "^8.0.0",
+        "@sveltejs/adapter-cloudflare": "^8.0.1",
+        "@sveltejs/kit": "^3.1.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@tailwindcss/aspect-ratio": "^0.4.2",
         "@tailwindcss/container-queries": "^0.1.1",
@@ -74,7 +73,7 @@
         "prettier-plugin-svelte": "^4.1.1",
         "prettier-plugin-tailwindcss": "^0.8.1",
         "shiki": "^4.4.3",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.1",
         "svelte-check": "^4.7.6",
         "svelte-sonner": "^1.2.1",
         "sveltekit-superforms": "^2.30.2",

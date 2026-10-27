@@ -6,8 +6,8 @@
         getSeoContext,
         type ExampleSection
     } from '@humanspeak/docs-kit'
-    import { demoCodeSample } from '$lib/demo-loaders'
-    import VariableHeightDemo from '$lib/examples/variable-height/demos/Default.svelte'
+    import { demoCodeSample } from '#lib/demo-loaders.js'
+    import VariableHeightDemo from '#lib/examples/variable-height/demos/Default.svelte'
 
     const seo = getSeoContext()
     if (seo) {

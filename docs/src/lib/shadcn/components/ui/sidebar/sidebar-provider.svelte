@@ -1,6 +1,6 @@
 <script lang="ts">
-    import * as Tooltip from '$lib/shadcn/components/ui/tooltip/index.js'
-    import { cn, type WithElementRef } from '$lib/shadcn/utils.js'
+    import * as Tooltip from '#lib/shadcn/components/ui/tooltip/index.js'
+    import { cn, type WithElementRef } from '#lib/shadcn/utils.js'
     import type { HTMLAttributes } from 'svelte/elements'
     import {
         SIDEBAR_COOKIE_MAX_AGE,

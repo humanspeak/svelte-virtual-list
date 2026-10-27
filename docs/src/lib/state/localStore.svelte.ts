@@ -1,6 +1,6 @@
 // https://www.reddit.com/r/sveltejs/comments/1d43d8p/svelte_5_runes_with_localstorage_thanks_to_joy_of/
 
-import { browser } from '$app/environment'
+import { browser } from '$app/env'
 
 export class LocalStore<T> {
     value = $state<T>() as T

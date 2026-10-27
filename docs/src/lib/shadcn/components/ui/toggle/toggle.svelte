@@ -28,7 +28,7 @@
 
 <script lang="ts">
     import { Toggle as TogglePrimitive } from 'bits-ui'
-    import { cn } from '$lib/shadcn/utils.js'
+    import { cn } from '#lib/shadcn/utils.js'
 
     let {
         ref = $bindable(null),

@@ -1,6 +1,6 @@
 <script lang="ts">
     import VirtualList from '@humanspeak/svelte-virtual-list'
-    import { browser } from '$app/environment'
+    import { browser } from '$app/env'
 
     const runtime = browser ? 'client' : 'server'
 
@@ -21,6 +21,7 @@
         if (!demoFrame) return
 
         const rows = Array.from(demoFrame.querySelectorAll<HTMLElement>('.demo-row'))
+
         domRows = rows.length
         domNodes = demoFrame.querySelectorAll('*').length
 

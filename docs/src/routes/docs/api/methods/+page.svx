@@ -4,9 +4,9 @@ description: "Programmatic control methods available on the VirtualList componen
 ---
 
 <script>
-  import Example from '$lib/components/general/Example.svelte'
-  import MethodsExample from '$lib/examples/MethodsExample.svelte'
-  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+  import Example from '#lib/components/general/Example.svelte'
+  import MethodsExample from '#lib/examples/MethodsExample.svelte'
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
 
   const seo = getSeoContext()
   if (seo) {

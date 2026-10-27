@@ -4,7 +4,7 @@ description: "Install @humanspeak/svelte-virtual-list for Svelte 5. Copy the npm
 ---
 
 <script>
-  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
 
   const seo = getSeoContext()
   if (seo) {

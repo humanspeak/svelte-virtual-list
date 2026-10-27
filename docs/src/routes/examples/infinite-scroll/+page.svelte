@@ -6,8 +6,8 @@
         getSeoContext,
         type ExampleSection
     } from '@humanspeak/docs-kit'
-    import { demoCodeSample } from '$lib/demo-loaders'
-    import InfiniteScrollDemo from '$lib/examples/infinite-scroll/demos/Default.svelte'
+    import { demoCodeSample } from '#lib/demo-loaders.js'
+    import InfiniteScrollDemo from '#lib/examples/infinite-scroll/demos/Default.svelte'
 
     const seo = getSeoContext()
     if (seo) {

@@ -5,10 +5,7 @@ type ClientSentryConfig = {
     replaysOnErrorSampleRate?: number
 }
 
-export const createClientSentryInit = (
-    importEnv: () => Promise<{ env: Record<string, string | undefined> }>,
-    config: ClientSentryConfig = {}
-) => {
+export const createClientSentryInit = (dsn: string, config: ClientSentryConfig = {}) => {
     const schedule =
         'requestIdleCallback' in window
             ? window.requestIdleCallback
@@ -16,10 +13,10 @@ export const createClientSentryInit = (
 
     schedule(async () => {
         try {
-            const [Sentry, { env }] = await Promise.all([import('@sentry/sveltekit'), importEnv()])
+            const Sentry = await import('@sentry/sveltekit')
 
             Sentry.init({
-                dsn: env.PUBLIC_SENTRY_DSN,
+                dsn,
                 environment: config.environment ?? 'local',
                 tracesSampleRate: config.tracesSampleRate ?? 1.0,
                 replaysSessionSampleRate: config.replaysSessionSampleRate ?? 0.01,

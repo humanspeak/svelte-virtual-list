@@ -1,4 +1,5 @@
-import { redirect, type Handle } from '@sveltejs/kit'
+import { redirect } from '@sveltejs/kit'
+import type { Handle } from '@sveltejs/kit/hooks'
 
 /**
  * Exact-match permanent redirects for URLs seen in the wild that don't
