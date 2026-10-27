@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { cn } from '$lib/shadcn/utils.js'
+    import { cn } from '#lib/shadcn/utils.js'
     import { Menubar as MenubarPrimitive } from 'bits-ui'
     import type { ComponentProps } from 'svelte'
 

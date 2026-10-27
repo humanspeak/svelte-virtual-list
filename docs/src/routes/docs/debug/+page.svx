@@ -4,9 +4,9 @@ description: "Debug mode for development and troubleshooting Svelte Virtual List
 ---
 
 <script>
-  import Example from '$lib/components/general/Example.svelte'
-  import DebugExample from '$lib/examples/DebugExample.svelte'
-  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+  import Example from '#lib/components/general/Example.svelte'
+  import DebugExample from '#lib/examples/DebugExample.svelte'
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
 
   const seo = getSeoContext()
   if (seo) {

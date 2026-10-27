@@ -4,8 +4,8 @@ description: "Build static and breakpoint-driven horizontal virtual lists while 
 ---
 
 <script>
-  import Example from '$lib/components/general/Example.svelte'
-  import ResponsiveHorizontalExample from '$lib/examples/horizontal/demos/Default.svelte'
+  import Example from '#lib/components/general/Example.svelte'
+  import ResponsiveHorizontalExample from '#lib/examples/horizontal/demos/Default.svelte'
 </script>
 
 # Horizontal and Responsive Lists

@@ -4,9 +4,9 @@ description: "Load more data automatically as users scroll near the end of the l
 ---
 
 <script>
-  import Example from '$lib/components/general/Example.svelte'
-  import InfiniteScrollExample from '$lib/examples/InfiniteScrollExample.svelte'
-  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+  import Example from '#lib/components/general/Example.svelte'
+  import InfiniteScrollExample from '#lib/examples/InfiniteScrollExample.svelte'
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
 
   const seo = getSeoContext()
   if (seo) {

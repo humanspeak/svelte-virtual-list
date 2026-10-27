@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Command as CommandPrimitive } from 'bits-ui'
-    import { cn } from '$lib/shadcn/utils.js'
+    import { cn } from '#lib/shadcn/utils.js'
 
     let {
         ref = $bindable(null),

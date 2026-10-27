@@ -4,9 +4,9 @@ description: "Programmatically scroll to any item in the virtual list with confi
 ---
 
 <script>
-  import Example from '$lib/components/general/Example.svelte'
-  import ScrollToItemExample from '$lib/examples/ScrollToItemExample.svelte'
-  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+  import Example from '#lib/components/general/Example.svelte'
+  import ScrollToItemExample from '#lib/examples/ScrollToItemExample.svelte'
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
 
   const seo = getSeoContext()
   if (seo) {

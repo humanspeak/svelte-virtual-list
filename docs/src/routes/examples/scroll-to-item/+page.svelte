@@ -6,8 +6,8 @@
         getSeoContext,
         type ExampleSection
     } from '@humanspeak/docs-kit'
-    import { demoCodeSample } from '$lib/demo-loaders'
-    import ScrollToItemDemo from '$lib/examples/scroll-to-item/demos/Default.svelte'
+    import { demoCodeSample } from '#lib/demo-loaders.js'
+    import ScrollToItemDemo from '#lib/examples/scroll-to-item/demos/Default.svelte'
 
     const seo = getSeoContext()
     if (seo) {

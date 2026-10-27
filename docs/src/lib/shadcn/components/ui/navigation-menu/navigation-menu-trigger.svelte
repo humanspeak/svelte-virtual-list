@@ -1,5 +1,5 @@
 <script lang="ts" module>
-    import { cn } from '$lib/shadcn/utils.js'
+    import { cn } from '#lib/shadcn/utils.js'
     import { tv } from 'tailwind-variants'
 
     export const navigationMenuTriggerStyle = tv({

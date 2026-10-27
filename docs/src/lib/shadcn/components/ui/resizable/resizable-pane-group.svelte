@@ -1,6 +1,6 @@
 <script lang="ts">
     import * as ResizablePrimitive from 'paneforge'
-    import { cn } from '$lib/shadcn/utils.js'
+    import { cn } from '#lib/shadcn/utils.js'
 
     let {
         this: paneGroup = $bindable(),

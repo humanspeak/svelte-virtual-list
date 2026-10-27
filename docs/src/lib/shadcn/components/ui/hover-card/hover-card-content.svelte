@@ -1,6 +1,6 @@
 <script lang="ts">
     import { LinkPreview as HoverCardPrimitive } from 'bits-ui'
-    import { cn } from '$lib/shadcn/utils.js'
+    import { cn } from '#lib/shadcn/utils.js'
 
     let {
         ref = $bindable(null),

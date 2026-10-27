@@ -2,8 +2,8 @@
     import ArrowRightIcon from '@lucide/svelte/icons/arrow-right'
     import type { WithoutChildren } from 'bits-ui'
     import { getEmblaContext } from './context.js'
-    import { cn } from '$lib/shadcn/utils.js'
-    import { Button, type Props } from '$lib/shadcn/components/ui/button/index.js'
+    import { cn } from '#lib/shadcn/utils.js'
+    import { Button, type Props } from '#lib/shadcn/components/ui/button/index.js'
 
     let {
         ref = $bindable(null),

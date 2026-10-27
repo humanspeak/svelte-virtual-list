@@ -7,7 +7,7 @@ const ok = new Response('ok')
 /** Run the handle against `url`, returning either the redirect it threw or
  *  the resolve() spy that proves it passed the request through untouched. */
 const run = (url: string) => {
-    const resolve = vi.fn(() => ok)
+    const resolve = vi.fn(async () => ok)
     const event = { url: new URL(url, 'https://virtuallist.svelte.page') } as RequestEvent
 
     try {

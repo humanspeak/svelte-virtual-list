@@ -4,9 +4,9 @@ description: 'Keyboard navigation and assistive-technology support in Svelte Vir
 ---
 
 <script>
-  import Example from '$lib/components/general/Example.svelte'
-  import AccessibilityExample from '$lib/examples/AccessibilityExample.svelte'
-  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+  import Example from '#lib/components/general/Example.svelte'
+  import AccessibilityExample from '#lib/examples/AccessibilityExample.svelte'
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
 
   const seo = getSeoContext()
   if (seo) {

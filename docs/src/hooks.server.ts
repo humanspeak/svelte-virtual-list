@@ -1,4 +1,4 @@
-import { permanentRedirectHandle } from '$lib/server/redirects'
+import { permanentRedirectHandle } from '#lib/server/redirects.js'
 import { createDocsKitHandle } from '@humanspeak/docs-kit/hooks'
 import { sequence } from '@sveltejs/kit/hooks'
 

@@ -6,8 +6,8 @@
         getSeoContext,
         type ExampleSection
     } from '@humanspeak/docs-kit'
-    import { demoCodeSample } from '$lib/demo-loaders'
-    import HeaderFooterDemo from '$lib/examples/header-footer/demos/Default.svelte'
+    import { demoCodeSample } from '#lib/demo-loaders.js'
+    import HeaderFooterDemo from '#lib/examples/header-footer/demos/Default.svelte'
 
     const seo = getSeoContext()
     if (seo) {

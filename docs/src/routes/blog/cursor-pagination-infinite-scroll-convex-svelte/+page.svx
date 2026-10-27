@@ -16,7 +16,7 @@ readingTime: 8
 
 <script>
     import { BlogPostV2 } from '@humanspeak/docs-kit/blog'
-    import { docsConfig } from '$lib/docs-config'
+    import { docsConfig } from '#lib/docs-config.js'
 
     const post = {
         slug: 'cursor-pagination-infinite-scroll-convex-svelte',

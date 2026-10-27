@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { cn } from '$lib/shadcn/utils.js'
+    import { cn } from '#lib/shadcn/utils.js'
     import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui'
 
     let {

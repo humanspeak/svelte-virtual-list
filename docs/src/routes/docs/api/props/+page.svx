@@ -4,9 +4,9 @@ description: "All available props for the SvelteVirtualList component"
 ---
 
 <script>
-  import Example from '$lib/components/general/Example.svelte'
-  import PropsExample from '$lib/examples/PropsExample.svelte'
-  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+  import Example from '#lib/components/general/Example.svelte'
+  import PropsExample from '#lib/examples/PropsExample.svelte'
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
 
   const seo = getSeoContext()
   if (seo) {

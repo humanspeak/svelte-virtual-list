@@ -4,9 +4,9 @@ description: "Server-side rendering support for Svelte Virtual List in SvelteKit
 ---
 
 <script>
-  import Example from '$lib/components/general/Example.svelte'
-  import SSRExample from '$lib/examples/SSRExample.svelte'
-  import { getSeoContext } from '$lib/components/contexts/Seo/Seo.context'
+  import Example from '#lib/components/general/Example.svelte'
+  import SSRExample from '#lib/examples/SSRExample.svelte'
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
 
   const seo = getSeoContext()
   if (seo) {
