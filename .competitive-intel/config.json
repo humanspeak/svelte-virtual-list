@@ -279,6 +279,10 @@
         {
             "npm": "svelte-virtual",
             "repo": "ghostebony/svelte-virtual"
+        },
+        {
+            "npm": "svelte-virtual-scroll-list",
+            "repo": "v1ack/svelte-virtual-scroll-list"
         }
     ],
     "watchlist": [
