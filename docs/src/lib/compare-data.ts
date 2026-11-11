@@ -198,6 +198,7 @@ export const competitors: Competitor[] = [
             { name: 'Dynamic measured heights', us: true, them: 'Explicit sizes / recompute' },
             { name: 'Variable sizes from array/function', us: false, them: true },
             { name: 'Horizontal lists', us: 'LTR, runtime switchable', them: true },
+            { name: 'Header and footer snippets', us: 'Measured automatically', them: true },
             { name: 'Infinite scroll helpers', us: true, them: 'Footer snippet pattern' },
             { name: 'Programmatic scroll to index', us: true, them: true },
             { name: 'Runtime dependencies', us: '0', them: '0' }
@@ -205,12 +206,12 @@ export const competitors: Competitor[] = [
         prosUs: [
             ...shared.prosUs,
             'Automatic measurement suits content whose height changes after render',
+            'Header and footer snippets are measured, so resizing them keeps your reading position',
             'Modern Svelte 5 snippet API'
         ],
         prosThem: [
             'Small and dependency-free',
             'Supports fixed, variable, vertical, and horizontal modes',
-            'Header and footer snippets are useful for wrappers and loaders',
             'Mature package with a long release history'
         ],
         consUs: [...shared.consUs],
