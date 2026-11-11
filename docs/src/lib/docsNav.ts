@@ -68,6 +68,13 @@ export const buildBreadcrumbs = (pathname: string): Breadcrumb[] => {
             { title: titleFor(pathname) ?? 'Comparison' }
         ]
     }
+    if (pathname.startsWith('/docs/migrate/')) {
+        return [
+            { title: 'Docs', href: '/docs' },
+            { title: 'Migration' },
+            { title: titleFor(pathname) ?? 'Migration guide' }
+        ]
+    }
     if (pathname.startsWith('/docs/')) {
         return [{ title: 'Docs', href: '/docs' }, { title: titleFor(pathname) ?? 'Docs' }]
     }
@@ -80,9 +87,15 @@ export const docsSections: NavSection[] = [
         icon: Rocket,
         items: [
             { title: 'Install', href: '/docs/install', icon: Code },
-            { title: 'Introduction', href: '/docs', icon: Rocket, exact: true },
+            { title: 'Introduction', href: '/docs', icon: Rocket, exact: true }
+        ]
+    },
+    {
+        title: 'Migration',
+        icon: ArrowRightLeft,
+        items: [
             {
-                title: 'Migrate from svelte-virtual-scroll-list',
+                title: 'From svelte-virtual-scroll-list',
                 href: '/docs/migrate/svelte-virtual-scroll-list',
                 icon: ArrowRightLeft
             }
