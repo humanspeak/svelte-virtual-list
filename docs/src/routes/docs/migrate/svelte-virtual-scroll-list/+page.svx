@@ -1,0 +1,196 @@
+---
+title: "Migrate from svelte-virtual-scroll-list to Svelte 5"
+description: "Move from unmaintained svelte-virtual-scroll-list to Svelte Virtual List on Svelte 5. Every prop, event, slot, and method mapped, with before and after code."
+---
+
+<script>
+  import { getSeoContext } from '#lib/components/contexts/Seo/Seo.context.js'
+
+  const seo = getSeoContext()
+  if (seo) {
+    seo.title = 'Migrate from svelte-virtual-scroll-list to Svelte 5'
+    seo.description = 'Move from unmaintained svelte-virtual-scroll-list to Svelte Virtual List on Svelte 5. Every prop, event, slot, and method mapped, with before and after code.'
+    seo.ogTitle = 'Migrate from svelte-virtual-scroll-list'
+    seo.ogTagline = 'Every prop, event, slot, and method mapped to Svelte 5.'
+    seo.ogFeatures = ['Svelte 5', 'Props Mapped', 'Before & After', 'Snippets']
+    seo.ogSlug = 'docs-migrate-svelte-virtual-scroll-list'
+  }
+</script>
+
+# Migrate from svelte-virtual-scroll-list
+
+[svelte-virtual-scroll-list](https://github.com/v1ack/svelte-virtual-scroll-list) is no longer maintained. Its last release, 1.3.0, came out in July 2023 and uses Svelte 3 slot syntax. This guide moves a list to **@humanspeak/svelte-virtual-list**, a maintained Svelte 5 component that also measures rows of different sizes.
+
+For a side-by-side feature summary, see the [svelte-virtual-scroll-list comparison](/compare/svelte-virtual-scroll-list).
+
+## Before you start
+
+Two features have no equivalent yet:
+
+- **`pageMode`**, which scrolls the list with the whole page. Svelte Virtual List always scrolls inside its own container. If you rely on `pageMode`, stay on svelte-virtual-scroll-list for now.
+- **The `top` event** for loading older items at the top. For chat-style lists, use [@humanspeak/svelte-virtual-chat](https://virtualchat.svelte.page), which loads older messages through `onNeedHistory` and keeps your place while they are added.
+
+Everything else maps directly.
+
+## Install
+
+```bash
+npm uninstall svelte-virtual-scroll-list
+npm install @humanspeak/svelte-virtual-list
+```
+
+Svelte Virtual List requires Svelte 5.
+
+## Before and after
+
+A list with a header, a footer, and more rows loaded at the bottom.
+
+**Before**, with svelte-virtual-scroll-list:
+
+```svelte
+<script>
+    import VirtualScroll from 'svelte-virtual-scroll-list'
+
+    let items = [{ id: 1, text: 'one' } /* ... */]
+
+    async function loadMore() {
+        items = [...items, ...(await fetchNextPage())]
+    }
+</script>
+
+<div style="height: 500px">
+    <VirtualScroll
+        data={items}
+        key="id"
+        estimateSize={50}
+        bottomThreshold={200}
+        on:bottom={loadMore}
+        let:data
+        let:index
+    >
+        <div slot="header">Messages</div>
+        <div class="row">{index}: {data.text}</div>
+        <div slot="footer">Loading…</div>
+    </VirtualScroll>
+</div>
+```
+
+**After**, with Svelte Virtual List:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    let items = $state([{ id: 1, text: 'one' } /* ... */])
+    let hasMore = $state(true)
+
+    async function loadMore() {
+        const page = await fetchNextPage()
+        items = [...items, ...page]
+        if (page.length === 0) hasMore = false
+    }
+</script>
+
+<div style="height: 500px">
+    <VirtualList
+        {items}
+        itemKey={(item) => item.id}
+        defaultEstimatedItemSize={50}
+        loadMoreThreshold={10}
+        onLoadMore={loadMore}
+        {hasMore}
+    >
+        {#snippet header()}
+            <div>Messages</div>
+        {/snippet}
+        {#snippet renderItem(item, index)}
+            <div class="row">{index}: {item.text}</div>
+        {/snippet}
+        {#snippet footer()}
+            <div>Loading…</div>
+        {/snippet}
+    </VirtualList>
+</div>
+```
+
+The list fills its parent, so keep a wrapper with a height, as before.
+
+## Props
+
+| svelte-virtual-scroll-list | Svelte Virtual List | Notes |
+|---|---|---|
+| `data` | `items` | |
+| `key="id"` | `itemKey={(item) => item.id}` | A function, so keys can be computed. Set it whenever items are added, removed, or reordered. |
+| `estimateSize` | `defaultEstimatedItemSize` | Default `40` instead of `50`. Rows are still measured after they render. |
+| `isHorizontal` | `orientation="horizontal"` | Can change at runtime. Horizontal mode is left-to-right only. |
+| `keeps` | `bufferSize` | Not the same number: `keeps` is the total rows rendered, `bufferSize` is the extra rows rendered beyond the visible ones. The default usually works. |
+| `bottomThreshold` | `loadMoreThreshold` | Counted in items from the end, not pixels. |
+| `start` | `scroll({ index })` | See Scroll position, below. |
+| `offset` | `scrollToOffset({ offset })` | See Scroll position, below. |
+| `pageMode` | None | See Before you start, above. |
+| `topThreshold` | None | See Before you start, above. |
+
+## Slots
+
+| svelte-virtual-scroll-list | Svelte Virtual List |
+|---|---|
+| Default slot with `let:data` and `let:index` | `renderItem` snippet, `(item, index)` |
+| `slot="header"` | `header` snippet |
+| `slot="footer"` | `footer` snippet |
+
+The header and footer are measured like rows, so resizing them keeps your reading position.
+
+## Events
+
+| svelte-virtual-scroll-list | Svelte Virtual List |
+|---|---|
+| `on:bottom` | `onLoadMore`, plus `hasMore` set to `false` when there is no more data |
+| `on:top` | None. See Before you start, above. |
+| `on:scroll` | `onRangeChange`, called with `{ start, end, atTop, atBottom }` when the rendered range or an edge changes rather than on every scroll event |
+
+Unlike `on:bottom`, `onLoadMore` is not called again while a load is still running, or straight after a load that added nothing. See [onLoadMore](/docs/api/events).
+
+## Methods
+
+Get the component with `bind:this`, as before.
+
+| svelte-virtual-scroll-list | Svelte Virtual List |
+|---|---|
+| `scrollToIndex(index)` | `scroll({ index })` |
+| `scrollToOffset(offset)` | `scrollToOffset({ offset })` |
+| `scrollToBottom()` | `scroll({ index: items.length - 1, align: 'bottom' })` |
+| `getSize`, `getSizes`, `getOffset`, `getClientSize`, `getScrollSize` | None as methods. `debugFunction` reports `totalHeight` and `averageItemHeight`. |
+| `updatePageModeFront()` | None, since there is no page mode. |
+
+`scroll()` also takes `align` (`'auto'`, `'top'`, `'bottom'`, `'center'` or `'nearest'`) and `smoothScroll`, and both methods return a promise that resolves when scrolling finishes. See [Methods](/docs/api/methods).
+
+## Scroll position
+
+In svelte-virtual-scroll-list, `start` and `offset` are props, and changing them scrolls the list. Call the methods from an effect for the same behavior:
+
+```svelte
+<script lang="ts">
+    import VirtualList from '@humanspeak/svelte-virtual-list'
+
+    type Item = { id: number; text: string }
+
+    let { items, start = 0 }: { items: Item[]; start?: number } = $props()
+    let list: VirtualList<Item>
+
+    $effect(() => {
+        list.scroll({ index: start, align: 'top', smoothScroll: false })
+    })
+</script>
+
+<VirtualList bind:this={list} {items}>
+    {#snippet renderItem(item)}
+        <div>{item.text}</div>
+    {/snippet}
+</VirtualList>
+```
+
+## Next steps
+
+- [Props reference](/docs/api/props)
+- [Infinite scroll guide](/docs/infinite-scroll)
+- [Headers and footers example](/examples/header-footer)

@@ -295,7 +295,7 @@
     "compare_data_paths": ["docs/src/lib/compare-data.ts"],
     "page_validation": {
         "download_tolerance": 0.3,
-        "_comment": "compare-data.ts drives the /compare 'vs' pages (6 competitors). Validator checks svelte_peer for framework claims, hardcoded download/star figures, dormant/active framing, and them: feature cells on version bumps."
+        "_comment": "compare-data.ts drives the /compare 'vs' pages (7 competitors). Validator checks svelte_peer for framework claims, hardcoded download/star figures, dormant/active framing, and them: feature cells on version bumps."
     },
     "slack_channel": "C0BP5BF1UTX",
     "_slack_channel_comment": "#claude-reports (human-speak). Delivery uses the shared webhook in ~/.config/competitive-intel/common.env; this ID is for reference / interactive MCP posting."

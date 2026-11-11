@@ -324,6 +324,65 @@ export const competitors: Competitor[] = [
             'sveltejs virtual list replacement',
             'modern svelte virtual list'
         ]
+    },
+    {
+        slug: 'svelte-virtual-scroll-list',
+        name: 'svelte-virtual-scroll-list',
+        tagline:
+            'svelte-virtual-scroll-list is no longer maintained. Svelte Virtual List covers most of its API with Svelte 5 snippets.',
+        seoTitle: 'svelte-virtual-scroll-list Alternative for Svelte 5',
+        seoDescription:
+            'svelte-virtual-scroll-list is unmaintained and uses Svelte 3 slots. Svelte Virtual List is a maintained Svelte 5 replacement, with a migration guide.',
+        description:
+            'svelte-virtual-scroll-list is a Svelte port of vue-virtual-scroll-list: one VirtualScroll component that measures rows of different sizes, fires top and bottom events for loading in both directions, and can scroll with the whole page through pageMode. Its last release, 1.3.0, was in July 2023, it uses Svelte 3 slot syntax, and its README now marks it as no longer maintained. @humanspeak/svelte-virtual-list is a maintained Svelte 5 component with snippets, automatic measurement, measured header and footer snippets, built-in infinite loading, and index and offset scrolling.',
+        website: 'https://github.com/v1ack/svelte-virtual-scroll-list#readme',
+        github: 'https://github.com/v1ack/svelte-virtual-scroll-list',
+        npm: 'svelte-virtual-scroll-list',
+        type: 'Legacy Svelte Virtual Scroll Component',
+        approach: 'Port of vue-virtual-scroll-list with slots and events',
+        features: [
+            { name: 'Svelte 5 snippets', us: true, them: 'Svelte 3 slots' },
+            { name: 'Dynamic measured sizes', us: true, them: true },
+            { name: 'Header and footer', us: 'Measured snippets', them: 'Slots' },
+            { name: 'Load more at the end', us: 'onLoadMore + hasMore', them: 'bottom event' },
+            { name: 'Load older items at the top', us: false, them: 'top event' },
+            { name: 'Horizontal lists', us: 'LTR, runtime switchable', them: true },
+            { name: 'Scroll with the whole page', us: false, them: 'pageMode' },
+            {
+                name: 'Scroll position as a prop',
+                us: 'scroll() after mount',
+                them: 'start / offset'
+            },
+            { name: 'Programmatic scroll to index', us: true, them: true },
+            { name: 'Item key as a function', us: true, them: 'Property name only' },
+            { name: 'Current maintenance', us: true, them: false },
+            { name: 'Runtime dependencies', us: '0', them: '0' }
+        ],
+        prosUs: [
+            ...shared.prosUs,
+            'Snippets and callback props instead of slots and dispatched events',
+            'Keyed prepends, trims, and reorders keep the reading position'
+        ],
+        prosThem: [
+            'Scrolls with the whole page through pageMode',
+            'Top and bottom events for loading in both directions',
+            'start and offset props set the scroll position declaratively',
+            'Size getters such as getSize and getScrollSize'
+        ],
+        consUs: [...shared.consUs],
+        consThem: [
+            'No release since July 2023, and its README marks it as no longer maintained',
+            'Svelte 3 slot syntax; Svelte 5 support is an open issue',
+            'key must be a property name, not a function',
+            'Top and bottom thresholds are in pixels and can fire more than once'
+        ],
+        verdict:
+            'Stay on svelte-virtual-scroll-list only if you depend on pageMode to scroll the list with the whole page. For chat-style lists that load older messages at the top, use @humanspeak/svelte-virtual-chat. For other Svelte 5 projects, @humanspeak/svelte-virtual-list is a maintained replacement for the rest of its API: measured rows, header and footer, infinite loading, horizontal mode, and index and offset scrolling. The migration guide maps each prop, event, and method.',
+        keywords: [
+            'svelte-virtual-scroll-list alternative',
+            'svelte-virtual-scroll-list svelte 5',
+            'svelte-virtual-scroll-list vs svelte virtual list'
+        ]
     }
 ]
 
@@ -341,7 +400,11 @@ export const exampleLinks: Record<string, { href: string; label: string }> = {
         label: 'dynamic height example'
     },
     'svelte-virtuallists': { href: '/examples/horizontal', label: 'horizontal list example' },
-    'sveltejs-svelte-virtual-list': { href: '/examples/basic-list', label: 'basic list example' }
+    'sveltejs-svelte-virtual-list': { href: '/examples/basic-list', label: 'basic list example' },
+    'svelte-virtual-scroll-list': {
+        href: '/docs/migrate/svelte-virtual-scroll-list',
+        label: 'migration guide'
+    }
 }
 
 export function getCompetitor(slug: string): Competitor | undefined {

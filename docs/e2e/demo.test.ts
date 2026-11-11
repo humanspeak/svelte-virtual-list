@@ -157,6 +157,25 @@ test('svelte-virtual comparison targets the npm package search', async ({ page }
     await expect(svelte5Row.getByRole('cell').nth(2)).toHaveText('Prerelease (1.0.0-next)')
 })
 
+test('svelte-virtual-scroll-list comparison links its migration guide', async ({ page }) => {
+    await page.goto('/compare/svelte-virtual-scroll-list')
+
+    await expect(page).toHaveTitle('svelte-virtual-scroll-list Alternative for Svelte 5')
+    const pageModeRow = page.getByRole('row').filter({ hasText: 'Scroll with the whole page' })
+    await expect(pageModeRow.getByRole('cell').nth(2)).toHaveText('pageMode')
+
+    await page.getByRole('main').getByRole('link', { name: 'migration guide', exact: true }).click()
+    await expect(page).toHaveURL('/docs/migrate/svelte-virtual-scroll-list')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        'Migrate from svelte-virtual-scroll-list'
+    )
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'https://virtuallist.svelte.page/docs/migrate/svelte-virtual-scroll-list'
+    )
+    await expect(page.getByRole('cell', { name: 'defaultEstimatedItemSize' })).toBeVisible()
+})
+
 test('LLM files advertise and bundle complete comparison mirrors', async ({ request }) => {
     const llmsResponse = await request.get('/llms.txt')
     expect(llmsResponse.ok()).toBe(true)
