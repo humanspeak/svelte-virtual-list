@@ -1,45 +1,259 @@
 {
     "project": "@humanspeak/svelte-virtual-list",
-    "last_run": "2026-10-05",
+    "last_run": "2026-11-10",
     "run_type": "delta",
     "snapshot": {
-        "fetched_at": "2026-10-05T08:51:49Z",
+        "fetched_at": "2026-11-10T06:00:52Z",
         "project": "@humanspeak/svelte-virtual-list",
         "self": {
             "npm": "@humanspeak/svelte-virtual-list",
             "repo": "humanspeak/svelte-virtual-list",
-            "latest_version": "0.5.14",
-            "last_publish": "2026-08-10",
+            "latest_version": "0.5.15",
+            "last_publish": "2026-10-06",
             "first_publish": "2025-01-04",
-            "weekly_downloads": 3914,
+            "weekly_downloads": 7473,
             "peer_deps": {
                 "svelte": "^5.0.0"
             },
             "svelte_peer": "^5.0.0",
             "error": null,
-            "stars": 107,
+            "stars": 109,
             "archived": false,
-            "pushed_at": "2026-10-02",
-            "last_release": "2026-08-10"
+            "pushed_at": "2026-10-27",
+            "last_release": "2026-10-06",
+            "recent_releases": [
+                {
+                    "version": "v0.5.15",
+                    "date": "2026-10-06",
+                    "notes": "Changes in this Release\nfeat: add measured header and footer snippets\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/450)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.15"
+                },
+                {
+                    "version": "v0.5.14",
+                    "date": "2026-08-10",
+                    "notes": "Changes in this Release\nfeat(virtual-list): add responsive horizontal orientation\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/428)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.14"
+                },
+                {
+                    "version": "v0.5.13",
+                    "date": "2026-07-23",
+                    "notes": "Changes in this Release\nbuild(docs): bump docs-kit to 2026.7.6\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/426)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.13"
+                },
+                {
+                    "version": "v0.5.12",
+                    "date": "2026-07-16",
+                    "notes": "Changes in this Release\nfeat(virtual-list): align center and scrollToOffset for programmatic scrolling\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/425)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.12"
+                },
+                {
+                    "version": "v0.5.11",
+                    "date": "2026-07-14",
+                    "notes": "Changes in this Release\nfeat(virtual-list): public onRangeChange callback for visible-range state\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/424)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.11"
+                },
+                {
+                    "version": "v0.5.10",
+                    "date": "2026-07-14",
+                    "notes": "Changes in this Release\nperf(virtual-list): block-accelerated offset/range math for deep scroll positions\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/423)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.10"
+                },
+                {
+                    "version": "v0.5.9",
+                    "date": "2026-07-03",
+                    "notes": "Changes in this Release\nfix(virtual-list): react to container resizes; retire the dead initialized flag\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/421)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.9"
+                },
+                {
+                    "version": "v0.5.8",
+                    "date": "2026-07-03",
+                    "notes": "Changes in this Release\nrefactor(virtual-list): remove the dead debounced measurement pipeline\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/420)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.8"
+                },
+                {
+                    "version": "v0.5.7",
+                    "date": "2026-07-03",
+                    "notes": "Changes in this Release\nfeat(virtual-list): keyboard-accessible viewport with labeled region\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/419)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.7"
+                },
+                {
+                    "version": "v0.5.6",
+                    "date": "2026-07-03",
+                    "notes": "Changes in this Release\nfix(virtual-list): hide estimate-miss corrections while scrolling backlog\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/418)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.6"
+                },
+                {
+                    "version": "v0.5.5",
+                    "date": "2026-07-02",
+                    "notes": "Changes in this Release\nfix(virtual-list): count collapsed margins in item height measurement\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/415)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.5"
+                },
+                {
+                    "version": "v0.5.4",
+                    "date": "2026-06-25",
+                    "notes": "Changes in this Release\nci(npm-publish): refresh README ecosystem footer on release\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/410)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.4"
+                },
+                {
+                    "version": "v0.5.3",
+                    "date": "2026-06-17",
+                    "notes": "Changes in this Release\nci: align npm release workflows with pnpm\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/407)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.3"
+                },
+                {
+                    "version": "v0.5.2",
+                    "date": "2026-05-29",
+                    "notes": "Changes in this Release\nbuild(docs): refresh docs-kit generation flow\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/400)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.2"
+                },
+                {
+                    "version": "v0.5.1",
+                    "date": "2026-05-28",
+                    "notes": "Changes in this Release\nfix(ci): always run release cleanup on failure\n\nFor more details, see the [Pull Request](https://github.com/humanspeak/svelte-virtual-list/pull/397)",
+                    "notes_truncated": false,
+                    "url": "https://github.com/humanspeak/svelte-virtual-list/releases/tag/v0.5.1"
+                }
+            ]
         },
         "upstream": [],
         "competitors": [
             {
                 "npm": "@tanstack/svelte-virtual",
                 "repo": "TanStack/virtual",
-                "latest_version": "3.13.39",
-                "last_publish": "2026-09-14",
+                "latest_version": "3.13.52",
+                "last_publish": "2026-11-03",
                 "first_publish": "2022-07-19",
-                "weekly_downloads": 96090,
+                "weekly_downloads": 189330,
                 "peer_deps": {
                     "svelte": "^3.48.0 || ^4.0.0 || ^5.0.0"
                 },
                 "svelte_peer": "^3.48.0 || ^4.0.0 || ^5.0.0",
                 "error": null,
-                "stars": 7128,
+                "stars": 7195,
                 "archived": false,
-                "pushed_at": "2026-09-21",
-                "last_release": "2026-09-14"
+                "pushed_at": "2026-11-08",
+                "last_release": "2026-11-03",
+                "recent_releases": [
+                    {
+                        "version": "@tanstack/vue-virtual@3.13.52",
+                        "date": "2026-11-03",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`acaef5e`](https://github.com/TanStack/virtual/commit/acaef5ef7fc2ed86f10fad660b2e21c9285027b5), [`bd08fe5`](https://github.com/TanStack/virtual/commit/bd08fe5b4e798fb12f54ba1e28d31f15482e43a6)]:\n    -   @tanstack/virtual-core@3.19.11",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/vue-virtual%403.13.52"
+                    },
+                    {
+                        "version": "@tanstack/virtual-core@3.19.11",
+                        "date": "2026-11-03",
+                        "notes": "### Patch Changes\n\n-   [#1363](https://github.com/TanStack/virtual/pull/1363) [`acaef5e`](https://github.com/TanStack/virtual/commit/acaef5ef7fc2ed86f10fad660b2e21c9285027b5) - fix(virtual-core): compute `getOffsetForIndex` (and the first write of `scrollToIndex`) from the current measurements, not from those of the last render\n\n-   [#1291](https://github.com/TanStack/virtual/pull/1291) [`bd08fe5`](https://github.com/TanStack/virtual/commit/bd08fe5b4e798fb12f54ba1e28d31f15482e43a6) - Fix programmatic scrolling in horizontal RTL elements by converting logical offsets, including measurement adju",
+                        "notes_truncated": true,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/virtual-core%403.19.11"
+                    },
+                    {
+                        "version": "@tanstack/svelte-virtual@3.13.52",
+                        "date": "2026-11-03",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`acaef5e`](https://github.com/TanStack/virtual/commit/acaef5ef7fc2ed86f10fad660b2e21c9285027b5), [`bd08fe5`](https://github.com/TanStack/virtual/commit/bd08fe5b4e798fb12f54ba1e28d31f15482e43a6)]:\n    -   @tanstack/virtual-core@3.19.11",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/svelte-virtual%403.13.52"
+                    },
+                    {
+                        "version": "@tanstack/solid-virtual@3.13.53",
+                        "date": "2026-11-03",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`acaef5e`](https://github.com/TanStack/virtual/commit/acaef5ef7fc2ed86f10fad660b2e21c9285027b5), [`bd08fe5`](https://github.com/TanStack/virtual/commit/bd08fe5b4e798fb12f54ba1e28d31f15482e43a6)]:\n    -   @tanstack/virtual-core@3.19.11",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/solid-virtual%403.13.53"
+                    },
+                    {
+                        "version": "@tanstack/react-virtual@3.14.26",
+                        "date": "2026-11-03",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`acaef5e`](https://github.com/TanStack/virtual/commit/acaef5ef7fc2ed86f10fad660b2e21c9285027b5), [`bd08fe5`](https://github.com/TanStack/virtual/commit/bd08fe5b4e798fb12f54ba1e28d31f15482e43a6)]:\n    -   @tanstack/virtual-core@3.19.11",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/react-virtual%403.14.26"
+                    },
+                    {
+                        "version": "@tanstack/marko-virtual@3.16.12",
+                        "date": "2026-11-03",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`acaef5e`](https://github.com/TanStack/virtual/commit/acaef5ef7fc2ed86f10fad660b2e21c9285027b5), [`bd08fe5`](https://github.com/TanStack/virtual/commit/bd08fe5b4e798fb12f54ba1e28d31f15482e43a6)]:\n    -   @tanstack/virtual-core@3.19.11",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/marko-virtual%403.16.12"
+                    },
+                    {
+                        "version": "@tanstack/lit-virtual@3.15.3",
+                        "date": "2026-11-03",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`acaef5e`](https://github.com/TanStack/virtual/commit/acaef5ef7fc2ed86f10fad660b2e21c9285027b5), [`bd08fe5`](https://github.com/TanStack/virtual/commit/bd08fe5b4e798fb12f54ba1e28d31f15482e43a6)]:\n    -   @tanstack/virtual-core@3.19.11",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/lit-virtual%403.15.3"
+                    },
+                    {
+                        "version": "@tanstack/angular-virtual@6.1.12",
+                        "date": "2026-11-03",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`acaef5e`](https://github.com/TanStack/virtual/commit/acaef5ef7fc2ed86f10fad660b2e21c9285027b5), [`bd08fe5`](https://github.com/TanStack/virtual/commit/bd08fe5b4e798fb12f54ba1e28d31f15482e43a6)]:\n    -   @tanstack/virtual-core@3.19.11",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/angular-virtual%406.1.12"
+                    },
+                    {
+                        "version": "@tanstack/vue-virtual@3.13.51",
+                        "date": "2026-11-01",
+                        "notes": "### Patch Changes\n\n-   [#1353](https://github.com/TanStack/virtual/pull/1353) [`6936d2f`](https://github.com/TanStack/virtual/commit/6936d2f7503afc6f8aeb2788e6dcc0d20ec0ccdf) - Detach scroll observers when the scroll element becomes null.\n\n-   Updated dependencies \\[[`9d7ff67`](https://github.com/TanStack/virtual/commit/9d7ff6781767f1b9ea30ef69f42d72d8524ab75d)]:\n    -   @tanstack/virtual-core@3.19.10",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/vue-virtual%403.13.51"
+                    },
+                    {
+                        "version": "@tanstack/virtual-core@3.19.10",
+                        "date": "2026-11-01",
+                        "notes": "### Patch Changes\n\n-   [#1351](https://github.com/TanStack/virtual/pull/1351) [`9d7ff67`](https://github.com/TanStack/virtual/commit/9d7ff6781767f1b9ea30ef69f42d72d8524ab75d) - Keep a full viewport of rows in the range when the scroll offset is past the end of the list, as it is after the list shrinks and before the element reports its clamped position.",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/virtual-core%403.19.10"
+                    },
+                    {
+                        "version": "@tanstack/svelte-virtual@3.13.51",
+                        "date": "2026-11-01",
+                        "notes": "### Patch Changes\n\n-   [#1356](https://github.com/TanStack/virtual/pull/1356) [`600204a`](https://github.com/TanStack/virtual/commit/600204a41723dd124d9ee85541f79a1948f6ee5d) - Preserve updated virtualizer options when a Svelte store is resubscribed.\n\n-   Updated dependencies \\[[`9d7ff67`](https://github.com/TanStack/virtual/commit/9d7ff6781767f1b9ea30ef69f42d72d8524ab75d)]:\n    -   @tanstack/virtual-core@3.19.10",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/svelte-virtual%403.13.51"
+                    },
+                    {
+                        "version": "@tanstack/solid-virtual@3.13.52",
+                        "date": "2026-11-01",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`9d7ff67`](https://github.com/TanStack/virtual/commit/9d7ff6781767f1b9ea30ef69f42d72d8524ab75d)]:\n    -   @tanstack/virtual-core@3.19.10",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/solid-virtual%403.13.52"
+                    },
+                    {
+                        "version": "@tanstack/react-virtual@3.14.25",
+                        "date": "2026-11-01",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`9d7ff67`](https://github.com/TanStack/virtual/commit/9d7ff6781767f1b9ea30ef69f42d72d8524ab75d)]:\n    -   @tanstack/virtual-core@3.19.10",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/react-virtual%403.14.25"
+                    },
+                    {
+                        "version": "@tanstack/marko-virtual@3.16.11",
+                        "date": "2026-11-01",
+                        "notes": "### Patch Changes\n\n-   Updated dependencies \\[[`9d7ff67`](https://github.com/TanStack/virtual/commit/9d7ff6781767f1b9ea30ef69f42d72d8524ab75d)]:\n    -   @tanstack/virtual-core@3.19.10",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/marko-virtual%403.16.11"
+                    },
+                    {
+                        "version": "@tanstack/lit-virtual@3.15.2",
+                        "date": "2026-11-01",
+                        "notes": "### Patch Changes\n\n-   [#1357](https://github.com/TanStack/virtual/pull/1357) [`6f6970b`](https://github.com/TanStack/virtual/commit/6f6970b3b64e887fb2189fe81c2287a50a8bdf9a) - Reattach scroll observers when a Lit virtualizer host is connected again, so scrolling keeps updating the rendered range after the element is moved.\n\n-   Updated dependencies \\[[`9d7ff67`](https://github.com/TanStack/virtual/commit/9d7ff6781767f1b9ea30ef69f42d72d8524ab75d)]:\n    -   @tanstack/virtual-core@3.19.10",
+                        "notes_truncated": false,
+                        "url": "https://github.com/TanStack/virtual/releases/tag/%40tanstack/lit-virtual%403.15.2"
+                    }
+                ]
             },
             {
                 "npm": "svelte-tiny-virtual-list",
@@ -47,16 +261,25 @@
                 "latest_version": "4.0.0",
                 "last_publish": "2026-08-11",
                 "first_publish": "2020-12-14",
-                "weekly_downloads": 14146,
+                "weekly_downloads": 13144,
                 "peer_deps": {
                     "svelte": "^5.0.0"
                 },
                 "svelte_peer": "^5.0.0",
                 "error": null,
-                "stars": 645,
+                "stars": 644,
                 "archived": false,
-                "pushed_at": "2026-10-05",
-                "last_release": "2026-08-11"
+                "pushed_at": "2026-11-10",
+                "last_release": "2026-08-11",
+                "recent_releases": [
+                    {
+                        "version": "v4.0.0",
+                        "date": "2026-08-11",
+                        "notes": "# Svelte 5 Support is officially here!\n\nAfter a way too long wait, which I (@jonasgeiler) really apologize for, I have finally managed to get back to this project and finalize a few last things for the full `v4` release. I have noticed that many people were already using the `next` tag on NPM anyways.\n\n## About\nSince [version `4.0.0-rc.2`](https://github.com/jonasgeiler/svelte-tiny-virtual-list/releases/tag/v4.0.0-rc.2) I have mainly added some bug fixes, both contributed by users and some that I have found. Apart from that, I have made some behind-the-scenes changes that should help with futu",
+                        "notes_truncated": true,
+                        "url": "https://github.com/jonasgeiler/svelte-tiny-virtual-list/releases/tag/v4.0.0"
+                    }
+                ]
             },
             {
                 "npm": "svelte-virtuallists",
@@ -64,7 +287,7 @@
                 "latest_version": "1.4.2",
                 "last_publish": "2025-03-01",
                 "first_publish": "2024-06-16",
-                "weekly_downloads": 1610,
+                "weekly_downloads": 2791,
                 "peer_deps": {
                     "svelte": "^5.20.5"
                 },
@@ -73,7 +296,8 @@
                 "stars": 163,
                 "archived": false,
                 "pushed_at": "2025-03-03",
-                "last_release": "2025-03-01"
+                "last_release": "2025-03-01",
+                "recent_releases": []
             },
             {
                 "npm": "@sveltejs/svelte-virtual-list",
@@ -81,14 +305,15 @@
                 "latest_version": "3.0.1",
                 "last_publish": "2019-08-22",
                 "first_publish": "2018-04-03",
-                "weekly_downloads": 42771,
+                "weekly_downloads": 43281,
                 "peer_deps": null,
                 "svelte_peer": null,
                 "error": null,
-                "stars": 773,
+                "stars": 771,
                 "archived": false,
                 "pushed_at": "2023-03-01",
-                "last_release": null
+                "last_release": null,
+                "recent_releases": []
             },
             {
                 "npm": "svelte-virtual",
@@ -96,26 +321,27 @@
                 "latest_version": "0.6.3",
                 "last_publish": "2024-02-26",
                 "first_publish": "2022-07-22",
-                "weekly_downloads": 5548,
+                "weekly_downloads": 5320,
                 "peer_deps": {
                     "svelte": "^3.54.0 || ^4.0.0"
                 },
                 "svelte_peer": "^3.54.0 || ^4.0.0",
                 "error": null,
-                "stars": 73,
+                "stars": 72,
                 "archived": false,
                 "pushed_at": "2026-04-16",
-                "last_release": "2022-12-15"
+                "last_release": "2022-12-15",
+                "recent_releases": []
             }
         ],
         "watchlist": [
             {
                 "npm": "virtua",
                 "repo": "inokawa/virtua",
-                "latest_version": "0.53.1",
-                "last_publish": "2026-10-05",
+                "latest_version": "0.54.2",
+                "last_publish": "2026-11-04",
                 "first_publish": "2022-10-22",
-                "weekly_downloads": 1299864,
+                "weekly_downloads": 1663274,
                 "peer_deps": {
                     "vue": ">=3.2",
                     "react": ">=16.14.0",
@@ -127,13 +353,119 @@
                 },
                 "svelte_peer": ">=5.0",
                 "error": null,
-                "stars": 3748,
+                "stars": 3764,
                 "archived": false,
-                "pushed_at": "2026-10-05",
-                "last_release": "2026-10-05"
+                "pushed_at": "2026-11-09",
+                "last_release": "2026-11-04",
+                "recent_releases": [
+                    {
+                        "version": "0.54.2",
+                        "date": "2026-11-04",
+                        "notes": "## What's Changed\n* Add WindowMasonry for window scrolling by @mindyourlifeguide in https://github.com/inokawa/virtua/pull/1052\n* Correct `align: nearest` of scrollToIndex by @inokawa in https://github.com/inokawa/virtua/pull/1054\n\n## New Contributors\n* @mindyourlifeguide made their first contribution in https://github.com/inokawa/virtua/pull/1052\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.54.1...0.54.2",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.54.2"
+                    },
+                    {
+                        "version": "0.54.1",
+                        "date": "2026-11-02",
+                        "notes": "## What's Changed\n* Fix unnecessary rendering of lists outside the viewport by @inokawa in https://github.com/inokawa/virtua/pull/1046\n* Optimize wheel event handling by @inokawa in https://github.com/inokawa/virtua/pull/1047\n* Refactor imperative scroll by @inokawa in https://github.com/inokawa/virtua/pull/1048\n* Fix memory leak of the first data in React components by @inokawa in https://github.com/inokawa/virtua/pull/1051\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.54.0...0.54.1",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.54.1"
+                    },
+                    {
+                        "version": "0.54.0",
+                        "date": "2026-10-27",
+                        "notes": "## What's Changed\n* Refactor base offset calculation by @inokawa in https://github.com/inokawa/virtua/pull/1042\n* Fix base offset calculation for horizontal WindowVirtualizer in RTL by @inokawa in https://github.com/inokawa/virtua/pull/1043\n* Add ssrCount prop to VGrid and VMasonry by @inokawa in https://github.com/inokawa/virtua/pull/1044\n* Suppress `ResizeObserver loop completed with undelivered notification… by @inokawa in https://github.com/inokawa/virtua/pull/952\n* Fix jump on removal or reorder of items and broken layout with shift by @inokawa in https://github.com/inokawa/virtua/pull/10",
+                        "notes_truncated": true,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.54.0"
+                    },
+                    {
+                        "version": "0.53.6",
+                        "date": "2026-10-21",
+                        "notes": "## What's Changed\n* Refactor length change by @inokawa in https://github.com/inokawa/virtua/pull/1029\n* Refactor clamp by @inokawa in https://github.com/inokawa/virtua/pull/1031\n* Add browser tests by @inokawa in https://github.com/inokawa/virtua/pull/1032\n* Merge the per-axis imperative scrolls of VGrid into one by @inokawa in https://github.com/inokawa/virtua/pull/1033\n* Fix blank viewport when it is scrolled before mount by @inokawa in https://github.com/inokawa/virtua/pull/1039\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.53.5...0.53.6",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.53.6"
+                    },
+                    {
+                        "version": "0.53.5",
+                        "date": "2026-10-12",
+                        "notes": "## What's Changed\n* Add tests for fill by @inokawa in https://github.com/inokawa/virtua/pull/1021\n* Refactor async svelte handling by @inokawa in https://github.com/inokawa/virtua/pull/1022\n* Handle touchcancel event by @inokawa in https://github.com/inokawa/virtua/pull/1026\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.53.4...0.53.5",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.53.5"
+                    },
+                    {
+                        "version": "0.53.4",
+                        "date": "2026-10-12",
+                        "notes": "## What's Changed\n* Refactor core by @inokawa in https://github.com/inokawa/virtua/pull/1016\n* Refactor cache restoration by @inokawa in https://github.com/inokawa/virtua/pull/1017\n* Refactor masonry layout by @inokawa in https://github.com/inokawa/virtua/pull/1019\n* Update SSR tests by @inokawa in https://github.com/inokawa/virtua/pull/1020\n* svelte: guard stale keepMounted indexes against the store's length (follow-up to #847) by @Bewinxed in https://github.com/inokawa/virtua/pull/1018\n\n## New Contributors\n* @Bewinxed made their first contribution in https://github.com/inokawa/virtua/pull/10",
+                        "notes_truncated": true,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.53.4"
+                    },
+                    {
+                        "version": "0.53.3",
+                        "date": "2026-10-06",
+                        "notes": "## What's Changed\n* Fix bug onResize was called by relayout by @inokawa in https://github.com/inokawa/virtua/pull/1015\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.53.2...0.53.3",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.53.3"
+                    },
+                    {
+                        "version": "0.53.2",
+                        "date": "2026-10-05",
+                        "notes": "## What's Changed\n* Refactor store by @inokawa in https://github.com/inokawa/virtua/pull/1013\n* Add onResize prop by @inokawa in https://github.com/inokawa/virtua/pull/1014\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.53.1...0.53.2",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.53.2"
+                    },
+                    {
+                        "version": "0.53.1",
+                        "date": "2026-10-05",
+                        "notes": "## What's Changed\n* Add keepMounted prop to VMasonry by @inokawa in https://github.com/inokawa/virtua/pull/1012\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.53.0...0.53.1",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.53.1"
+                    },
+                    {
+                        "version": "0.53.0",
+                        "date": "2026-10-04",
+                        "notes": "https://github.com/user-attachments/assets/8f6eb1f6-1886-40c2-ae53-acb040bbbbdf\n\n## What's Changed\n* Refactor e2e by @inokawa in https://github.com/inokawa/virtua/pull/987\n* Refactor e2e by @inokawa in https://github.com/inokawa/virtua/pull/988\n* Add browser tests by @inokawa in https://github.com/inokawa/virtua/pull/989\n* Refactor e2e by @inokawa in https://github.com/inokawa/virtua/pull/990\n* Widen ViewportComponentAttributes to all attrs by @inokawa in https://github.com/inokawa/virtua/pull/991\n* Refactor e2e by @inokawa in https://github.com/inokawa/virtua/pull/992\n* Refactor e2e by @inoka",
+                        "notes_truncated": true,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.53.0"
+                    },
+                    {
+                        "version": "0.52.10",
+                        "date": "2026-09-29",
+                        "notes": "## What's Changed\n* Fix blank viewport after it is hidden or detached by @inokawa in https://github.com/inokawa/virtua/pull/986\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.52.9...0.52.10",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.52.10"
+                    },
+                    {
+                        "version": "0.52.9",
+                        "date": "2026-09-29",
+                        "notes": "## What's Changed\n* Explicitly opt out of React Compiler by @inokawa in https://github.com/inokawa/virtua/pull/985\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.52.8...0.52.9",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.52.9"
+                    },
+                    {
+                        "version": "0.52.8",
+                        "date": "2026-09-28",
+                        "notes": "## What's Changed\n* Refactor layouts by @inokawa in https://github.com/inokawa/virtua/pull/982\n* Fix regression in jump compensation at end by @inokawa in https://github.com/inokawa/virtua/pull/984\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.52.7...0.52.8",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.52.8"
+                    },
+                    {
+                        "version": "0.52.7",
+                        "date": "2026-09-22",
+                        "notes": "## What's Changed\n* Refactor layout tests by @inokawa in https://github.com/inokawa/virtua/pull/980\n* Refactor GridLayout by @inokawa in https://github.com/inokawa/virtua/pull/981\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.52.6...0.52.7",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.52.7"
+                    },
+                    {
+                        "version": "0.52.6",
+                        "date": "2026-09-22",
+                        "notes": "## What's Changed\n* Improve perf of spans and refactor change detection of VGrid by @inokawa in https://github.com/inokawa/virtua/pull/979\n\n\n**Full Changelog**: https://github.com/inokawa/virtua/compare/0.52.5...0.52.6",
+                        "notes_truncated": false,
+                        "url": "https://github.com/inokawa/virtua/releases/tag/0.52.6"
+                    }
+                ]
             }
-        ],
-        "note": "No tracked npm latest-version changes since the earlier 2026-10-05 baseline. npm last_publish is the authoritative latest-version publication date; last_release can refer to an older GitHub tag (notably svelte-virtual). Downloads are package-wide; virtua totals cover multiple frameworks."
+        ]
     },
     "open_gaps": [
         {
@@ -147,6 +479,13 @@
             "held_by": "virtua (watchlist)",
             "why": "virtua stabilized CacheSnapshot 2026-08-20; we restore scroll by index/offset but not measured sizes, so a deep restore re-measures",
             "worth_doing": "low urgency; only matters for lists restored deep into long dynamic-height datasets"
+        },
+        {
+            "gap": "user-gesture takeover of an in-flight programmatic scroll / public cancelScroll()",
+            "held_by": "@tanstack/svelte-virtual (virtual-core 3.18.0, 3.19.1, 3.19.5, 3.19.7, 3.19.9)",
+            "why": "keyboard input aborts our in-flight scroll(); wheel/touch takeover not verified and there is no public cancel API; 3.19.1 (2026-10-12) lets a user scroll end a non-smooth scrollToIndex before reconcile; 3.19.5 (2026-10-15) extends this to iOS 27 flings: a command during a fling stops it, user takeover cancels it; 3.19.7 (2026-10-22): explicit scroll cancels stale anchor work, clamped compensation retry held while a touch owns the scroll; 3.19.9 (2026-10-29): a command during a touch fling stops it on Android too",
+            "worth_doing": "verify wheel/touch takeover first; public cancel is cheap if requested",
+            "opened": "2026-10-11"
         },
         {
             "id": "sticky-indices",
@@ -174,175 +513,177 @@
     ],
     "compare_validation": {
         "@tanstack/svelte-virtual": {
-            "validated_against_version": "3.13.39",
-            "note": "3.13.39 is an adapter bump for virtual-core 3.17.11 (smooth scrollToIndex survives prepend anchor sync; scroll-end fallback reads live offset); no them: cell flips."
+            "validated_against_version": "3.13.52",
+            "note": "virtual-core 3.19.11: getOffsetForIndex/scrollToIndex from current measurements (#1363); horizontal RTL programmatic scroll (#1291). No them: cell flips. Tier 1 clean 2026-11-06. Tier 1 clean 2026-11-10 (no version change)."
         },
         "svelte-tiny-virtual-list": {
-            "validated_against_version": "4.0.0"
+            "validated_against_version": "4.0.0",
+            "note": "2026-11-10: prosThem header/footer line still stale on origin/main (HUM-39)."
         },
         "svelte-virtuallists": {
             "validated_against_version": "1.4.2",
-            "note": "dormancy claim (no release since 2025-03) re-checked 2026-09-17 and still accurate"
+            "note": "dormancy claim (no release since 2025-03) re-checked 2026-09-17 and still accurate Tier 1 clean 2026-11-10 (no version change)."
         },
         "@sveltejs/svelte-virtual-list": {
-            "validated_against_version": "3.0.1"
+            "validated_against_version": "3.0.1",
+            "note": "Tier 1 clean 2026-11-10 (no version change)."
         },
         "virtua": {
-            "validated_against_version": "0.53.1",
-            "note": "Svelte exports at 0.53.1 confirm VGrid and VMasonry. Existing grid cell remains accurate. Framework coverage prose/cell omits Angular (now supported); flag for editorial review. Masonry remains a non-goal.",
-            "findings": [
-                {
-                    "claim": "Framework coverage: React, Vue, Solid, Svelte",
-                    "finding": "Angular is also supported at 0.53.1.",
-                    "evidence": "https://github.com/inokawa/virtua/blob/0.53.1/README.md"
-                }
-            ]
+            "validated_against_version": "0.54.2",
+            "note": "0.54.1 off-viewport render fix, wheel perf, imperative-scroll refactor; 0.54.2 WindowMasonry (non-goal), align:nearest fix. No them: cell flips. Tier 1 clean 2026-11-10 (no version change)."
         },
         "svelte-virtual": {
             "validated_against_version": "0.6.3",
-            "note": "npm confirms stable 0.6.3 published 2024-02-26 (Svelte ^3.54.0 || ^4.0.0), next 1.0.0-next.22 published 2024-11-11 (Svelte ^5.0.0). Comparison dates/support are correct; GitHub last_release 2022-12-15 is not the npm latest publication date.",
-            "evidence": "https://registry.npmjs.org/svelte-virtual"
+            "note": "new page 2026-09-30; 0.6.3 (2024-02-26) peer ^3.54||^4; 1.0.0-next.22 (2024-11-11) peer ^5.0.0; fixed itemSize, List+Grid. All claims verified 2026-10-05. Tier 1 clean 2026-11-10 (no version change)."
         }
     },
     "seo": {
-        "export_date": "2026-10-05",
-        "trends_latest_date": "2026-10-02",
+        "export_date": "2026-10-15",
+        "trends_latest_date": "2026-11-07",
         "striking_distance": [
             {
                 "query": "svelte virtual list",
-                "impressions": 258.0,
-                "position": 8.01
-            },
-            {
-                "query": "npm svelte-virtual package",
-                "impressions": 87.0,
-                "position": 8.49
+                "impressions": 298,
+                "position": 7.49
             },
             {
                 "query": "svelte-virtual",
-                "impressions": 84.0,
-                "position": 7.71
+                "impressions": 92,
+                "position": 7.38
+            },
+            {
+                "query": "npm svelte-virtual package",
+                "impressions": 87,
+                "position": 8.49
             },
             {
                 "query": "svelte-virtual-list",
-                "impressions": 62.0,
-                "position": 8.15
+                "impressions": 64,
+                "position": 8.0
             },
             {
                 "query": "svelte virtual scroll",
-                "impressions": 53.0,
-                "position": 7.77
+                "impressions": 63,
+                "position": 9.51
             },
             {
                 "query": "svelte-tiny-virtual-list",
-                "impressions": 52.0,
-                "position": 12.29
+                "impressions": 59,
+                "position": 11.71
+            },
+            {
+                "query": "svelte 5 virtual list",
+                "impressions": 32,
+                "position": 5.91
             },
             {
                 "query": "\"svelte-virtual\" npm",
-                "impressions": 31.0,
+                "impressions": 31,
                 "position": 7.97
             },
             {
                 "query": "svelte-virtual npm",
-                "impressions": 31.0,
+                "impressions": 31,
                 "position": 8.35
             },
             {
                 "query": "svelte virtual",
-                "impressions": 29.0,
+                "impressions": 29,
                 "position": 7.55
+            },
+            {
+                "query": "@tanstack/svelte-virtual",
+                "impressions": 25,
+                "position": 8.4
             }
         ],
         "underperforming_pages": [
             {
-                "page": "https://virtuallist.svelte.page/compare/svelte-tiny-virtual-list",
-                "impressions": 272.0,
-                "position": 11.54,
-                "ctr": 0.0
-            },
-            {
-                "page": "https://virtuallist.svelte.page/examples",
-                "impressions": 234.0,
-                "position": 20.44,
-                "ctr": 0.85
-            },
-            {
-                "page": "https://virtuallist.svelte.page/compare/svelte-virtuallists",
-                "impressions": 203.0,
-                "position": 11.92,
-                "ctr": 0.0
-            },
-            {
                 "page": "https://virtuallist.svelte.page/docs",
-                "impressions": 102.0,
-                "position": 7.69,
-                "ctr": 0.0
+                "impressions": 163,
+                "position": 7.91,
+                "ctr": 0.0,
+                "window": "365d to 2026-11-07"
+            },
+            {
+                "page": "https://virtuallist.svelte.page/compare",
+                "impressions": 92,
+                "position": 7.87,
+                "ctr": 0.0,
+                "window": "365d to 2026-11-07"
+            },
+            {
+                "page": "https://virtuallist.svelte.page/blog",
+                "impressions": 88,
+                "position": 8.49,
+                "ctr": 0.0,
+                "window": "365d to 2026-11-07"
+            },
+            {
+                "page": "https://virtuallist.svelte.page/docs/infinite-scroll",
+                "impressions": 71,
+                "position": 8.45,
+                "ctr": 0.0,
+                "window": "365d to 2026-11-07"
+            },
+            {
+                "page": "https://virtuallist.svelte.page/docs/accessibility",
+                "impressions": 22,
+                "position": 9.09,
+                "ctr": 0.0,
+                "window": "365d to 2026-11-07"
             }
         ],
         "recommendations_open": [
-            "fix npm-intent cluster (HUM-48; 063e84a answered with /compare/svelte-virtual - re-scope)",
-            "/compare/svelte-tiny-virtual-list title+meta (HUM-49; live, awaiting clicks)",
-            "/compare/svelte-virtuallists off-target queries (HUM-50; live, awaiting clicks)",
-            "/examples title+meta (HUM-51; 28d meets Done-when on 1 click, close next run if held)"
+            "fix npm-intent cluster (HUM-40)",
+            "/compare/svelte-tiny-virtual-list title live; insufficient_volume (HUM-41)",
+            "/compare/svelte-virtuallists title live; insufficient_volume (HUM-42)",
+            "/compare/svelte-virtual no impressions (HUM-91)",
+            "hub pages /docs /compare /blog + /docs/infinite-scroll + /docs/accessibility: 0 clicks at pos 8-9 (not ticketed)"
         ],
-        "note": "QueryHippo 28d to 2026-09-29 (evidence 841d20fb-1904-402e-9b84-a551838fced8, low_volume): 7 clicks (-8), 600 impr (-26%), pos 8.0 (was 15.3). GSC 28d to 2026-10-02: svelte virtual list 10.2->5.5; svelte-tiny-virtual-list 15.5->8.5; svelte-virtual-list 12.6->5.7; svelte virtual scroll 6.5->9.3. /docs entered underperforming (102 impr, 0 clicks, pos 7.7) - too thin per query to ticket. Tracked-keyword additions done."
+        "note": "QueryHippo 28d to 2026-11-07 (evidence 8aed661d-0b56-4860-9581-07a854d7db15, low_volume): 8 clicks (was 11), 602 impr (+21%), pos 9.4 (was 6.8). /compare/tanstack-virtual 114 impr; /compare/virtua 37; new /docs/accessibility, /docs/debug; /docs/convex dropped out. Sitemap 32 URLs, 24 with impressions."
     },
     "queryhippo": {
         "property_id": "22990673-2bae-41e5-9551-229df5ce4163"
     },
     "tickets": {
-        "last_checked": "2026-10-05",
+        "last_checked": "2026-11-10",
+        "note": "Paperclip instance rebuilt 2026-10-25; prior HUM-48/49/50/99/142 lost and refiled; HUM-51 (done) not refiled.",
         "known": {
+            "vs-tiny-header-footer-parity": {
+                "identifier": "HUM-39",
+                "status": "todo"
+            },
             "seo-npm-intent-landing": {
-                "identifier": "HUM-48",
+                "identifier": "HUM-40",
                 "status": "todo"
             },
             "seo-compare-tiny-title-meta": {
-                "identifier": "HUM-49",
-                "status": "todo"
+                "identifier": "HUM-41",
+                "status": "todo",
+                "change": {
+                    "id": "6303b023-216b-4efc-9613-40634cc18eda",
+                    "ready_on": "2026-10-28",
+                    "verdict": "insufficient_volume"
+                }
             },
             "seo-compare-virtuallists-cannibalization": {
-                "identifier": "HUM-50",
-                "status": "todo"
-            },
-            "seo-examples-title-meta": {
-                "identifier": "HUM-51",
-                "status": "todo"
+                "identifier": "HUM-42",
+                "status": "todo",
+                "change": {
+                    "id": "154715f1-e117-4370-b9da-6f4cce64d4ab",
+                    "ready_on": "2026-10-28",
+                    "verdict": "insufficient_volume"
+                }
             },
             "watchlist-svelte-virtual-scroll-list": {
-                "identifier": "HUM-99",
+                "identifier": "HUM-43",
+                "status": "todo"
+            },
+            "seo-compare-svelte-virtual-no-impressions": {
+                "identifier": "HUM-91",
                 "status": "todo"
             }
         }
-    },
-    "analysis": {
-        "date": "2026-10-05",
-        "base_commit": "6c89c07675c1d05d43634fcb46334a69833429c0",
-        "baseline_last_run": "2026-10-05",
-        "release_changes": [],
-        "recent_context": "virtua 0.53.0 added VMasonry and changed horizontal VList default display to block; 0.53.1 added VMasonry keepMounted. Already reflected in the earlier same-day baseline.",
-        "release_evidence": [
-            "https://github.com/inokawa/virtua/releases/tag/0.53.0",
-            "https://github.com/inokawa/virtua/releases/tag/0.53.1"
-        ],
-        "seo": "Read original checkout GSC export/history without modifying them. No new export or history date relative to same-day baseline (2026-10-05 / 2026-10-02); existing recommendations retained.",
-        "repo_triage": {
-            "repo": "humanspeak/svelte-virtual-list",
-            "me": "jaysin586",
-            "since": "2026-10-05",
-            "fetched_at": "2026-10-05T08:52:08Z",
-            "authenticated": false,
-            "new_external_prs": [],
-            "new_external_issues": [],
-            "awaiting_your_reply": [],
-            "bots": {
-                "prs": 0,
-                "issues": 0
-            },
-            "errors": []
-        },
-        "discovery": "Light discovery confirmed the existing svelte-virtual-scroll-list candidate; no newly verified entrant promoted to config.",
-        "scope": "Research only; no package code, comparison prose, tickets, or external messages changed."
     }
 }

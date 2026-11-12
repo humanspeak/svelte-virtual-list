@@ -1,5 +1,6 @@
 import type { Breadcrumb, NavSection, PagerItem } from '@humanspeak/docs-kit'
 import Accessibility from '@lucide/svelte/icons/accessibility'
+import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left'
 import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down'
 import Book from '@lucide/svelte/icons/book'
 import Bug from '@lucide/svelte/icons/bug'
@@ -67,6 +68,13 @@ export const buildBreadcrumbs = (pathname: string): Breadcrumb[] => {
             { title: titleFor(pathname) ?? 'Comparison' }
         ]
     }
+    if (pathname.startsWith('/docs/migrate/')) {
+        return [
+            { title: 'Docs', href: '/docs' },
+            { title: 'Migration' },
+            { title: titleFor(pathname) ?? 'Migration guide' }
+        ]
+    }
     if (pathname.startsWith('/docs/')) {
         return [{ title: 'Docs', href: '/docs' }, { title: titleFor(pathname) ?? 'Docs' }]
     }
@@ -80,6 +88,17 @@ export const docsSections: NavSection[] = [
         items: [
             { title: 'Install', href: '/docs/install', icon: Code },
             { title: 'Introduction', href: '/docs', icon: Rocket, exact: true }
+        ]
+    },
+    {
+        title: 'Migration',
+        icon: ArrowRightLeft,
+        items: [
+            {
+                title: 'From svelte-virtual-scroll-list',
+                href: '/docs/migrate/svelte-virtual-scroll-list',
+                icon: ArrowRightLeft
+            }
         ]
     },
     {
@@ -137,6 +156,7 @@ export const docsSections: NavSection[] = [
             { title: 'All Comparisons', href: '/compare', icon: Swords, exact: true },
             { title: 'vs TanStack Virtual', href: '/compare/tanstack-virtual', icon: Swords },
             { title: 'vs virtua', href: '/compare/virtua', icon: Swords },
+            { title: 'vs svelte-virtual', href: '/compare/svelte-virtual', icon: Swords },
             { title: 'vs svelte-virtuallists', href: '/compare/svelte-virtuallists', icon: Swords },
             {
                 title: 'vs svelte-tiny-virtual-list',
@@ -146,6 +166,11 @@ export const docsSections: NavSection[] = [
             {
                 title: 'vs @sveltejs/svelte-virtual-list',
                 href: '/compare/sveltejs-svelte-virtual-list',
+                icon: Swords
+            },
+            {
+                title: 'vs svelte-virtual-scroll-list',
+                href: '/compare/svelte-virtual-scroll-list',
                 icon: Swords
             }
         ]
